@@ -243,12 +243,10 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.8 | `Transfer-Encoding: chunked` parsing | T | Lenient acceptance (`xchunked`, `chunked, identity`, doubled `chunked`) leading to smuggling against a non-aiohttp peer that interprets differently. | Medium |
 | 1.9 | Chunk size parsing | D | No upper bound on chunk-size value (Python unbounded int); huge chunk size could drive allocator before `client_max_size` rejects body. Mitigated by [§5.7](#57-server-connection-lifecycle) / `client_max_size`. | Low–Med |
 | 1.10 | Chunk extensions | D / T | Unbounded chunk-extension consumption per chunk; weak validation of extension syntax. | Low |
-| 1.11 | Header block accumulation | D | Slowloris-style drip: parser holds partial state until CRLF-CRLF; no parser-internal timeout. Mitigated by `web_protocol.RequestHandler` timeouts ([§5.7](#57-server-connection-lifecycle)), not by the parser itself. | Medium |
-| 1.12 | Parser error reporting | I | Exception messages may include up to ~100 bytes of malformed input, which can be surfaced in 4xx error bodies, logs, or `DEBUG=True` traces. | Low |
-| 1.13 | Cython ⇄ pure-Python divergence | T / S | Behaviour differences between llhttp and the Python fallback may produce parser-confusion if a deployment unintentionally switches backends (e.g. a user installs without compiled extensions). | Low–Med |
-| 1.14 | Vendored llhttp version drift | S / T | An upstream llhttp CVE not picked up by aiohttp's vendoring cadence remains exploitable until `make generate-llhttp` is re-run and released. | Medium |
-| 1.15 | Build/regen of llhttp (`make generate-llhttp`) | S / T | Local tampering or supply-chain compromise of the npm `llhttp` package gets baked into the vendored C. Covered in [§5.19](#519-build--release-supply-chain) but originates here. | Medium |
-| 1.16 | `read_until_eof` mode (responses) | T | A malicious upstream HTTP/1.0 peer can hold a connection open and stream forever; pushed to client_max_size / response timeouts, not parser-level. | Low |
+| 1.11 | Parser error reporting | I | Exception messages may include up to ~100 bytes of malformed input, which can be surfaced in 4xx error bodies, logs, or `DEBUG=True` traces. | Low |
+| 1.12 | Cython ⇄ pure-Python divergence | T / S | Behaviour differences between llhttp and the Python fallback may produce parser-confusion if a deployment unintentionally switches backends (e.g. a user installs without compiled extensions). | Low–Med |
+| 1.13 | Vendored llhttp version drift | S / T | An upstream llhttp CVE not picked up by aiohttp's vendoring cadence remains exploitable until `make generate-llhttp` is re-run and released. | Medium |
+| 1.14 | Build/regen of llhttp (`make generate-llhttp`) | S / T | Local tampering or supply-chain compromise of the npm `llhttp` package gets baked into the vendored C. Covered in [§5.19](#519-build--release-supply-chain) but originates here. | Medium |
 
 **Mitigations.**
 
@@ -264,12 +262,10 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
-| 1.11 | Slowloris drip | Mitigated externally by `web_protocol.RequestHandler` timeouts (`_keepalive_timeout`, `_read_timeout`, `lingering_time`), not by the parser. See [§5.7](#57-server-connection-lifecycle). | None. |
-| 1.12 | Parser error reflection | `http_exceptions.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client unsanitised (especially in custom `web_log` configurations).** |
-| 1.13 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to the parameterised tests. |
-| 1.14 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
-| 1.15 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
-| 1.16 | `read_until_eof` open-ended responses | Caller can configure response timeouts and body-size caps on the client. | Documented in client docs; no parser-level change. |
+| 1.11 | Parser error reflection | `http_exceptions.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client unsanitised (especially in custom `web_log` configurations).** |
+| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to the parameterised tests. |
+| 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
+| 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
 
 **Past advisories / hardening (recap).**
 
@@ -289,8 +285,8 @@ These are all currently in place; this section assumes no regression.
 | Risk | Threats |
 | :--- | :--- |
 | **High** | 1.1, 1.3 |
-| **Medium** | 1.2, 1.4, 1.7, 1.8, 1.11, 1.14, 1.15 |
-| **Low** | 1.5, 1.6, 1.10, 1.12, 1.13 (lower bound), 1.16 |
-| **Low–Med** | 1.9, 1.13 |
+| **Medium** | 1.2, 1.4, 1.7, 1.8, 1.13, 1.14 |
+| **Low** | 1.5, 1.6, 1.10, 1.11, 1.12 (lower bound) |
+| **Low–Med** | 1.9, 1.12 |
 
 ---
