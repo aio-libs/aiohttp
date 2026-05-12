@@ -1,0 +1,3 @@
+Fixed ``BodyPartReader.read()`` returning ``bytearray`` instead of ``bytes``,
+which caused ``TypeError: Object of type bytearray is not JSON serializable``
+when the result was passed to ``json.dumps()`` -- by :user:`algojogacor`.

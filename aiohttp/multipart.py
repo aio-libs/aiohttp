@@ -329,8 +329,8 @@ class BodyPartReader:
                 decoded_data.extend(d)
                 if len(decoded_data) > self._client_max_size:
                     raise self._max_size_error_cls(self._client_max_size)
-            return decoded_data
-        return data
+            return bytes(decoded_data)
+        return bytes(data)
 
     async def read_chunk(self, size: int = chunk_size) -> bytes:
         """Reads body part content chunk of the specified size.
