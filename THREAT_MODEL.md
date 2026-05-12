@@ -280,13 +280,4 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 
 These are all currently in place; this section assumes no regression.
 
-**Risk ranking summary.**
-
-| Risk | Threats |
-| :--- | :--- |
-| **High** | 1.1, 1.3 |
-| **Medium** | 1.2, 1.4, 1.7, 1.8, 1.13, 1.14 |
-| **Low** | 1.5, 1.6, 1.10, 1.11, 1.12 (lower bound) |
-| **Low–Med** | 1.9, 1.12 |
-
 ---
