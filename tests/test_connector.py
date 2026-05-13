@@ -989,7 +989,7 @@ async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
-async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> None:
+async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> None:  # type: ignore[misc]
     loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(interleave=2)
 
