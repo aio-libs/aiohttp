@@ -4695,10 +4695,7 @@ async def test_close_resolver_race_no_cache() -> None:
     close_event = asyncio.Event()
     closed_event = asyncio.Event()
 
-    class ClosingTracer(Trace):
-        def __init__(self) -> None:
-            """Dummy"""
-
+    class ClosingTracer:
         async def send_dns_resolvehost_start(
             self, *args: object, **kwargs: object
         ) -> None:
