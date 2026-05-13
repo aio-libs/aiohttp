@@ -1652,6 +1652,32 @@ async def test_tcp_connector_close_resolver() -> None:
         m_resolver.close.assert_awaited_once()
 
 
+async def test_tcp_connector_close_with_in_flight_dns_resolution() -> None:
+    # Regression test for #12497: TCPConnector.close() race with in-flight DNS
+    async def on_dns_start(session, ctx, params):
+        await asyncio.sleep(0)
+
+    trace = aiohttp.TraceConfig()
+    trace.on_dns_resolvehost_start.append(on_dns_start)
+
+    connector = aiohttp.TCPConnector(use_dns_cache=False)
+    session = aiohttp.ClientSession(
+        trace_configs=[trace],
+        connector=connector,
+    )
+
+    # Create a task that will suspend in the trace callback
+    task = asyncio.create_task(session.ws_connect("wss://example.com"))
+    await asyncio.sleep(0)
+
+    # Close the session while the task is suspended
+    await session.close()
+
+    # The task should fail with ClientConnectionError, not AttributeError
+    with pytest.raises((aiohttp.ClientConnectionError, asyncio.CancelledError)):
+        await task
+
+
 async def test_dns_error(make_client_request: _RequestMaker) -> None:
     connector = aiohttp.TCPConnector()
     with mock.patch.object(
