@@ -211,9 +211,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_async_resolver_link_local_ipv6_port_from_getnameinfo(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_async_resolver_link_local_ipv6_port_from_getnameinfo() -> None:
     """Ensure the port is correctly extracted from getnameinfo for link-local IPv6."""
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
