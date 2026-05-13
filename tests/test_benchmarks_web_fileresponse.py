@@ -2,16 +2,50 @@
 
 import asyncio
 import pathlib
+from collections.abc import Awaitable, Callable, Iterator
+from typing import Any
 
+import pytest
 from multidict import CIMultiDict
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import ClientResponse, web
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.test_utils import TestClient, TestServer
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
+) -> Iterator[
+    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
+]:
+    # TODO: Remove this fixture when async benchmarks are working.
+    clients = []
+
+    async def go(
+        __param: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[web.Request, web.Application]:
+        server_kwargs = server_kwargs or {}
+        server = TestServer(__param, **server_kwargs)
+        client = aiohttp_client_cls(server, **kwargs)
+
+        await client.start_server()
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
 
 
 def test_simple_web_file_response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -33,11 +67,11 @@ def test_simple_web_file_response(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_file_response_benchmark())
+        event_loop.run_until_complete(run_file_response_benchmark())
 
 
 def test_simple_web_file_sendfile_fallback_response(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
@@ -62,12 +96,12 @@ def test_simple_web_file_sendfile_fallback_response(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_file_response_benchmark())
+        event_loop.run_until_complete(run_file_response_benchmark())
 
 
 def test_simple_web_file_response_not_modified(
-    loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark web.FileResponse that return a 304."""
@@ -81,7 +115,7 @@ def test_simple_web_file_response_not_modified(
     app.router.add_route("GET", "/", handler)
 
     async def make_last_modified_header() -> CIMultiDict[str]:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         resp = await client.get("/")
         last_modified = resp.headers["Last-Modified"]
         headers = CIMultiDict({"If-Modified-Since": last_modified})
@@ -90,16 +124,16 @@ def test_simple_web_file_response_not_modified(
     async def run_file_response_benchmark(
         headers: CIMultiDict[str],
     ) -> ClientResponse:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app)
         for _ in range(response_count):
             resp = await client.get("/", headers=headers)
 
         await client.close()
         return resp  # type: ignore[possibly-undefined]
 
-    headers = loop.run_until_complete(make_last_modified_header())
+    headers = event_loop.run_until_complete(make_last_modified_header())
 
     @benchmark
     def _run() -> None:
-        resp = loop.run_until_complete(run_file_response_benchmark(headers))
+        resp = event_loop.run_until_complete(run_file_response_benchmark(headers))
         assert resp.status == 304

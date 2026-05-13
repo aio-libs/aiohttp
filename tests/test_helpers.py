@@ -308,8 +308,8 @@ def test_is_ip_address_invalid_type() -> None:
 # ----------------------------------- TimeoutHandle -------------------
 
 
-def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     assert cb == handle._callbacks[0][0]
@@ -317,11 +317,11 @@ def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
-def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
+def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
 
-    handle = helpers.TimeoutHandle(loop, timeout)
-    timer = loop.time() + timeout
+    handle = helpers.TimeoutHandle(event_loop, timeout)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -332,12 +332,12 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def test_when_timeout_smaller_second_with_low_threshold(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
 
-    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
-    timer = loop.time() + timeout
+    handle = helpers.TimeoutHandle(event_loop, timeout, 0.01)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -347,8 +347,8 @@ def test_when_timeout_smaller_second_with_low_threshold(
     assert when == ceil(timer)
 
 
-def test_timeout_handle_cb_exc(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle_cb_exc(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     cb.side_effect = ValueError()
@@ -423,9 +423,9 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     assert task.cancelling() == 1
 
 
-def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
+def test_timer_context_no_task(event_loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
-        with helpers.TimerContext(loop):
+        with helpers.TimerContext(event_loop):
             pass
 
 

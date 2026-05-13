@@ -236,9 +236,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
-        PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/
-        -m 'not dev_mode and not autobahn'
+        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/ -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -358,14 +356,7 @@ jobs:
       uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
-        flags: >-
-          CI-GHA,OS-${{
-            runner.os
-          }},VM-${{
-            matrix.os
-          }},Py-${{
-            steps.python-install.outputs.python-version
-          }}
+        flags: Autobahn
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}

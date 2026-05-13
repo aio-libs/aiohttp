@@ -9,11 +9,11 @@ from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import WSServerHandshakeError, hdrs, web
 from aiohttp.http import WSCloseCode, WSMsgType
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 
 async def test_websocket_can_prepare(aiohttp_client: AiohttpClient) -> None:

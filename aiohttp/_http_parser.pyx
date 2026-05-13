@@ -13,12 +13,13 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
+from multidict import CIMultiDict as _CIMultiDict
 from yarl import URL as _URL
 
 from aiohttp import hdrs
 from aiohttp.helpers import DEBUG, set_exception
 
+from .helpers import HeadersDictProxy as _HeadersDictProxy
 from .http_exceptions import (
     BadHttpMessage,
     BadHttpMethod,
@@ -61,7 +62,7 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 cdef object URL = _URL
 cdef object URL_build = URL.build
 cdef object CIMultiDict = _CIMultiDict
-cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object HeadersDictProxy = _HeadersDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
@@ -76,6 +77,7 @@ cdef tuple EMPTY_FEED_DATA_RESULT = ((), False, b"")
 # In lax mode (response parser default), the check is skipped entirely
 # since real-world servers (e.g. Google APIs, Werkzeug) commonly send
 # duplicate headers like Content-Type or Server.
+# https://www.rfc-editor.org/rfc/rfc9110.html#section-5.5-6
 cdef frozenset SINGLETON_HEADERS = frozenset({
     hdrs.CONTENT_LENGTH,
     hdrs.CONTENT_LOCATION,
@@ -129,7 +131,7 @@ cdef class RawRequestMessage:
     cdef readonly str method
     cdef readonly str path
     cdef readonly object version  # HttpVersion
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -229,7 +231,7 @@ cdef class RawResponseMessage:
     cdef readonly object version  # HttpVersion
     cdef readonly int code
     cdef readonly str reason
-    cdef readonly object headers  # CIMultiDict
+    cdef readonly object headers  # HeadersDictProxy
     cdef readonly object raw_headers  # tuple
     cdef readonly object should_close
     cdef readonly object compression
@@ -316,7 +318,7 @@ cdef class HttpParser:
         bytearray   _buf
         str     _path
         str     _reason
-        list    _headers
+        object  _headers
         set     _seen_singletons
         list    _raw_headers
         bint    _upgraded
@@ -463,7 +465,7 @@ cdef class HttpParser:
         chunked = self._cparser.flags & cparser.F_CHUNKED
 
         raw_headers = tuple(self._raw_headers)
-        headers = CIMultiDictProxy(CIMultiDict(self._headers))
+        headers = HeadersDictProxy(CIMultiDict(self._headers))
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             if http_version == HttpVersion11 and hdrs.HOST not in headers:
