@@ -55,7 +55,6 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-    #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
@@ -207,7 +206,7 @@ pytest-aiohttp==1.1.0
     #   -r requirements/test-common.in
 pytest-asyncio==1.4.0a2
     # via pytest-aiohttp
-pytest-codspeed==4.5.0
+pytest-codspeed==5.0.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in

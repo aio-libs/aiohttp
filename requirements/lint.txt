@@ -32,7 +32,6 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-    #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
 click==8.3.3
@@ -122,7 +121,7 @@ pytest-aiohttp==1.1.0
     # via -r requirements/lint.in
 pytest-asyncio==1.4.0a2
     # via pytest-aiohttp
-pytest-codspeed==4.5.0
+pytest-codspeed==5.0.1
     # via -r requirements/lint.in
 pytest-mock==3.15.1
     # via -r requirements/lint.in
