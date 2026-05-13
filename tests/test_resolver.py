@@ -352,7 +352,6 @@ async def test_close_for_async_resolver() -> None:
 
 async def test_default_loop_for_threaded_resolver() -> None:
     loop = asyncio.get_running_loop()
-    asyncio.set_event_loop(loop)
     resolver = ThreadedResolver()
     assert resolver._loop is loop
 

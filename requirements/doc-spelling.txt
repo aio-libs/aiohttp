@@ -18,7 +18,7 @@ click==8.3.3
     # via towncrier
 docutils==0.21.2
     # via sphinx
-idna==3.11
+idna==3.15
     # via requests
 imagesize==2.0.0
     # via sphinx
@@ -34,7 +34,7 @@ pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.20.0
     # via sphinx
-requests==2.33.1
+requests==2.34.0
     # via
     #   sphinx
     #   sphinxcontrib-spelling
@@ -69,5 +69,5 @@ towncrier==25.8.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.6.3
+urllib3==2.7.0
     # via requests

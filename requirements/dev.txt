@@ -9,21 +9,34 @@ aiodns==4.0.0
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   aiohttp
+aiohttp==3.13.5
+    # via pytest-aiohttp
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aiosignal==1.4.0
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   aiohttp
 alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
+ast-serialize==0.3.0
+    # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   valkey
+attrs==26.1.0
+    # via aiohttp
 babel==2.18.0
     # via sphinx
+backports-asyncio-runner==1.2.0
+    # via pytest-asyncio
 backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_version < "3.14"
     # via
     #   -r requirements/lint.in
@@ -42,7 +55,6 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-    #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
@@ -53,11 +65,11 @@ click==8.3.3
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.13.5
+coverage==7.14.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==47.0.0
+cryptography==48.0.0
     # via trustme
 distlib==0.4.0
     # via virtualenv
@@ -80,12 +92,13 @@ freezegun==1.5.5
 frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
-gunicorn==25.3.0
+gunicorn==26.0.0
     # via -r requirements/base.in
 identify==2.6.19
     # via pre-commit
-idna==3.11
+idna==3.15
     # via
     #   requests
     #   trustme
@@ -102,9 +115,9 @@ jinja2==3.1.6
     # via
     #   sphinx
     #   towncrier
-librt==0.10.0
+librt==0.11.0
     # via mypy
-markdown-it-py==4.1.0
+markdown-it-py==4.2.0
     # via rich
 markupsafe==3.0.3
     # via jinja2
@@ -113,8 +126,9 @@ mdurl==0.1.2
 multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
-mypy==1.20.2 ; implementation_name == "cpython"
+mypy==2.1.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -145,9 +159,10 @@ pluggy==1.6.0
     #   pytest-cov
 pre-commit==4.6.0
     # via -r requirements/lint.in
-propcache==0.4.1
+propcache==0.5.2
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   yarl
 proxy-py==2.4.10
     # via
@@ -174,11 +189,19 @@ pytest==9.0.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
+    #   pytest-aiohttp
+    #   pytest-asyncio
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.5.0
+pytest-aiohttp==1.1.0
+    # via
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
+pytest-asyncio==1.4.0a2
+    # via pytest-aiohttp
+pytest-codspeed==5.0.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -192,7 +215,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.3.0
+python-discovery==1.3.1
     # via virtualenv
 python-on-whales==0.81.0
     # via
@@ -200,7 +223,7 @@ python-on-whales==0.81.0
     #   -r requirements/test-common.in
 pyyaml==6.0.3
     # via pre-commit
-requests==2.33.1
+requests==2.34.0
     # via sphinx
 rich==15.0.0
     # via pytest-codspeed
@@ -258,12 +281,13 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   mypy
     #   pydantic
     #   pydantic-core
+    #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-urllib3==2.6.3
+urllib3==2.7.0
     # via requests
 uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
@@ -271,14 +295,16 @@ uvloop==0.21.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.3.1
+virtualenv==21.3.2
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
 wheel==0.47.0
     # via pip-tools
 yarl==1.22.0
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   aiohttp
 zlib-ng==1.0.0
     # via
     #   -r requirements/lint.in

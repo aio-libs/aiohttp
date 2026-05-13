@@ -38,6 +38,7 @@ from .helpers import (
     _SENTINEL,
     BaseTimerContext,
     BasicAuth,
+    HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
     frozen_dataclass_decorator,
@@ -193,7 +194,7 @@ class ClientResponse(HeadersMixin):
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _body: bytes | None = None
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
@@ -324,7 +325,7 @@ class ClientResponse(HeadersMixin):
         return self._url.host
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> HeadersDictProxy:
         return self._headers
 
     @reify
@@ -393,14 +394,8 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
-        links_str = ", ".join(self.headers.getall("link", []))
-
-        if not links_str:
-            return MultiDictProxy(MultiDict())
-
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-
-        for val in re.split(r",(?=\s*<)", links_str):
+        for val in self.headers.getall("link"):
             match = re.match(r"\s*<(.*)>(.*)", val)
             if match is None:  # Malformed link
                 continue
@@ -462,14 +457,14 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+        self._headers = message.headers
+        self._raw_headers = message.raw_headers
 
         # payload
         self.content = payload
 
         # cookies
-        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+        if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
