@@ -6,10 +6,10 @@ from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 from aiohttp import client, web
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 
 async def test_simple_server(
@@ -19,7 +19,7 @@ async def test_simple_server(
         return web.Response(text=str(request.rel_url))
 
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 200
     txt = await resp.text()
@@ -36,7 +36,7 @@ async def test_unsupported_upgrade(
 
     upgrade_headers = {"Connection": "Upgrade", "Upgrade": "unsupported_proto"}
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     test_data = b"Test"
     resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
     assert resp.status == 200
@@ -57,7 +57,7 @@ async def test_raw_server_not_http_exception(
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -83,7 +83,7 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -103,7 +103,7 @@ async def test_raw_server_logs_invalid_method_with_loop_debug(
     # Now make another connection to the server
     # to make sure that the exception is logged
     # at debug on a second fresh connection
-    cli2 = await aiohttp_client(server)
+    cli2 = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli2.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -128,7 +128,7 @@ async def test_raw_server_logs_invalid_method_without_loop_debug(
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -162,7 +162,7 @@ async def test_raw_server_logs_invalid_method_second_request(
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 200
     resp = await cli.get("/path/to")
@@ -188,7 +188,7 @@ async def test_raw_server_logs_bad_status_line_as_exception(
     loop.set_debug(False)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -213,7 +213,7 @@ async def test_raw_server_handler_timeout(
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 504
 
@@ -231,7 +231,7 @@ async def test_raw_server_do_not_swallow_exceptions(
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     with pytest.raises(client.ServerDisconnectedError):
         await cli.get("/path/to")
@@ -251,7 +251,7 @@ async def test_raw_server_does_not_swallow_base_exceptions(
     loop = asyncio.get_running_loop()
     loop.set_debug(True)
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     with pytest.raises(client.ServerDisconnectedError):
         await cli.get("/path/to", timeout=client.ClientTimeout(10))
@@ -272,7 +272,7 @@ async def test_raw_server_cancelled_in_write_eof(
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     with pytest.raises(client.ServerDisconnectedError):
         await cli.get("/path/to")
@@ -292,7 +292,7 @@ async def test_raw_server_not_http_exception_debug(
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -318,7 +318,7 @@ async def test_raw_server_html_exception(
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/html")
@@ -348,7 +348,7 @@ async def test_raw_server_html_exception_debug(
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/html")

@@ -45,13 +45,6 @@ class BufferWriter(AbstractStreamWriter):
         """Headers not captured for payload tests."""
 
 
-@pytest.fixture(autouse=True)
-def cleanup(
-    cleanup_payload_pending_file_closes: None,
-) -> None:
-    """Ensure all pending file close operations complete during test teardown."""
-
-
 @pytest.fixture
 def registry() -> Iterator[payload.PayloadRegistry]:
     old = payload.PAYLOAD_REGISTRY

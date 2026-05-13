@@ -65,7 +65,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         if isinstance(self.wsgi, Application):
             app = self.wsgi
         elif inspect.iscoroutinefunction(self.wsgi) or (
-            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(self.wsgi)
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(self.wsgi)  # type: ignore[deprecated]
         ):
             wsgi = await self.wsgi()
             if isinstance(wsgi, web.AppRunner):

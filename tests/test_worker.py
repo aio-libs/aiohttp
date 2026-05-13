@@ -53,9 +53,9 @@ if uvloop is not None:
 
 @pytest.fixture(params=PARAMS)
 def worker(
-    request: SubRequest, loop: asyncio.AbstractEventLoop
+    request: SubRequest, event_loop: asyncio.AbstractEventLoop
 ) -> base_worker.GunicornWebWorker:
-    asyncio.set_event_loop(loop)
+    asyncio.set_event_loop(event_loop)
     ret = request.param()
     ret.notify = mock.Mock()
     return ret  # type: ignore[no-any-return]
@@ -73,7 +73,7 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
 
 
 def test_run(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -82,15 +82,15 @@ def test_run(
     worker.cfg.graceful_timeout = 100
     worker.sockets = []
 
-    worker.loop = loop
+    worker.loop = event_loop
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_async_factory(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -105,28 +105,28 @@ def test_run_async_factory(
 
     worker.wsgi = make_app
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_not_app(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.wsgi = "not-app"
     worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_called_with("Exception in gunicorn worker")
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:

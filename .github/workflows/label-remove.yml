@@ -12,6 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       id-token: write
+      issues: write
       pull-requests: write
 
     steps:

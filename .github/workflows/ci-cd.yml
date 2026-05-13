@@ -147,7 +147,7 @@ jobs:
       run: |
         make generate-llhttp
     - name: Upload llhttp generated files
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: llhttp
         path: vendor/llhttp/build
@@ -236,9 +236,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
-        PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/
-        -m 'not dev_mode and not autobahn'
+        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/ -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -358,14 +356,7 @@ jobs:
       uses: codecov/codecov-action@v6
       with:
         files: ./coverage.xml
-        flags: >-
-          CI-GHA,OS-${{
-            runner.os
-          }},VM-${{
-            matrix.os
-          }},Py-${{
-            steps.python-install.outputs.python-version
-          }}
+        flags: Autobahn
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
@@ -545,7 +536,7 @@ jobs:
       run: |
         python -m build --sdist
     - name: Upload artifacts
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: dist-sdist
         path: dist
@@ -640,7 +631,7 @@ jobs:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
     - name: Upload wheels
-      uses: actions/upload-artifact@v6
+      uses: actions/upload-artifact@v7
       with:
         name: >-
           dist-${{ matrix.os }}-${{ matrix.musl }}-${{
@@ -713,7 +704,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

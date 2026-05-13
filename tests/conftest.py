@@ -30,14 +30,13 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp import payload
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.test_utils import REUSE_ADDRESS, loop_context
+from aiohttp.test_utils import REUSE_ADDRESS
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -66,7 +65,9 @@ else:
     from typing import Any as Unpack
 
 
-pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
+# We require pytest-aiohttp to avoid confusing debugging if it's not installed.
+pytest_plugins = ("pytest_aiohttp.plugin", "pytester")
+
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
@@ -87,9 +88,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             yield
             return
         node = node.parent
-    with blockbuster_ctx(
-        "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
-    ) as bb:
+    with blockbuster_ctx("aiohttp") as bb:
         for func in [
             "os.getcwd",
             "os.readlink",
@@ -170,12 +169,10 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-def create_mocked_conn(
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[[], ResponseHandler]]:
+async def create_mocked_conn() -> AsyncIterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)
-        proto.closed = loop.create_future()
+        proto.closed = asyncio.get_running_loop().create_future()
         proto.closed.set_result(None)
         return proto
 
@@ -253,26 +250,30 @@ def unix_sockname(
 
 
 @pytest.fixture
-async def event_loop(loop: asyncio.AbstractEventLoop) -> asyncio.AbstractEventLoop:
-    return asyncio.get_running_loop()
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    loop = asyncio.new_event_loop()
+    try:
+        yield loop
+    finally:
+        loop.close()
 
 
-@pytest.fixture
-def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    factory = asyncio.SelectorEventLoop
-    with loop_context(factory) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+def pytest_asyncio_loop_factories(
+    config: pytest.Config, item: pytest.Item
+) -> dict[str, Callable[[], asyncio.AbstractEventLoop]]:
+    marker = item.get_closest_marker("asyncio")
+    requested = marker.kwargs.get("loop_factories", ()) if marker else ()
 
+    factories = {"default": asyncio.new_event_loop}
 
-@pytest.fixture
-def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    if uvloop is None:
-        pytest.skip("uvloop is not installed")
-    factory = uvloop.new_event_loop
-    with loop_context(factory) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+    if "selector" in requested:
+        factories["selector"] = asyncio.SelectorEventLoop
+    if "proactor" in requested and platform.system() == "Windows":
+        factories["proactor"] = asyncio.ProactorEventLoop  # type: ignore[attr-defined]
+    if "uvloop" in requested and uvloop is not None:
+        factories["uvloop"] = uvloop.new_event_loop
+
+    return factories
 
 
 @pytest.fixture
@@ -403,23 +404,10 @@ def parametrize_zlib_backend(
     set_zlib_backend(original_backend)
 
 
-@pytest.fixture()
-async def cleanup_payload_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[None]:
-    """Ensure all pending file close operations complete during test teardown."""
-    yield
-    if payload._CLOSE_FUTURES:
-        # Only wait for futures from the current loop
-        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
-        if loop_futures:
-            await asyncio.gather(*loop_futures, return_exceptions=True)
-
-
 @pytest.fixture
-async def make_client_request(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
+async def make_client_request() -> (
+    AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
+):
     """Fixture to help creating test ClientRequest objects with defaults."""
     requests: list[ClientRequest] = []
     sessions: list[ClientSession] = []

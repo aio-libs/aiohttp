@@ -633,8 +633,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
                 del task
-                # https://github.com/python/mypy/issues/14309
-                if reset:  # type: ignore[possibly-undefined]
+                if reset:
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 

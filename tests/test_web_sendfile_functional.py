@@ -4,17 +4,17 @@ import contextlib
 import gzip
 import pathlib
 import socket
-from collections.abc import Iterable, Iterator
+from collections.abc import AsyncIterator, Iterable
 from typing import Protocol
 from unittest import mock
 
 import pytest
 from _pytest.fixtures import SubRequest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
 
@@ -63,7 +63,7 @@ def hello_txt(
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
+async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
@@ -75,7 +75,7 @@ def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Se
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            loop,
+            asyncio.get_running_loop(),
             "sendfile",
             autospec=True,
             spec_set=True,
@@ -87,7 +87,7 @@ def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Se
 
 
 @pytest.fixture
-def app_with_static_route(sender: _Sender) -> web.Application:
+async def app_with_static_route(sender: _Sender) -> web.Application:
     filename = "data.unknown_mime_type"
     filepath = pathlib.Path(__file__).parent / filename
 
@@ -601,7 +601,7 @@ async def test_static_file_ssl(
     app.router.add_static("/static", dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     resp = await client.get("/static/" + filename)
     assert 200 == resp.status
