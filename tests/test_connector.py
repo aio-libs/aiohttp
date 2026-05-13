@@ -53,6 +53,14 @@ if sys.version_info >= (3, 11):
 else:
     _RequestMaker = Any
 
+HAS_IPV6: bool = socket.has_ipv6
+if HAS_IPV6:  # pragma: no branch
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
+    except OSError:  # pragma: no cover
+        HAS_IPV6 = False
+
 
 @pytest.fixture
 def key() -> ConnectionKey:
@@ -887,6 +895,7 @@ async def test_tcp_connector_multiple_hosts_errors(
     await conn.close()
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
 @pytest.mark.parametrize(
     ("happy_eyeballs_delay"),
     [0.1, 0.25, None],
@@ -979,6 +988,7 @@ async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
     await conn.close()
 
 
+@pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
 async def test_tcp_connector_interleave(make_client_request: _RequestMaker) -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector(interleave=2)

@@ -26,6 +26,14 @@ from aiohttp.test_utils import (
 if sys.version_info >= (3, 11):
     from typing import assert_type
 
+HAS_IPV6: bool = socket.has_ipv6
+if HAS_IPV6:  # pragma: no branch
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
+    except OSError:  # pragma: no cover
+        HAS_IPV6 = False
+
 _TestClient = TestClient[web.Request, web.Application]
 
 _hello_world_str = "Hello, world"
@@ -368,7 +376,15 @@ async def test_custom_port(
 
 @pytest.mark.parametrize(
     ("hostname", "expected_host"),
-    [("127.0.0.1", "127.0.0.1"), ("localhost", "127.0.0.1"), ("::1", "::1")],
+    [
+        ("127.0.0.1", "127.0.0.1"),
+        ("localhost", "127.0.0.1"),
+        pytest.param(
+            "::1",
+            "::1",
+            marks=pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available"),
+        ),
+    ],
 )
 async def test_test_server_hostnames(hostname: str, expected_host: str) -> None:
     app = _create_example_app()
