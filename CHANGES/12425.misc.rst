@@ -1,2 +1,2 @@
-Replaced uses of the deprecated ``get_event_loop()`` function with ``get_running_loop()``
+Replaced uses of the ``get_event_loop()`` function with ``get_running_loop()``
 -- by :user:`agronholm`.
