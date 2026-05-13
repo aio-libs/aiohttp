@@ -18,7 +18,7 @@ click==8.3.3
     # via towncrier
 docutils==0.21.2
     # via sphinx
-idna==3.11
+idna==3.15
     # via requests
 imagesize==2.0.0
     # via sphinx
