@@ -4723,7 +4723,6 @@ async def test_close_resolver_race_no_cache() -> None:
                 await close_event.wait()
                 await connector.close()
                 closed_event.set()
-
             close_task = asyncio.create_task(do_close())
             with pytest.raises(
                 aiohttp.ClientConnectionError, match="Connector is closed"
