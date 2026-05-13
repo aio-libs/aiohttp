@@ -11,9 +11,7 @@ ast-serialize==0.3.0
 blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.0.0
-    # via
-    #   cryptography
-    #   pytest-codspeed
+    # via cryptography
 click==8.3.3
     # via wait-for-it
 coverage==7.14.0
@@ -75,7 +73,7 @@ pytest==9.0.3
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.5.0
+pytest-codspeed==5.0.1
     # via -r requirements/test-common.in
 pytest-cov==7.1.0
     # via -r requirements/test-common.in

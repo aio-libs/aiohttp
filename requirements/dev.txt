@@ -46,7 +46,6 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-    #   pytest-codspeed
 cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
@@ -180,7 +179,7 @@ pytest==9.0.3
     #   pytest-cov
     #   pytest-mock
     #   pytest-xdist
-pytest-codspeed==4.5.0
+pytest-codspeed==5.0.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
