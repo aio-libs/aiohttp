@@ -460,6 +460,13 @@ class ClientResponse(HeadersMixin):
         self._headers = message.headers
         self._raw_headers = message.raw_headers
 
+        # fire headers_received trace signal
+        if self._traces:
+            for trace in self._traces:
+                await trace.send_response_headers_received(
+                    self.method, self.url, self._headers
+                )
+
         # payload
         self.content = payload
 
