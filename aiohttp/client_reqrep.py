@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, cast
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -464,7 +464,7 @@ class ClientResponse(HeadersMixin):
         if self._traces:
             for trace in self._traces:
                 await trace.send_response_headers_received(
-                    self.method, self.url, CIMultiDictProxy(self._headers)
+                    self.method, self.url, cast(CIMultiDictProxy[str], self._headers)
                 )
 
         # payload
