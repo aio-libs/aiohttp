@@ -374,7 +374,7 @@ class CookieJar(AbstractCookieJar):
             )
             request_url = URL(request_url)
         # We always use BaseCookie now since all
-        # cookies set on on filtered are fully constructed
+        # cookies set on filtered are fully constructed
         # Morsels, not just names and values.
         filtered: BaseCookie[str] = BaseCookie()
         if not self._cookies:
