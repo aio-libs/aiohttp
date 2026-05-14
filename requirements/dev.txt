@@ -223,7 +223,7 @@ python-on-whales==0.81.0
     #   -r requirements/test-common.in
 pyyaml==6.0.3
     # via pre-commit
-requests==2.34.0
+requests==2.34.1
     # via sphinx
 rich==15.0.0
     # via pytest-codspeed
