@@ -488,7 +488,7 @@ class Trace:
         )
 
     async def send_response_headers_received(
-        self, method: str, url: URL, headers: "CIMultiDict[str]"
+        self, method: str, url: URL, headers: "CIMultiDictProxy[str]"
     ) -> None:
         return await self._trace_config.on_response_headers_received.send(
             self._session,

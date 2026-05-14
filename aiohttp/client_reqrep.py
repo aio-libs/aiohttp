@@ -464,7 +464,7 @@ class ClientResponse(HeadersMixin):
         if self._traces:
             for trace in self._traces:
                 await trace.send_response_headers_received(
-                    self.method, self.url, self._headers
+                    self.method, self.url, CIMultiDictProxy(self._headers)
                 )
 
         # payload
