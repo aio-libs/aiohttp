@@ -1,0 +1,1 @@
+Added a GitHub Actions workflow to validate that issues and PRs follow the expected templates, closing non-compliant submissions with an explanatory comment -- by :user:`rodrigobnogueira`.

@@ -1,0 +1,250 @@
+name: Check Template
+
+on:
+  issues:
+    types: [opened, edited]
+  pull_request_target:
+    types: [opened, edited]
+
+permissions:
+  issues: write
+  pull-requests: write
+
+jobs:
+  check-template:
+    name: Check Template
+    runs-on: ubuntu-latest
+    # Skip bots (dependabot, pre-commit-ci, etc.)
+    if: >-
+      (github.event.issue.user.type || 'User') != 'Bot'
+      && (github.event.pull_request.user.type || 'User') != 'Bot'
+    steps:
+      - name: Validate submission against template
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const isIssue = !!context.payload.issue && !context.payload.pull_request;
+            const isPR = !!context.payload.pull_request;
+            const item = isPR ? context.payload.pull_request : context.payload.issue;
+            const body = (item.body || '').trim();
+            const itemNumber = isPR
+              ? context.payload.pull_request.number
+              : context.payload.issue.number;
+
+            // --- Maintainer bypass ---
+            // If a maintainer has already triaged the item by applying
+            // a label, skip validation so human decisions are not overridden.
+            const bypassLabels = new Set([
+              'bot:chronographer:skip',
+              'backport:skip',
+            ]);
+            const currentLabels = (item.labels || []).map(l => l.name);
+            if (currentLabels.some(l => bypassLabels.has(l))) {
+              core.info('Maintainer bypass label found — skipping validation.');
+              return;
+            }
+
+            let problems = [];
+
+            if (isIssue) {
+              // --- Bug report (Issue Forms YAML) validation ---
+              // GitHub Issue Forms render `textarea` fields with
+              // `render: console` as fenced code blocks.  An unfilled
+              // field looks like:
+              //
+              //   ### Python Version
+              //
+              //   ```console
+              //   $ python --version
+              //   ```
+              //
+              // A properly filled field has extra lines between the
+              // command and the closing fence.
+
+              const versionChecks = [
+                {
+                  name: 'Python Version',
+                  regex: /### Python Version\s*```console\s*\$ python --version\s*```/,
+                },
+                {
+                  name: 'aiohttp Version',
+                  regex: /### aiohttp Version\s*```console\s*\$ python -m pip show aiohttp\s*```/,
+                },
+                {
+                  name: 'multidict Version',
+                  regex: /### multidict Version\s*```console\s*\$ python -m pip show multidict\s*```/,
+                },
+                {
+                  name: 'propcache Version',
+                  regex: /### propcache Version\s*```console\s*\$ python -m pip show propcache\s*```/,
+                },
+                {
+                  name: 'yarl Version',
+                  regex: /### yarl Version\s*```console\s*\$ python -m pip show yarl\s*```/,
+                },
+              ];
+
+              for (const { name, regex } of versionChecks) {
+                if (regex.test(body)) {
+                  problems.push(
+                    `The **${name}** field still contains only the default ` +
+                    `placeholder command. Please paste the actual output.`
+                  );
+                }
+              }
+
+              // Detect required textarea sections that are completely empty
+              // (heading followed immediately by the next heading).
+              const requiredSections = [
+                'Describe the bug',
+                'To Reproduce',
+                'Expected behavior',
+              ];
+              for (const section of requiredSections) {
+                const emptyPattern = new RegExp(
+                  `### ${section}\\s*(?:###|$)`
+                );
+                if (emptyPattern.test(body)) {
+                  problems.push(
+                    `The **${section}** section appears to be empty. ` +
+                    `Please provide the requested information.`
+                  );
+                }
+              }
+
+              // --- Legacy markdown template (ISSUE_TEMPLATE.md) ---
+              const oldTemplateBlank =
+                /## Long story short\s*(?:<!--[\s\S]*?-->\s*)*## Expected behaviour/;
+              if (oldTemplateBlank.test(body)) {
+                problems.push(
+                  'The **Long story short** section is empty. ' +
+                  'Please describe your problem.'
+                );
+              }
+            } else if (isPR) {
+              // --- Pull Request template validation ---
+
+              if (!body) {
+                problems.push(
+                  'The PR description is completely empty. ' +
+                  'Please use the provided PR template.'
+                );
+              } else {
+                if (!body.includes('## What do these changes do?')) {
+                  problems.push(
+                    'The PR description is missing the ' +
+                    '"What do these changes do?" section from the template.'
+                  );
+                }
+                if (!body.includes('## Checklist')) {
+                  problems.push(
+                    'The PR description is missing the ' +
+                    '"Checklist" section from the template.'
+                  );
+                }
+
+                // Detect a blank "What do these changes do?" section
+                // (only HTML comments between the heading and the next one).
+                const emptyBrief =
+                  /## What do these changes do\?\s*(?:<!--[\s\S]*?-->\s*)*## Are there changes in behavior for the user\?/;
+                if (emptyBrief.test(body)) {
+                  problems.push(
+                    'The **What do these changes do?** section is blank. ' +
+                    'Please describe your changes.'
+                  );
+                }
+              }
+
+              // --- Reject PRs opened from the fork's default branch ---
+              const head = context.payload.pull_request.head;
+              const base = context.payload.pull_request.base;
+              if (
+                head.repo.full_name !== base.repo.full_name
+                && head.ref === context.payload.repository.default_branch
+              ) {
+                problems.push(
+                  `This PR was opened from your fork's \`${head.ref}\` ` +
+                  `branch. Please create a dedicated feature branch instead ` +
+                  `(e.g. \`git checkout -b my-feature\`).`
+                );
+              }
+            }
+
+            if (problems.length === 0) {
+              core.info('Template validation passed.');
+              return;
+            }
+
+            // Build the comment
+            const itemType = isIssue ? 'issue' : 'pull request';
+            const lines = [
+              `👋 Thanks for your submission!`,
+              ``,
+              `However, it looks like the ${itemType} description does not ` +
+              `fully follow the expected template:`,
+              ``,
+              ...problems.map(p => `- ${p}`),
+              ``,
+              `Please update the description to address the above and ` +
+              `reopen the ${itemType}.`,
+            ];
+            const message = lines.join('\n');
+
+            // Apply a label for easier triage
+            const labelName = 'invalid';
+            try {
+              await github.rest.issues.addLabels({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: itemNumber,
+                labels: [labelName],
+              });
+            } catch (e) {
+              core.warning(`Could not add label "${labelName}": ${e.message}`);
+            }
+
+            // Avoid duplicate bot comments on re-edits
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: itemNumber,
+            });
+            const botLogin = 'github-actions[bot]';
+            const existing = comments.data.find(
+              c => c.user.login === botLogin
+                && c.body.includes('does not fully follow the expected template')
+            );
+
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body: message,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: itemNumber,
+                body: message,
+              });
+            }
+
+            // Close the issue/PR
+            if (isIssue && item.state === 'open') {
+              await github.rest.issues.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: itemNumber,
+                state: 'closed',
+                state_reason: 'not_planned',
+              });
+            } else if (isPR && item.state === 'open') {
+              await github.rest.pulls.update({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: itemNumber,
+                state: 'closed',
+              });
+            }
