@@ -320,8 +320,8 @@ lines, header blocks, chunked / fixed-length / EOF-terminated bodies, drain /
 backpressure behaviour. Both server-side response emission and client-side
 request emission share the same `StreamWriter`. Out of scope: WebSocket frame
 emission ([§5.3](#53-websocket-framing--per-message-deflate)), payload generation for multipart ([§5.4](#54-multipart-parsing--encoding)), compression codecs
-([§5.5](#55-compression-codecs)), the user-handler-facing parts of `web_response.Response` and
-`client_reqrep.ClientRequest` (covered in [§5.9](#59-server-requestresponse-objects) and [§5.12](#512-client-api--request-lifecycle) respectively, but
+([§5.5](#55-compression-codecs)), the user-handler-facing parts of `web.Response` and
+`ClientRequest` (covered in [§5.9](#59-server-requestresponse-objects) and [§5.12](#512-client-api--request-lifecycle) respectively, but
 called out where the writer's safety depends on them).
 
 **Components covered.**
@@ -382,7 +382,7 @@ on the wire. The wire-side consumer is the **untrusted** counterparty
 | 2.5 | `Content-Length` *and* `Transfer-Encoding: chunked` | T | Both headers reach the wire if user code constructs them via the raw headers dict; intermediaries disagree on which wins. | Medium |
 | 2.6 | Body emission on HEAD / 1xx / 204 / 304 | T | Writer strips CL/TE for empty-body responses but **does not block the application from writing a body**; bytes after the `\r\n\r\n` confuse the next pipelined request. | Medium |
 | 2.7 | `Set-Cookie` / `Cookie` value | T | Cookie name or value containing CR / LF / NUL passes through `SimpleCookie.output()` unchanged; only caught by writer's header validation. | Medium |
-| 2.8 | Compression / `Content-Encoding` | T | User sets `Content-Encoding: gzip` and also enables compression — server side guards against this; client-side does not. | Low–Med |
+| 2.8 | Compression / `Content-Encoding` | T | User sets `Content-Encoding: gzip` and also enables compression — server side guards against this; client-side does not. | Low |
 | 2.9 | Drain / backpressure on slow readers | D | Slow consumer (or `Sec-WebSocket-Key`-style hold) keeps `transport.write()` queued; writer drains at 64 KiB threshold (`http_writer.py:StreamWriter.write`). A handler that doesn't await `drain()` can blow up. | Medium |
 | 2.10 | Single oversized chunk | D | `write(b)` with a multi-GB blob is handed straight to `transport.write`; memory pressure shifts to asyncio's buffer. | Low |
 | 2.11 | Chunked encoding hex framing | T | Length is `f"{len(chunk):x}\r\n"`; no padding, no upper bound, no negative possible. | Low |
