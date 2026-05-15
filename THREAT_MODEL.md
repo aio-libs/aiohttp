@@ -47,10 +47,8 @@ and impact, as judged by maintainers. Mitigations are split into
 **existing** (already implemented in the codebase) and **recommended** (not
 yet implemented or only partially implemented).
 
-Some threats can only be mitigated by the application code built on top of
-aiohttp (e.g., choosing safe regexes for route variables, validating
-attacker-influenced redirect destinations, sanitising filenames before
-saving them). Recommendations addressed to application authors rather than
+Some threats are expected to be mitigated by the application code built on top
+of aiohttp. Recommendations addressed to application authors rather than
 to aiohttp maintainers are prefixed **User:** to make the responsibility
 explicit.
 
