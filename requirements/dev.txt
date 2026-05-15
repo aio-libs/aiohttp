@@ -24,7 +24,7 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.3.0
+ast-serialize==0.4.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via

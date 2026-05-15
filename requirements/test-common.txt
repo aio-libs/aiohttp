@@ -12,7 +12,7 @@ aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.3.0
+ast-serialize==0.4.0
     # via mypy
 async-timeout==5.0.1
     # via aiohttp
