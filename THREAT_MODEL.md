@@ -6,6 +6,11 @@ intended to (a) make explicit the implicit security assumptions baked into the
 codebase, (b) catalogue known classes of threat against each subsystem, and
 (c) record the existing and recommended mitigations.
 
+Some mitigations are expected to be in the application code built on top
+of aiohttp. Recommendations addressed to application authors rather than
+to aiohttp maintainers are prefixed **User:** to make the responsibility
+explicit.
+
 ---
 
 ## 1. Library Overview
@@ -46,11 +51,6 @@ Risk is ranked **High / Medium / Low** based on a rough product of likelihood
 and impact, as judged by maintainers. Mitigations are split into
 **existing** (already implemented in the codebase) and **recommended** (not
 yet implemented or only partially implemented).
-
-Some threats are expected to be mitigated by the application code built on top
-of aiohttp. Recommendations addressed to application authors rather than
-to aiohttp maintainers are prefixed **User:** to make the responsibility
-explicit.
 
 ---
 
