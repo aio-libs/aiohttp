@@ -3469,7 +3469,7 @@ async def test_drop_auth_on_redirect_to_other_host(
                 "Authorization": "Basic dXNlcjpwYXNz",
                 "Proxy-Authorization": "Basic dXNlcjpwYXNz",
             },
-            cookies={"a": "b"}
+            cookies={"a": "b"},
         ) as resp:
             assert resp.status == 200
 
