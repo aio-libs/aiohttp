@@ -210,7 +210,7 @@ re-assert==1.1.0
     # via -r requirements/test-common.in
 regex==2026.5.9
     # via re-assert
-requests==2.34.1
+requests==2.34.2
     # via
     #   sphinx
     #   sphinxcontrib-spelling
