@@ -2352,7 +2352,7 @@ Utilities
    :param str encoding: encoding (``'latin1'`` by default)
 
 
-   Should be used for specifying authorization data in client API,
+   Previously this was used for specifying authorization data in client API,
    e.g. *auth* parameter for :meth:`ClientSession.request() <aiohttp.ClientSession.request>`.
 
    .. deprecated:: 3.14
