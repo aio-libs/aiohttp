@@ -412,8 +412,7 @@ on the wire. The wire-side consumer is the **untrusted** counterparty
 | 2.11 | Chunked hex framing | The writer always uses `f"{len(chunk):x}\r\n"` followed by the chunk and `\r\n` (`http_writer.py:StreamWriter._write_chunked_payload`). | None. |
 | 2.12 | Insert-time vs write-time validation | Headers are validated at write-time only; `set_status` validates `reason` at set-time. | Documented design decision: late validation is acceptable; keep behaviour as-is. |
 | 2.13 | Cython ⇄ pure-Python parity | Both backends share the same logic and test surface; the Cython version uses a fast bytewise check, the Python version uses `in` on three sentinel characters. | **Parameterise the writer tests over both backends so egress equivalence on malicious inputs is exercised under both (see [§6.1](#61-highest-leverage-recommendations) #3).** |
-| 2.14 | Trailers asymmetry | Writer does not emit trailers; parser accepts trailers on incoming.
- Documented for completeness. | None. |
+| 2.14 | Trailers asymmetry | Writer does not emit trailers; parser accepts trailers on incoming. Documented for completeness. | None. |
 
 **Past advisories / hardening (recap).**
 
