@@ -7403,7 +7403,7 @@ Misc
   `aiohttp.worker.GunicornUVLoopWebWorker` (`#878 <https://github.com/aio-libs/aiohttp/pull/878>`_)
 - Don't send body in response to HEAD request (`#838 <https://github.com/aio-libs/aiohttp/pull/838>`_)
 - Skip the preamble in MultipartReader (`#881 <https://github.com/aio-libs/aiohttp/pull/881>`_)
-- Implement BasicAuth decode classmethod. (`#744 <https://github.com/aio-libs/aiohttp/pull/744>`_)
+- Implement ``BasicAuth`` decode classmethod. (`#744 <https://github.com/aio-libs/aiohttp/pull/744>`_)
 - Don't crash logger when transport is None (`#889 <https://github.com/aio-libs/aiohttp/pull/889>`_)
 - Use a create_future compatibility wrapper instead of creating
   Futures directly (`#896 <https://github.com/aio-libs/aiohttp/pull/896>`_)
@@ -7429,7 +7429,7 @@ Misc
 - Separate sending file logic from StaticRoute dispatcher (`#901 <https://github.com/aio-libs/aiohttp/pull/901>`_)
 - Drop deprecated share_cookies connector option (BACKWARD INCOMPATIBLE)
 - Drop deprecated support for tuple as auth parameter.
-  Use aiohttp.BasicAuth instead (BACKWARD INCOMPATIBLE)
+  Use ``aiohttp.BasicAuth`` instead (BACKWARD INCOMPATIBLE)
 - Remove deprecated `request.payload` property, use `content` instead.
   (BACKWARD INCOMPATIBLE)
 - Drop all mentions about api changes in documentation for versions
