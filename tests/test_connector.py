@@ -65,25 +65,25 @@ if HAS_IPV6:  # pragma: no branch
 @pytest.fixture
 def key() -> ConnectionKey:
     # Connection key
-    return ConnectionKey("localhost", 80, False, True, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None)
 
 
 @pytest.fixture
 def key2() -> ConnectionKey:
     # Connection key
-    return ConnectionKey("localhost", 80, False, True, None, None, None)
+    return ConnectionKey("localhost", 80, False, True, None, None)
 
 
 @pytest.fixture
 def other_host_key2() -> ConnectionKey:
     # Connection key
-    return ConnectionKey("otherhost", 80, False, True, None, None, None)
+    return ConnectionKey("otherhost", 80, False, True, None, None)
 
 
 @pytest.fixture
 def ssl_key() -> ConnectionKey:
     # Connection key
-    return ConnectionKey("localhost", 80, True, True, None, None, None)
+    return ConnectionKey("localhost", 80, True, True, None, None)
 
 
 @pytest.fixture
@@ -370,7 +370,7 @@ async def test_get(key: ConnectionKey) -> None:
 async def test_get_unconnected_proto() -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
-    key = ConnectionKey("localhost", 80, False, False, None, None, None)
+    key = ConnectionKey("localhost", 80, False, False, None, None)
     try:
         assert await conn._get(key, []) is None
 
@@ -392,7 +392,7 @@ async def test_get_unconnected_proto() -> None:
 async def test_get_unconnected_proto_ssl() -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
-    key = ConnectionKey("localhost", 80, True, False, None, None, None)
+    key = ConnectionKey("localhost", 80, True, False, None, None)
     try:
         assert await conn._get(key, []) is None
 
@@ -414,7 +414,7 @@ async def test_get_unconnected_proto_ssl() -> None:
 async def test_get_expired() -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
-    key = ConnectionKey("localhost", 80, False, False, None, None, None)
+    key = ConnectionKey("localhost", 80, False, False, None, None)
     try:
         assert await conn._get(key, []) is None
 
@@ -430,7 +430,7 @@ async def test_get_expired() -> None:
 async def test_get_expired_ssl() -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
-    key = ConnectionKey("localhost", 80, True, False, None, None, None)
+    key = ConnectionKey("localhost", 80, True, False, None, None)
     try:
         assert await conn._get(key, []) is None
 
@@ -2509,7 +2509,7 @@ async def test_tcp_connector_close_abort_ssl_connections_in_conns() -> None:
     proto.transport = transport
 
     # Add the protocol to _conns
-    key = ConnectionKey("host", 443, True, True, None, None, None)
+    key = ConnectionKey("host", 443, True, True, None, None)
     conn._conns[key] = deque([(proto, asyncio.get_running_loop().time())])
 
     # Close the connector
@@ -3352,29 +3352,20 @@ async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
 
-    if test_case != "dont_use_proxy":
-        proxy = (
-            URL("http://user:password@example.com")
-            if test_case == "use_proxy_with_embedded_auth"
-            else URL("http://example.com")
-        )
-        proxy_headers = (
-            CIMultiDict({hdrs.AUTHORIZATION: "Basic dXNlcjpwYXNzd29yZA=="})
-            if test_case == "use_proxy_with_auth_headers"
-            else None
-        )
-    else:
+    if test_case == "dont_use_proxy":
         proxy = None
         proxy_headers = None
-    key = ConnectionKey(
-        "localhost",
-        80,
-        False,
-        True,
-        proxy,
-        None,
-        hash(tuple(proxy_headers.items())) if proxy_headers else None,
-    )
+    elif test_case == "use_proxy_with_embedded_auth":
+        proxy = URL("http://user:password@example.com")
+        proxy_headers = None
+    elif test_case == "use_proxy_with_auth_headers":
+        proxy = URL("http://example.com")
+        proxy_headers = CIMultiDict(
+            {hdrs.PROXY_AUTHORIZATION: "Basic dXNlcjpwYXNzd29yZA=="}
+        )
+    else:
+        proxy = URL("http://example.com")
+        proxy_headers = None
     req = make_client_request(
         "GET",
         URL("http://localhost:80"),
@@ -3383,6 +3374,9 @@ async def test_connect_reuse_proxy_headers(  # type: ignore[misc]
         proxy=proxy,
         proxy_headers=proxy_headers,
     )
+    # The request normalises proxy URL/credentials, so reuse its actual
+    # connection key for the pre-populated pool entry.
+    key = req.connection_key
 
     conn = aiohttp.BaseConnector(limit=1)
 

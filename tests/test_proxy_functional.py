@@ -25,16 +25,6 @@ from aiohttp.test_utils import TestServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
-pytestmark = [
-    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
-    pytest.mark.filterwarnings(
-        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
-    ),
-    pytest.mark.filterwarnings(
-        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
-    ),
-]
-
 
 class _ResponseArgs(TypedDict):
     status: int
@@ -405,18 +395,27 @@ async def test_proxy_http_auth(
     assert "Authorization" not in proxy.request.headers
     assert "Proxy-Authorization" not in proxy.request.headers
 
-    auth = aiohttp.BasicAuth("user", "pass")
-    await get_request(url=url, auth=auth, proxy=proxy.url)
+    auth_header = aiohttp.encode_basic_auth("user", "pass")
+    await get_request(url=url, headers={"Authorization": auth_header}, proxy=proxy.url)
 
     assert "Authorization" in proxy.request.headers
     assert "Proxy-Authorization" not in proxy.request.headers
 
-    await get_request(url=url, proxy_auth=auth, proxy=proxy.url)
+    await get_request(
+        url=url,
+        proxy_headers={"Proxy-Authorization": auth_header},
+        proxy=proxy.url,
+    )
 
     assert "Authorization" not in proxy.request.headers
     assert "Proxy-Authorization" in proxy.request.headers
 
-    await get_request(url=url, auth=auth, proxy_auth=auth, proxy=proxy.url)
+    await get_request(
+        url=url,
+        headers={"Authorization": auth_header},
+        proxy_headers={"Proxy-Authorization": auth_header},
+        proxy=proxy.url,
+    )
 
     assert "Authorization" in proxy.request.headers
     assert "Proxy-Authorization" in proxy.request.headers
@@ -426,10 +425,10 @@ async def test_proxy_http_auth_utf8(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
 ) -> None:
     url = "http://aiohttp.io/path"
-    auth = aiohttp.BasicAuth("юзер", "пасс", "utf-8")
+    auth_header = aiohttp.encode_basic_auth("юзер", "пасс")
     proxy = await proxy_test_server()
 
-    await get_request(url=url, auth=auth, proxy=proxy.url)
+    await get_request(url=url, headers={"Authorization": auth_header}, proxy=proxy.url)
 
     assert "Authorization" in proxy.request.headers
     assert "Proxy-Authorization" not in proxy.request.headers
@@ -631,7 +630,7 @@ async def test_proxy_https_auth(
     proxy_test_server: Callable[[], Awaitable[mock.Mock]],
 ) -> None:
     url = "https://secure.aiohttp.io/path"
-    auth = aiohttp.BasicAuth("user", "pass")
+    auth_header = aiohttp.encode_basic_auth("user", "pass")
 
     proxy = await proxy_test_server()
     await get_request(url=url, proxy=proxy.url)
@@ -643,7 +642,7 @@ async def test_proxy_https_auth(
     assert "Proxy-Authorization" not in proxy.request.headers
 
     proxy = await proxy_test_server()
-    await get_request(url=url, auth=auth, proxy=proxy.url)
+    await get_request(url=url, headers={"Authorization": auth_header}, proxy=proxy.url)
 
     connect = proxy.requests_list[0]
     assert "Authorization" not in connect.headers
@@ -652,7 +651,11 @@ async def test_proxy_https_auth(
     assert "Proxy-Authorization" not in proxy.request.headers
 
     proxy = await proxy_test_server()
-    await get_request(url=url, proxy_auth=auth, proxy=proxy.url)
+    await get_request(
+        url=url,
+        proxy_headers={"Proxy-Authorization": auth_header},
+        proxy=proxy.url,
+    )
 
     connect = proxy.requests_list[0]
     assert "Authorization" not in connect.headers
@@ -661,7 +664,12 @@ async def test_proxy_https_auth(
     assert "Proxy-Authorization" not in proxy.request.headers
 
     proxy = await proxy_test_server()
-    await get_request(url=url, auth=auth, proxy_auth=auth, proxy=proxy.url)
+    await get_request(
+        url=url,
+        headers={"Authorization": auth_header},
+        proxy_headers={"Proxy-Authorization": auth_header},
+        proxy=proxy.url,
+    )
 
     connect = proxy.requests_list[0]
     assert "Authorization" not in connect.headers
@@ -814,14 +822,10 @@ async def test_proxy_from_env_http_with_auth(
 ) -> None:
     url = "http://aiohttp.io/path"
     proxy = await proxy_test_server()
-    auth = aiohttp.BasicAuth("user", "pass")
+    expected_header = aiohttp.encode_basic_auth("user", "pass")
     mocker.patch.dict(
         os.environ,
-        {
-            "http_proxy": str(
-                proxy.url.with_user(auth.login).with_password(auth.password)
-            )
-        },
+        {"http_proxy": str(proxy.url.with_user("user").with_password("pass"))},
     )
 
     await get_request(url=url, trust_env=True)
@@ -830,7 +834,7 @@ async def test_proxy_from_env_http_with_auth(
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
     assert proxy.request.path_qs == "/path"
-    assert proxy.request.headers["Proxy-Authorization"] == auth.encode()
+    assert proxy.request.headers["Proxy-Authorization"] == expected_header
 
 
 async def test_proxy_from_env_http_with_auth_from_netrc(
@@ -840,11 +844,9 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
 ) -> None:
     url = "http://aiohttp.io/path"
     proxy = await proxy_test_server()
-    auth = aiohttp.BasicAuth("user", "pass")
+    expected_header = aiohttp.encode_basic_auth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = f"machine 127.0.0.1 login {auth.login} password {auth.password}"
-    with netrc_file.open("w") as f:
-        f.write(netrc_file_data)
+    netrc_file.write_text("machine 127.0.0.1 login user password pass")
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
     )
@@ -855,7 +857,7 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     assert proxy.request.method == "GET"
     assert proxy.request.host == "aiohttp.io"
     assert proxy.request.path_qs == "/path"
-    assert proxy.request.headers["Proxy-Authorization"] == auth.encode()
+    assert proxy.request.headers["Proxy-Authorization"] == expected_header
 
 
 async def test_proxy_from_env_http_without_auth_from_netrc(
@@ -865,11 +867,8 @@ async def test_proxy_from_env_http_without_auth_from_netrc(
 ) -> None:
     url = "http://aiohttp.io/path"
     proxy = await proxy_test_server()
-    auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    netrc_file_data = f"machine 127.0.0.2 login {auth.login} password {auth.password}"
-    with netrc_file.open("w") as f:
-        f.write(netrc_file_data)
+    netrc_file.write_text("machine 127.0.0.2 login user password pass")
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
     )
@@ -890,12 +889,8 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
 ) -> None:
     url = "http://aiohttp.io/path"
     proxy = await proxy_test_server()
-    auth = aiohttp.BasicAuth("user", "pass")
     netrc_file = tmp_path / "test_netrc"
-    invalid_data = f"machine 127.0.0.1 {auth.login} pass {auth.password}"
-    with netrc_file.open("w") as f:
-        f.write(invalid_data)
-
+    netrc_file.write_text("machine 127.0.0.1 user pass pass")
     mocker.patch.dict(
         os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
     )
@@ -933,14 +928,10 @@ async def test_proxy_from_env_https_with_auth(
 ) -> None:
     url = "https://aiohttp.io/path"
     proxy = await proxy_test_server()
-    auth = aiohttp.BasicAuth("user", "pass")
+    expected_header = aiohttp.encode_basic_auth("user", "pass")
     mocker.patch.dict(
         os.environ,
-        {
-            "https_proxy": str(
-                proxy.url.with_user(auth.login).with_password(auth.password)
-            )
-        },
+        {"https_proxy": str(proxy.url.with_user("user").with_password("pass"))},
     )
 
     await get_request(url=url, trust_env=True)
@@ -956,20 +947,7 @@ async def test_proxy_from_env_https_with_auth(
     assert r2.method == "CONNECT"
     assert r2.host == "aiohttp.io"
     assert r2.path_qs == "/path"
-    assert r2.headers["Proxy-Authorization"] == auth.encode()
-
-
-async def test_proxy_auth() -> None:
-    async with aiohttp.ClientSession() as session:
-        with pytest.raises(
-            ValueError, match=r"proxy_auth must be None or BasicAuth\(\) tuple"
-        ):
-            async with session.get(
-                "http://python.org",
-                proxy="http://proxy.example.com",
-                proxy_auth=("user", "pass"),  # type: ignore[arg-type]
-            ):
-                pass
+    assert r2.headers["Proxy-Authorization"] == expected_header
 
 
 async def test_https_proxy_connect_tunnel_session_close_no_hang(

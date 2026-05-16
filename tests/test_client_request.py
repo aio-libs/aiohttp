@@ -456,27 +456,6 @@ async def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) ->
     assert req.is_ssl()
 
 
-async def test_basic_auth(make_client_request: _RequestMaker) -> None:
-    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
-        auth = aiohttp.BasicAuth("nkim", "1234")
-    req = make_client_request("get", URL("http://python.org"), auth=auth)
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-
-
-async def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
-    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
-        auth = aiohttp.BasicAuth("nkim", "секрет", "utf-8")
-    req = make_client_request("get", URL("http://python.org"), auth=auth)
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
-
-
-async def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
-    with pytest.raises(TypeError):
-        make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))  # type: ignore[arg-type]
-
-
 async def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://nkim:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
@@ -491,15 +470,16 @@ async def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -
     assert "python.org" == req.url.host
 
 
-async def test_basic_auth_from_url_overridden(
+async def test_basic_auth_from_url_overrides_authorization_header(
     make_client_request: _RequestMaker,
 ) -> None:
-    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
-        auth = aiohttp.BasicAuth("nkim", "1234")
-    req = make_client_request("get", URL("http://garbage@python.org"), auth=auth)
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-    assert "python.org" == req.url.host
+    req = make_client_request(
+        "get",
+        URL("http://nkim:1234@python.org"),
+        headers=CIMultiDict({"AUTHORIZATION": "Basic Z2FyYmFnZQ=="}),
+    )
+    assert req.headers["AUTHORIZATION"] == "Basic bmtpbToxMjM0"
+    assert req.url.host == "python.org"
 
 
 async def test_path_is_not_double_encoded1(make_client_request: _RequestMaker) -> None:
@@ -1568,14 +1548,12 @@ def test_terminate_with_closed_loop(
             skip_auto_headers=None,
             data=None,
             cookies=BaseCookie[str](),
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
             expect100=False,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             timer=TimerNoop(),
             session=None,  # type: ignore[arg-type]
             ssl=True,

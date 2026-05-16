@@ -93,7 +93,6 @@ class TestClientConnectorError:
         is_ssl=False,
         ssl=True,
         proxy=None,
-        proxy_auth=None,
         proxy_headers_hash=None,
     )
 
@@ -154,7 +153,6 @@ class TestClientConnectorCertificateError:
         is_ssl=False,
         ssl=True,
         proxy=None,
-        proxy_auth=None,
         proxy_headers_hash=None,
     )
 
