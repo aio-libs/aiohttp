@@ -292,7 +292,7 @@ def test_appkey_repr_nonconcrete() -> None:
         assert repr(key) in (
             # pytest-xdist:
             "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<AppKey(__main__.key, type=collections.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
         )
 
 
@@ -308,7 +308,7 @@ def test_appkey_repr_annotated() -> None:
         assert repr(key) in (
             # pytest-xdist:
             "<AppKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<AppKey(__main__.key, type=collections.Iterator[int])>",
+            "<AppKey(__main__.key, type=collections.abc.Iterator[int])>",
         )
 
 
