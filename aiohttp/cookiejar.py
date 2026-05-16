@@ -39,12 +39,17 @@ _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
 
 
-class _RestrictedCookieUnpickler(pickle.Unpickler):
+class _RestrictedCookieUnpickler(pickle._Unpickler):
     """A restricted unpickler that only allows cookie-related types.
 
     This prevents arbitrary code execution when loading pickled cookie data
     from untrusted sources. Only types that are expected in a serialized
     CookieJar are permitted.
+
+    Subclasses :class:`pickle._Unpickler` (the pure-Python implementation)
+    rather than :class:`pickle.Unpickler` because the accelerated unpickler
+    on some implementations (notably PyPy) does not dispatch through
+    :meth:`find_class` overrides.
 
     See: https://docs.python.org/3/library/pickle.html#restricting-globals
     """
