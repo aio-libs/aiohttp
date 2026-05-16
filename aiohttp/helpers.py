@@ -204,7 +204,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
 
 
 def _basic_auth_no_warn(
-    login: str, password: str = "", encoding: str = "utf-8"
+    login: str, password: str = "", encoding: str = "latin1"
 ) -> BasicAuth:
     """Construct a BasicAuth without emitting the deprecation warning.
 
@@ -300,7 +300,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> BasicAuth:
     if password is None:
         password = ""  # type: ignore[unreachable]
 
-    return _basic_auth_no_warn(username, password, encoding="latin1")
+    return _basic_auth_no_warn(username, password)
 
 
 def proxies_from_env() -> dict[str, ProxyInfo]:
