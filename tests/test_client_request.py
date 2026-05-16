@@ -347,7 +347,7 @@ async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) ->
         ),
     ),
 )
-async def test_host_header_fqdn(  # type: ignore[misc]
+async def test_host_header_fqdn(
     make_client_request: _RequestMaker,
     url: str,
     headers: CIMultiDict[str],
@@ -918,7 +918,7 @@ async def test_bytes_data(conn: mock.Mock, make_client_request: _RequestMaker) -
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding(  # type: ignore[misc]
+async def test_content_encoding(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
@@ -967,7 +967,7 @@ async def test_content_encoding_rejects_unknown_string(
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding_header(  # type: ignore[misc]
+async def test_content_encoding_header(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
@@ -1101,7 +1101,7 @@ async def test_file_upload_not_chunked(make_client_request: _RequestMaker) -> No
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_precompressed_data_stays_intact(  # type: ignore[misc]
+async def test_precompressed_data_stays_intact(
     make_client_request: _RequestMaker,
 ) -> None:
     data = ZLibBackend.compress(b"foobar")
@@ -1484,7 +1484,7 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(  # type: ignore[misc]
+async def test_cancel_close(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
@@ -1693,7 +1693,7 @@ def test_gen_default_accept_encoding(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_netrc_present_untrusted_env(  # type: ignore[misc]
+async def test_basicauth_from_netrc_present_untrusted_env(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test no authorization header is sent via netrc if trust_env is False"""
@@ -1707,7 +1707,7 @@ async def test_basicauth_from_netrc_present_untrusted_env(  # type: ignore[misc]
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_empty_netrc(  # type: ignore[misc]
+async def test_basicauth_from_empty_netrc(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that no Authorization header is sent when netrc is empty"""
@@ -1851,7 +1851,7 @@ async def test_write_bytes_with_content_length_limit(
         b"Part1Part2Part3",
     ],
 )
-async def test_write_bytes_with_iterable_content_length_limit(  # type: ignore[misc]
+async def test_write_bytes_with_iterable_content_length_limit(
     buf: bytearray,
     conn: mock.Mock,
     data: list[bytes] | bytes,
@@ -2076,7 +2076,7 @@ async def test_expect100_with_body_becomes_empty(
         ("DELETE", b"x", "1"),
     ],
 )
-async def test_content_length_for_methods(  # type: ignore[misc]
+async def test_content_length_for_methods(
     method: str,
     data: bytes | None,
     expected_content_length: str | None,
@@ -2180,7 +2180,7 @@ async def test_no_content_length_with_chunked(
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
-async def test_update_body_none_sets_content_length_zero(  # type: ignore[misc]
+async def test_update_body_none_sets_content_length_zero(
     method: str, make_client_request: _RequestMaker
 ) -> None:
     """Test that updating body to None sets Content-Length: 0 for POST-like methods."""
@@ -2198,7 +2198,7 @@ async def test_update_body_none_sets_content_length_zero(  # type: ignore[misc]
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
-async def test_update_body_none_no_content_length_for_get_methods(  # type: ignore[misc]
+async def test_update_body_none_no_content_length_for_get_methods(
     method: str, make_client_request: _RequestMaker
 ) -> None:
     """Test that updating body to None doesn't set Content-Length for GET-like methods."""

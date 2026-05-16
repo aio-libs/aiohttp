@@ -1045,9 +1045,7 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_auth_header_from_netrc(  # type: ignore[misc]
-    expected_header: str,
-) -> None:
+def test_auth_header_from_netrc(expected_header: str) -> None:
     """Test that netrc file contents are properly parsed into a header value."""
     netrc_obj = helpers.netrc_from_env()
 
