@@ -957,7 +957,7 @@ async def test_middleware_uses_session_avoids_recursion_with_path_check(
         if request.url.path != "/log":
             # Use the session from the request to make the logging call
             async with request.session.post(
-                f"http://localhost:{log_server.port}/log",
+                log_server.make_url("/log"),
                 json={"method": str(request.method), "url": str(request.url)},
             ) as resp:
                 assert resp.status == 200
@@ -1025,7 +1025,7 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
         # Use the session from the request to make the logging call
         # Disable middleware to avoid infinite recursion
         async with request.session.post(
-            f"http://localhost:{log_server.port}/log",
+            log_server.make_url("/log"),
             json={"method": str(request.method), "url": str(request.url)},
             middlewares=(),  # This prevents infinite recursion
         ) as resp:
