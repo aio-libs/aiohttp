@@ -1,0 +1,1 @@
+Fixed digest authentication failing for requests whose path or query string contains percent-encoded reserved characters; the digest signature now uses the encoded request-target that is sent on the wire instead of the decoded form -- by :user:`bdraco`.
