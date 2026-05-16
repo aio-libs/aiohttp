@@ -1142,15 +1142,15 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     [
         (
             "machine example.com login username password pass\n",
-            helpers._basic_auth_no_warn("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com account username password pass\n",
-            helpers._basic_auth_no_warn("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com password pass\n",
-            helpers._basic_auth_no_warn("", "pass"),
+            helpers._basic_auth_no_warn("", "pass", "latin1"),
         ),
     ],
     indirect=("netrc_contents",),
