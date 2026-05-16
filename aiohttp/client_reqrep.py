@@ -40,6 +40,7 @@ from .helpers import (
     BasicAuth,
     HeadersMixin,
     TimerNoop,
+    _basic_auth_no_warn,
     noop,
     reify,
     sentinel,
@@ -1019,7 +1020,7 @@ class ClientRequest:
 
         # basic auth info
         if url.raw_user or url.raw_password:
-            self.auth = helpers.BasicAuth(url.user or "", url.password or "")
+            self.auth = _basic_auth_no_warn(url.user or "", url.password or "")
 
     def update_version(self, version: http.HttpVersion | str) -> None:
         """Convert request version to two elements tuple.

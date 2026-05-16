@@ -66,6 +66,16 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestClient, TestServer, unused_port
 from aiohttp.typedefs import Handler
 
+pytestmark = [
+    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
+    ),
+]
+
 
 @pytest.fixture(autouse=True)
 def cleanup(

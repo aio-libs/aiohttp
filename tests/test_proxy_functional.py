@@ -23,6 +23,16 @@ from aiohttp.test_utils import TestServer
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
+pytestmark = [
+    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
+    ),
+]
+
 
 @pytest.fixture
 def secure_proxy_url(tls_certificate_pem_path):

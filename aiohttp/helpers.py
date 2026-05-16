@@ -115,6 +115,18 @@ class noop:
         yield
 
 
+def encode_basic_auth(login: str, password: str = "", encoding: str = "utf-8") -> str:
+    """Encode HTTP Basic Authentication credentials as an Authorization header value.
+
+    Returns a string of the form ``"Basic <base64>"`` suitable for use as the
+    value of the ``Authorization`` (or ``Proxy-Authorization``) header.
+    """
+    if ":" in login:
+        raise ValueError('A ":" is not allowed in login (RFC 7617#section-2)')
+    creds = f"{login}:{password}".encode(encoding)
+    return "Basic " + base64.b64encode(creds).decode(encoding)
+
+
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
     """Http basic authentication helper."""
 
@@ -130,6 +142,13 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         if ":" in login:
             raise ValueError('A ":" is not allowed in login (RFC 1945#section-11.1)')
 
+        warnings.warn(
+            "BasicAuth is deprecated and will be removed in aiohttp 4.0; "
+            "use aiohttp.encode_basic_auth() with "
+            "headers={'Authorization': ...} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
@@ -159,7 +178,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         except ValueError:
             raise ValueError("Invalid credentials.")
 
-        return cls(username, password, encoding=encoding)
+        return _basic_auth_no_warn(username, password, encoding)
 
     @classmethod
     def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
@@ -170,12 +189,22 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         # to already have these values parsed from the netloc in the cache.
         if url.raw_user is None and url.raw_password is None:
             return None
-        return cls(url.user or "", url.password or "", encoding=encoding)
+        return _basic_auth_no_warn(url.user or "", url.password or "", encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
-        creds = (f"{self.login}:{self.password}").encode(self.encoding)
-        return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
+        return encode_basic_auth(self.login, self.password, self.encoding)
+
+
+def _basic_auth_no_warn(
+    login: str, password: str = "", encoding: str = "latin1"
+) -> BasicAuth:
+    """Construct a BasicAuth without emitting the deprecation warning.
+
+    For internal use only. Bypasses BasicAuth.__new__ so that aiohttp's own
+    machinery doesn't trigger deprecation warnings in user code.
+    """
+    return tuple.__new__(BasicAuth, (login, password, encoding))
 
 
 def strip_auth_from_url(url: URL) -> tuple[URL, BasicAuth | None]:
@@ -184,7 +213,7 @@ def strip_auth_from_url(url: URL) -> tuple[URL, BasicAuth | None]:
     # to already have these values parsed from the netloc in the cache.
     if url.raw_user is None and url.raw_password is None:
         return url, None
-    return url.with_user(None), BasicAuth(url.user or "", url.password or "")
+    return url.with_user(None), _basic_auth_no_warn(url.user or "", url.password or "")
 
 
 def netrc_from_env() -> netrc.netrc | None:
@@ -262,7 +291,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> BasicAuth:
     if password is None:
         password = ""
 
-    return BasicAuth(username, password)
+    return _basic_auth_no_warn(username, password)
 
 
 def proxies_from_env() -> dict[str, ProxyInfo]:

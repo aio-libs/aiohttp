@@ -56,7 +56,7 @@ from .connector import (
 )
 from .cookiejar import CookieJar as CookieJar, DummyCookieJar as DummyCookieJar
 from .formdata import FormData as FormData
-from .helpers import BasicAuth, ChainMapProxy, ETag
+from .helpers import BasicAuth, ChainMapProxy, ETag, encode_basic_auth
 from .http import (
     HttpVersion as HttpVersion,
     HttpVersion10 as HttpVersion10,
@@ -190,6 +190,7 @@ __all__: tuple[str, ...] = (
     "ChainMapProxy",
     "DigestAuthMiddleware",
     "ETag",
+    "encode_basic_auth",
     "set_zlib_backend",
     # http
     "HttpVersion",
