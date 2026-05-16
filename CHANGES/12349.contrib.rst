@@ -1,0 +1,1 @@
+Added a CI job to measure Cython coverage -- by :user:`Dreamsorcerer`.

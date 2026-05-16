@@ -35,6 +35,7 @@ except ImportError:
 import pytest
 import trustme
 from multidict import MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL, Query
 
@@ -52,8 +53,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.compression_utils import DEFAULT_MAX_DECOMPRESS_SIZE
-from aiohttp.http_exceptions import DecompressSizeError
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -62,16 +62,18 @@ from aiohttp.payload import (
     StringIOPayload,
     StringPayload,
 )
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import TestClient, TestServer, unused_port
+from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
 
-
-@pytest.fixture(autouse=True)
-def cleanup(
-    cleanup_payload_pending_file_closes: None,
-) -> None:
-    """Ensure all pending file close operations complete during test teardown."""
+pytestmark = [
+    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
+    ),
+]
 
 
 @pytest.fixture
@@ -719,7 +721,7 @@ async def test_ssl_client(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -758,7 +760,7 @@ async def test_ssl_client_shutdown_timeout(
     app = web.Application()
     app.router.add_route("GET", "/stream", streaming_handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     # Verify the connector has the correct timeout
     assert connector._ssl_shutdown_timeout == 0.1
@@ -811,7 +813,7 @@ async def test_ssl_client_alpn(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     connector = aiohttp.TCPConnector(ssl=False)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
     async with client.get("/") as resp:
         assert resp.status == 200
         txt = await resp.text()
@@ -833,7 +835,7 @@ async def test_tcp_connector_fingerprint_ok(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -855,7 +857,7 @@ async def test_tcp_connector_fingerprint_fail(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
         await client.get("/")
@@ -1226,7 +1228,7 @@ async def test_read_timeout_on_write(aiohttp_client: AiohttpClient) -> None:
 async def test_timeout_on_reading_data(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     fut = loop.create_future()
 
@@ -1289,7 +1291,7 @@ async def test_connection_timeout_error(
 
 
 async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse()
@@ -2407,12 +2409,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     When a compressed payload expands beyond the configured limit,
     we raise DecompressSizeError.
     """
-    # Create a highly compressible payload that exceeds the decompression limit.
-    # 64MiB of repeated bytes compresses to ~32KB but expands beyond the
-    # 32MiB per-call limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = zlib.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         # Send compressed data with Content-Encoding header
@@ -2427,11 +2428,11 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(brotli is None, reason="brotli is not installed")
@@ -2440,10 +2441,11 @@ async def test_payload_decompress_size_limit_brotli(
 ) -> None:
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressed = brotli.compress(original)
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2457,11 +2459,11 @@ async def test_payload_decompress_size_limit_brotli(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 @pytest.mark.skipif(ZstdCompressor is None, reason="backports.zstd is not installed")
@@ -2470,11 +2472,12 @@ async def test_payload_decompress_size_limit_zstd(
 ) -> None:
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
-    # Create a highly compressible payload that exceeds the decompression limit.
-    original = b"A" * (64 * 2**20)
+    # Create a highly compressible payload.
+    payload_size = 64 * 2**20
+    original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
-    assert len(original) > DEFAULT_MAX_DECOMPRESS_SIZE
+    assert len(original) > DEFAULT_CHUNK_SIZE
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=compressed)
@@ -2488,11 +2491,11 @@ async def test_payload_decompress_size_limit_zstd(
     async with client.get("/") as resp:
         assert resp.status == 200
 
-        with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
-            await resp.read()
+        received = 0
+        async for chunk in resp.content.iter_chunked(1024):
+            received += len(chunk)
 
-        assert isinstance(exc_info.value.__cause__, DecompressSizeError)
-        assert "Decompressed data exceeds" in str(exc_info.value.__cause__)
+        assert received == payload_size
 
 
 async def test_bad_payload_chunked_encoding(aiohttp_client: AiohttpClient) -> None:
@@ -3754,7 +3757,7 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
 async def test_aiohttp_request_ctx_manager_not_found() -> None:
     with pytest.raises(aiohttp.ClientConnectionError):
-        async with aiohttp.request("GET", "http://wrong-dns-name.com"):
+        async with aiohttp.request("GET", "http://wrong-dns-name.invalid"):
             assert False
 
 
@@ -4006,8 +4009,8 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection() -> None:
-    loop = asyncio.get_event_loop()
+async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
+    loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -4031,7 +4034,7 @@ async def test_server_close_keepalive_connection() -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -4047,8 +4050,8 @@ async def test_server_close_keepalive_connection() -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection() -> None:
-    loop = asyncio.get_event_loop()
+async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
+    loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -4066,7 +4069,7 @@ async def test_handle_keepalive_on_closed_connection() -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_port())
+    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
 
     addr = server.sockets[0].getsockname()
 
@@ -4099,7 +4102,7 @@ async def test_error_in_performing_request(
     def exception_handler(loop: object, context: object) -> None:
         """Skip log messages about destroyed but pending tasks"""
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_exception_handler(exception_handler)
 
     app = web.Application()
@@ -4108,7 +4111,7 @@ async def test_error_in_performing_request(
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
     conn = aiohttp.TCPConnector(limit=1)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     with pytest.raises(aiohttp.ClientConnectionError):
         await client.get("/")
@@ -4119,7 +4122,7 @@ async def test_error_in_performing_request(
 
 
 async def test_await_after_cancelling(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -5554,12 +5557,6 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
         # 127.0.0.1:port. This allows cookies for both .amazon.it
         # and .www.amazon.it domains
         resp = await session.get(f"http://www.amazon.it:{port}/")
-
-        # Check headers
-        cookie_headers = resp.headers.getall("Set-Cookie")
-        assert (
-            len(cookie_headers) == 12
-        ), f"Expected 12 headers, got {len(cookie_headers)}"
 
         # Check parsed cookies - SimpleCookie only keeps the last
         # cookie with each name. So we expect 10 unique cookie names

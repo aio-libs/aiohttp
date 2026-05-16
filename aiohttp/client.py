@@ -92,6 +92,7 @@ from .connector import (
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     BasicAuth,
     TimeoutHandle,
@@ -183,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
@@ -331,7 +332,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig[object]] | None = None,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -393,6 +394,22 @@ class ClientSession:
         if cookies:
             self._cookie_jar.update_cookies(cookies)
 
+        if auth is not None:
+            warnings.warn(
+                "The 'auth' parameter is deprecated and will be removed in v4;"
+                " pass headers={'Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
+        if proxy_auth is not None:
+            warnings.warn(
+                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
+                " pass proxy_headers={'Proxy-Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         self._connector_owner = connector_owner
         self._default_auth = auth
         self._version = version
@@ -487,7 +504,7 @@ class ClientSession:
         auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: str | bool = False,
+        compress: Literal["deflate", "gzip"] | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
         raise_for_status: (
@@ -514,6 +531,23 @@ class ClientSession:
 
         if self.closed:
             raise RuntimeError("Session is closed")
+
+        if auth is not None:
+            warnings.warn(
+                "The 'auth' parameter is deprecated and will be removed in v4;"
+                " pass headers={'Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if proxy_auth is not None:
+            warnings.warn(
+                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
+                " pass proxy_headers={'Proxy-Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
@@ -899,9 +933,7 @@ class ClientSession:
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
 
-            if raise_for_status is None:
-                pass
-            elif callable(raise_for_status):
+            if callable(raise_for_status):
                 await raise_for_status(resp)
             elif raise_for_status:
                 resp.raise_for_status()
@@ -1066,6 +1098,22 @@ class ClientSession:
         max_msg_size: int = 4 * 1024 * 1024,
         decode_text: bool = True,
     ) -> "ClientWebSocketResponse[bool]":
+        if auth is not None:
+            warnings.warn(
+                "The 'auth' parameter is deprecated and will be removed in v4;"
+                " pass headers={'Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+        if proxy_auth is not None:
+            warnings.warn(
+                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
+                " pass proxy_headers={'Proxy-Authorization': "
+                "aiohttp.encode_basic_auth(login, password)} instead",
+                DeprecationWarning,
+                stacklevel=3,
+            )
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
@@ -1226,7 +1274,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,

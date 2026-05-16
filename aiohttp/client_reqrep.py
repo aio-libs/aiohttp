@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -38,8 +38,10 @@ from .helpers import (
     _SENTINEL,
     BaseTimerContext,
     BasicAuth,
+    HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
+    _basic_auth_no_warn,
     frozen_dataclass_decorator,
     is_expected_content_type,
     parse_mimetype,
@@ -78,6 +80,7 @@ if TYPE_CHECKING:
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -192,7 +195,7 @@ class ClientResponse(HeadersMixin):
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _body: bytes | None = None
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
 
@@ -323,7 +326,7 @@ class ClientResponse(HeadersMixin):
         return self._url.host
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> HeadersDictProxy:
         return self._headers
 
     @reify
@@ -392,14 +395,8 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
-        links_str = ", ".join(self.headers.getall("link", []))
-
-        if not links_str:
-            return MultiDictProxy(MultiDict())
-
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-
-        for val in re.split(r",(?=\s*<)", links_str):
+        for val in self.headers.getall("link"):
             match = re.match(r"\s*<(.*)>(.*)", val)
             if match is None:  # Malformed link
                 continue
@@ -461,14 +458,14 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+        self._headers = message.headers
+        self._raw_headers = message.raw_headers
 
         # payload
         self.content = payload
 
         # cookies
-        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+        if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
@@ -753,12 +750,9 @@ class ClientRequestBase:
             return None
 
         content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
+        if not _DIGITS_RE.fullmatch(content_length_hdr):
+            raise ValueError(f"Invalid Content-Length header: {content_length_hdr!r}")
+        return int(content_length_hdr)
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:
@@ -814,7 +808,7 @@ class ClientRequestBase:
 
         # basic auth info
         if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
+            self.auth = _basic_auth_no_warn(url.user or "", url.password or "")
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
@@ -935,7 +929,7 @@ class ClientRequestArgs(TypedDict, total=False):
     cookies: BaseCookie[str]
     auth: BasicAuth | None
     version: HttpVersion
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     loop: asyncio.AbstractEventLoop
@@ -979,7 +973,7 @@ class ClientRequest(ClientRequestBase):
         cookies: BaseCookie[str],
         auth: BasicAuth | None,
         version: HttpVersion,
-        compress: str | bool,
+        compress: Literal["deflate", "gzip"] | bool,
         chunked: bool | None,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
@@ -1099,7 +1093,9 @@ class ClientRequest(ClientRequestBase):
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def _update_content_encoding(self, data: Any, compress: bool | str) -> None:
+    def _update_content_encoding(
+        self, data: Any, compress: bool | Literal["deflate", "gzip"]
+    ) -> None:
         """Set request content encoding."""
         self.compress = None
         if not data:
@@ -1111,6 +1107,10 @@ class ClientRequest(ClientRequestBase):
                     "compress can not be set if Content-Encoding header is set"
                 )
         elif compress:
+            if isinstance(compress, str) and compress not in {"deflate", "gzip"}:
+                raise ValueError(
+                    "compress must be one of True, False, 'deflate', or 'gzip'"
+                )
             self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length

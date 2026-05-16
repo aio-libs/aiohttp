@@ -44,7 +44,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from propcache.api import under_cached_property as reify
 from yarl import URL
 
@@ -66,7 +66,42 @@ else:
 
 __all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
+# This is the default size/limit for several operations.
+# Matches the max size we receive from sockets:
+# https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
+DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 COOKIE_MAX_LENGTH = 4096
+_QUOTED_PAIR_SUB = re.compile(r"\\(.)")
+_QUOTED_STRING = r'"(?:[^"\\]|\\.)*"'
+_ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
+# Matches one element in a comma-separated header list.
+# Group 1: content of a top-level quoted-string (quotes stripped).
+# Group 2: an unquoted element (may contain parameter quoted-strings / comments).
+_LIST_ELEMENT_RE = re.compile(
+    rf"""
+    [ \t]*
+    (?:
+      "( (?:[^"\\]|\\.)* )"  # group 1: top-level quoted-string
+      | (  # group 2: unquoted element
+          (?:
+            (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
+            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+            | [^,]  # any non-comma character
+          )+?
+        )
+    )
+    [ \t]* (?:,|\Z)
+    """,
+    re.VERBOSE,
+)
+# Finds parameter quoted-strings and comments inside an unquoted element for unescaping.
+_PROTECTED_RE = re.compile(
+    rf"""
+    (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted-string
+    | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+    """,
+    re.VERBOSE,
+)
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -118,6 +153,18 @@ TOKEN = CHAR ^ CTL ^ SEPARATORS
 json_re = re.compile(r"^(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
+def encode_basic_auth(login: str, password: str = "", encoding: str = "utf-8") -> str:
+    """Encode HTTP Basic Authentication credentials as an Authorization header value.
+
+    Returns a string of the form ``"Basic <base64>"`` suitable for use as the
+    value of the ``Authorization`` (or ``Proxy-Authorization``) header.
+    """
+    if ":" in login:
+        raise ValueError('A ":" is not allowed in login (RFC 7617#section-2)')
+    creds = f"{login}:{password}".encode(encoding)
+    return "Basic " + base64.b64encode(creds).decode(encoding)
+
+
 class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
     """Http basic authentication helper."""
 
@@ -133,6 +180,13 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         if ":" in login:
             raise ValueError('A ":" is not allowed in login (RFC 1945#section-11.1)')
 
+        warnings.warn(
+            "BasicAuth is deprecated and will be removed in aiohttp 4.0; "
+            "use aiohttp.encode_basic_auth() with "
+            "headers={'Authorization': ...} instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         return super().__new__(cls, login, password, encoding)
 
     @classmethod
@@ -162,7 +216,7 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         except ValueError:
             raise ValueError("Invalid credentials.")
 
-        return cls(username, password, encoding=encoding)
+        return _basic_auth_no_warn(username, password, encoding)
 
     @classmethod
     def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
@@ -173,12 +227,22 @@ class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
         # to already have these values parsed from the netloc in the cache.
         if url.raw_user is None and url.raw_password is None:
             return None
-        return cls(url.user or "", url.password or "", encoding=encoding)
+        return _basic_auth_no_warn(url.user or "", url.password or "", encoding)
 
     def encode(self) -> str:
         """Encode credentials."""
-        creds = (f"{self.login}:{self.password}").encode(self.encoding)
-        return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
+        return encode_basic_auth(self.login, self.password, self.encoding)
+
+
+def _basic_auth_no_warn(
+    login: str, password: str = "", encoding: str = "latin1"
+) -> BasicAuth:
+    """Construct a BasicAuth without emitting the deprecation warning.
+
+    For internal use only. Bypasses BasicAuth.__new__ so that aiohttp's own
+    machinery doesn't trigger deprecation warnings in user code.
+    """
+    return tuple.__new__(BasicAuth, (login, password, encoding))
 
 
 def strip_auth_from_url(url: URL) -> tuple[URL, BasicAuth | None]:
@@ -187,7 +251,7 @@ def strip_auth_from_url(url: URL) -> tuple[URL, BasicAuth | None]:
     # to already have these values parsed from the netloc in the cache.
     if url.raw_user is None and url.raw_password is None:
         return url, None
-    return url.with_user(None), BasicAuth(url.user or "", url.password or "")
+    return url.with_user(None), _basic_auth_no_warn(url.user or "", url.password or "")
 
 
 def netrc_from_env() -> netrc.netrc | None:
@@ -267,7 +331,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> BasicAuth:
     if password is None:
         password = ""  # type: ignore[unreachable]
 
-    return BasicAuth(username, password)
+    return _basic_auth_no_warn(username, password)
 
 
 def proxies_from_env() -> dict[str, ProxyInfo]:
@@ -749,10 +813,54 @@ def ceil_timeout(
     return async_timeout.timeout_at(when)
 
 
+class HeadersDictProxy(Mapping[str, str]):
+    def __init__(self, md: CIMultiDict[str]):
+        self._md = md
+
+    def getall(self, key: str) -> tuple[str, ...]:
+        val = self.get(key, "")
+        unescape = _QUOTED_PAIR_SUB.sub
+        values = []
+        for m in _LIST_ELEMENT_RE.finditer(val):
+            qs = m.group(1)
+            if qs is not None:
+                values.append(unescape(r"\1", qs))
+            else:
+                raw = m.group(2).strip()
+                if raw:
+                    values.append(
+                        _PROTECTED_RE.sub(lambda p: unescape(r"\1", p.group()), raw)
+                    )
+        return tuple(values)
+
+    def __eq__(self, other: object) -> bool:
+        return self._md.__eq__(other)
+
+    def __getitem__(self, key: str) -> str:
+        return ", ".join(self._md.getall(key))
+
+    def __iter__(self) -> Iterator[str]:
+        # We need to deduplicate keys from MultiDict
+        # But, we also need to retain ordering
+        seen = set()
+        for k in self._md.__iter__():
+            if k in seen:
+                continue
+            seen.add(k)
+            yield k
+
+    def __len__(self) -> int:
+        return len(set(self._md.keys()))
+
+    def __repr__(self) -> str:
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
+
+
 class HeadersMixin:
     """Mixin for handling headers."""
 
-    _headers: MultiMapping[str]
+    _headers: Mapping[str, str]
     _content_type: str | None = None
     _content_dict: dict[str, str] | None = None
     _stored_content_type: str | None | _SENTINEL = sentinel

@@ -1,0 +1,3 @@
+Added :func:`~aiohttp.encode_basic_auth` for encoding HTTP Basic
+Authentication credentials. Replaces the now-deprecated
+:class:`~aiohttp.BasicAuth` -- by :user:`Dreamsorcerer`.

@@ -9,6 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
+import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from typing import Any, NoReturn
 from unittest import mock
@@ -63,7 +64,7 @@ def skip_if_on_windows() -> None:
 
 @pytest.fixture
 def patched_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
@@ -72,25 +73,25 @@ def patched_loop(
     unix_server.wait_closed.return_value = None
     unix_server.sockets = []
     with mock.patch.object(
-        loop, "create_server", autospec=True, spec_set=True, return_value=server
+        event_loop, "create_server", autospec=True, spec_set=True, return_value=server
     ):
         with mock.patch.object(
-            loop,
+            event_loop,
             "create_unix_server",
             autospec=True,
             spec_set=True,
             return_value=unix_server,
         ):
-            asyncio.set_event_loop(loop)
-            yield loop
+            asyncio.set_event_loop(event_loop)
+            yield event_loop
 
 
-def stopper(loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
+def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
     def raiser() -> NoReturn:
         raise KeyboardInterrupt
 
     def f(*args: object) -> None:
-        loop.call_soon(raiser)
+        event_loop.call_soon(raiser)
 
     return f
 
@@ -119,6 +120,28 @@ def test_run_app_close_loop(patched_loop: asyncio.AbstractEventLoop) -> None:
         mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
     assert patched_loop.is_closed()
+
+
+def test_run_app_preserves_startup_traceback(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Regression: when an exception is raised during startup (here in a
+    # cleanup_ctx async generator), the user code frame must remain in the
+    # traceback that propagates out of run_app. Previously the second
+    # loop.run_until_complete(main_task) in run_app's finally clobbered it.
+
+    async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("boom from failing_ctx")
+        yield  # type: ignore[unreachable]  # required to make this an async generator
+
+    app = web.Application()
+    app.cleanup_ctx.append(failing_ctx)
+
+    with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
+        web.run_app(app, print=None, loop=patched_loop)
+
+    frames = [f.name for f in traceback.extract_tb(exc_info.tb)]
+    assert "failing_ctx" in frames, frames
 
 
 mock_unix_server_single = [
@@ -526,7 +549,9 @@ def test_run_app_custom_backlog(patched_loop: asyncio.AbstractEventLoop) -> None
     )
 
 
-def test_run_app_custom_backlog_unix(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_custom_backlog_unix(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     web.run_app(
         app,
@@ -580,7 +605,9 @@ def test_run_app_https_unix_socket(
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
-def test_run_app_abstract_linux_socket(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_abstract_linux_socket(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
     app = web.Application()
     web.run_app(
@@ -861,7 +888,7 @@ def test_run_app_cancels_all_pending_tasks(
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(asyncio.sleep(1000))
 
     app.on_startup.append(on_startup)
@@ -871,7 +898,9 @@ def test_run_app_cancels_all_pending_tasks(
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_done_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -880,7 +909,7 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(coro())
 
     app.on_startup.append(on_startup)
@@ -890,7 +919,9 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_failed_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -904,7 +935,7 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(fail())
         await asyncio.sleep(0.01)
 
@@ -987,7 +1018,9 @@ def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
     assert count == 3
 
 
-def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_raises_exception(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
         yield  # type: ignore[unreachable]  # pragma: no cover

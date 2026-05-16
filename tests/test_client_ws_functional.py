@@ -7,6 +7,7 @@ from typing import Literal, NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import (
@@ -21,7 +22,6 @@ from aiohttp._websocket.models import WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WSCloseCode
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -288,7 +288,7 @@ async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_ping_pong(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -324,7 +324,7 @@ async def test_ping_pong(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_ping_pong_manual(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -483,7 +483,7 @@ async def test_concurrent_close_multiple_tasks(aiohttp_client: AiohttpClient) ->
 
 
 async def test_close_from_server(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -515,7 +515,7 @@ async def test_close_from_server(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_close_manual(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -609,7 +609,7 @@ async def test_close_timeout_deprecated(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_close_cancel(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
@@ -1047,7 +1047,7 @@ async def test_heartbeat_no_pong_concurrent_receive(
 
 
 async def test_close_websocket_while_ping_inflight(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
+    aiohttp_client: AiohttpClient,
 ) -> None:
     """Test closing the websocket while a ping is in-flight."""
     ping_received = False
@@ -1071,7 +1071,7 @@ async def test_close_websocket_while_ping_inflight(
     await resp.send_bytes(b"ask")
 
     cancelled = False
-    ping_started = loop.create_future()
+    ping_started = asyncio.get_running_loop().create_future()
 
     async def delayed_send_frame(
         message: bytes, opcode: int, compress: int | None = None
@@ -1260,7 +1260,7 @@ async def test_ws_async_with_shortcut(aiohttp_server: AiohttpServer) -> None:
 
 
 async def test_closed_async_for(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -1375,10 +1375,9 @@ async def test_websocket_connection_not_closed_properly(
     await resp.close()
 
 
-async def test_websocket_connection_cancellation(
-    aiohttp_client: AiohttpClient, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) -> None:
     """Test canceling the WebSocket connection task does not raise an exception in __del__."""
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
@@ -1386,6 +1385,7 @@ async def test_websocket_connection_cancellation(
         await ws.close()
         assert False
 
+    loop = asyncio.get_running_loop()
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 

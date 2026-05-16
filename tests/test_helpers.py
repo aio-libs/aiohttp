@@ -3,6 +3,7 @@ import base64
 import datetime
 import gc
 import sys
+import warnings
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -144,16 +145,54 @@ def test_basic_with_auth_colon_in_login() -> None:
 
 
 def test_basic_auth3() -> None:
-    auth = helpers.BasicAuth("nkim")
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = helpers.BasicAuth("nkim")
     assert auth.login == "nkim"
     assert auth.password == ""
 
 
 def test_basic_auth4() -> None:
-    auth = helpers.BasicAuth("nkim", "pwd")
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = helpers.BasicAuth("nkim", "pwd")
     assert auth.login == "nkim"
     assert auth.password == "pwd"
     assert auth.encode() == "Basic bmtpbTpwd2Q="
+
+
+def test_basic_auth_deprecated() -> None:
+    with pytest.warns(
+        DeprecationWarning,
+        match=(
+            "BasicAuth is deprecated and will be removed in aiohttp 4.0; "
+            "use aiohttp.encode_basic_auth"
+        ),
+    ):
+        helpers.BasicAuth("user", "pass")
+
+
+def test_encode_basic_auth() -> None:
+    assert helpers.encode_basic_auth("nkim", "pwd") == "Basic bmtpbTpwd2Q="
+    assert helpers.encode_basic_auth("") == "Basic Og=="
+    assert (
+        helpers.encode_basic_auth("usér", "pàss", encoding="utf-8")
+        == "Basic dXPDqXI6cMOgc3M="
+    )
+
+
+def test_encode_basic_auth_rejects_colon_in_login() -> None:
+    with pytest.raises(ValueError):
+        helpers.encode_basic_auth("user:1", "pwd")
+
+
+def test_basic_auth_no_warn_helpers_silent() -> None:
+    """Internal aiohttp paths must not raise BasicAuth's deprecation warning."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        url = URL("http://user:pass@example.com/")
+        helpers.strip_auth_from_url(url)
+        helpers.BasicAuth.decode("Basic dXNlcjpwYXNz")
+        helpers.BasicAuth.from_url(url)
+        helpers._basic_auth_no_warn("user", "pass")
 
 
 @pytest.mark.parametrize(
@@ -199,18 +238,12 @@ def test_basic_auth_decode_invalid_credentials() -> None:
 @pytest.mark.parametrize(
     "credentials, expected_auth",
     (
-        (":", helpers.BasicAuth(login="", password="", encoding="latin1")),
-        (
-            "username:",
-            helpers.BasicAuth(login="username", password="", encoding="latin1"),
-        ),
-        (
-            ":password",
-            helpers.BasicAuth(login="", password="password", encoding="latin1"),
-        ),
+        (":", helpers._basic_auth_no_warn("", "", "latin1")),
+        ("username:", helpers._basic_auth_no_warn("username", "", "latin1")),
+        (":password", helpers._basic_auth_no_warn("", "password", "latin1")),
         (
             "username:password",
-            helpers.BasicAuth(login="username", password="password", encoding="latin1"),
+            helpers._basic_auth_no_warn("username", "password", "latin1"),
         ),
     ),
 )
@@ -308,8 +341,8 @@ def test_is_ip_address_invalid_type() -> None:
 # ----------------------------------- TimeoutHandle -------------------
 
 
-def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     assert cb == handle._callbacks[0][0]
@@ -317,11 +350,11 @@ def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
-def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
+def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
 
-    handle = helpers.TimeoutHandle(loop, timeout)
-    timer = loop.time() + timeout
+    handle = helpers.TimeoutHandle(event_loop, timeout)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -332,12 +365,12 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def test_when_timeout_smaller_second_with_low_threshold(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
 
-    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
-    timer = loop.time() + timeout
+    handle = helpers.TimeoutHandle(event_loop, timeout, 0.01)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -347,8 +380,8 @@ def test_when_timeout_smaller_second_with_low_threshold(
     assert when == ceil(timer)
 
 
-def test_timeout_handle_cb_exc(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle_cb_exc(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     cb.side_effect = ValueError()
@@ -395,10 +428,9 @@ async def test_timer_context_timeout_does_not_leak_upward() -> None:
 )
 async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     """Verify that the TimerContext does not swallow cancellation."""
-    loop = asyncio.get_running_loop()
     current_task = asyncio.current_task()
     assert current_task is not None
-    ctx = helpers.TimerContext(loop)
+    ctx = helpers.TimerContext(asyncio.get_running_loop())
 
     async def task_with_timeout() -> None:
         new_task = asyncio.current_task()
@@ -424,22 +456,20 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     assert task.cancelling() == 1
 
 
-def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
+def test_timer_context_no_task(event_loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
-        with helpers.TimerContext(loop):
+        with helpers.TimerContext(event_loop):
             pass
 
 
-async def test_weakref_handle(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     await asyncio.sleep(0.1)
     assert cb.test.called
 
 
-async def test_weakref_handle_with_small_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_weakref_handle_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
@@ -449,9 +479,9 @@ async def test_weakref_handle_with_small_threshold(
     )
 
 
-async def test_weakref_handle_weak(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle_weak() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
@@ -468,7 +498,7 @@ def test_ceil_call_later() -> None:
     loop.call_at.assert_called_with(21.0, cb)
 
 
-async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_round() -> None:
     async with helpers.ceil_timeout(7.5) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -480,7 +510,7 @@ async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
         assert frac == 0
 
 
-async def test_ceil_timeout_small(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_small() -> None:
     async with helpers.ceil_timeout(1.1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -508,7 +538,7 @@ def test_ceil_call_later_no_timeout() -> None:
     assert not loop.call_at.called
 
 
-async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_none() -> None:
     async with helpers.ceil_timeout(None) as cm:
         if sys.version_info >= (3, 11):
             assert cm.when() is None
@@ -516,9 +546,7 @@ async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
             assert cm.deadline is None
 
 
-async def test_ceil_timeout_small_with_overriden_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_ceil_timeout_small_with_overriden_threshold() -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -752,14 +780,14 @@ def test_get_env_proxy_for_url(proxy_env_vars: dict[str, str], url_input: str) -
 # ------------- set_result / set_exception ----------------------
 
 
-async def test_set_result(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_result(fut, 123)
     assert 123 == await fut
 
 
-async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_result(fut, 123)
 
@@ -767,15 +795,15 @@ async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
         await fut
 
 
-async def test_set_exception(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_exception(fut, RuntimeError())
     with pytest.raises(RuntimeError):
         await fut
 
 
-async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_exception(fut, RuntimeError())
 
@@ -1114,15 +1142,15 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     [
         (
             "machine example.com login username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com account username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com password pass\n",
-            helpers.BasicAuth("", "pass"),
+            helpers._basic_auth_no_warn("", "pass", "latin1"),
         ),
     ],
     indirect=("netrc_contents",),
