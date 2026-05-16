@@ -2036,11 +2036,14 @@ def test_c_parse_payload_response_without_body_closes_on_unexpected_body(
     assert not tail
 
 
-@pytest.mark.dev_mode
 @pytest.mark.skipif(NO_EXTENSIONS, reason="C extensions are not available")
 def test_c_parse_payload_response_without_body_strict(
     event_loop: asyncio.AbstractEventLoop,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    import aiohttp._http_parser as http_parser_c
+
+    monkeypatch.setattr(http_parser_c, "DEBUG", True)
     protocol = ResponseHandler(event_loop)
     parser = HttpResponseParserC(protocol, event_loop, 2**16, response_with_body=False)
     protocol._parser = parser
