@@ -5674,7 +5674,7 @@ Bugfixes
   <https://github.com/aio-libs/aiohttp/pull/3235>`_)
 - Add ``app.pre_frozen`` state to properly handle startup signals in
   sub-applications. (`#3237 <https://github.com/aio-libs/aiohttp/pull/3237>`_)
-- Enhanced parsing and validation of helpers.BasicAuth.decode. (`#3239
+- Enhanced parsing and validation of ``helpers.BasicAuth.decode``. (`#3239
   <https://github.com/aio-libs/aiohttp/pull/3239>`_)
 - Change imports from collections module in preparation for 3.8. (`#3258
   <https://github.com/aio-libs/aiohttp/pull/3258>`_)
@@ -7155,7 +7155,7 @@ Misc
   * Drop old-style routes: `Route`, `PlainRoute`, `DynamicRoute`,
     `StaticRoute`, `ResourceAdapter`.
 - Revert `resp.url` back to `str`, introduce `resp.url_obj` (`#1292 <https://github.com/aio-libs/aiohttp/pull/1292>`_)
-- Raise ValueError if BasicAuth login has a ":" character (`#1307 <https://github.com/aio-libs/aiohttp/pull/1307>`_)
+- Raise ValueError if ``BasicAuth`` login has a ":" character (`#1307 <https://github.com/aio-libs/aiohttp/pull/1307>`_)
 - Fix bug when ClientRequest send payload file with opened as
   open('filename', 'r+b') (`#1306 <https://github.com/aio-libs/aiohttp/pull/1306>`_)
 - Enhancement to AccessLogger (pass *extra* dict) (`#1303 <https://github.com/aio-libs/aiohttp/pull/1303>`_)
