@@ -1577,8 +1577,6 @@ Response object
 
       Number of bytes sent for this request.
 
-      Returns ``0`` if no body writer present (e.g. for some empty body requests).
-
       Useful to display upload progress::
 
           async with session.post(url, data=mpwriter) as resp:

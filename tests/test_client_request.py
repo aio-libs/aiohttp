@@ -137,6 +137,7 @@ async def test_request_info(make_client_request: _RequestMaker) -> None:
         session=None,
         request_headers=req.headers,
         original_url=url,
+        stream_writer=mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
     )
     assert resp.request_info == aiohttp.RequestInfo(url, "GET", h, url)
 
@@ -156,6 +157,7 @@ async def test_request_info_with_fragment(make_client_request: _RequestMaker) ->
         session=None,
         request_headers=req.headers,
         original_url=URL("http://python.org/#urlfragment"),
+        stream_writer=mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
     )
     assert resp.request_info == aiohttp.RequestInfo(
         URL("http://python.org/"),
@@ -1646,6 +1648,7 @@ async def test_custom_req_rep(create_mocked_conn: mock.Mock) -> None:
                 session=self._session,
                 request_headers=self.headers,
                 original_url=self.original_url,
+                stream_writer=mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
             )
             self.response = resp
             nonlocal called

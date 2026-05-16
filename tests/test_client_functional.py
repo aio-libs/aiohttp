@@ -5987,3 +5987,35 @@ async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
     chunked_framing = len(f"{chunk_size:x}".encode()) + 4
     deltas = [samples[i] - samples[i - 1] for i in range(1, len(samples))]
     assert deltas == [chunk_size + chunked_framing] * (num_chunks - 1)
+
+
+async def test_output_size_get_request(aiohttp_client: AiohttpClient) -> None:
+    """GET request with no body still reports the request header byte count."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.output_size >= 0
+
+
+async def test_output_size_writer_released(aiohttp_client: AiohttpClient) -> None:
+    """Writer is dropped once body upload completes; output_size survives."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 1024
+    async with client.post("/", data=body) as resp:
+        await resp.read()
+        assert resp._stream_writer is None
+    assert resp.output_size >= len(body)

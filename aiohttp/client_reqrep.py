@@ -212,7 +212,8 @@ class ClientResponse(HeadersMixin):
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
     __writer: asyncio.Task[None] | None = None
-    _body_writer: AbstractStreamWriter | None = None
+    _stream_writer: AbstractStreamWriter | None = None
+    _output_size: int = 0
 
     def __init__(
         self,
@@ -227,7 +228,7 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession | None",
         request_headers: CIMultiDict[str],
         original_url: URL,
-        body_writer: AbstractStreamWriter | None = None,
+        stream_writer: AbstractStreamWriter,
         **kwargs: object,
     ) -> None:
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -242,10 +243,11 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
-        if writer is not None:
+        if writer is None:  # Request already sent
+            self._output_size = stream_writer.output_size
+        else:
+            self._stream_writer = stream_writer
             self._writer = writer
-        if body_writer is not None:
-            self._body_writer = body_writer
         if continue100 is not None:
             self._continue = continue100
         self._request_headers = request_headers
@@ -265,6 +267,9 @@ class ClientResponse(HeadersMixin):
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:
@@ -285,16 +290,16 @@ class ClientResponse(HeadersMixin):
             return
         if writer.done():
             # The writer is already done, so we can clear it immediately.
-            self.__writer = None
+            self.__reset_writer()
         else:
             writer.add_done_callback(self.__reset_writer)
 
     @property
     def output_size(self) -> int:
         """Number of bytes sent for this request."""
-        if self._body_writer is None:
-            return 0
-        return self._body_writer.output_size
+        if self._stream_writer is not None:
+            return self._stream_writer.output_size
+        return self._output_size
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -575,6 +580,9 @@ class ClientResponse(HeadersMixin):
     def _cleanup_writer(self) -> None:
         if self.__writer is not None:
             self.__writer.cancel()
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
         self._session = None
 
     def _notify_content(self) -> None:
@@ -841,7 +849,7 @@ class ClientRequestBase:
     def _create_response(
         self,
         task: asyncio.Task[None] | None,
-        body_writer: AbstractStreamWriter | None = None,
+        stream_writer: AbstractStreamWriter,
     ) -> ClientResponse:
         return self.response_class(
             self.method,
@@ -854,7 +862,7 @@ class ClientRequestBase:
             session=None,
             request_headers=self.headers,
             original_url=self.original_url,
-            body_writer=body_writer,
+            stream_writer=stream_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
@@ -928,7 +936,7 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
-        self._response = self._create_response(task, body_writer=writer)
+        self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
     async def _write_bytes(
@@ -1310,7 +1318,7 @@ class ClientRequest(ClientRequestBase):
     def _create_response(
         self,
         task: asyncio.Task[None] | None,
-        body_writer: AbstractStreamWriter | None = None,
+        stream_writer: AbstractStreamWriter,
     ) -> ClientResponse:
         return self.response_class(
             self.method,
@@ -1323,7 +1331,7 @@ class ClientRequest(ClientRequestBase):
             session=self._session,
             request_headers=self.headers,
             original_url=self.original_url,
-            body_writer=body_writer,
+            stream_writer=stream_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
