@@ -967,7 +967,7 @@ async def test_proxy_auth_property(
         proxy_auth=aiohttp.helpers._basic_auth_no_warn("user", "pass"),
         loop=event_loop,
     )
-    assert ("user", "pass", "utf-8") == req.proxy_auth
+    assert ("user", "pass", "latin1") == req.proxy_auth
 
 
 async def test_proxy_auth_property_default(

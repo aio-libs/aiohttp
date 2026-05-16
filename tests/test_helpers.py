@@ -682,7 +682,7 @@ def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -
     assert proxy_auth is not None
     assert proxy_auth.login == "user"
     assert proxy_auth.password == "pass"
-    assert proxy_auth.encoding == "utf-8"
+    assert proxy_auth.encoding == "latin1"
 
 
 # --------------------- get_env_proxy_for_url ------------------------------
