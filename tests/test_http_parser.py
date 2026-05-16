@@ -2011,6 +2011,50 @@ def test_parse_payload_response_without_body(
     assert payload.is_eof()
 
 
+@pytest.mark.skipif(NO_EXTENSIONS, reason="C extensions are not available")
+def test_c_parse_payload_response_without_body_closes_on_unexpected_body(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    protocol = ResponseHandler(event_loop)
+    parser = HttpResponseParserC(protocol, event_loop, 2**16, response_with_body=False)
+    protocol._parser = parser
+    text = (
+        b"HTTP/1.1 200 Ok\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n"
+        b"\x1f\x8b\x08\x00\x00\x00\x00\x00"
+    )
+
+    messages, upgraded, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+
+    assert msg.code == 200
+    assert msg.should_close
+    assert payload.is_eof()
+    assert not upgraded
+    assert not tail
+
+
+@pytest.mark.dev_mode
+@pytest.mark.skipif(NO_EXTENSIONS, reason="C extensions are not available")
+def test_c_parse_payload_response_without_body_strict(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    protocol = ResponseHandler(event_loop)
+    parser = HttpResponseParserC(protocol, event_loop, 2**16, response_with_body=False)
+    protocol._parser = parser
+    text = b"HTTP/1.1 200 Ok\r\ncontent-length: 10\r\n\r\n"
+
+    messages, upgraded, tail = parser.feed_data(text)
+    msg, payload = messages[0]
+
+    assert msg.code == 200
+    assert payload.is_eof()
+    assert not upgraded
+    assert not tail
+
+
 def test_parse_length_payload(response: HttpResponseParser) -> None:
     text = b"HTTP/1.1 200 Ok\r\ncontent-length: 4\r\n\r\n"
     msg, payload = response.feed_data(text)[0][0]

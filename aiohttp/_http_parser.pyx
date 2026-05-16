@@ -503,7 +503,7 @@ cdef class HttpParser:
                 headers, raw_headers, should_close, encoding,
                 upgrade, chunked)
 
-        if (
+        if self._response_with_body and (
             ULLONG_MAX > self._cparser.content_length > 0 or chunked or
             self._cparser.method == cparser.HTTP_CONNECT or
             (self._cparser.status_code >= 199 and
@@ -517,11 +517,11 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
-        if encoding is not None and self._auto_decompress:
+        if (
+            payload is not EMPTY_PAYLOAD and
+            encoding is not None and self._auto_decompress
+        ):
             self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
-
-        if not self._response_with_body:
-            payload = EMPTY_PAYLOAD
 
         self._messages.append((msg, payload))
 
@@ -591,6 +591,7 @@ cdef class HttpParser:
             char* base
             cdef cparser.llhttp_errno_t errno
             cdef bytes data
+            object msg
 
         # Proactor loop sends bytearray.
         # Ensure cython sees `data` as bytes
@@ -633,6 +634,15 @@ cdef class HttpParser:
             cparser.llhttp_resume(self._cparser)
             pos = cparser.llhttp_get_error_pos(self._cparser) - base
             self._tail = data[pos:]
+            if (
+                not self._response_with_body and
+                self._tail and
+                self._messages and
+                self._cparser.type == cparser.HTTP_RESPONSE
+            ):
+                msg = self._messages[-1][0]
+                (<RawResponseMessage>msg).should_close = True
+                self._tail = b""
 
         PyBuffer_Release(&self.py_buf)
 
@@ -847,6 +857,10 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
+        if not pyparser._response_with_body:
+            if pyparser._lax:
+                return cparser.HPE_PAUSED
+            return 1
         if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
             return 2
         else:
