@@ -859,11 +859,13 @@ class TestProxy(unittest.TestCase):
         self.assertEqual(req.url, URL("http://localhost:1234/path"))
 
     def test_proxy_auth_property(self) -> None:
+        with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+            proxy_auth = aiohttp.helpers.BasicAuth("user", "pass")
         req = aiohttp.ClientRequest(
             "GET",
             URL("http://localhost:1234/path"),
             proxy=URL("http://proxy.example.com"),
-            proxy_auth=aiohttp.helpers.BasicAuth("user", "pass"),
+            proxy_auth=proxy_auth,
             loop=self.loop,
         )
         self.assertEqual(("user", "pass", "latin1"), req.proxy_auth)
@@ -959,10 +961,12 @@ class TestProxy(unittest.TestCase):
         spec_set=True,
     )
     def test_https_auth(self, start_connection: Any, ClientRequestMock: Any) -> None:
+        with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+            auth = aiohttp.helpers.BasicAuth("user", "pass")
         proxy_req = ClientRequest(
             "GET",
             URL("http://proxy.example.com"),
-            auth=aiohttp.helpers.BasicAuth("user", "pass"),
+            auth=auth,
             loop=self.loop,
         )
         ClientRequestMock.return_value = proxy_req
