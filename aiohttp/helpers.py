@@ -300,7 +300,7 @@ def basicauth_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> BasicAuth:
     if password is None:
         password = ""  # type: ignore[unreachable]
 
-    return _basic_auth_no_warn(username, password)
+    return _basic_auth_no_warn(username, password, encoding="latin1")
 
 
 def proxies_from_env() -> dict[str, ProxyInfo]:
