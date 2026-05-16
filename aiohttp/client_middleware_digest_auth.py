@@ -246,7 +246,11 @@ class DigestAuthMiddleware:
         # Convert string values to bytes once
         nonce_bytes = nonce.encode("utf-8")
         realm_bytes = realm.encode("utf-8")
-        path = URL(url).path_qs
+        # Use the encoded request-target (raw_path_qs) since that is what is
+        # transmitted on the wire and what the server signs against. Using the
+        # decoded form would cause digest verification to fail when the path
+        # or query string contains percent-encoded reserved characters.
+        path = URL(url).raw_path_qs
 
         # Process QoP
         qop = ""
