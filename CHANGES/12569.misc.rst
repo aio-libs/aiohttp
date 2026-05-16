@@ -1,0 +1,1 @@
+Reduced payload sizes and request counts in slow client and URL dispatcher benchmarks so they no longer dominate CI runtime -- by :user:`aiolibsbot`.
