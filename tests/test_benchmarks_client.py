@@ -569,7 +569,8 @@ def test_ten_streamed_responses_iter_chunks(
 ) -> None:
     """Benchmark 10 streamed responses using iter_chunks."""
     message_count = 10
-    data = b"x" * 2**20
+    MB = 2**20
+    data = b"x" * 10 * MB
 
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
