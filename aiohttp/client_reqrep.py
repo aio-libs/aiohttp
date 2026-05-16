@@ -813,7 +813,9 @@ class ClientRequestBase:
 
         # basic auth info
         if url.raw_user or url.raw_password:
-            self.auth = _basic_auth_no_warn(url.user or "", url.password or "", encoding="latin1")
+            self.auth = _basic_auth_no_warn(
+                url.user or "", url.password or "", encoding="latin1"
+            )
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
