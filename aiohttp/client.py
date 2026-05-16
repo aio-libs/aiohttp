@@ -557,13 +557,6 @@ class ClientSession:
                 proxy = URL(proxy)
             except ValueError as e:
                 raise InvalidURL(proxy) from e
-            # Strip credentials from the proxy URL into Proxy-Authorization.
-            proxy, proxy_url_auth = strip_auth_from_url(proxy)
-            if (
-                proxy_url_auth is not None
-                and hdrs.PROXY_AUTHORIZATION not in proxy_headers
-            ):
-                proxy_headers[hdrs.PROXY_AUTHORIZATION] = proxy_url_auth
 
         if timeout is sentinel or timeout is None:
             real_timeout: ClientTimeout = self._timeout
