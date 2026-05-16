@@ -405,7 +405,7 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov -vvvvv --codspeed
+        run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30
 
 
   cython-coverage:
