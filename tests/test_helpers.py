@@ -3,6 +3,7 @@ import base64
 import datetime
 import gc
 import sys
+import warnings
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -144,16 +145,54 @@ def test_basic_with_auth_colon_in_login() -> None:
 
 
 def test_basic_auth3() -> None:
-    auth = helpers.BasicAuth("nkim")
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = helpers.BasicAuth("nkim")
     assert auth.login == "nkim"
     assert auth.password == ""
 
 
 def test_basic_auth4() -> None:
-    auth = helpers.BasicAuth("nkim", "pwd")
+    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
+        auth = helpers.BasicAuth("nkim", "pwd")
     assert auth.login == "nkim"
     assert auth.password == "pwd"
     assert auth.encode() == "Basic bmtpbTpwd2Q="
+
+
+def test_basic_auth_deprecated() -> None:
+    with pytest.warns(
+        DeprecationWarning,
+        match=(
+            "BasicAuth is deprecated and will be removed in aiohttp 4.0; "
+            "use aiohttp.encode_basic_auth"
+        ),
+    ):
+        helpers.BasicAuth("user", "pass")
+
+
+def test_encode_basic_auth() -> None:
+    assert helpers.encode_basic_auth("nkim", "pwd") == "Basic bmtpbTpwd2Q="
+    assert helpers.encode_basic_auth("") == "Basic Og=="
+    assert (
+        helpers.encode_basic_auth("usér", "pàss", encoding="utf-8")
+        == "Basic dXPDqXI6cMOgc3M="
+    )
+
+
+def test_encode_basic_auth_rejects_colon_in_login() -> None:
+    with pytest.raises(ValueError):
+        helpers.encode_basic_auth("user:1", "pwd")
+
+
+def test_basic_auth_no_warn_helpers_silent() -> None:
+    """Internal aiohttp paths must not raise BasicAuth's deprecation warning."""
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        url = URL("http://user:pass@example.com/")
+        helpers.strip_auth_from_url(url)
+        helpers.BasicAuth.decode("Basic dXNlcjpwYXNz")
+        helpers.BasicAuth.from_url(url)
+        helpers._basic_auth_no_warn("user", "pass")
 
 
 @pytest.mark.parametrize(
@@ -199,18 +238,12 @@ def test_basic_auth_decode_invalid_credentials() -> None:
 @pytest.mark.parametrize(
     "credentials, expected_auth",
     (
-        (":", helpers.BasicAuth(login="", password="", encoding="latin1")),
-        (
-            "username:",
-            helpers.BasicAuth(login="username", password="", encoding="latin1"),
-        ),
-        (
-            ":password",
-            helpers.BasicAuth(login="", password="password", encoding="latin1"),
-        ),
+        (":", helpers._basic_auth_no_warn("", "", "latin1")),
+        ("username:", helpers._basic_auth_no_warn("username", "", "latin1")),
+        (":password", helpers._basic_auth_no_warn("", "password", "latin1")),
         (
             "username:password",
-            helpers.BasicAuth(login="username", password="password", encoding="latin1"),
+            helpers._basic_auth_no_warn("username", "password", "latin1"),
         ),
     ),
 )
@@ -1109,15 +1142,15 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
     [
         (
             "machine example.com login username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com account username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers._basic_auth_no_warn("username", "pass", "latin1"),
         ),
         (
             "machine example.com password pass\n",
-            helpers.BasicAuth("", "pass"),
+            helpers._basic_auth_no_warn("", "pass", "latin1"),
         ),
     ],
     indirect=("netrc_contents",),

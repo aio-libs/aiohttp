@@ -288,7 +288,7 @@ async def test_send_recv_frame(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_ping_pong(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -324,7 +324,7 @@ async def test_ping_pong(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_ping_pong_manual(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -483,7 +483,7 @@ async def test_concurrent_close_multiple_tasks(aiohttp_client: AiohttpClient) ->
 
 
 async def test_close_from_server(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -515,7 +515,7 @@ async def test_close_from_server(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_close_manual(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
@@ -609,7 +609,7 @@ async def test_close_timeout_deprecated(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_close_cancel(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         ws = web.WebSocketResponse()
@@ -1260,7 +1260,7 @@ async def test_ws_async_with_shortcut(aiohttp_server: AiohttpServer) -> None:
 
 
 async def test_closed_async_for(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     closed = loop.create_future()
 
     async def handler(request: web.Request) -> web.WebSocketResponse:

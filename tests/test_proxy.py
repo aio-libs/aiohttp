@@ -964,7 +964,7 @@ async def test_proxy_auth_property(
         "GET",
         URL("http://localhost:1234/path"),
         proxy=URL("http://proxy.example.com"),
-        proxy_auth=aiohttp.helpers.BasicAuth("user", "pass"),
+        proxy_auth=aiohttp.helpers._basic_auth_no_warn("user", "pass"),
         loop=event_loop,
     )
     assert ("user", "pass", "latin1") == req.proxy_auth
@@ -1090,7 +1090,7 @@ async def test_https_auth(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=aiohttp.helpers.BasicAuth("user", "pass"),
+        auth=aiohttp.helpers._basic_auth_no_warn("user", "pass"),
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),

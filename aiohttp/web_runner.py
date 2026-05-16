@@ -127,7 +127,7 @@ class TCPSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_server(
@@ -170,7 +170,7 @@ class UnixSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_unix_server(
@@ -185,7 +185,7 @@ class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
     def __init__(self, runner: "BaseRunner[Any]", path: str) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
@@ -201,7 +201,7 @@ class NamedPipeSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
@@ -241,7 +241,7 @@ class SockSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_server(
@@ -286,7 +286,7 @@ class BaseRunner(ABC, Generic[_Request]):
         return set(self._sites)
 
     async def setup(self) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         if self._handle_signals:
             try:

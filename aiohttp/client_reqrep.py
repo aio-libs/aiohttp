@@ -41,6 +41,7 @@ from .helpers import (
     HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
+    _basic_auth_no_warn,
     frozen_dataclass_decorator,
     is_expected_content_type,
     parse_mimetype,
@@ -807,7 +808,7 @@ class ClientRequestBase:
 
         # basic auth info
         if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
+            self.auth = _basic_auth_no_warn(url.user or "", url.password or "")
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""

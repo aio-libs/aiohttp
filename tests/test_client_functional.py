@@ -65,6 +65,16 @@ from aiohttp.payload import (
 from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
 
+pytestmark = [
+    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
+    ),
+    pytest.mark.filterwarnings(
+        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
+    ),
+]
+
 
 @pytest.fixture
 def here() -> pathlib.Path:
@@ -1218,7 +1228,7 @@ async def test_read_timeout_on_write(aiohttp_client: AiohttpClient) -> None:
 async def test_timeout_on_reading_data(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     fut = loop.create_future()
 
@@ -1281,7 +1291,7 @@ async def test_connection_timeout_error(
 
 
 async def test_readline_error_on_conn_close(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> NoReturn:
         resp = web.StreamResponse()
@@ -4000,7 +4010,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
 
 
 async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -4041,7 +4051,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
 
 
 async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
         def connection_made(self, transport: asyncio.BaseTransport) -> None:
@@ -4092,7 +4102,7 @@ async def test_error_in_performing_request(
     def exception_handler(loop: object, context: object) -> None:
         """Skip log messages about destroyed but pending tasks"""
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_exception_handler(exception_handler)
 
     app = web.Application()
@@ -4112,7 +4122,7 @@ async def test_error_in_performing_request(
 
 
 async def test_await_after_cancelling(aiohttp_client: AiohttpClient) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response()

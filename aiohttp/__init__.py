@@ -53,7 +53,7 @@ from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
-from .helpers import BasicAuth, ChainMapProxy, ETag
+from .helpers import BasicAuth, ChainMapProxy, ETag, encode_basic_auth
 from .http import (
     HttpVersion,
     HttpVersion10,
@@ -172,6 +172,7 @@ __all__: tuple[str, ...] = (
     "ChainMapProxy",
     "DigestAuthMiddleware",
     "ETag",
+    "encode_basic_auth",
     "set_zlib_backend",
     # http
     "HttpVersion",

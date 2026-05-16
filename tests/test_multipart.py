@@ -677,7 +677,7 @@ class TestPartReader:
         size = 2 * DEFAULT_CHUNK_SIZE
         protocol = mock.Mock(_reading_paused=False)
         stream = StreamReader(
-            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_event_loop()
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
         )
         stream.feed_data(b"0" * size + b"\r\n--:--")
         stream.feed_eof()
@@ -1731,7 +1731,7 @@ async def test_body_part_reader_payload_as_bytes() -> None:
     # Create a mock BodyPartReader
     headers = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
     protocol = mock.Mock(_reading_paused=False)
-    stream = StreamReader(protocol, 2**16, loop=asyncio.get_event_loop())
+    stream = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     body_part = BodyPartReader(BOUNDARY, headers, stream)
 
     # Create the payload

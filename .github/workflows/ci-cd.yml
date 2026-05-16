@@ -372,7 +372,7 @@ jobs:
     if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
     - name: Checkout project
       uses: actions/checkout@v6
@@ -405,7 +405,7 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov -vvvvv --codspeed
+        run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30
 
 
   cython-coverage:
