@@ -14,7 +14,6 @@ import platform
 import re
 import sys
 import time
-import warning
 import weakref
 from collections import namedtuple
 from collections.abc import Callable, Generator, Iterable, Iterator, Mapping
@@ -40,6 +39,7 @@ from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
 import attr
+import warning
 from multidict import MultiDict, MultiDictProxy, MultiMapping
 from propcache.api import under_cached_property as reify
 from yarl import URL
