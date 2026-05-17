@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import socket
 import ssl
 import sys
 import time
@@ -44,16 +43,19 @@ def test_base_ctor() -> None:
         URL("/path/to?a=1&b=2"),
     )
 
+    protocol = mock.Mock()
+    protocol.ssl_context = None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 80)
     req = web.BaseRequest(
-        message, mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
     )
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
-    # MacOS may return CamelCased host name, need .lower()
-    # FQDN can be wider than host, e.g.
-    # 'fv-az397-495' in 'fv-az397-495.internal.cloudapp.net'
-    assert req.host.lower() in socket.getfqdn().lower()
+    # No Host header in this request, so host falls back to the
+    # local socket address the request arrived on.
+    assert req.host == "127.0.0.1"
     assert "/path/to?a=1&b=2" == req.path_qs
     assert "/path/to" == req.path
     assert "a=1&b=2" == req.query_string
@@ -75,10 +77,10 @@ def test_ctor() -> None:
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
-    # MacOS may return CamelCased host name, need .lower()
-    # FQDN can be wider than host, e.g.
-    # 'fv-az397-495' in 'fv-az397-495.internal.cloudapp.net'
-    assert req.host.lower() in socket.getfqdn().lower()
+    # No Host header in this request, so host falls back to the
+    # local socket address the request arrived on (the default
+    # sockname configured by make_mocked_request).
+    assert req.host == "127.0.0.1"
     assert "/path/to?a=1&b=2" == req.path_qs
     assert "/path/to" == req.path
     assert "a=1&b=2" == req.query_string
@@ -112,6 +114,53 @@ def test_ctor() -> None:
     assert req.headers == headers
     assert req.raw_headers == ((b"FOO", b"bar"),)
     assert req.task is req._task
+
+
+def test_host_falls_back_to_sockname_not_dns() -> None:
+    """Regression: request.host must not call socket.getfqdn().
+
+    socket.getfqdn() does blocking reverse DNS resolution on the
+    event loop thread and can stall a worker for many seconds when
+    the system resolver is slow. The fallback for a request with no
+    Host header is the local socket address the request arrived on,
+    not the system FQDN.
+    """
+    req = make_mocked_request("GET", "/")
+    assert req.host == "127.0.0.1"
+    assert str(req.url).startswith("http://127.0.0.1")
+
+
+def test_host_with_ipv6_sockname() -> None:
+    """AF_INET6 sockname is bracketed to form a valid URL authority.
+
+    A bare IPv6 string would cause ``URL.build(authority=...)`` to
+    raise ``ValueError``.
+    """
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = lambda key: (
+        ("::1", 80, 0, 0) if key == "sockname" else None
+    )
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == "[::1]"
+    assert str(req.url) == "http://[::1]/"
+
+
+def test_host_with_unix_socket_sockname() -> None:
+    """Unix-socket transports expose sockname as a str path."""
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = lambda key: (
+        "/tmp/aiohttp.sock" if key == "sockname" else None
+    )
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == "/tmp/aiohttp.sock"
+
+
+def test_host_with_no_transport_sockname() -> None:
+    """An empty string is returned when no sockname is available."""
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = None
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == ""
 
 
 def test_doubleslashes() -> None:
