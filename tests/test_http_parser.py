@@ -2041,8 +2041,7 @@ def test_c_parse_payload_response_without_body_strict(
     event_loop: asyncio.AbstractEventLoop,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    import aiohttp._http_parser as http_parser_c
-
+    http_parser_c = pytest.importorskip("aiohttp._http_parser")
     monkeypatch.setattr(http_parser_c, "DEBUG", True)
     protocol = ResponseHandler(event_loop)
     parser = HttpResponseParserC(protocol, event_loop, 2**16, response_with_body=False)
