@@ -550,7 +550,7 @@ def _create_app_mock() -> mock.MagicMock:
 def _create_transport(sslcontext: SSLContext | None = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> Any:
+    def get_extra_info(key: str) -> SSLContext | tuple[str, int] | None:
         if key == "sslcontext":
             return sslcontext
         if key == "sockname":
