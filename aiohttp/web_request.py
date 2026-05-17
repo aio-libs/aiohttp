@@ -387,6 +387,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if sockname is None:
             return ""
         if isinstance(sockname, tuple):
+            # AF_INET6 returns a 4-tuple (host, port, flowinfo, scopeid);
+            # bracket the bare address so it matches the Host-header shape
+            # and is a valid URL authority component.
+            if len(sockname) == 4:
+                return f"[{sockname[0]}]"
             return str(sockname[0])
         return str(sockname)
 

@@ -128,6 +128,21 @@ def test_host_falls_back_to_sockname_not_dns() -> None:
     assert str(req.url).startswith("http://127.0.0.1")
 
 
+def test_host_with_ipv6_sockname() -> None:
+    """AF_INET6 sockname is bracketed to form a valid URL authority.
+
+    A bare IPv6 string would cause ``URL.build(authority=...)`` to
+    raise ``ValueError``.
+    """
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = lambda key: (
+        ("::1", 80, 0, 0) if key == "sockname" else None
+    )
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == "[::1]"
+    assert str(req.url) == "http://[::1]/"
+
+
 def test_host_with_unix_socket_sockname() -> None:
     """Unix-socket transports expose sockname as a str path."""
     transport = mock.Mock()
