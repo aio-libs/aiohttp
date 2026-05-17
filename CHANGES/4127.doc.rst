@@ -1,0 +1,2 @@
+Improved the documentation field-list styling so parameter labels keep enough width to avoid cramped vertical rendering.
+-- by :user:`nightcityblade`.
