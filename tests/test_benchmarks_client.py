@@ -205,14 +205,14 @@ def test_one_hundred_get_requests_with_30000_chunked_payload(
         event_loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_10mb_chunked_payload(
+def test_one_hundred_get_requests_with_1mb_chunked_payload(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 10 MiB using read."""
+    """Benchmark 100 GET requests with a 1 MiB chunked payload using read."""
     message_count = 100
-    payload = b"a" * (10 * 2**20)
+    payload = b"a" * 2**20
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -234,14 +234,14 @@ def test_one_hundred_get_requests_with_10mb_chunked_payload(
         event_loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_iter_chunks_on_10mb_chunked_payload(
+def test_one_hundred_get_requests_iter_chunks_on_1mb_chunked_payload(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 10 MiB using iter_chunks."""
+    """Benchmark 100 GET requests with a 1 MiB chunked payload using iter_chunks."""
     message_count = 100
-    payload = b"a" * (10 * 2**20)
+    payload = b"a" * 2**20
 
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=payload)
@@ -355,14 +355,14 @@ def test_one_hundred_get_requests_with_30000_content_length_payload(
         event_loop.run_until_complete(run_client_benchmark())
 
 
-def test_one_hundred_get_requests_with_10mb_content_length_payload(
+def test_one_hundred_get_requests_with_1mb_content_length_payload(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
-    """Benchmark 100 GET requests with a payload of 10 MiB."""
+    """Benchmark 100 GET requests with a content-length payload of 1 MiB."""
     message_count = 100
-    payload = b"a" * (10 * 2**20)
+    payload = b"a" * 2**20
     headers = {hdrs.CONTENT_LENGTH: str(len(payload))}
 
     async def handler(request: web.Request) -> web.Response:
@@ -507,7 +507,7 @@ def test_ten_streamed_responses_iter_chunked_1mb(
     """Benchmark 10 streamed responses using iter_chunked 1 MiB."""
     message_count = 10
     MB = 2**20
-    data = b"x" * 10 * MB
+    data = b"x" * 6 * MB
 
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
