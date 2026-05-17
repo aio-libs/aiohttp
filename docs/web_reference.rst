@@ -119,7 +119,9 @@ and :ref:`aiohttp-web-signals` handlers.
 
       - Overridden value by :meth:`~BaseRequest.clone` call.
       - *Host* HTTP header
-      - :func:`socket.getfqdn`
+      - local socket address the request arrived on
+        (transport ``sockname``)
+      - empty string if no transport information is available
 
       Read-only :class:`str` property.
 
@@ -129,6 +131,13 @@ and :ref:`aiohttp-web-signals` handlers.
 
          Call ``.clone(host=new_host)`` for setting up the value
          explicitly.
+
+      .. versionchanged:: 3.13
+
+         The fallback when no ``Host`` header is present no longer
+         calls :func:`socket.getfqdn`, which performed blocking
+         reverse-DNS resolution on the event loop. The local socket
+         address (transport ``sockname``) is used instead.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
