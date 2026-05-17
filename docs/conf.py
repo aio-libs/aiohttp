@@ -12,6 +12,7 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
+import importlib.util
 import os
 import re
 from pathlib import Path
@@ -69,12 +70,8 @@ extensions = [
 ]
 
 
-try:
-    import sphinxcontrib.spelling
-
+if importlib.util.find_spec("sphinxcontrib.spelling") is not None:
     extensions.append("sphinxcontrib.spelling")
-except ImportError:
-    pass
 
 
 intersphinx_mapping = {
