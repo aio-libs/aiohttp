@@ -1,0 +1,5 @@
+Documented in :file:`AGENTS.md` that the coverage report also
+covers ``tests/``, so unreachable defensive ``raise`` guards in
+patched stubs and one-sided cleanup branches in tests will be
+flagged on the codecov patch report
+-- by :user:`bdraco`.

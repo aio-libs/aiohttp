@@ -352,6 +352,48 @@ CodSpeed benchmark leg, and wheel builds for manylinux, musllinux,
 macOS, and Windows. Do not regress the benchmarks without flagging
 the trade-off in the PR body.
 
+### Every line in a test must be covered
+
+Coverage in this repo tracks both `aiohttp/` and `tests/`; the
+CI test jobs run pytest with `--cov=aiohttp/ --cov=tests/` and
+the cython-coverage job does the same, so uncovered lines in
+`tests/` show up in the codecov patch report on every PR.
+Reviewers do look at that report. This catches a class of
+mistake agents make all the time: a defensive
+`raise RuntimeError("must not be called")` inside a
+monkeypatched stub the happy path never invokes, a cleanup
+branch behind `if had_own_attr:` that the test never enters, an
+`else` arm guarding a condition that is always true under the
+fixture. From the perspective of the unit suite all of those
+lines are dead code, and the codecov report flags them the same
+as dead code in `aiohttp/`.
+
+Design tests so every line runs:
+
+- Drive the fixture deterministically so both arms of any
+  conditional are hit, or drop the conditional entirely and
+  assert the single shape you actually set up.
+- Do not add `raise TypeError("must not be invoked")` guards
+  inside stubs the test installs; if the stub is never meant to
+  fire, either omit it or assert at the call site that it did
+  not. An unreachable `raise` is the most common form of this
+  failure.
+- Cleanup branches that only run when setup took a particular
+  shape (`if had_own_attr: ...` style restores) need a second
+  test, or a parametrize, that exercises the other shape. If
+  you cannot justify the second case, unconditionally restore
+  instead.
+- Prefer `monkeypatch` (which auto-reverts) over hand-rolled
+  save/restore blocks; the auto-revert path has no untaken
+  branch for coverage to flag.
+
+See [aio-libs/yarl#1687](https://github.com/aio-libs/yarl/pull/1687)
+for the canonical example: a test added an unreachable `raise`
+inside a patched `__getstate__` and a conditional restore of the
+original attribute, both of which the codecov report rejected as
+uncovered. The same pattern recurs in aiohttp test PRs and the
+same review feedback applies.
+
 ## Cython and generated files
 
 `aiohttp/_http_parser.pyx`, `aiohttp/_http_writer.pyx`, and
@@ -462,6 +504,11 @@ spell-check leg that CI also runs.
   source changes.
 - Do not change one backend without checking the other; see
   "Dual-backend discipline" above.
+- Do not leave unreachable lines in tests (defensive `raise`
+  inside a stub the suite never invokes, cleanup branches that
+  only run for a setup shape the test does not exercise). Tests
+  are part of the coverage report; see _Every line in a test
+  must be covered_ above.
 - Do not open PRs against the release branches (`3.12`, `3.13`,
   etc.); target `master` and let `patchback` handle the
   backport after merge.
