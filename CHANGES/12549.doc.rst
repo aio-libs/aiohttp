@@ -1,0 +1,2 @@
+Included the security threat model in the Sphinx documentation.
+-- by :user:`Sean-Kenneth-Doherty`.

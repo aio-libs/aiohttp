@@ -16,6 +16,11 @@ import os
 import re
 from pathlib import Path
 
+from pygments.lexers.special import TextLexer
+from sphinx.highlighting import lexers
+
+lexers["mermaid"] = TextLexer()
+
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
 IS_RELEASE_ON_RTD = (
     os.getenv("READTHEDOCS", "False") == "True"
@@ -59,12 +64,13 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
+    "myst_parser",
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
 try:
-    import sphinxcontrib.spelling  # noqa
+    import sphinxcontrib.spelling
 
     extensions.append("sphinxcontrib.spelling")
 except ImportError:
@@ -93,6 +99,13 @@ templates_path = ["_templates"]
 
 # The suffix of source filenames.
 source_suffix = ".rst"
+
+# The threat model is a living Markdown document and references sections that
+# are being added incrementally. Let those GitHub-style fragment links render
+# without failing the whole docs build while warnings are fatal.
+suppress_warnings = ["myst.xref_missing"]
+
+myst_heading_anchors = 3
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'

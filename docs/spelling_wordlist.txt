@@ -57,6 +57,7 @@ callables
 cancelled
 canonicalization
 canonicalize
+canonicalized
 cchardet
 cChardet
 ceil
@@ -73,6 +74,7 @@ ClientSession
 cls
 cmd
 codebase
+codepoints
 codec
 Codings
 committer
@@ -101,6 +103,7 @@ defs
 Dependabot
 deprecations
 deserialization
+desync
 DER
 dev
 Dev
@@ -130,6 +133,7 @@ Facebook
 facto
 fallback
 fallbacks
+FDs
 filename
 finalizers
 formatter
@@ -158,6 +162,7 @@ initializer
 inline
 inlined
 intaking
+interop
 io
 IoT
 ip
@@ -183,6 +188,7 @@ kwarg
 kwargs
 latin
 lifecycle
+LF
 linux
 llhttp
 localhost
@@ -199,6 +205,8 @@ MiB
 microservice
 middleware
 middlewares
+mitigations
+Mitigations
 miltidict
 misbehaviors
 Mixcloud
@@ -227,6 +235,7 @@ Nikolay
 noop
 normalizer
 nowait
+npm
 OAuth
 Online
 optimizations
@@ -255,6 +264,7 @@ preloaded
 proactor
 programmatically
 proxied
+proxying
 PRs
 pubsub
 Punycode
@@ -281,8 +291,10 @@ refactored
 refactoring
 referenceable
 regex
+regexes
 regexps
 regexs
+regen
 reloader
 renderer
 renderers
@@ -303,6 +315,7 @@ Runit
 runtime
 runtimes
 sa
+sanitization
 Satisfiable
 scalability
 schemas
@@ -314,6 +327,7 @@ shourtcuts
 skipuntil
 Skyscanner
 SocketSocketTransport
+Spoofing
 ssl
 SSLContext
 startup
@@ -330,6 +344,7 @@ subprotocols
 subtype
 supervisord
 Supervisord
+surrogateescape
 Svetlov
 symlink
 symlinks
@@ -351,6 +366,7 @@ toolbar
 toplevel
 towncrier
 tp
+tracebacks
 tuples
 UI
 un
@@ -387,6 +403,7 @@ waituntil
 wakeup
 wakeups
 webapp
+Werkzeug
 websocket
 websocket’s
 websockets

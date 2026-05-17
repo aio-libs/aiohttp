@@ -228,6 +228,7 @@ Table Of Contents
    web
    utilities
    faq
+   threat_model
    misc
    external
    contributing

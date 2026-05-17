@@ -3,7 +3,7 @@
 This document is a STRIDE-based threat model for the
 [aiohttp](https://github.com/aio-libs/aiohttp) library. It is a living document
 intended to (a) make explicit the implicit security assumptions baked into the
-codebase, (b) catalogue known classes of threat against each subsystem, and
+codebase, (b) catalog known classes of threat against each subsystem, and
 (c) record the existing and recommended mitigations.
 
 ---
@@ -35,12 +35,12 @@ Key public APIs (non-exhaustive):
 
 We use [STRIDE](https://en.wikipedia.org/wiki/STRIDE_model):
 
-- **S**poofing — impersonating identity (host, user, peer, dependency).
-- **T**ampering — modifying data or code in flight or at rest.
-- **R**epudiation — denying that an action occurred.
-- **I**nformation Disclosure — leaking confidential data.
-- **D**enial of Service — exhausting CPU, memory, sockets, file descriptors.
-- **E**levation of Privilege — gaining unintended access.
+- **Spoofing** — impersonating identity (host, user, peer, dependency).
+- **Tampering** — modifying data or code in flight or at rest.
+- **Repudiation** — denying that an action occurred.
+- **Information Disclosure** — leaking confidential data.
+- **Denial of Service** — exhausting CPU, memory, sockets, file descriptors.
+- **Elevation of Privilege** — gaining unintended access.
 
 Risk is ranked **High / Medium / Low** based on a rough product of likelihood
 and impact, as judged by maintainers. Mitigations are split into
@@ -64,7 +64,7 @@ list assets unique to that section.
    exhaust CPU/memory/FDs in the host process under hostile or malformed input.
 4. **Security of host application** — aiohttp does not become a vector for
    attacks on the embedding application (SSRF, file disclosure, code execution,
-   privilege escalation through deserialisation, etc.).
+   privilege escalation through deserialization, etc.).
 5. **Reputation & supply-chain integrity** — the released artifacts on PyPI are
    what maintainers built and signed; the source on GitHub matches the artifacts;
    the vendored llhttp matches upstream; CI/CD secrets are not exposed.
@@ -206,13 +206,13 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 
 **Trust assumptions about parser output:**
 
-- Header names are validated against a token regex; values are not normalised
+- Header names are validated against a token regex; values are not normalized
   beyond `lstrip`/`rstrip` and CR/LF/NUL rejection.
 - Header values are decoded `utf-8` with `surrogateescape`, so non-UTF-8 bytes
   are *preserved* and *can round-trip back to the wire* if downstream code
-  re-emits them. Any sanitisation downstream of the parser is the
+  re-emits them. Any sanitization downstream of the parser is the
   responsibility of consumers (logging, header reflection, proxying).
-- Methods are accepted as any RFC 7230 token; the parser does not canonicalise
+- Methods are accepted as any RFC 7230 token; the parser does not canonicalize
   case.
 - Versions are accepted by the regex `HTTP/(\d)\.(\d)` — i.e. `HTTP/0.9`,
   `HTTP/2.0`, etc. all parse without rejection, even though they cannot be
@@ -238,7 +238,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.3 | Header values, CR/LF/NUL | T / I | CRLF injection enabling response splitting / header injection if downstream re-emits values verbatim. Historically [CVE-2023-37276](https://github.com/aio-libs/aiohttp/security/advisories/GHSA-45c4-8wx5-qw6w). | High |
 | 1.4 | Header values, surrogateescape decode | I / T | Non-UTF-8 bytes round-trip through `Headers` and may be reflected by user code / proxies / logs into untrusted contexts. | Medium |
 | 1.5 | HTTP version regex | T | `HTTP/0.9` and `HTTP/2.0` accepted on the wire, opening a small surface for protocol-confusion against intermediaries that handle these specially. | Low |
-| 1.6 | Method token | I / T | Methods are not case-canonicalised; arbitrary tokens up to `max_line_size` accepted. May confuse downstream method-based authorisation if user code compares case-sensitively. | Low |
+| 1.6 | Method token | I / T | Methods are not case-canonicalized; arbitrary tokens up to `max_line_size` accepted. May confuse downstream method-based authorization if user code compares case-sensitively. | Low |
 | 1.7 | `Content-Length` parsing | T | Negative or non-decimal CL handling, multiple comma-separated CLs, CL with leading `+`/whitespace. | Medium |
 | 1.8 | `Transfer-Encoding: chunked` parsing | T | Lenient acceptance (`xchunked`, `chunked, identity`, doubled `chunked`) leading to smuggling against a non-aiohttp peer that interprets differently. | Medium |
 | 1.9 | Chunk size parsing | D | No upper bound on chunk-size value (Python unbounded int); huge chunk size could drive allocator before `client_max_size` rejects body. Mitigated by [§5.7](#57-server-connection-lifecycle) / `client_max_size`. | Low–Med |
@@ -257,13 +257,13 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.3 | CRLF / NUL in header values | Bytes `\r`, `\n`, `\x00` rejected in header values (`_http_parser.pyx` callbacks; `http_parser.py:HeadersParser.parse_headers`). | Keep regression tests in `tests/test_http_parser.py` covering each forbidden byte both in name and value, and across both Cython and pure-Python parsers. |
 | 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving; warn against reflecting headers verbatim into responses, logs, or sub-requests without re-validation.** |
 | 1.5 | HTTP version regex accepts 0.9 / 2.0 | None (regex is permissive). | **Tighten `VERSRE` (and llhttp configuration if possible) to reject anything outside `HTTP/1.0` and `HTTP/1.1`.** |
-| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document that user route handlers / authorization checks should compare methods case-sensitively to the canonical RFC tokens, or use the framework's `web.RouteTableDef` decorators which already match canonical methods.** |
+| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalized. | **Document that user route handlers / authorization checks should compare methods case-sensitively to the canonical RFC tokens, or use the framework's `web.RouteTableDef` decorators which already match canonical methods.** |
 | 1.7 | `Content-Length` parsing | llhttp validates CL is decimal and non-negative; pure-Python parser validates via `DIGITS.fullmatch(r"\d+")` before `int(...)`, rejecting `+`/`-`/non-ASCII-digit forms (`test_bad_headers`, `test_headers_content_length_err_*` cover these). | None. Cross-backend parity is covered by the shared parser tests. |
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
-| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client unsanitised (especially in custom `web_log` configurations).** |
-| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to the parameterised tests. |
+| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client without sanitization (especially in custom `web_log` configurations).** |
+| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` runs tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to those parser test suites. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
 
@@ -294,7 +294,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   the request parser.
 - **GHSA-c427-h43c-vf67** (3.13.4) — duplicate `Host` header accepted
   in request parser, bypassing `Application.add_domain()` host-based
-  routing / authorisation. Fixed by adding `Host` to the strict
+  routing / authorization. Fixed by adding `Host` to the strict
   request-parser singleton rejection set.
 - **GHSA-63hf-3vf5-4wqf (CVE-2026-34520)** (3.13.4) — llhttp accepted
   NUL / control bytes in *response* header values, leaving the response
@@ -310,5 +310,3 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   request parser (strict).
 
 These are all currently in place; this section assumes no regression.
-
----
