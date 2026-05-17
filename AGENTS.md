@@ -59,12 +59,12 @@ The single biggest source of broken aiohttp PRs from agents. Hot
 paths exist in both backends and must stay behaviourally identical;
 fix the matching one in the same PR:
 
-| Pure Python                                       | Cython / C                                                                         |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| `aiohttp/http_parser.py`                          | `aiohttp/_http_parser.pyx` (parser bugs may live upstream in `vendor/llhttp`)      |
-| `aiohttp/http_writer.py`                          | `aiohttp/_http_writer.pyx`                                                         |
-| `aiohttp/_websocket/reader_py.py`                 | `aiohttp/_websocket/reader_c.py` (must stay byte-for-byte equivalent)              |
-| `aiohttp/_websocket/helpers.py::websocket_mask`   | `aiohttp/_websocket/mask.pyx`                                                      |
+| Pure Python                                             | Cython / C                                                                    |
+| ------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `aiohttp/http_parser.py`                                | `aiohttp/_http_parser.pyx` (parser bugs may live upstream in `vendor/llhttp`) |
+| `aiohttp/http_writer.py`                                | `aiohttp/_http_writer.pyx`                                                    |
+| `aiohttp/_websocket/reader_py.py`                       | `aiohttp/_websocket/reader_c.py` (must stay byte-for-byte equivalent)         |
+| `aiohttp/_websocket/helpers.py::_websocket_mask_python` | `aiohttp/_websocket/mask.pyx::_websocket_mask_cython`                         |
 
 A new public API lands in both backends with identical signatures,
 type hints, and docstrings. If a fix really only applies to one
@@ -183,8 +183,8 @@ when:
   `web_*.py` / `multipart.py`.
 
 When a chunk's content is materially affected, update both the
-chunk and the relevant entries in §6.1–§6.4. The "Past advisories /
-hardening (recap)" subsection of each chunk is the audit trail for
+chunk and any cross-referenced summary entries. The "Past advisories
+/ hardening (recap)" subsection of each chunk is the audit trail for
 what has been verified-in-place.
 
 ## Documentation & code style
