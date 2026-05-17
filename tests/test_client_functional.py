@@ -822,6 +822,12 @@ async def test_tcp_connector_fingerprint_ok(
     async with client.get("/") as resp:
         assert resp.status == 200
 
+    # Abort the SSL shutdown explicitly so the pooled TLS transport is
+    # released before the test loop tears down. Otherwise a slow graceful
+    # close can outlive the loop, and the teardown gc.collect() finalises
+    # the still-open socket as an unraisable ResourceWarning.
+    await connector.close(abort_ssl=True)
+
 
 async def test_tcp_connector_fingerprint_fail(
     aiohttp_server,
