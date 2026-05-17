@@ -1,0 +1,4 @@
+Added a Claude Code agent skill at ``.claude/skills/backport-failed/`` that
+walks a contributor through recovering a patchback auto-backport that failed
+with conflicts, including reopening the backport PR with the same title and
+body shape patchback produces -- by :user:`bdraco`.
