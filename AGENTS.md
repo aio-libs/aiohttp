@@ -1,551 +1,201 @@
 # Notes for LLM contributors
 
+Agent orientation for `aio-libs/aiohttp`. Human-facing docs:
+[CONTRIBUTING.rst](CONTRIBUTING.rst),
+[docs/contributing.rst](docs/contributing.rst),
+[CHANGES/README.rst](CHANGES/README.rst).
+
 ## Rule zero: prove it works before opening the PR
 
-**Your job is to deliver code that is proven to work.** If you
-have not proven the change works, it is not time to open the PR
-yet. "It compiles", "type checks pass", and "the diff looks
-right" are not proof. Proof is: the relevant tests run locally
-and pass, the new behaviour is exercised by a test you added or
-extended, and any user-visible path you touched has been
-executed end-to-end. For aiohttp specifically, that means the
-suite passes under **both** the default C-extension build **and**
-the pure-Python build (`AIOHTTP_NO_EXTENSIONS=1`); see the
-[Tests](#tests) section for the exact commands. If you cannot
-run the suite in your environment, say so explicitly in the PR
-body rather than implying coverage you did not actually achieve.
-Opening a PR that turns out not to work wastes the reviewer's
-time and is the single fastest way to lose trust on this repo.
+"It compiles" and "the diff looks right" are not proof. Proof is:
+relevant tests pass locally, new behaviour is covered by a test, and
+the user-visible path runs end-to-end on **both** the default
+C-extension build **and** the pure-Python build
+(`AIOHTTP_NO_EXTENSIONS=1`). If you cannot run the suite locally, say
+so in the PR body.
 
-The rest of this document covers how to dress up that proven
-change for review. None of it matters if rule zero is not met.
+## Branching
 
----
+- Open PRs against `master` (default branch is `master`, not `main`).
+- `Patchback` auto-backports merged PRs labelled `backport-3.X` to
+  release branches (`3.13`, `3.14`, ...). Use `backport:skip` to opt
+  out.
+- Do not open PRs against release branches, except to recover from a
+  failed auto-backport (cherry-pick the merge commit, push a
+  replacement backport PR).
 
-Read this before opening a pull request against `aio-libs/aiohttp`.
-Agents keep getting the same things wrong in this repo, so the rules
-below are not optional. If you are about to skip a section because it
-sounds like boilerplate, that is the section to re-read.
+## Build
 
-Human-facing contributor docs live under
-[docs/contributing.rst](docs/contributing.rst),
-[CONTRIBUTING.rst](CONTRIBUTING.rst), and
-[CHANGES/README.rst](CHANGES/README.rst); this file is the short
-orientation for agents.
+- Full dev setup: `make install-dev` (alias for `.develop`; installs
+  deps, cythonizes, builds extensions).
+- Vendored llhttp: `git submodule update --init` + `make generate-llhttp`
+  (requires Node.js). Regenerates parser tables for the pinned commit;
+  does **not** change the pin.
+- Cython extensions: `make cythonize` (`.pyx` → `.c`; also runs
+  `tools/gen.py`), then `pip install -e .` to compile.
+- Pure Python mode: `AIOHTTP_NO_EXTENSIONS=1 pip install -e .`.
+- `AIOHTTP_CYTHON_TRACE=1` enables Cython trace macros (only useful
+  with linetrace-enabled `.c` files).
 
-## What this project is
+## Test
 
-`aiohttp` is the async HTTP client and server stack for the
-`aio-libs` ecosystem. It is large, widely deployed, performance
-sensitive, and ships **two parallel implementations of the hot
-paths that must stay behaviourally identical**: a pure-Python
-fallback and a set of C / Cython extensions. The C parser is
-built on top of `llhttp`, which lives under `vendor/llhttp/` as
-a **git submodule** pinned to a specific upstream commit; see
-the [Submodules and llhttp](#submodules-and-llhttp) section
-below.
+- Run all: `PYTHONPATH='.' pytest --numprocesses=auto`
+- Single test: `PYTHONPATH='.' pytest tests/test_foo.py::test_name`
+- Pure Python leg: `PYTHONPATH='.' AIOHTTP_NO_EXTENSIONS=1 pytest`
+- Convenience: `make test`, `make vtest`, `make cov-dev`.
 
-Useful entry points:
+Run **both** the default and `AIOHTTP_NO_EXTENSIONS=1` legs before
+opening a PR. Coverage tracks `aiohttp/` and `tests/`; uncovered
+lines in `tests/` show up on the codecov patch report. No
+unreachable `raise` guards in stubs, no cleanup branches behind
+`if had_own_attr:` without a second test exercising the other
+shape. Prefer `monkeypatch` (auto-reverts) over hand-rolled
+save/restore. See
+[aio-libs/yarl#1687](https://github.com/aio-libs/yarl/pull/1687).
 
-| Path                                       | What                                                                 |
-| ------------------------------------------ | -------------------------------------------------------------------- |
-| `aiohttp/__init__.py`                      | public package surface and version                                   |
-| `aiohttp/client.py`                        | `ClientSession`, top-level client API                                |
-| `aiohttp/client_reqrep.py`                 | `ClientRequest`, `ClientResponse`                                    |
-| `aiohttp/connector.py`                     | `TCPConnector`, connection pooling, DNS                              |
-| `aiohttp/web.py` and `aiohttp/web_*.py`    | server framework (app, request, response, runners, middlewares)      |
-| `aiohttp/http_parser.py`                   | pure-Python HTTP parser; dispatches to C parser when available       |
-| `aiohttp/_http_parser.pyx`                 | Cython HTTP parser bound to the `llhttp` submodule                   |
-| `aiohttp/http_writer.py`                   | pure-Python HTTP writer; falls back from the Cython one              |
-| `aiohttp/_http_writer.pyx`                 | Cython HTTP writer                                                   |
-| `aiohttp/_websocket/reader.py`             | dispatcher that selects the Cython or pure-Python WS reader          |
-| `aiohttp/_websocket/reader_py.py`          | pure-Python WebSocket reader                                         |
-| `aiohttp/_websocket/reader_c.py`           | sibling source compiled by Cython; must match `reader_py.py`         |
-| `aiohttp/_websocket/mask.pyx`              | Cython masking primitive (`websocket_mask`)                          |
-| `aiohttp/_websocket/helpers.py`            | shared WS helpers and the `websocket_mask` Python fallback           |
-| `aiohttp/hdrs.py` and `aiohttp/_headers.pxi` | known header constants; the `.pxi` is generated by `tools/gen.py`  |
-| `vendor/llhttp/`                           | git submodule pinned to a `nodejs/llhttp` commit (not a copy)         |
-| `tests/`                                   | pytest suite, parametrised across both backends                      |
-| `CHANGES/`                                 | towncrier news fragments, one per PR                                 |
-| `docs/`                                    | Sphinx docs source                                                   |
+## Dual-backend discipline
 
-`AIOHTTP_NO_EXTENSIONS=1` forces the pure-Python build at install
-time; the default is the C extension. The dispatch flag at runtime is
-`aiohttp.helpers.NO_EXTENSIONS`.
+The single biggest source of broken aiohttp PRs from agents. Hot
+paths exist in both backends and must stay behaviourally identical;
+fix the matching one in the same PR:
+
+| Pure Python                                       | Cython / C                                                                         |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| `aiohttp/http_parser.py`                          | `aiohttp/_http_parser.pyx` (parser bugs may live upstream in `vendor/llhttp`)      |
+| `aiohttp/http_writer.py`                          | `aiohttp/_http_writer.pyx`                                                         |
+| `aiohttp/_websocket/reader_py.py`                 | `aiohttp/_websocket/reader_c.py` (must stay byte-for-byte equivalent)              |
+| `aiohttp/_websocket/helpers.py::websocket_mask`   | `aiohttp/_websocket/mask.pyx`                                                      |
+
+A new public API lands in both backends with identical signatures,
+type hints, and docstrings. If a fix really only applies to one
+backend, say so in the PR body. If you can only fix one in scope,
+file a follow-up issue; do not silently leave them divergent.
+
+## Lint & Format
+
+- `pre-commit run --all-files` runs all checks (black, isort,
+  pyupgrade, flake8, yesqa, codespell, end-of-file-fixer, rst-linter,
+  changelog filename check). `make lint` runs the same plus `mypy`.
+- `black` for formatting only, `mypy` for type checking (not in
+  pre-commit; `make mypy`).
+- Style: black with 88-col line length, isort with trailing commas.
+- Hooks rewrite files in place. Re-stage and commit again. Do
+  **not** use `--no-verify`.
+- `make doc-spelling` (run before pushing if you edited any `.rst`)
+  reads every `CHANGES/*.rst` fragment with `-W --keep-going`. Add
+  real technical terms to
+  [`docs/spelling_wordlist.txt`](docs/spelling_wordlist.txt); fix
+  typos.
+
+## Changelog
+
+Every user- or contributor-visible PR needs a towncrier fragment in
+`CHANGES/`, named `<pr_or_issue_number>.<category>.rst`. Categories
+(in `[tool.towncrier]` in [pyproject.toml](pyproject.toml)):
+`bugfix`, `feature`, `deprecation`, `breaking`, `doc`, `packaging`,
+`contrib`, `misc`.
+
+- reStructuredText, past tense (`Fixed`, `Added`, `Bumped`).
+- No PR/issue number in the body; towncrier reads it from the
+  filename. Sign with `` -- by :user:`github-handle` ``.
+- Prefer the **issue** number for the filename (stable, known up
+  front). No linked issue: open the PR first then add the fragment
+  by assigned number, or guess from
+  `gh pr list --repo aio-libs/aiohttp --state all --limit 5`.
+- Both issue and PR number wanted: keep the issue-numbered file and
+  symlink: `ln -s 1234.bugfix.rst CHANGES/1240.bugfix.rst`.
+- Multiple fragments same category: `1234.feature.rst`,
+  `1234.feature.1.rst`.
 
 ## Pull request rules
 
-These are the rules agents most often violate. Treat them as mandatory.
+**Template.** Use the shipped template at
+[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md)
+verbatim. Do **not** invent a `## What / ## Why / ## How / ## Testing`
+layout; that is the giveaway of an LLM-authored PR that ignored
+conventions. A couple of sentences per section is plenty. Tick
+checklist boxes that apply; write `N/A` next to ones that do not.
+First-time contributors add themselves to `CONTRIBUTORS.txt`
+(alphabetical by first name).
 
-### 1. Use the shipped pull request template
+**Draft.** Use `gh pr create --draft`. Every LLM-authored submission
+must be reviewed by a human before going out of draft; that review
+is the operator's job, not the maintainers'. Do not mark ready or
+request reviewers yourself.
 
-`aiohttp` ships its own template at
-[`.github/PULL_REQUEST_TEMPLATE.md`](.github/PULL_REQUEST_TEMPLATE.md),
-and `gh pr create` will load it automatically. **Use it as shipped.**
-Do not invent your own `## What / ## Why / ## How / ## Testing`
-layout; that is the marker that the PR was written by an agent
-without reading the conventions.
-
-The template looks like this; fill it out verbatim:
-
-```markdown
-<!-- Thank you for your contribution! -->
-
-## What do these changes do?
-
-<short prose describing the change>
-
-## Are there changes in behavior for the user?
-
-<yes or no, plus a sentence if yes>
-
-## Is it a substantial burden for the maintainers to support this?
-
-<no, plus a sentence on why if relevant>
-
-## Related issue number
-
-Fixes #NNNN
-<!-- or a bare reference if related but not closing -->
-
-## Checklist
-
-- [x] I think the code is well written
-- [x] Unit tests for the changes exist
-- [x] Documentation reflects the changes
-- [x] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
-- [x] Add a new news fragment into the `CHANGES/` folder
-```
-
-Tick the boxes that actually apply. If a row does not apply (e.g. a
-CI-only change with no tests), write `N/A` next to it rather than
-silently leaving it blank. `CONTRIBUTORS.txt` is sorted alphabetically
-by first name; insert your `<Name> <Surname>` line in the right place
-the first time you contribute, then leave it alone on follow-ups.
-
-### 2. Add a CHANGES fragment
-
-Every user-visible or contributor-visible PR needs a towncrier news
-fragment in `CHANGES/`, named `<pr_number>.<category>.rst`. Categories
-(defined in [CHANGES/README.rst](CHANGES/README.rst) and the
-`[tool.towncrier]` section of [pyproject.toml](pyproject.toml)):
-
-| Category       | When to use                                                     |
-| -------------- | --------------------------------------------------------------- |
-| `bugfix`       | corrects undesired behaviour                                    |
-| `feature`      | new public API or behaviour                                     |
-| `deprecation`  | announces a future removal                                      |
-| `breaking`     | removes or changes something public in a breaking way           |
-| `doc`          | documentation structure or build process                        |
-| `packaging`    | downstream-visible packaging or build changes                   |
-| `contrib`      | contributor experience (CI, dev env, test invocation)           |
-| `misc`         | does not fit any of the above                                   |
-
-Conventions for the fragment body:
-
-- Use the past tense (`Fixed`, `Added`, `Bumped`), since it is read
-  as a "what changed since the previous release" digest.
-- Use reStructuredText, not Markdown.
-- Do not include the issue or PR number in the body; towncrier adds
-  it automatically from the filename.
-- Sign with `` -- by :user:`github-handle` `` at the end.
-- For multiple fragments in the same category, append a sequence
-  number: `1234.feature.rst`, `1234.feature.1.rst`.
-
-Example (`CHANGES/8074.bugfix.rst` style):
-
-```rst
-Fixed an unhandled exception in the Python HTTP parser on header
-lines starting with a colon -- by :user:`pajod`.
-```
-
-Pick the number for the fragment filename as follows:
-
-- **If the change has a linked issue, name the fragment after
-  the issue number** (e.g. `CHANGES/1234.bugfix.rst` for a fix
-  that closes `#1234`). The issue number is stable and known
-  before the PR is opened.
-- **If there is no linked issue,** you have two options:
-  - Open the PR first, then add the fragment as a follow-up
-    commit on the same branch using the assigned PR number; or
-  - Guess the next PR number (scan
-    `gh pr list --repo aio-libs/aiohttp --state all --limit 5`
-    for the current top of the range), include the fragment in
-    your initial push, and rename in a follow-up commit if the
-    guess was off by the time the PR opened.
-- **If both an issue and a PR number are in play and you want
-  both to resolve,** keep the issue-numbered file as the real
-  fragment and add a symlink at
-  `CHANGES/<pr_number>.<category>.rst` pointing to it, so
-  towncrier and the GitHub cross-reference both find the entry:
-
-  ```bash
-  ln -s 1234.bugfix.rst CHANGES/1240.bugfix.rst
-  ```
-
-### 3. Open the PR as a draft, and leave it that way
-
-Use `gh pr create --draft`. **Every LLM-authored submission
-must be fully reviewed by a human before it is marked ready
-out of draft, with no exceptions.** That review is the
-responsibility of the person running the agent, not of the
-project maintainers; do not shift the burden of reviewing LLM
-work onto them. Maintainers do not look at drafts, so the
-draft state is the agent's hand-off to the operator's review,
-not a request for the project to review the code on the
-operator's behalf. Do not mark the PR ready yourself, and do
-not request reviewers from the agent session; the human who
-reviewed the change and flipped it out of draft is the one who
-routes it.
-
-### 4. Disclose the agent, do not advertise it
-
-Disclosure is required, advertising is not welcome. Put one
-plain line at the bottom of the PR body naming the agent that
-drafted the change, for example:
+**Disclosure, not advertising.** One plain line at the bottom of the
+PR body:
 
 ```
 Drafted with <agent name and version>; reviewed by <human handle>.
 ```
 
-That single line is enough. Beyond that:
+In addition:
 
-- **No `Co-Authored-By:` trailers** for an LLM or any AI tool, in
-  commits or in the PR body. Attribution goes to the human who
-  reviewed the change.
-- **Agent output goes in a footer below the PR summary, ideally
-  in a collapsed `<details>` block.** The aio-libs template
-  sections (What / Are there changes in behavior / etc.) come
-  first and read like a human wrote them. Anything the agent
-  wants to surface for reviewers (scan results, test logs,
-  branch hygiene notes, pipeline output) goes underneath that.
-  A collapsed `<details>` block at the very bottom is the
-  recommended shape; it keeps the summary readable while still
-  letting a curious reviewer expand the agent's work:
+- **No `Co-Authored-By:` trailers** for an LLM, in commits or PR body.
+- **No emoji** (`🤖`, `✨`, `🚀`) anywhere; plain prose.
+- **No em-dashes (`—`)** and no dashes used as sentence separators
+  (`foo - bar`); use a semicolon or comma. Strongest AI tell here.
+- No "Let me" / "I'll" / first-person narration. Describe the change.
+- No filler sections (Overview, Summary, Key takeaways) above the
+  template.
+- Agent run output (test logs, scans) goes in a collapsed
+  `<details>` block **below** the template summary, not inside it.
 
-  ```markdown
-  <details>
-  <summary>Agent run details (optional, for reviewers)</summary>
+**Commits.** One logical change per PR; split refactors from
+bugfixes. The repo does **not** use Conventional Commits; match
+recent imperative or descriptive subjects (e.g. `Fix digest
+authentication for URLs with reserved characters`, `ci: report
+slowest benchmarks via --durations=30`).
 
-  Tests: <command and result>
-  Lint: <command and result>
-  </details>
-  ```
-
-  What is not OK is mixing this content into the template
-  sections themselves, or pushing it above the human-readable
-  summary so reviewers have to scroll past it. The shape and
-  content of the footer is otherwise up to the agent.
-- No emoji decoration (`🤖`, `✨`, `🚀`) in commit messages, PR
-  titles, PR bodies, or news fragments. Project style is plain prose.
-- Commit messages and PR prose should read as if a human contributor
-  wrote them. Specifically:
-  - **No em-dashes (`—`)** and no dashes used as sentence separators
-    (`foo - bar`). Use a semicolon or a comma. This is the strongest
-    tell for AI-generated prose in this project, and reviewers do
-    read for it.
-  - No "Let me", "I'll", or first-person narration of what the agent
-    did. Describe the change, not the author.
-  - No filler sections ("Overview", "Summary of changes", "Key
-    takeaways") on top of the template. The template already has
-    the right sections.
-
-### 5. Keep the PR body short
-
-A couple of sentences per template section is plenty. If the change
-is non-obvious, a short reproducer or a paragraph on root cause is
-welcome. Long, multi-section essays with bolded sub-headings are
-not the style here.
-
-### 6. Run the docs spell check before pushing
-
-The `lint` CI job builds the docs with `sphinxcontrib.spelling`
-under `make doc-spelling`, which is invoked with `-W
---keep-going` so any unknown word is a hard failure. The spell
-checker reads every `CHANGES/*.rst` fragment as part of the
-build, so a technical word in your news fragment (`codecov`,
-`monkeypatch`, `parametrize`, `repr`, and so on) that is
-not in
-[`docs/spelling_wordlist.txt`](docs/spelling_wordlist.txt)
-will fail `make doc-spelling` and burn a CI run before a human
-even sees the PR.
-
-Before pushing:
-
-```bash
-make doc-spelling
-```
-
-If it flags a word you actually meant to use, add it to
-`docs/spelling_wordlist.txt` (one word per line, roughly
-alphabetical) in the same commit as the fragment. If it flags
-a typo, fix the typo. Do not paper over real misspellings by
-adding them to the wordlist.
-
-### 7. Commit hygiene
-
-- One logical change per PR. If a refactor and a bugfix are bundled
-  together, split them.
-- Pre-commit hooks (the changelog filename check, isort, black,
-  pyupgrade, flake8, yesqa, codespell, end-of-file-fixer, an
-  rst-linter, and others under
-  [`.pre-commit-config.yaml`](.pre-commit-config.yaml)) rewrite
-  files in place and may abort the commit; when that happens,
-  re-stage and commit again. Do not pass `--no-verify`. Mypy is
-  not in pre-commit; it runs via `make mypy` (and is included in
-  `make lint`).
-- The repo does **not** use Conventional Commits as a CI gate. Recent
-  landed subjects are short imperative or descriptive prose (e.g.
-  `Fix digest authentication for URLs with reserved characters`,
-  `ci: report slowest benchmarks via --durations=30`,
-  `Bump pytest-codspeed from 5.0.1 to 5.0.2`). Match that style; do
-  not force `feat:` / `fix:` prefixes onto every commit.
-- The default branch is `master`, not `main`. Open PRs against
-  `master`; backports to the active release branches (`3.13`,
-  `3.14`, etc.) are handled automatically by the `Patchback`
-  GitHub App once the merged PR carries a `backport-3.X` label.
-  Use `backport:skip` to opt a PR out of backporting.
-
-## Dual-backend discipline
-
-This is the single biggest source of broken aiohttp PRs from agents.
-
-aiohttp's hot paths live in both a Cython / C implementation and a
-pure-Python fallback. When you change behaviour in one, check whether
-the other needs the same change:
-
-- A bug fix in `aiohttp/http_parser.py` (pure-Python HTTP parser)
-  usually needs a matching fix in `aiohttp/_http_parser.pyx`. If
-  the bug is in the underlying C parser it lives upstream in
-  `nodejs/llhttp` (see [Submodules and llhttp](#submodules-and-llhttp));
-  fix it there and bump the submodule pin in a separate PR. If
-  the C path is genuinely unaffected (different code path,
-  different invariant), say so explicitly in the "What do these
-  changes do?" section.
-- A bug fix in `aiohttp/http_writer.py` usually needs a matching
-  fix in `aiohttp/_http_writer.pyx`.
-- The WebSocket reader is split across
-  `aiohttp/_websocket/reader_py.py` (pure Python) and
-  `aiohttp/_websocket/reader_c.py` (the same source compiled by
-  Cython). **They must stay byte-for-byte equivalent in
-  behaviour**: any change to one must land in the other in the
-  same PR. The dispatcher is `aiohttp/_websocket/reader.py`.
-- The WebSocket masking primitive has a Python fallback in
-  `aiohttp/_websocket/helpers.py` and a Cython implementation in
-  `aiohttp/_websocket/mask.pyx`; the same parity rule applies.
-- A new public API must land in both backends with identical
-  signatures, identical behaviour, identical type hints, and
-  matching docstrings.
-- Tests in `tests/` are exercised against both builds in CI (one
-  job runs with `AIOHTTP_NO_EXTENSIONS=1`), so a divergence will
-  surface as a failure on one of the two legs. Reproduce both
-  locally before opening the PR.
-
-If you can only fix one backend in scope, file a follow-up issue
-and call it out in the PR body. Do not silently leave the
-implementations divergent.
-
-## Tests
-
-Install dev deps, build the extensions, and run the suite:
-
-```bash
-make .develop      # installs deps, regenerates llhttp parser tables, builds Cython in place
-make test          # pytest -q against the built extension
-```
-
-`make vtest` runs verbose plus a `-X dev` pass, `make cov-dev` adds
-coverage with an HTML report.
-
-To exercise both backends explicitly:
-
-```bash
-# C extension (default)
-pip install -e .
-pytest -q
-
-# Pure Python
-AIOHTTP_NO_EXTENSIONS=1 pip install -e . --force-reinstall --no-deps
-pytest -q
-```
-
-`make lint` runs `pre-commit` across the tree plus `mypy`.
-
-CI runs the full matrix across the supported CPython versions
-(3.10+), plus an `AIOHTTP_NO_EXTENSIONS=1` leg, a docs build, a
-CodSpeed benchmark leg, and wheel builds for manylinux, musllinux,
-macOS, and Windows. Do not regress the benchmarks without flagging
-the trade-off in the PR body.
-
-### Every line in a test must be covered
-
-Coverage in this repo tracks both `aiohttp/` and `tests/`; the
-CI test jobs run pytest with `--cov=aiohttp/ --cov=tests/` and
-the cython-coverage job does the same, so uncovered lines in
-`tests/` show up in the codecov patch report on every PR.
-Reviewers do look at that report. This catches a class of
-mistake agents make all the time: a defensive
-`raise RuntimeError("must not be called")` inside a
-monkeypatched stub the happy path never invokes, a cleanup
-branch behind `if had_own_attr:` that the test never enters, an
-`else` arm guarding a condition that is always true under the
-fixture. From the perspective of the unit suite all of those
-lines are dead code, and the codecov report flags them the same
-as dead code in `aiohttp/`.
-
-Design tests so every line runs:
-
-- Drive the fixture deterministically so both arms of any
-  conditional are hit, or drop the conditional entirely and
-  assert the single shape you actually set up.
-- Do not add `raise TypeError("must not be invoked")` guards
-  inside stubs the test installs; if the stub is never meant to
-  fire, either omit it or assert at the call site that it did
-  not. An unreachable `raise` is the most common form of this
-  failure.
-- Cleanup branches that only run when setup took a particular
-  shape (`if had_own_attr: ...` style restores) need a second
-  test, or a parametrize, that exercises the other shape. If
-  you cannot justify the second case, unconditionally restore
-  instead.
-- Prefer `monkeypatch` (which auto-reverts) over hand-rolled
-  save/restore blocks; the auto-revert path has no untaken
-  branch for coverage to flag.
-
-See [aio-libs/yarl#1687](https://github.com/aio-libs/yarl/pull/1687)
-for the canonical example: a test added an unreachable `raise`
-inside a patched `__getstate__` and a conditional restore of the
-original attribute, both of which the codecov report rejected as
-uncovered. The same pattern recurs in aiohttp test PRs and the
-same review feedback applies.
-
-## Cython and generated files
+## Generated files, Cython, llhttp
 
 `aiohttp/_http_parser.pyx`, `aiohttp/_http_writer.pyx`, and
-`aiohttp/_websocket/mask.pyx` are compiled by Cython; the resulting
-`*.c` and `*.so` files are build outputs and must not be committed.
-`make cythonize` regenerates the `.c` siblings during development.
+`aiohttp/_websocket/mask.pyx` compile to `.c`/`.so` via `make
+cythonize`. `aiohttp/_headers.pxi` and `aiohttp/_find_header.c` are
+generated from `aiohttp/hdrs.py` by `tools/gen.py` (also via `make
+cythonize`).
 
-`aiohttp/_headers.pxi` and `aiohttp/_find_header.c` are generated
-from `aiohttp/hdrs.py` by `tools/gen.py`; regenerate by adding a
-header in `hdrs.py` and running `make cythonize` (the rule runs
-`tools/gen.py` for you).
+`vendor/llhttp/` is a git submodule pointing at
+[`nodejs/llhttp`](https://github.com/nodejs/llhttp); the aiohttp tree
+only tracks the sha. **Do not edit anything under `vendor/llhttp/` by
+hand**; fixes belong upstream. Bumping is a pointer move
+(`git checkout <sha>` inside the submodule, `git add vendor/llhttp`
+from the root) and goes in its own PR.
 
-## Submodules and llhttp
+Never commit: `aiohttp/**/*.c`, `aiohttp/**/*.html`,
+`aiohttp/**/*.so`, `*.py,cover`, `__pycache__/`, `.hash/`, `build/`,
+`dist/`.
 
-`vendor/llhttp/` is a **git submodule** that points at
-[`nodejs/llhttp`](https://github.com/nodejs/llhttp); aiohttp's
-checked-in tree only tracks the submodule sha (the current pin is
-visible in `git submodule status`). Cloning aiohttp without
-submodules will not work; `setup.py` exits with a hint to run
-`git submodule update --init` if the checkout is missing.
+## Threat model
 
-The C parser extension is built from three files inside the
-submodule checkout, in this order:
+[`THREAT_MODEL.md`](THREAT_MODEL.md) is a living document. Revise
+when:
 
-- `vendor/llhttp/build/c/llhttp.c`: the parser tables,
-  **generated from the TypeScript sources** by
-  `make generate-llhttp` (which runs `make -C vendor/llhttp generate`
-  after `npm ci`). This file is a build output; it is regenerated
-  locally and is not committed upstream.
-- `vendor/llhttp/src/native/api.c` and `vendor/llhttp/src/native/http.c`:
-  tracked C sources inside the submodule, owned by the upstream
-  llhttp repo.
+- A CVE / GHSA is filed against aiohttp.
+- The parser configuration changes (llhttp lenient flags, size
+  limits, version regex).
+- Any default referenced in the document changes (`client_max_size`,
+  `keepalive_timeout`, `max_redirects`, `limit`, `limit_per_host`,
+  etc.).
+- The vendored llhttp version is bumped.
+- A public API surface is added or removed in `client.py` /
+  `web_*.py` / `multipart.py`.
 
-What this means in practice:
+When a chunk's content is materially affected, update both the
+chunk and the relevant entries in §6.1–§6.4. The "Past advisories /
+hardening (recap)" subsection of each chunk is the audit trail for
+what has been verified-in-place.
 
-- **Do not edit anything under `vendor/llhttp/` by hand.** That is
-  upstream `nodejs/llhttp` code; fixes belong there, not in the
-  aiohttp tree.
-- **Bumping the llhttp version is a submodule-pointer bump, not an
-  edit.** From inside `vendor/llhttp` run `git fetch && git checkout <new sha>`,
-  then in the aiohttp root `git add vendor/llhttp` to record the
-  new pointer. Keep the bump in its own PR and call out which
-  upstream tag / sha you are moving to.
-- `make generate-llhttp` only regenerates the build-time parser
-  tables for the currently pinned commit; it does **not** change
-  the pin, and there is nothing to commit afterwards in the
-  aiohttp tree.
-
-Files you should not edit by hand or commit alongside source
-changes:
-
-- `aiohttp/*.c`, `aiohttp/*.html`, `aiohttp/*.so`
-- `aiohttp/_websocket/*.c`, `aiohttp/_websocket/*.html`,
-  `aiohttp/_websocket/*.so`
-- `*.py,cover` coverage artefacts
-- `__pycache__/`, `.hash/`, build trees under `build/` and `dist/`
-
-## Documentation
+## Documentation & code style
 
 User-visible API changes need a docs update under `docs/` (the
-relevant section of `docs/client_reference.rst` or
-`docs/web_reference.rst` plus any narrative pages). The docstring
-goes in the code; the prose context goes in the Sphinx sources.
-`make doc` builds the docs locally; `make doc-spelling` runs the
-spell-check leg that CI also runs.
+relevant `docs/client_reference.rst` / `docs/web_reference.rst`
+section plus any narrative pages). Docstrings in code, prose in
+Sphinx. `make doc` builds locally; `make doc-spelling` is the CI
+spell-check leg.
 
-## Code style
-
-- `pyproject.toml` pins `requires-python = ">= 3.10"`. Match the
-  surrounding file's import and typing conventions; do not
-  introduce `from __future__ import annotations` to files that
-  do not already use it.
-- Pre-commit runs isort, black, pyupgrade, flake8, yesqa,
-  codespell, end-of-file-fixer, the rst-linter, and the
-  changelog filename check, among others; mypy runs separately
-  via `make mypy`. Let the hooks rewrite files in place rather
-  than reformatting by hand.
-- Do not add docstrings or comments that just restate the code.
-  Match the existing terse style in the surrounding module.
-
-## Things not to do
-
-- Do not open a PR for code you have not proven works (see
-  _Rule zero_ at the top of this file). Run the relevant tests
-  on **both** backends, cover the new behaviour with a test,
-  exercise the user-visible path end-to-end, and say so honestly
-  in the PR body if any of that was not possible in your
-  environment.
-- Do not invent a `## What / ## Why / ## How / ## Testing` PR
-  body; use the shipped template at
-  `.github/PULL_REQUEST_TEMPLATE.md`.
-- Do not push without running `make doc-spelling` first if you
-  edited any `.rst` file (including a `CHANGES/` fragment). The
-  docs build fails on unknown words and burns a CI run; see
-  _Run the docs spell check before pushing_ above.
-- Do not skip the `CHANGES/` fragment "because the change is
-  small". Even a one-line bugfix needs one.
-- Do not add `Co-Authored-By` trailers for LLM tools, in either
-  commits or the PR body.
-- Do not mix agent-generated scan output, test summaries, or
-  pipeline reports into the template sections. Put them in a
-  collapsed `<details>` footer below the PR summary instead.
-- Do not use em-dashes or sentence-separating dashes in PR prose
-  or commit messages.
-- Do not edit files under `vendor/llhttp/` by hand; they belong
-  to the upstream `nodejs/llhttp` submodule. To bump the pinned
-  version, move the submodule pointer (see
-  [Submodules and llhttp](#submodules-and-llhttp)) and split that
-  bump into its own PR.
-- Do not commit build artefacts (`*.c`, `*.so`, `*.html`,
-  `*.py,cover`, `__pycache__/`, `build/`, `dist/`) alongside
-  source changes.
-- Do not change one backend without checking the other; see
-  "Dual-backend discipline" above.
-- Do not leave unreachable lines in tests (defensive `raise`
-  inside a stub the suite never invokes, cleanup branches that
-  only run for a setup shape the test does not exercise). Tests
-  are part of the coverage report; see _Every line in a test
-  must be covered_ above.
-- Do not open PRs against the release branches (`3.12`, `3.13`,
-  etc.); target `master` and let `patchback` handle the
-  backport after merge.
-- Do not mark the PR ready for review yourself; that is the
-  call of the human running the agent, not the agent itself.
-  Maintainers do not look at drafts, but that does not mean
-  they should be doing your review; the operator is responsible
-  for reviewing the LLM-authored change before flipping the PR
-  out of draft.
-- Do not request reviewers from the agent session; the human
-  who flips the PR out of draft will route it.
+`pyproject.toml` pins `requires-python = ">= 3.10"`. Match the
+surrounding file's import and typing conventions; do not introduce
+`from __future__ import annotations` where the file does not already
+use it. No docstrings or comments that just restate the code.

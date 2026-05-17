@@ -1,0 +1,5 @@
+Restructured ``AGENTS.md`` to use shorter top-level sections (Branching,
+Build, Test, Lint & Format, Changelog, Threat model) and tighter prose,
+while preserving the existing rules on dual-backend parity, draft pull
+requests, agent disclosure, and the ``CHANGES/`` fragment workflow
+-- by :user:`bdraco`.
