@@ -1,1 +1,1 @@
-Fixed the C HTTP response parser to skip payload parsing for responses to HEAD requests, matching the Python parser behavior.
+Fixed the C HTTP response parser to skip payload parsing for responses to HEAD requests, matching the Python parser behavior -- by :user:`Sean-Kenneth-Doherty`.
