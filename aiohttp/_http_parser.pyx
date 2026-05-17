@@ -634,15 +634,17 @@ cdef class HttpParser:
             cparser.llhttp_resume(self._cparser)
             pos = cparser.llhttp_get_error_pos(self._cparser) - base
             self._tail = data[pos:]
-            if (
-                not self._response_with_body and
-                self._tail and
-                self._messages and
-                self._cparser.type == cparser.HTTP_RESPONSE
-            ):
-                msg = self._messages[-1][0]
-                (<RawResponseMessage>msg).should_close = True
-                self._tail = b""
+            if not self._response_with_body:
+                # Pausing at headers-complete bypasses cb_on_message_complete.
+                self._payload = None
+                if (
+                    self._tail and
+                    self._messages and
+                    self._cparser.type == cparser.HTTP_RESPONSE
+                ):
+                    msg = self._messages[-1][0]
+                    (<RawResponseMessage>msg).should_close = True
+                    self._tail = b""
 
         PyBuffer_Release(&self.py_buf)
 

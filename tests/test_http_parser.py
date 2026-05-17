@@ -2012,6 +2012,27 @@ def test_parse_payload_response_without_body(
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="C extensions are not available")
+@pytest.mark.parametrize(
+    "length_or_te",
+    [b"content-length: 10", b"Transfer-Encoding: chunked"],
+)
+def test_c_parse_payload_response_without_body_feed_eof_clean(
+    event_loop: asyncio.AbstractEventLoop,
+    length_or_te: bytes,
+) -> None:
+    protocol = ResponseHandler(event_loop)
+    parser = HttpResponseParserC(protocol, event_loop, 2**16, response_with_body=False)
+    protocol._parser = parser
+    text = b"HTTP/1.1 200 Ok\r\n" + length_or_te + b"\r\n\r\n"
+
+    msg, payload = parser.feed_data(text)[0][0]
+    parser.feed_eof()
+
+    assert msg.code == 200
+    assert payload.is_eof()
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="C extensions are not available")
 def test_c_parse_payload_response_without_body_closes_on_unexpected_body(
     event_loop: asyncio.AbstractEventLoop,
 ) -> None:
