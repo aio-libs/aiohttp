@@ -627,6 +627,12 @@ jobs:
         make cythonize
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.4.1
+      with:
+        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
+        # available on the runner for Windows and macOS. Installing
+        # cibuildwheel with the `uv` extra bundles uv with it; Linux
+        # already has uv inside the manylinux/musllinux container.
+        extras: uv
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2
