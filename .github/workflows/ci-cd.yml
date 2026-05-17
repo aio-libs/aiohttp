@@ -275,8 +275,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v6
       with:
+        files: ./junit.xml
+        report_type: test_results
         token: ${{ secrets.CODECOV_TOKEN }}
 
   autobahn:
@@ -360,8 +362,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v6
       with:
+        files: ./junit.xml
+        report_type: test_results
         token: ${{ secrets.CODECOV_TOKEN }}
 
   benchmark:
