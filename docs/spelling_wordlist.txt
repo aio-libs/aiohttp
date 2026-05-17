@@ -72,6 +72,7 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codecov
 codebase
 codec
 Codings
