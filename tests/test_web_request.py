@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import socket
 import ssl
 import sys
 import time
@@ -44,16 +43,17 @@ def test_base_ctor() -> None:
         URL("/path/to?a=1&b=2"),
     )
 
+    protocol = mock.Mock()
+    protocol.sockname = ("127.0.0.1", 80)
     req = web.BaseRequest(
-        message, mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock(), mock.Mock()
+        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
     )
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
-    # MacOS may return CamelCased host name, need .lower()
-    # FQDN can be wider than host, e.g.
-    # 'fv-az397-495' in 'fv-az397-495.internal.cloudapp.net'
-    assert req.host.lower() in socket.getfqdn().lower()
+    # No Host header in this request, so host falls back to the
+    # local socket address the request arrived on.
+    assert req.host == "127.0.0.1"
     assert "/path/to?a=1&b=2" == req.path_qs
     assert "/path/to" == req.path
     assert "a=1&b=2" == req.query_string
@@ -75,10 +75,10 @@ def test_ctor() -> None:
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
-    # MacOS may return CamelCased host name, need .lower()
-    # FQDN can be wider than host, e.g.
-    # 'fv-az397-495' in 'fv-az397-495.internal.cloudapp.net'
-    assert req.host.lower() in socket.getfqdn().lower()
+    # No Host header in this request, so host falls back to the
+    # local socket address the request arrived on (the default
+    # sockname configured by make_mocked_request).
+    assert req.host == "127.0.0.1"
     assert "/path/to?a=1&b=2" == req.path_qs
     assert "/path/to" == req.path
     assert "a=1&b=2" == req.query_string
@@ -112,6 +112,20 @@ def test_ctor() -> None:
     assert req.headers == headers
     assert req.raw_headers == ((b"FOO", b"bar"),)
     assert req.task is req._task
+
+
+def test_host_falls_back_to_sockname_not_dns() -> None:
+    """Regression: request.host must not call socket.getfqdn().
+
+    socket.getfqdn() does blocking reverse DNS resolution on the
+    event loop thread and can stall a worker for many seconds when
+    the system resolver is slow. The fallback for a request with no
+    Host header is the local socket address the request arrived on,
+    not the system FQDN.
+    """
+    req = make_mocked_request("GET", "/")
+    assert req.host == "127.0.0.1"
+    assert str(req.url).startswith("http://127.0.0.1")
 
 
 def test_doubleslashes() -> None:

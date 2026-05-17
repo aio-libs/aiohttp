@@ -550,11 +550,12 @@ def _create_app_mock() -> mock.MagicMock:
 def _create_transport(sslcontext: SSLContext | None = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> SSLContext | None:
+    def get_extra_info(key: str) -> Any:
         if key == "sslcontext":
             return sslcontext
-        else:
-            return None
+        if key == "sockname":
+            return ("127.0.0.1", 80)
+        return None
 
     transport.get_extra_info.side_effect = get_extra_info
     return transport
@@ -634,6 +635,9 @@ def make_mocked_request(
         protocol.transport = transport
         type(protocol).peername = mock.PropertyMock(
             return_value=transport.get_extra_info("peername")
+        )
+        type(protocol).sockname = mock.PropertyMock(
+            return_value=transport.get_extra_info("sockname")
         )
         type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
