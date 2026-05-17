@@ -73,9 +73,9 @@ file a follow-up issue; do not silently leave them divergent.
 
 ## Lint & Format
 
-- `pre-commit run --all-files` runs all checks (black, isort,
-  pyupgrade, flake8, yesqa, codespell, end-of-file-fixer, rst-linter,
-  changelog filename check). `make lint` runs the same plus `mypy`.
+- `pre-commit run --all-files` runs all hooks defined in
+  [`.pre-commit-config.yaml`](.pre-commit-config.yaml). `make lint`
+  runs the same plus `mypy`.
 - `black` for formatting only, `mypy` for type checking (not in
   pre-commit; `make mypy`).
 - Style: black with 88-col line length, isort with trailing commas.
@@ -90,10 +90,9 @@ file a follow-up issue; do not silently leave them divergent.
 ## Changelog
 
 Every user- or contributor-visible PR needs a towncrier fragment in
-`CHANGES/`, named `<pr_or_issue_number>.<category>.rst`. Categories
-(in `[tool.towncrier]` in [pyproject.toml](pyproject.toml)):
-`bugfix`, `feature`, `deprecation`, `breaking`, `doc`, `packaging`,
-`contrib`, `misc`.
+`CHANGES/`, named `<pr_or_issue_number>.<category>.rst`. Valid
+categories are defined in `[tool.towncrier]` in
+[pyproject.toml](pyproject.toml).
 
 - reStructuredText, past tense (`Fixed`, `Added`, `Bumped`).
 - No PR/issue number in the body; towncrier reads it from the
