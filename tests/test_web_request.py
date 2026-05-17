@@ -44,6 +44,8 @@ def test_base_ctor() -> None:
     )
 
     protocol = mock.Mock()
+    protocol.ssl_context = None
+    protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
     req = web.BaseRequest(
         message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
