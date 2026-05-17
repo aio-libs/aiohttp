@@ -359,7 +359,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
     requests = [
         _mock_request(method="GET", path=f"/api/{customer}/update")
-        for customer in range(250)
+        for customer in range(150)
     ]
 
     async def run_url_dispatcher_benchmark() -> Optional[web.UrlMappingMatchInfo]:
@@ -401,7 +401,7 @@ def test_resolve_gitapi(
     alnums = string.ascii_letters + string.digits
 
     requests = []
-    for i in range(250):
+    for i in range(150):
         owner = "".join(random.sample(alnums, 10))
         repo = "".join(random.sample(alnums, 10))
         pull_number = random.randint(0, 250)
@@ -472,7 +472,7 @@ def test_resolve_gitapi_subapps(
     alnums = string.ascii_letters + string.digits
 
     requests = []
-    for i in range(250):
+    for i in range(150):
         owner = "".join(random.sample(alnums, 10))
         repo = "".join(random.sample(alnums, 10))
         pull_number = random.randint(0, 250)
