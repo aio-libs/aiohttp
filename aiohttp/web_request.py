@@ -386,7 +386,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         sockname = self._transport_sockname
         if sockname is None:
             return ""
-        if isinstance(sockname, (list, tuple)):
+        if isinstance(sockname, tuple):
             return str(sockname[0])
         return str(sockname)
 

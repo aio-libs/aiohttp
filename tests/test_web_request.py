@@ -128,6 +128,24 @@ def test_host_falls_back_to_sockname_not_dns() -> None:
     assert str(req.url).startswith("http://127.0.0.1")
 
 
+def test_host_with_unix_socket_sockname() -> None:
+    """Unix-socket transports expose sockname as a str path."""
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = lambda key: (
+        "/tmp/aiohttp.sock" if key == "sockname" else None
+    )
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == "/tmp/aiohttp.sock"
+
+
+def test_host_with_no_transport_sockname() -> None:
+    """An empty string is returned when no sockname is available."""
+    transport = mock.Mock()
+    transport.get_extra_info.return_value = None
+    req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == ""
+
+
 def test_doubleslashes() -> None:
     # NB: //foo/bar is an absolute URL with foo netloc and /bar path
     req = make_mocked_request("GET", "/bar//foo/")
