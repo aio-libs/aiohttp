@@ -1,0 +1,7 @@
+Deprecated :class:`~aiohttp.BasicAuth` and the ``auth`` / ``proxy_auth``
+parameters. They will be removed in aiohttp 4.0. Use the new
+:func:`~aiohttp.encode_basic_auth` helper together with
+``headers={"Authorization": ...}`` (or
+``proxy_headers={"Proxy-Authorization": ...}`` for proxies) instead.
+Note that ``encode_basic_auth()`` defaults to `utf-8`, not `latin1`
+-- by :user:`Dreamsorcerer`.
