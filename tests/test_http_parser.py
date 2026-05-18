@@ -1074,9 +1074,10 @@ def test_max_header_value_size_under_limit(parser: HttpRequestParser) -> None:
 
 
 async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
+    num_chunks = 20000  # comfortably above the 16385 pause threshold
     text = (
         b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
-        + b"1\r\nb\r\n" * 50000
+        + b"1\r\nb\r\n" * num_chunks
         + b"0\r\n\r\n"
     )
 
@@ -1087,8 +1088,9 @@ async def test_chunk_splits_after_pause(parser: HttpRequestParser) -> None:
     assert len(payload._http_chunk_splits) == 16385
     # We should still get the full result after read(), as it will continue processing.
     result = await payload.read()
-    assert len(result) == 50000  # Compare len first, as it's easier to debug in diff.
-    assert result == b"b" * 50000
+    # Compare len first, as it's easier to debug in diff.
+    assert len(result) == num_chunks
+    assert result == b"b" * num_chunks
 
 
 async def test_compressed_with_tail(response: HttpResponseParser) -> None:
