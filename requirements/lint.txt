@@ -22,7 +22,7 @@ cffi==2.0.0
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-click==8.3.3
+click==8.4.0
     # via slotscheck
 cryptography==48.0.0
     # via trustme
