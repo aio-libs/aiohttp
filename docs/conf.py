@@ -88,6 +88,7 @@ myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
 # THREAT_MODEL.md is a living document whose section index links forward to
 # chapters that are not written yet; those dangling anchors must not fail the
 # build. Markdown is the only MyST source, so this is scoped to the threat model.
+# TODO: Remove this option once THREAT_MODEL.md is complete.
 suppress_warnings = ["myst.xref_missing"]
 
 intersphinx_mapping = {
