@@ -1,0 +1,1 @@
+Added ``THREAT_MODEL.md`` detailing our security stance -- by :user:`Dreamsorcerer`.

@@ -4,11 +4,11 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --resolver=backtracking --strip-extras requirements/lint.in
 #
-aiodns==4.0.0
+aiodns==4.0.3
     # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.3.0
+ast-serialize==0.5.0
     # via mypy
 async-timeout==5.0.1
     # via valkey
@@ -22,7 +22,7 @@ cffi==2.0.0
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-click==8.3.3
+click==8.4.0
     # via slotscheck
 cryptography==48.0.0
     # via trustme
@@ -44,7 +44,7 @@ idna==3.15
     # via trustme
 iniconfig==2.3.0
     # via pytest
-isal==1.7.2
+isal==1.8.0
     # via -r requirements/lint.in
 librt==0.11.0
     # via mypy
@@ -124,7 +124,7 @@ typing-extensions==4.15.0
     #   virtualenv
 typing-inspection==0.4.2
     # via pydantic
-uvloop==0.21.0 ; platform_system != "Windows"
+uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in

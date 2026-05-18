@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --strip-extras requirements/constraints.in
 #
-aiodns==4.0.0
+aiodns==4.0.3
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -18,7 +18,7 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.3.0
+ast-serialize==0.5.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -50,7 +50,7 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.3.3
+click==8.4.0
     # via
     #   pip-tools
     #   slotscheck
@@ -99,7 +99,7 @@ imagesize==2.0.0
     # via sphinx
 iniconfig==2.3.0
     # via pytest
-isal==1.7.2 ; python_version < "3.14"
+isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -183,6 +183,7 @@ pytest==9.0.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-timeout
     #   pytest-xdist
 pytest-codspeed==5.0.2
     # via
@@ -194,6 +195,8 @@ pytest-mock==3.15.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
+pytest-timeout==2.4.0
+    # via -r requirements/test-common.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
@@ -280,7 +283,7 @@ typing-inspection==0.4.2
     # via pydantic
 urllib3==2.7.0
     # via requests
-uvloop==0.21.0 ; platform_system != "Windows"
+uvloop==0.22.1 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
