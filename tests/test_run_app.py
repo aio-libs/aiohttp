@@ -1268,6 +1268,7 @@ class TestShutdown:
         sock = unused_port_socket
         port = sock.getsockname()[1]
         actions = []
+        suppressed = asyncio.Event()
 
         async def test() -> None:
             async def test_resp(sess):
@@ -1279,7 +1280,8 @@ class TestShutdown:
 
             async with ClientSession() as sess:
                 t = asyncio.create_task(test_resp(sess))
-                await asyncio.sleep(0.5)
+                # Wait until the handler has observed its cancellation.
+                await asyncio.wait_for(suppressed.wait(), timeout=3)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
                 async with sess.get(f"http://127.0.0.1:{port}/stop"):
@@ -1300,6 +1302,7 @@ class TestShutdown:
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 actions.append("SUPPRESSED")
+                suppressed.set()
                 await asyncio.sleep(2)
                 actions.append("DONE")
             return web.Response(text="FOO")
