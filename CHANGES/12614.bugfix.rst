@@ -1,0 +1,1 @@
+Fixed per-request ``cookies`` parameter leaking to cross-origin redirect targets -- by :user:`rodrigobnogueira`.

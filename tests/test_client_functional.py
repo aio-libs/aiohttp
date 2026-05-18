@@ -3490,6 +3490,87 @@ async def test_drop_auth_on_redirect_to_other_host(
             assert resp.status == 200
 
 
+@pytest.mark.parametrize(
+    ("url_from_s", "url_to_s"),
+    (
+        ("http://host1.com/path1", "http://host2.com/path2"),
+        ("http://host1.com/path1", "https://host1.com/path1"),
+        ("https://host1.com/path1", "http://host1.com/path2"),
+        ("http://host1.com/path1", "https://host1.com:9443/path1"),
+    ),
+    ids=(
+        "entirely different hosts",
+        "http -> https",
+        "https -> http",
+        "http -> https different port",
+    ),
+)
+async def test_drop_cookies_param_on_redirect_to_other_host(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+    url_from_s: str,
+    url_to_s: str,
+) -> None:
+    """Per-request cookies= must not leak to cross-origin redirect targets."""
+    url_from, url_to = URL(url_from_s), URL(url_to_s)
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert request.host.split(":")[0] == url_from.host
+        assert "session" in request.cookies
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert request.host.split(":")[0] == url_to.host
+        assert "Cookie" not in request.headers, "Per-request cookies leaked to redirect"
+        return web.Response()
+
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
+
+    assert (
+        url_from.host != url_to.host
+        or server_from.scheme != server_to.scheme
+        or url_from.port != url_to.port
+    ), "Invalid test case, host, scheme, or port must differ"
+
+    etc_hosts = {
+        (url_from.host, url_from.port): server_from,
+        (url_to.host, url_to.port): server_to,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    async with aiohttp.ClientSession(connector=connector) as client:
+        async with client.get(
+            url_from,
+            cookies={"session": "SECRET"},
+        ) as resp:
+            assert resp.status == 200
+
+
 async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
 ) -> None:
