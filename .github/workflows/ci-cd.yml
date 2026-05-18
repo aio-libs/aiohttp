@@ -182,6 +182,7 @@ jobs:
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
+    timeout-minutes: 15
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -294,6 +295,7 @@ jobs:
         os: [ubuntu]
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -422,6 +424,7 @@ jobs:
       matrix:
         os: [ubuntu, windows]
     runs-on: ${{ matrix.os }}-latest
+    timeout-minutes: 15
     steps:
     - name: Checkout
       uses: actions/checkout@v6
