@@ -38,7 +38,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-click==8.3.3
+click==8.4.0
     # via wait-for-it
 coverage==7.14.0
     # via
