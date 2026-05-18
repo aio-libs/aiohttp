@@ -307,7 +307,7 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
+        run: python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed --timeout=0
 
 
   check:  # This job does nothing and is only used for the branch protection
