@@ -288,6 +288,17 @@ class RequestHandler(BaseProtocol):
             else self.transport.get_extra_info("peername")
         )
 
+    @under_cached_property
+    def sockname(
+        self,
+    ) -> Optional[Union[str, Tuple[str, int, int, int], Tuple[str, int]]]:
+        """Return sockname if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("sockname")
+        )
+
     @property
     def keepalive_timeout(self) -> float:
         return self._keepalive_timeout

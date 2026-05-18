@@ -19,8 +19,10 @@ from typing import (
     Iterator,
     List,
     Optional,
+    Tuple,
     Type,
     TypeVar,
+    Union,
     cast,
     overload,
 )
@@ -651,11 +653,10 @@ def _create_app_mock() -> mock.MagicMock:
 def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> Optional[SSLContext]:
+    def get_extra_info(key: str) -> Optional[Union[SSLContext, Tuple[str, int]]]:
         if key == "sslcontext":
             return sslcontext
-        else:
-            return None
+        return ("127.0.0.1", 80) if key == "sockname" else None
 
     transport.get_extra_info.side_effect = get_extra_info
     return transport
@@ -735,6 +736,9 @@ def make_mocked_request(
         protocol.transport = transport
         type(protocol).peername = mock.PropertyMock(
             return_value=transport.get_extra_info("peername")
+        )
+        type(protocol).sockname = mock.PropertyMock(
+            return_value=transport.get_extra_info("sockname")
         )
         type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
