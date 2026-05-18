@@ -193,6 +193,8 @@ jobs:
       uses: astral-sh/setup-uv@v8.1.0
       with:
         python-version: ${{ matrix.pyver }}
+        # important: do not use system python
+        python-preference: only-managed
         activate-environment: true
         enable-cache: true
     - name: Update pip, wheel, setuptools, build, twine
@@ -295,6 +297,8 @@ jobs:
       uses: astral-sh/setup-uv@v8.1.0
       with:
         python-version: ${{ matrix.pyver }}
+        # important: do not use system python
+        python-preference: only-managed
         activate-environment: true
         enable-cache: true
     - name: Update pip, wheel, setuptools, build, twine
