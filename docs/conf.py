@@ -59,6 +59,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
+    "myst_parser",  # renders Markdown sources (e.g. ``THREAT_MODEL.md``)
+    "sphinxcontrib.mermaid",  # renders Mermaid diagrams
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
@@ -70,6 +72,23 @@ try:
 except ImportError:
     pass
 
+# THREAT_MODEL.md is already spell-checked by the codespell pre-commit hook.
+# The spelling builder additionally mis-tokenises its ``**S**poofing`` STRIDE
+# list into non-words, so skip the threat model here to avoid double coverage.
+spelling_exclude_patterns = ["threat_model.md"]
+
+
+# -- MyST (Markdown) configuration ----------------------------------------
+
+# ``THREAT_MODEL.md`` lives at the repo root and is surfaced through
+# ``docs/threat_model.md``.
+myst_heading_anchors = 3  # anchors for h1-h3 so the in-page section links work
+myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
+
+# THREAT_MODEL.md is a living document whose section index links forward to
+# chapters that are not written yet; those dangling anchors must not fail the
+# build. Markdown is the only MyST source, so this is scoped to the threat model.
+suppress_warnings = ["myst.xref_missing"]
 
 intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),

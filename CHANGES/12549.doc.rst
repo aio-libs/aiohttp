@@ -1,0 +1,2 @@
+Added the project :doc:`threat model <threat_model>` to the rendered
+documentation -- by :user:`omkar-334`.
