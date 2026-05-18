@@ -1,0 +1,4 @@
+Switched the test-results upload step to ``codecov/codecov-action@v6``
+with ``report_type: test_results``, since
+``codecov/test-results-action`` is being deprecated in favor of
+``codecov-action`` -- by :user:`bdraco`.

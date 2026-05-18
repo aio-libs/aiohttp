@@ -1,0 +1,7 @@
+Added an ``AGENTS.md`` orientation file at the repository root, covering the
+shipped pull request template, the ``CHANGES/`` news fragment conventions,
+the draft-PR / human-review workflow, and the dual pure-Python and
+C-extension parity rule (including the WebSocket
+``reader_py.py`` / ``reader_c.py`` split and the vendored ``llhttp``
+sources), so LLM contributors land changes that match project style
+-- by :user:`bdraco`.

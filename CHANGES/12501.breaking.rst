@@ -1,0 +1,3 @@
+Removed ``BasicAuth`` and the ``auth`` / ``proxy_auth`` parameters.
+Use ``encode_basic_auth()`` in a header instead.
+-- by :user:`Dreamsorcerer`
