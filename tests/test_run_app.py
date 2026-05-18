@@ -1352,10 +1352,7 @@ class TestShutdown:
 
             async with ClientSession() as sess:
                 t = asyncio.create_task(test_resp(sess))
-                # Wait until the handler has observed its cancellation and
-                # appended SUPPRESSED, rather than relying on wall-clock
-                # timing to order PRESTOP after the server-side cancel.
-                # Bounded so a regression fails fast instead of hanging.
+                # Wait until the handler has observed its cancellation.
                 await asyncio.wait_for(suppressed.wait(), timeout=3)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
