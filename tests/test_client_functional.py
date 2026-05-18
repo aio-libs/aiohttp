@@ -2416,7 +2416,7 @@ async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> N
     we raise DecompressSizeError.
     """
     # Create a highly compressible payload.
-    payload_size = 64 * 2**20
+    payload_size = 2 * 2**20
     original = b"A" * payload_size
     compressed = zlib.compress(original)
     assert len(original) > DEFAULT_CHUNK_SIZE
@@ -2448,7 +2448,7 @@ async def test_payload_decompress_size_limit_brotli(
     """Test that brotli decompression size limit triggers DecompressSizeError."""
     assert brotli is not None
     # Create a highly compressible payload
-    payload_size = 64 * 2**20
+    payload_size = 2 * 2**20
     original = b"A" * payload_size
     compressed = brotli.compress(original)
     assert len(original) > DEFAULT_CHUNK_SIZE
@@ -2479,7 +2479,7 @@ async def test_payload_decompress_size_limit_zstd(
     """Test that zstd decompression size limit triggers DecompressSizeError."""
     assert ZstdCompressor is not None
     # Create a highly compressible payload.
-    payload_size = 64 * 2**20
+    payload_size = 2 * 2**20
     original = b"A" * payload_size
     compressor = ZstdCompressor()
     compressed = compressor.compress(original) + compressor.flush()
@@ -2904,7 +2904,7 @@ async def test_set_cookies_max_age(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
         cookie_names = {c.key for c in client.session.cookie_jar}
         assert cookie_names == {"c1", "c2", "c3"}
-        await asyncio.sleep(2)
+        await asyncio.sleep(1.1)
         cookie_names = {c.key for c in client.session.cookie_jar}
         assert cookie_names == {"c1", "c2"}
 
