@@ -111,6 +111,8 @@ pytest-cov==7.1.0
     # via -r requirements/test-common.in
 pytest-mock==3.15.1
     # via -r requirements/test-common.in
+pytest-timeout==2.4.0
+    # via -r requirements/test-common.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
