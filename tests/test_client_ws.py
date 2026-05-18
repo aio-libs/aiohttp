@@ -183,7 +183,6 @@ async def test_ws_connect_with_params(ws_key: str, key_data: bytes) -> None:
 
 
 async def test_ws_connect_custom_response(ws_key: str, key_data: bytes) -> None:
-
     class CustomResponse(client.ClientWebSocketResponse):
         def read(self, decode: bool = False) -> str:
             return "customized!"

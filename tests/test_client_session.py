@@ -6,7 +6,7 @@ import json
 import sys
 import warnings
 from collections import deque
-from collections.abc import Awaitable, Callable, Iterator
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
 from types import SimpleNamespace
 from typing import Any, Literal, NoReturn, TypedDict, cast
@@ -15,6 +15,7 @@ from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
@@ -27,7 +28,6 @@ from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConne
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
 from aiohttp.payload import Payload
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.test_utils import TestServer
 from aiohttp.tracing import (
     Trace,
@@ -51,24 +51,24 @@ class _Params(TypedDict):
 
 
 @pytest.fixture
-def connector(
-    loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
-) -> Iterator[BaseConnector]:
+async def connector(
+    create_mocked_conn: Callable[[], ResponseHandler],
+) -> AsyncIterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
 
-    key = ConnectionKey("localhost", 80, False, True, None, None, None)
-    conn = loop.run_until_complete(make_conn())
+    key = ConnectionKey("localhost", 80, False, True, None, None)
+    conn = await make_conn()
     proto = create_mocked_conn()
     conn._conns[key] = deque([(proto, 123)])
-    yield conn
-    loop.run_until_complete(conn.close())
+    try:
+        yield conn
+    finally:
+        await conn.close()
 
 
 @pytest.fixture
-def create_session(
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
+async def create_session() -> AsyncIterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
     async def maker(*args: Any, **kwargs: Any) -> ClientSession:
@@ -78,15 +78,14 @@ def create_session(
 
     yield maker
     if session is not None:
-        loop.run_until_complete(session.close())
+        await session.close()
 
 
 @pytest.fixture
-def session(
+async def session(
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
-    return loop.run_until_complete(create_session())
+    return await create_session()
 
 
 @pytest.fixture
@@ -450,7 +449,7 @@ async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
             )  # Should use connector's value
 
 
-def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
+def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
@@ -465,13 +464,13 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
             async def make_sess() -> ClientSession:
                 return ClientSession(connector=connector)
 
-            loop.run_until_complete(make_sess())
+            event_loop.run_until_complete(make_sess())
         expected = "Session and connector have to use same event loop"
         assert str(ctx.value).startswith(expected)
         another_loop.run_until_complete(connector.close())
 
 
-def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     conn = session.connector
     assert conn is not None
     try:
@@ -481,7 +480,7 @@ def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None
         assert session.closed
         assert not conn.closed
     finally:
-        loop.run_until_complete(conn.close())
+        event_loop.run_until_complete(conn.close())
 
 
 async def test_request_closed_session(session: ClientSession) -> None:
@@ -895,49 +894,32 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
 
 async def test_default_proxy() -> None:
     proxy_url = URL("http://proxy.example.com")
-    proxy_auth = mock.Mock()
     proxy_url2 = URL("http://proxy.example2.com")
-    proxy_auth2 = mock.Mock()
 
     class OnCall(Exception):
         pass
 
     request_class_mock = mock.Mock(side_effect=OnCall())
-    session = ClientSession(
-        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
-    )
+    session = ClientSession(proxy=proxy_url, request_class=request_class_mock)
 
     assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
-    assert (
-        session._default_proxy_auth == proxy_auth
-    ), "`ClientSession._default_proxy_auth` not set"
 
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com",
-        )
+        await session.get("http://example.com")
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url
     ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
 
     request_class_mock.reset_mock()
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
-        )
+        await session.get("http://example.com", proxy=proxy_url2)
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url2
-    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+    ), "`ClientSession._request` uses per-request proxy not session default"
 
     await session.close()
 
@@ -1436,7 +1418,6 @@ async def test_instantiation_with_invalid_timeout_value() -> None:
     ("outer_name", "inner_name"),
     [
         ("skip_auto_headers", "_skip_auto_headers"),
-        ("auth", "_default_auth"),
         ("json_serialize", "_json_serialize"),
         ("connector_owner", "_connector_owner"),
         ("raise_for_status", "_raise_for_status"),
@@ -1500,11 +1481,12 @@ async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
 @pytest.mark.usefixtures("netrc_default_contents")
 async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
+    explicit = aiohttp.encode_basic_auth("explicit_user", "explicit_pass")
     async with (
         ClientSession(trust_env=True) as session,
         session.get(
             auth_server.make_url("/"),
-            auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
+            headers={"Authorization": explicit},
         ) as resp,
     ):
         text = await resp.text()

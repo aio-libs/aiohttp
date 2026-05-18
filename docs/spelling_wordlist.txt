@@ -1,4 +1,5 @@
 abc
+ABI
 addons
 aiodns
 aioes
@@ -39,7 +40,6 @@ Backporting
 backports
 BaseEventLoop
 basename
-BasicAuth
 behaviour
 BodyPartReader
 boolean
@@ -72,6 +72,7 @@ CIMultiDict
 ClientSession
 cls
 cmd
+codecov
 codebase
 codec
 Codings
@@ -156,6 +157,7 @@ Indices
 infos
 initializer
 inline
+inlined
 intaking
 io
 IoT
@@ -237,6 +239,7 @@ Paolini
 param
 params
 parsers
+patchback
 pathlib
 payloads
 peername

@@ -103,7 +103,7 @@ class FileResponse(StreamResponse):
         # controlled by the constructor's chunk_size argument.
 
         chunk_size = self._chunk_size
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         chunk = await loop.run_in_executor(
             None, self._seek_and_read, fobj, offset, min(chunk_size, count)
         )

@@ -27,7 +27,7 @@ from aiohttp.client_reqrep import (
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
 from aiohttp.hdrs import METH_DELETE
-from aiohttp.helpers import TimerNoop
+from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 
@@ -59,11 +59,11 @@ def buf() -> bytearray:
 
 @pytest.fixture
 def protocol(
-    loop: asyncio.AbstractEventLoop, transport: asyncio.Transport
+    event_loop: asyncio.AbstractEventLoop, transport: asyncio.Transport
 ) -> BaseProtocol:
     protocol = mock.Mock()
     protocol.transport = transport
-    protocol._drain_helper.return_value = loop.create_future()
+    protocol._drain_helper.return_value = event_loop.create_future()
     protocol._drain_helper.return_value.set_result(None)
     return protocol
 
@@ -349,7 +349,7 @@ async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) ->
         ),
     ),
 )
-async def test_host_header_fqdn(  # type: ignore[misc]
+async def test_host_header_fqdn(
     make_client_request: _RequestMaker,
     url: str,
     headers: CIMultiDict[str],
@@ -458,29 +458,6 @@ async def test_ipv6_nondefault_https_port(make_client_request: _RequestMaker) ->
     assert req.is_ssl()
 
 
-async def test_basic_auth(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get", URL("http://python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
-    )
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-
-
-async def test_basic_auth_utf8(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get",
-        URL("http://python.org"),
-        auth=aiohttp.BasicAuth("nkim", "секрет", "utf-8"),
-    )
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbTrRgdC10LrRgNC10YI=" == req.headers["AUTHORIZATION"]
-
-
-async def test_basic_auth_tuple_forbidden(make_client_request: _RequestMaker) -> None:
-    with pytest.raises(TypeError):
-        make_client_request("get", URL("http://python.org"), auth=("nkim", "1234"))  # type: ignore[arg-type]
-
-
 async def test_basic_auth_from_url(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://nkim:1234@python.org"))
     assert "AUTHORIZATION" in req.headers
@@ -495,15 +472,16 @@ async def test_basic_auth_no_user_from_url(make_client_request: _RequestMaker) -
     assert "python.org" == req.url.host
 
 
-async def test_basic_auth_from_url_overridden(
+async def test_basic_auth_from_url_overrides_authorization_header(
     make_client_request: _RequestMaker,
 ) -> None:
     req = make_client_request(
-        "get", URL("http://garbage@python.org"), auth=aiohttp.BasicAuth("nkim", "1234")
+        "get",
+        URL("http://nkim:1234@python.org"),
+        headers=CIMultiDict({"AUTHORIZATION": "Basic Z2FyYmFnZQ=="}),
     )
-    assert "AUTHORIZATION" in req.headers
-    assert "Basic bmtpbToxMjM0" == req.headers["AUTHORIZATION"]
-    assert "python.org" == req.url.host
+    assert req.headers["AUTHORIZATION"] == "Basic bmtpbToxMjM0"
+    assert req.url.host == "python.org"
 
 
 async def test_path_is_not_double_encoded1(make_client_request: _RequestMaker) -> None:
@@ -942,7 +920,7 @@ async def test_bytes_data(conn: mock.Mock, make_client_request: _RequestMaker) -
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding(  # type: ignore[misc]
+async def test_content_encoding(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
@@ -991,7 +969,7 @@ async def test_content_encoding_rejects_unknown_string(
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_content_encoding_header(  # type: ignore[misc]
+async def test_content_encoding_header(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     req = make_client_request(
@@ -1125,7 +1103,7 @@ async def test_file_upload_not_chunked(make_client_request: _RequestMaker) -> No
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
-async def test_precompressed_data_stays_intact(  # type: ignore[misc]
+async def test_precompressed_data_stays_intact(
     make_client_request: _RequestMaker,
 ) -> None:
     data = ZLibBackend.compress(b"foobar")
@@ -1261,6 +1239,7 @@ async def test_data_stream(
         yield b"binary data"
         yield b" result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     assert req.chunked
     assert req.headers["TRANSFER-ENCODING"] == "chunked"
@@ -1390,6 +1369,7 @@ async def test_data_stream_continue(
         yield b"binary data"
         yield b" result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "POST", URL("http://python.org/"), data=gen(), expect100=True, loop=loop
     )
@@ -1400,7 +1380,7 @@ async def test_data_stream_continue(
         assert req._continue is not None
         req._continue.set_result(1)
 
-    t = loop.create_task(coro())
+    t = asyncio.get_running_loop().create_task(coro())
 
     resp = await req._send(conn)
     assert req._writer is not None
@@ -1447,6 +1427,7 @@ async def test_close(
         await asyncio.sleep(0.00001)
         yield b"result"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=gen(), loop=loop)
     resp = await req._send(conn)
     await req._close()
@@ -1477,6 +1458,7 @@ async def test_custom_response_class(
         async def read(self) -> bytes:
             return b"customized!"
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "GET", URL("http://python.org/"), response_class=CustomResponse, loop=loop
     )
@@ -1504,7 +1486,7 @@ async def test_oserror_on_write_bytes(
 
 
 @pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
-async def test_cancel_close(  # type: ignore[misc]
+async def test_cancel_close(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
@@ -1551,7 +1533,7 @@ async def test_terminate(conn: mock.Mock, make_client_request: _RequestMaker) ->
 
 
 def test_terminate_with_closed_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     conn: mock.Mock,
 ) -> None:
     req = resp = writer = None
@@ -1562,20 +1544,18 @@ def test_terminate_with_closed_loop(
         req = ClientRequest(
             "get",
             URL("http://python.org"),
-            loop=loop,
+            loop=event_loop,
             params={},
             headers=CIMultiDict[str](),
             skip_auto_headers=None,
             data=None,
             cookies=BaseCookie[str](),
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
             expect100=False,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             timer=TimerNoop(),
             session=None,  # type: ignore[arg-type]
             ssl=True,
@@ -1600,9 +1580,9 @@ def test_terminate_with_closed_loop(
 
         await asyncio.sleep(0.05)
 
-    loop.run_until_complete(go())
+    event_loop.run_until_complete(go())
 
-    loop.close()
+    event_loop.close()
     assert req is not None
     req._terminate()
     assert req._writer is None
@@ -1629,7 +1609,7 @@ async def test_custom_req_rep(create_mocked_conn: mock.Mock) -> None:
             conn = connection
             self.status = 123
             self.reason = "Test OK"
-            self._headers = CIMultiDictProxy(CIMultiDict())
+            self._headers = HeadersDictProxy(CIMultiDict())
             self.cookies = SimpleCookie()
             return self
 
@@ -1678,17 +1658,17 @@ async def test_custom_req_rep(create_mocked_conn: mock.Mock) -> None:
         conn.close()
 
 
-def test_bad_fingerprint(loop: asyncio.AbstractEventLoop) -> None:
+def test_bad_fingerprint() -> None:
     with pytest.raises(ValueError):
         Fingerprint(b"invalid")
 
 
-def test_insecure_fingerprint_md5(loop: asyncio.AbstractEventLoop) -> None:
+def test_insecure_fingerprint_md5() -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.md5(b"foo").digest())
 
 
-def test_insecure_fingerprint_sha1(loop: asyncio.AbstractEventLoop) -> None:
+def test_insecure_fingerprint_sha1() -> None:
     with pytest.raises(ValueError):
         Fingerprint(hashlib.sha1(b"foo").digest())
 
@@ -1716,7 +1696,7 @@ def test_gen_default_accept_encoding(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_netrc_present_untrusted_env(  # type: ignore[misc]
+async def test_basicauth_from_netrc_present_untrusted_env(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test no authorization header is sent via netrc if trust_env is False"""
@@ -1730,7 +1710,7 @@ async def test_basicauth_from_netrc_present_untrusted_env(  # type: ignore[misc]
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-async def test_basicauth_from_empty_netrc(  # type: ignore[misc]
+async def test_basicauth_from_empty_netrc(
     make_client_request: _RequestMaker,
 ) -> None:
     """Test that no Authorization header is sent when netrc is empty"""
@@ -1853,6 +1833,7 @@ async def test_write_bytes_with_content_length_limit(
     # Test with bytes data
     loop = asyncio.get_running_loop()
     data = b"Hello World"
+    loop = asyncio.get_running_loop()
     req = make_client_request("post", URL("http://python.org/"), loop=loop)
 
     await req.update_body(data)
@@ -1873,7 +1854,7 @@ async def test_write_bytes_with_content_length_limit(
         b"Part1Part2Part3",
     ],
 )
-async def test_write_bytes_with_iterable_content_length_limit(  # type: ignore[misc]
+async def test_write_bytes_with_iterable_content_length_limit(
     buf: bytearray,
     conn: mock.Mock,
     data: list[bytes] | bytes,
@@ -2061,7 +2042,7 @@ async def test_expect100_with_body_becomes_empty(
 
     # Create a request
     req = make_client_request(
-        "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
+        "POST", URL("http://test.example.com/"), loop=asyncio.get_running_loop()
     )
     req._body = mock.Mock()  # Start with a body
 
@@ -2098,7 +2079,7 @@ async def test_expect100_with_body_becomes_empty(
         ("DELETE", b"x", "1"),
     ],
 )
-async def test_content_length_for_methods(  # type: ignore[misc]
+async def test_content_length_for_methods(
     method: str,
     data: bytes | None,
     expected_content_length: str | None,
@@ -2130,6 +2111,7 @@ async def test_content_length_with_string_data(
     """Test Content-Length when data is a string."""
     loop = asyncio.get_running_loop()
     data = "Hello, World!"
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=data, loop=loop)
     # String should be encoded to bytes, default encoding is utf-8
     assert req.headers[hdrs.CONTENT_LENGTH] == str(len(data.encode("utf-8")))
@@ -2145,6 +2127,7 @@ async def test_content_length_with_async_iterable(
     async def data_gen() -> AsyncIterator[bytes]:
         yield b"chunk1"  # pragma: no cover
 
+    loop = asyncio.get_running_loop()
     req = make_client_request(
         "POST", URL("http://python.org/"), data=data_gen(), loop=loop
     )
@@ -2176,6 +2159,7 @@ async def test_content_length_with_formdata(make_client_request: _RequestMaker) 
     form = aiohttp.FormData()
     form.add_field("field", "value")
 
+    loop = asyncio.get_running_loop()
     req = make_client_request("POST", URL("http://python.org/"), data=form, loop=loop)
     # FormData with known size should set Content-Length
     assert hdrs.CONTENT_LENGTH in req.headers
@@ -2199,7 +2183,7 @@ async def test_no_content_length_with_chunked(
 
 
 @pytest.mark.parametrize("method", ["POST", "PUT", "PATCH", "DELETE"])
-async def test_update_body_none_sets_content_length_zero(  # type: ignore[misc]
+async def test_update_body_none_sets_content_length_zero(
     method: str, make_client_request: _RequestMaker
 ) -> None:
     """Test that updating body to None sets Content-Length: 0 for POST-like methods."""
@@ -2217,7 +2201,7 @@ async def test_update_body_none_sets_content_length_zero(  # type: ignore[misc]
 
 
 @pytest.mark.parametrize("method", ["GET", "HEAD", "OPTIONS", "TRACE"])
-async def test_update_body_none_no_content_length_for_get_methods(  # type: ignore[misc]
+async def test_update_body_none_no_content_length_for_get_methods(
     method: str, make_client_request: _RequestMaker
 ) -> None:
     """Test that updating body to None doesn't set Content-Length for GET-like methods."""

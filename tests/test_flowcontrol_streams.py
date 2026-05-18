@@ -15,9 +15,9 @@ def protocol() -> BaseProtocol:
 
 @pytest.fixture
 def stream(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> streams.StreamReader:
-    return streams.StreamReader(protocol, limit=1, loop=loop)
+    return streams.StreamReader(protocol, limit=1, loop=event_loop)
 
 
 class TestFlowControlStreamReader:
@@ -117,7 +117,7 @@ class TestFlowControlStreamReader:
 
 
 async def test_stream_reader_eof_when_full() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     protocol = BaseProtocol(loop=loop, parser=parser)
     protocol.transport = asyncio.Transport()

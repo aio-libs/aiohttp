@@ -7,11 +7,11 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpRawServer, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger, AbstractAsyncAccessLogger
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
@@ -312,7 +312,7 @@ async def test_exc_info_context(
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, access_log_class=Logger, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
     assert exc_msg == "RuntimeError: intentional runtime error"
@@ -335,7 +335,7 @@ async def test_async_logger(
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, access_log_class=Logger, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 200
     assert msg == "/path/to: 200"
@@ -365,7 +365,7 @@ async def test_contextvars_logger(
     app = web.Application(middlewares=[middleware])
     app.router.add_get("/", handler)
     server = await aiohttp_server(app, access_log_class=Logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await client.get("/")
     assert 200 == resp.status
     assert msg == "contextvars: uuid"
@@ -406,7 +406,7 @@ async def test_logger_does_not_log_when_not_enabled(
     app = web.Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app, access_log_class=Logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await client.get("/")
     assert 200 == resp.status
     assert "This should not be logged" not in caplog.text
@@ -432,7 +432,7 @@ async def test_logger_set_to_none(
     app = web.Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app, access_log=None, access_log_class=Logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await client.get("/")
     assert 200 == resp.status
     assert "This should not be logged" not in caplog.text
@@ -466,7 +466,7 @@ async def test_logger_does_not_log_when_enabled_post_init(
     app = web.Application()
     app.router.add_get("/", handler)
     server = await aiohttp_server(app, access_log_class=Logger)
-    client = await aiohttp_client(server)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await client.get("/")
     assert 200 == resp.status
     assert "This should not be logged" not in caplog.text
