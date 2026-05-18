@@ -95,9 +95,10 @@ async def test_simple_get_with_text(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_handler_returns_not_response(
-    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    loop_debug_mode: None,
 ) -> None:
-    asyncio.get_running_loop().set_debug(True)
     logger = mock.Mock()
 
     async def handler(request: web.Request) -> str:
@@ -113,9 +114,10 @@ async def test_handler_returns_not_response(
 
 
 async def test_handler_returns_none(
-    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+    aiohttp_server: AiohttpServer,
+    aiohttp_client: AiohttpClient,
+    loop_debug_mode: None,
 ) -> None:
-    asyncio.get_running_loop().set_debug(True)
     logger = mock.Mock()
 
     async def handler(request: web.Request) -> None:
