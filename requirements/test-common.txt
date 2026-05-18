@@ -24,7 +24,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.0.0
     # via cryptography
-click==8.3.3
+click==8.4.0
     # via wait-for-it
 coverage==7.14.0
     # via
@@ -100,6 +100,7 @@ pytest==9.0.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-timeout
     #   pytest-xdist
 pytest-aiohttp==1.1.0
     # via -r requirements/test-common.in
