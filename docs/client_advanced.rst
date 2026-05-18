@@ -68,12 +68,6 @@ For HTTP Basic Authentication, build the ``Authorization`` header using
     async with ClientSession(headers=headers) as session:
         ...
 
-.. deprecated:: 3.14
-
-   The ``auth`` parameter and the :class:`BasicAuth` class are deprecated and
-   will be removed in 4.0. Use :func:`encode_basic_auth` together with the
-   ``headers`` parameter as shown above.
-
 For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
 
     from aiohttp import ClientSession, DigestAuthMiddleware
@@ -747,12 +741,6 @@ And you may set default proxy::
    ) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
-
-.. deprecated:: 3.14
-
-   The ``proxy_auth`` parameter is deprecated and will be removed in 4.0. Use
-   :func:`encode_basic_auth` with ``proxy_headers={"Proxy-Authorization": ...}``
-   as shown above.
 
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing

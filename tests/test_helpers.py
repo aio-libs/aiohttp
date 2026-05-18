@@ -1,9 +1,7 @@
 import asyncio
-import base64
 import datetime
 import gc
 import sys
-import warnings
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -125,160 +123,54 @@ def test_guess_filename_with_default() -> None:
     assert helpers.guess_filename(None, "no-throw") == "no-throw"
 
 
-# ------------------- BasicAuth -----------------------------------
-
-
-def test_basic_auth1() -> None:
-    # missing password here
-    with pytest.raises(ValueError):
-        helpers.BasicAuth(None)  # type: ignore[arg-type]
-
-
-def test_basic_auth2() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth("nkim", None)  # type: ignore[arg-type]
-
-
-def test_basic_with_auth_colon_in_login() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth("nkim:1", "pwd")
-
-
-def test_basic_auth3() -> None:
-    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
-        auth = helpers.BasicAuth("nkim")
-    assert auth.login == "nkim"
-    assert auth.password == ""
-
-
-def test_basic_auth4() -> None:
-    with pytest.warns(DeprecationWarning, match="BasicAuth is deprecated"):
-        auth = helpers.BasicAuth("nkim", "pwd")
-    assert auth.login == "nkim"
-    assert auth.password == "pwd"
-    assert auth.encode() == "Basic bmtpbTpwd2Q="
-
-
-def test_basic_auth_deprecated() -> None:
-    with pytest.warns(
-        DeprecationWarning,
-        match=(
-            "BasicAuth is deprecated and will be removed in aiohttp 4.0; "
-            "use aiohttp.encode_basic_auth"
-        ),
-    ):
-        helpers.BasicAuth("user", "pass")
+# ------------------- encode_basic_auth -----------------------------------
 
 
 def test_encode_basic_auth() -> None:
     assert helpers.encode_basic_auth("nkim", "pwd") == "Basic bmtpbTpwd2Q="
+
+
+def test_encode_basic_auth_default_password() -> None:
+    assert helpers.encode_basic_auth("nkim") == "Basic bmtpbTo="
+
+
+def test_encode_basic_auth_blank_login_and_password() -> None:
     assert helpers.encode_basic_auth("") == "Basic Og=="
+
+
+def test_encode_basic_auth_utf8() -> None:
+    assert helpers.encode_basic_auth("usér", "pàss") == "Basic dXPDqXI6cMOgc3M="
+
+
+def test_encode_basic_auth_latin1() -> None:
     assert (
-        helpers.encode_basic_auth("usér", "pàss", encoding="utf-8")
-        == "Basic dXPDqXI6cMOgc3M="
+        helpers.encode_basic_auth("nkim", "café", encoding="latin1")
+        == "Basic bmtpbTpjYWbp"
     )
 
 
 def test_encode_basic_auth_rejects_colon_in_login() -> None:
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r'":" is not allowed in login.*RFC 7617'):
         helpers.encode_basic_auth("user:1", "pwd")
 
 
-def test_basic_auth_no_warn_helpers_silent() -> None:
-    """Internal aiohttp paths must not raise BasicAuth's deprecation warning."""
-    with warnings.catch_warnings():
-        warnings.simplefilter("error", DeprecationWarning)
-        url = URL("http://user:pass@example.com/")
-        helpers.strip_auth_from_url(url)
-        helpers.BasicAuth.decode("Basic dXNlcjpwYXNz")
-        helpers.BasicAuth.from_url(url)
-        helpers._basic_auth_no_warn("user", "pass")
+def test_strip_auth_from_url() -> None:
+    url, auth = helpers.strip_auth_from_url(URL("http://user:pass@example.com/"))
+    assert url == URL("http://example.com/")
+    assert auth == helpers.encode_basic_auth("user", "pass")
 
 
-@pytest.mark.parametrize(
-    "header",
-    (
-        "Basic bmtpbTpwd2Q=",
-        "basic bmtpbTpwd2Q=",
-    ),
-)
-def test_basic_auth_decode(header: str) -> None:
-    auth = helpers.BasicAuth.decode(header)
-    assert auth.login == "nkim"
-    assert auth.password == "pwd"
+def test_strip_auth_from_url_no_user() -> None:
+    url, auth = helpers.strip_auth_from_url(URL("http://:pass@example.com/"))
+    assert url == URL("http://example.com/")
+    assert auth == helpers.encode_basic_auth("", "pass")
 
 
-def test_basic_auth_invalid() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("bmtpbTpwd2Q=")
-
-
-def test_basic_auth_decode_not_basic() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("Complex bmtpbTpwd2Q=")
-
-
-def test_basic_auth_decode_bad_base64() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("Basic bmtpbTpwd2Q")
-
-
-@pytest.mark.parametrize("header", ("Basic ???", "Basic   "))
-def test_basic_auth_decode_illegal_chars_base64(header: str) -> None:
-    with pytest.raises(ValueError, match="Invalid base64 encoding."):
-        helpers.BasicAuth.decode(header)
-
-
-def test_basic_auth_decode_invalid_credentials() -> None:
-    with pytest.raises(ValueError, match="Invalid credentials."):
-        header = "Basic {}".format(base64.b64encode(b"username").decode())
-        helpers.BasicAuth.decode(header)
-
-
-@pytest.mark.parametrize(
-    "credentials, expected_auth",
-    (
-        (":", helpers._basic_auth_no_warn("", "", "latin1")),
-        ("username:", helpers._basic_auth_no_warn("username", "", "latin1")),
-        (":password", helpers._basic_auth_no_warn("", "password", "latin1")),
-        (
-            "username:password",
-            helpers._basic_auth_no_warn("username", "password", "latin1"),
-        ),
-    ),
-)
-def test_basic_auth_decode_blank_username(  # type: ignore[misc]
-    credentials: str, expected_auth: helpers.BasicAuth
-) -> None:
-    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
-    assert helpers.BasicAuth.decode(header) == expected_auth
-
-
-def test_basic_auth_from_url() -> None:
-    url = URL("http://user:pass@example.com")
-    auth = helpers.BasicAuth.from_url(url)
-    assert auth is not None
-    assert auth.login == "user"
-    assert auth.password == "pass"
-
-
-def test_basic_auth_no_user_from_url() -> None:
-    url = URL("http://:pass@example.com")
-    auth = helpers.BasicAuth.from_url(url)
-    assert auth is not None
-    assert auth.login == ""
-    assert auth.password == "pass"
-
-
-def test_basic_auth_no_auth_from_url() -> None:
-    url = URL("http://example.com")
-    auth = helpers.BasicAuth.from_url(url)
+def test_strip_auth_from_url_no_auth() -> None:
+    url = URL("http://example.com/")
+    stripped, auth = helpers.strip_auth_from_url(url)
+    assert stripped is url
     assert auth is None
-
-
-def test_basic_auth_from_not_url() -> None:
-    with pytest.raises(TypeError):
-        helpers.BasicAuth.from_url("http://user:pass@example.com")  # type: ignore[arg-type]
 
 
 # ----------------------------------- is_ip_address() ----------------------
@@ -678,11 +570,7 @@ def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -
     ret = helpers.proxies_from_env()
     assert ret.keys() == {expected_scheme}
     assert ret[expected_scheme].proxy == url.with_user(None)
-    proxy_auth = ret[expected_scheme].proxy_auth
-    assert proxy_auth is not None
-    assert proxy_auth.login == "user"
-    assert proxy_auth.password == "pass"
-    assert proxy_auth.encoding == "latin1"
+    assert ret[expected_scheme].proxy_auth == helpers.encode_basic_auth("user", "pass")
 
 
 # --------------------- get_env_proxy_for_url ------------------------------
@@ -1138,31 +1026,29 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
 
 
 @pytest.mark.parametrize(
-    ["netrc_contents", "expected_auth"],
+    ["netrc_contents", "expected_header"],
     [
         (
             "machine example.com login username password pass\n",
-            helpers._basic_auth_no_warn("username", "pass", "latin1"),
+            helpers.encode_basic_auth("username", "pass"),
         ),
         (
             "machine example.com account username password pass\n",
-            helpers._basic_auth_no_warn("username", "pass", "latin1"),
+            helpers.encode_basic_auth("username", "pass"),
         ),
         (
             "machine example.com password pass\n",
-            helpers._basic_auth_no_warn("", "pass", "latin1"),
+            helpers.encode_basic_auth("", "pass"),
         ),
     ],
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_present_in_netrc(  # type: ignore[misc]
-    expected_auth: helpers.BasicAuth,
-) -> None:
-    """Test that netrc file contents are properly parsed into BasicAuth tuples"""
+def test_auth_header_from_netrc(expected_header: str) -> None:
+    """Test that netrc file contents are properly parsed into a header value."""
     netrc_obj = helpers.netrc_from_env()
 
-    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, "example.com")
+    assert expected_header == helpers._auth_header_from_netrc(netrc_obj, "example.com")
 
 
 @pytest.mark.parametrize(
@@ -1173,14 +1059,14 @@ def test_basicauth_present_in_netrc(  # type: ignore[misc]
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_read_basicauth_from_empty_netrc() -> None:
+def test_read_auth_header_from_empty_netrc() -> None:
     """Test that an error is raised if netrc doesn't have an entry for our host"""
     netrc_obj = helpers.netrc_from_env()
 
     with pytest.raises(
         LookupError, match="No entry for example.com found in the `.netrc` file."
     ):
-        helpers.basicauth_from_netrc(netrc_obj, "example.com")
+        helpers._auth_header_from_netrc(netrc_obj, "example.com")
 
 
 def test_method_must_be_empty_body() -> None:

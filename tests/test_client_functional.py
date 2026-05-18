@@ -65,16 +65,6 @@ from aiohttp.payload import (
 from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
 
-pytestmark = [
-    pytest.mark.filterwarnings(r"ignore:BasicAuth is deprecated:DeprecationWarning"),
-    pytest.mark.filterwarnings(
-        r"ignore:The 'auth' parameter is deprecated:DeprecationWarning"
-    ),
-    pytest.mark.filterwarnings(
-        r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
-    ),
-]
-
 
 @pytest.fixture
 def here() -> pathlib.Path:
@@ -3306,11 +3296,12 @@ async def test_invalid_idna() -> None:
             await session.get("http://\u0080owhefopw.com")
 
 
-async def test_creds_in_auth_and_url() -> None:
+async def test_creds_in_header_and_url() -> None:
     async with aiohttp.ClientSession() as session:
         with pytest.raises(ValueError):
             await session.get(
-                "http://user:pass@example.com", auth=aiohttp.BasicAuth("user2", "pass2")
+                "http://user:pass@example.com",
+                headers={"Authorization": aiohttp.encode_basic_auth("user2", "pass2")},
             )
 
 
@@ -3367,14 +3358,17 @@ async def test_creds_in_auth_and_redirect_url(
 
     async with (
         aiohttp.ClientSession(connector=connector) as client,
-        client.get(url_from, auth=aiohttp.BasicAuth("user", "pass")) as resp,
+        client.get(
+            url_from,
+            headers={"Authorization": aiohttp.encode_basic_auth("user", "pass")},
+        ) as resp,
     ):
         assert len(resp.history) == 1
         assert str(resp.url) == "http://example.com"
         assert resp.status == 200
         assert (
             resp.request_info.headers.get("authorization") == "Basic dXNlcjo="
-        ), "Expected redirect credentials to take precedence over provided auth"
+        ), "Expected redirect credentials to take precedence over the Authorization header"
 
 
 @pytest.fixture
@@ -3475,8 +3469,11 @@ async def test_drop_auth_on_redirect_to_other_host(
     async with aiohttp.ClientSession(connector=connector) as client:
         async with client.get(
             url_from,
-            auth=aiohttp.BasicAuth("user", "pass"),
-            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz", "Cookie": "a=b"},
+            headers={
+                "Authorization": "Basic dXNlcjpwYXNz",
+                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
+                "Cookie": "a=b",
+            },
         ) as resp:
             assert resp.status == 200
         async with client.get(
@@ -3490,74 +3487,10 @@ async def test_drop_auth_on_redirect_to_other_host(
             assert resp.status == 200
 
 
-async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
+async def test_drop_session_authorization_header_on_redirect_to_other_host(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
 ) -> None:
-    url_from = URL("http://host1.com/path1")
-    url_to = URL("http://host2.com/path2")
-
-    async def srv_from(request: web.Request) -> NoReturn:
-        assert request.host == url_from.host
-        assert request.headers["Authorization"] == "Basic dXNlcjpwYXNz"
-        raise web.HTTPFound(url_to)
-
-    async def srv_to(request: web.Request) -> web.Response:
-        assert request.host == url_to.host
-        assert "Authorization" in request.headers, "Header was dropped"
-        return web.Response()
-
-    server_from = await create_server_for_url_and_handler(url_from, srv_from)
-    server_to = await create_server_for_url_and_handler(url_to, srv_to)
-
-    assert (
-        url_from.host != url_to.host or server_from.scheme != server_to.scheme
-    ), "Invalid test case, host or scheme must differ"
-
-    protocol_port_map = {
-        "http": 80,
-        "https": 443,
-    }
-    etc_hosts = {
-        (url_from.host, protocol_port_map[server_from.scheme]): server_from,
-        (url_to.host, protocol_port_map[server_to.scheme]): server_to,
-    }
-
-    class FakeResolver(AbstractResolver):
-        async def resolve(
-            self,
-            host: str,
-            port: int = 0,
-            family: socket.AddressFamily = socket.AF_INET,
-        ) -> list[ResolveResult]:
-            server = etc_hosts[(host, port)]
-            assert server.port is not None
-
-            return [
-                {
-                    "hostname": host,
-                    "host": server.host,
-                    "port": server.port,
-                    "family": socket.AF_INET,
-                    "proto": 0,
-                    "flags": socket.AI_NUMERICHOST,
-                }
-            ]
-
-        async def close(self) -> None:
-            """Dummy"""
-
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
-
-    async with aiohttp.ClientSession(
-        connector=connector, auth=aiohttp.BasicAuth("user", "pass")
-    ) as client:
-        async with client.get(url_from) as resp:
-            assert resp.status == 200
-
-
-async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url(
-    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
-) -> None:
+    """Authorization header from ClientSession(headers=...) is dropped on cross-origin redirect."""
     url_from = URL("http://host1.com/path1")
     url_to = URL("http://host2.com/path2")
 
@@ -3615,10 +3548,9 @@ async def test_drop_auth_on_redirect_to_other_host_with_global_auth_and_base_url
 
     async with aiohttp.ClientSession(
         connector=connector,
-        base_url="http://host1.com",
-        auth=aiohttp.BasicAuth("user", "pass"),
+        headers={"Authorization": "Basic dXNlcjpwYXNz"},
     ) as client:
-        async with client.get("/path1") as resp:
+        async with client.get(url_from) as resp:
             assert resp.status == 200
 
 
@@ -3831,12 +3763,14 @@ async def test_yield_from_in_session_request(aiohttp_client: AiohttpClient) -> N
         assert resp.status == 200
 
 
-async def test_session_auth(
+async def test_session_authorization_header(
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
 ) -> None:
-    client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
+    client = await headers_echo_client(
+        headers={"Authorization": aiohttp.encode_basic_auth("login", "pass")}
+    )
 
     async with client.get("/") as r:
         assert r.status == 200
@@ -3844,96 +3778,23 @@ async def test_session_auth(
     assert content["headers"]["Authorization"] == "Basic bG9naW46cGFzcw=="
 
 
-async def test_session_auth_override(
+async def test_session_authorization_header_override(
     headers_echo_client: Callable[
         ..., Awaitable[TestClient[web.Request, web.Application]]
     ],
 ) -> None:
-    client = await headers_echo_client(auth=aiohttp.BasicAuth("login", "pass"))
+    client = await headers_echo_client(
+        headers={"Authorization": aiohttp.encode_basic_auth("login", "pass")}
+    )
 
-    async with client.get("/", auth=aiohttp.BasicAuth("other_login", "pass")) as r:
+    async with client.get(
+        "/",
+        headers={"Authorization": aiohttp.encode_basic_auth("other_login", "pass")},
+    ) as r:
         assert r.status == 200
         content = await r.json()
     val = content["headers"]["Authorization"]
     assert val == "Basic b3RoZXJfbG9naW46cGFzcw=="
-
-
-async def test_session_auth_header_conflict(aiohttp_client: AiohttpClient) -> None:
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-
-    client = await aiohttp_client(app, auth=aiohttp.BasicAuth("login", "pass"))
-    headers = {"Authorization": "Basic b3RoZXJfbG9naW46cGFzcw=="}
-    with pytest.raises(ValueError):
-        await client.get("/", headers=headers)
-
-
-@pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_from_env(  # type: ignore[misc]
-    headers_echo_client: Callable[
-        ..., Awaitable[TestClient[web.Request, web.Application]]
-    ],
-) -> None:
-    """Test that netrc authentication works when NETRC env var is set and trust_env=True."""
-    client = await headers_echo_client(trust_env=True)
-    async with client.get("/") as r:
-        assert r.status == 200
-        content = await r.json()
-    # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
-    assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
-
-
-@pytest.mark.usefixtures("no_netrc")
-async def test_netrc_auth_skipped_without_netrc_file(  # type: ignore[misc]
-    headers_echo_client: Callable[
-        ..., Awaitable[TestClient[web.Request, web.Application]]
-    ],
-) -> None:
-    """Test that netrc authentication is skipped when no netrc file exists."""
-    client = await headers_echo_client(trust_env=True)
-    async with client.get("/") as r:
-        assert r.status == 200
-        content = await r.json()
-    # No Authorization header should be present
-    assert "Authorization" not in content["headers"]
-
-
-@pytest.mark.usefixtures("netrc_home_directory")
-async def test_netrc_auth_from_home_directory(  # type: ignore[misc]
-    headers_echo_client: Callable[
-        ..., Awaitable[TestClient[web.Request, web.Application]]
-    ],
-) -> None:
-    """Test that netrc authentication works from default ~/.netrc without NETRC env var."""
-    client = await headers_echo_client(trust_env=True)
-    async with client.get("/") as r:
-        assert r.status == 200
-        content = await r.json()
-    assert content["headers"]["Authorization"] == "Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
-
-
-@pytest.mark.usefixtures("netrc_default_contents")
-async def test_netrc_auth_overridden_by_explicit_auth(  # type: ignore[misc]
-    headers_echo_client: Callable[
-        ..., Awaitable[TestClient[web.Request, web.Application]]
-    ],
-) -> None:
-    """Test that explicit auth parameter overrides netrc authentication."""
-    client = await headers_echo_client(trust_env=True)
-    # Make request with explicit auth (should override netrc)
-    async with client.get(
-        "/", auth=aiohttp.BasicAuth("explicit_user", "explicit_pass")
-    ) as r:
-        assert r.status == 200
-        content = await r.json()
-    # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
-    assert (
-        content["headers"]["Authorization"]
-        == "Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
-    )
 
 
 async def test_session_headers(

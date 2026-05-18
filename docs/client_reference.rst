@@ -40,7 +40,7 @@ The client session supports the context manager protocol for self closing.
 .. class:: ClientSession(base_url=None, *, \
                          connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=json.dumps, \
+                         json_serialize=json.dumps, \
                          request_class=ClientRequest, \
                          response_class=ClientResponse, \
                          ws_response_class=ClientWebSocketResponse, \
@@ -109,14 +109,6 @@ The client session supports the context manager protocol for self closing.
       be skipped.
 
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
-
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional). It will be included
-                                  with any request. However, if the
-                                  ``_base_url`` parameter is set, the request
-                                  URL's origin must match the base URL's origin;
-                                  otherwise, the default auth will not be
-                                  included.
 
    :param collections.abc.Callable json_serialize: Json *serializer* callable.
 
@@ -340,14 +332,6 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. attribute:: auth
-
-      An object that represents HTTP Basic Authorization.
-
-      :class:`~aiohttp.BasicAuth` (optional)
-
-      .. versionadded:: 3.7
-
    .. attribute:: json_serialize
 
       Json serializer callable.
@@ -400,11 +384,11 @@ The client session supports the context manager protocol for self closing.
 
    .. method:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
-                         auth=None, allow_redirects=True,\
+                         allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
                          read_until_eof=True, \
-                         proxy=None, proxy_auth=None,\
+                         proxy=None,\
                          timeout=sentinel, ssl=True, \
                          server_hostname=None, \
                          proxy_headers=None, \
@@ -473,9 +457,6 @@ The client session supports the context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~multidict.istr`
          (optional)
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
-
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed (up to ``max_redirects`` times)
          and logged into :attr:`ClientResponse.history` and ``trace_configs``.
@@ -514,9 +495,6 @@ The client session supports the context manager protocol for self closing.
                                   ``True`` by default (optional).
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
 
       :param int timeout: override the session's timeout.
 
@@ -719,14 +697,13 @@ The client session supports the context manager protocol for self closing.
    .. method:: ws_connect(url, *, method='GET', \
                             protocols=(), \
                             timeout=sentinel,\
-                            auth=None,\
                             autoclose=True,\
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
                             params=None, \
                             headers=None, \
-                            proxy=None, proxy_auth=None, ssl=True, \
+                            proxy=None, ssl=True, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
                             compress=0, max_msg_size=4194304, \
@@ -747,9 +724,6 @@ The client session supports the context manager protocol for self closing.
                       `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
                       (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
-
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
@@ -787,9 +761,6 @@ The client session supports the context manager protocol for self closing.
                            the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -897,11 +868,11 @@ certification chaining.
 
 .. function:: request(method, url, *, params=None, data=None, \
                         json=None,\
-                        cookies=None, headers=None, skip_auto_headers=None, auth=None, \
+                        cookies=None, headers=None, skip_auto_headers=None, \
                         allow_redirects=True, max_redirects=10, \
                         compress=False, chunked=None, expect100=False, raise_for_status=None, \
                         read_until_eof=True, \
-                        proxy=None, proxy_auth=None, \
+                        proxy=None, \
                         timeout=sentinel, ssl=True, \
                         server_hostname=None, \
                         proxy_headers=None, \
@@ -964,9 +935,6 @@ certification chaining.
       Iterable of :class:`str` or :class:`~multidict.istr`
       (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
-
    :param bool allow_redirects: Whether to process redirects or not.
       When ``True``, redirects are followed (up to ``max_redirects`` times)
       and logged into :attr:`ClientResponse.history` and ``trace_configs``.
@@ -1010,9 +978,6 @@ certification chaining.
                                ``True`` by default (optional).
 
    :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-   :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                        Basic Authorization (optional)
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout, 30 seconds socket connect timeout by default.
@@ -2340,55 +2305,6 @@ Utilities
    :rtype: str
 
    .. versionadded:: 3.14
-
-
-.. class:: BasicAuth(login, password='', encoding='latin1')
-   :canonical: aiohttp.helpers.BasicAuth
-
-   HTTP basic authentication helper.
-
-   :param str login: login
-   :param str password: password
-   :param str encoding: encoding (``'latin1'`` by default)
-
-
-   Previously this was used for specifying authorization data in client API,
-   e.g. *auth* parameter for :meth:`ClientSession.request() <aiohttp.ClientSession.request>`.
-
-   .. deprecated:: 3.14
-
-      Constructing :class:`BasicAuth` is deprecated and will be removed in
-      4.0. Use :func:`encode_basic_auth` together with the ``headers``
-      parameter (or ``proxy_headers`` for proxies) instead. The
-      :meth:`decode` and :meth:`from_url` class methods remain available for
-      parsing.
-
-
-   .. classmethod:: decode(auth_header, encoding='latin1')
-
-      Decode HTTP basic authentication credentials.
-
-      :param str auth_header:  The ``Authorization`` header to decode.
-      :param str encoding: (optional) encoding ('latin1' by default)
-
-      :return:  decoded authentication data, :class:`BasicAuth`.
-
-   .. classmethod:: from_url(url)
-
-      Constructed credentials info from url's *user* and *password*
-      parts.
-
-      :return: credentials data, :class:`BasicAuth` or ``None`` is
-                credentials are not provided.
-
-      .. versionadded:: 2.3
-
-   .. method:: encode()
-
-      Encode credentials into string suitable for ``Authorization``
-      header etc.
-
-      :return: encoded authentication data, :class:`str`.
 
 
 .. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
