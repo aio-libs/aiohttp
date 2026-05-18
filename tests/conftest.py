@@ -180,6 +180,24 @@ async def create_mocked_conn() -> AsyncIterator[Callable[[], ResponseHandler]]:
 
 
 @pytest.fixture
+async def loop_debug_mode() -> AsyncIterator[None]:
+    """Enable asyncio debug mode for the duration of the test.
+
+    Disables debug before teardown so PyPy 3.11's recursive
+    ``Task.__repr__``, triggered by the asyncio slow-callback
+    logger during connector close, does not surface a spurious
+    ``RuntimeWarning: coroutine ... was never awaited`` while
+    the ``aiohttp_client`` fixture finalizes.
+    """
+    loop = asyncio.get_running_loop()
+    loop.set_debug(True)
+    try:
+        yield
+    finally:
+        loop.set_debug(False)
+
+
+@pytest.fixture
 def unix_sockname(
     tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
 ) -> Iterator[str]:

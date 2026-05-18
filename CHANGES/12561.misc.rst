@@ -1,0 +1,2 @@
+Bumped the benchmark CI job timeout from 12 to 15 minutes to prevent
+spurious failures on slower runners -- by :user:`aiolibsbot`.

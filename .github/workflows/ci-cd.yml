@@ -275,8 +275,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v6
       with:
+        files: ./junit.xml
+        report_type: test_results
         token: ${{ secrets.CODECOV_TOKEN }}
 
   autobahn:
@@ -360,8 +362,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/test-results-action@v1
+      uses: codecov/codecov-action@v6
       with:
+        files: ./junit.xml
+        report_type: test_results
         token: ${{ secrets.CODECOV_TOKEN }}
 
   benchmark:
@@ -372,7 +376,7 @@ jobs:
     if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
     - name: Checkout project
       uses: actions/checkout@v6
@@ -405,7 +409,7 @@ jobs:
       uses: CodSpeedHQ/action@v4
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov -vvvvv --codspeed
+        run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30
 
 
   cython-coverage:
@@ -627,6 +631,12 @@ jobs:
         make cythonize
     - name: Build wheels
       uses: pypa/cibuildwheel@v3.4.1
+      with:
+        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
+        # available on the runner for Windows and macOS. Installing
+        # cibuildwheel with the `uv` extra bundles uv with it; Linux
+        # already has uv inside the manylinux/musllinux container.
+        extras: uv
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
         CIBW_ARCHS_MACOS: x86_64 arm64 universal2

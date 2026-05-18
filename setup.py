@@ -3,6 +3,7 @@ import pathlib
 import sys
 
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 if sys.version_info < (3, 10):
     raise RuntimeError("aiohttp 4.x requires Python 3.10+")
@@ -87,8 +88,19 @@ extensions = [
 ]
 
 
+class ParallelBuildExt(build_ext):
+    def build_extensions(self) -> None:
+        if self.parallel is None:
+            self.parallel = os.cpu_count() or 1
+        super().build_extensions()
+
+
 build_type = "Pure" if NO_EXTENSIONS else "Accelerated"
-setup_kwargs = {} if NO_EXTENSIONS else {"ext_modules": extensions}
+setup_kwargs = (
+    {}
+    if NO_EXTENSIONS
+    else {"ext_modules": extensions, "cmdclass": {"build_ext": ParallelBuildExt}}
+)
 
 print("*********************", file=sys.stderr)
 print("* {build_type} build *".format_map(locals()), file=sys.stderr)
