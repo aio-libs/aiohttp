@@ -1,4 +1,4 @@
-# aiohttp Threat Model
+# Threat Model
 
 This document is a STRIDE-based threat model for the
 [aiohttp](https://github.com/aio-libs/aiohttp) library. It is a living document
