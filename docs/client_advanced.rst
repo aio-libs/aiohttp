@@ -59,12 +59,13 @@ For ``text/plain``::
 Authentication
 --------------
 
-Instead of setting the ``Authorization`` header directly,
-:class:`ClientSession` and individual request methods provide an ``auth``
-argument. An instance of :class:`BasicAuth` can be passed in like this::
+For HTTP Basic Authentication, build the ``Authorization`` header using
+:func:`encode_basic_auth` and pass it via ``headers``::
 
-    auth = BasicAuth(login="...", password="...")
-    async with ClientSession(auth=auth) as session:
+    from aiohttp import ClientSession, encode_basic_auth
+
+    headers = {"Authorization": encode_basic_auth("user", "pass")}
+    async with ClientSession(headers=headers) as session:
         ...
 
 For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
@@ -718,11 +719,13 @@ To connect, use the *proxy* parameter::
 
 It also supports proxy authorization::
 
+   from aiohttp import encode_basic_auth
+
    async with aiohttp.ClientSession() as session:
-       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
        async with session.get("http://python.org",
                               proxy="http://proxy.com",
-                              proxy_auth=proxy_auth) as resp:
+                              proxy_headers=proxy_headers) as resp:
            print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
@@ -732,8 +735,10 @@ Authentication credentials can be passed in proxy URL::
 
 And you may set default proxy::
 
-   proxy_auth = aiohttp.BasicAuth('user', 'pass')
-   async with aiohttp.ClientSession(proxy="http://proxy.com", proxy_auth=proxy_auth) as session:
+   proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
+   async with aiohttp.ClientSession(
+       proxy="http://proxy.com", proxy_headers=proxy_headers
+   ) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
 

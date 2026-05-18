@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import io
 import re
-import socket
 import string
 import sys
 import tempfile
@@ -165,6 +164,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         self._transport_sslcontext = protocol.ssl_context
         self._transport_peername = protocol.peername
+        self._transport_sockname = protocol.sockname
 
         if remote is not None:
             self._cache["remote"] = remote
@@ -372,7 +372,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         - overridden value by .clone(host=new_host) call.
         - HOST HTTP header
-        - socket.getfqdn() value
+        - local socket address the request arrived on
+          (transport ``sockname``)
+        - empty string if no transport information is available
 
         For example, 'example.com' or 'localhost:8080'.
 
@@ -381,7 +383,17 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         host = self._message.headers.get(hdrs.HOST)
         if host is not None:
             return host
-        return socket.getfqdn()
+        sockname = self._transport_sockname
+        if sockname is None:
+            return ""
+        if isinstance(sockname, tuple):
+            # AF_INET6 returns a 4-tuple (host, port, flowinfo, scopeid);
+            # bracket the bare address so it matches the Host-header shape
+            # and is a valid URL authority component.
+            if len(sockname) == 4:
+                return f"[{sockname[0]}]"
+            return str(sockname[0])
+        return str(sockname)
 
     @reify
     def remote(self) -> str | None:

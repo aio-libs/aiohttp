@@ -457,6 +457,9 @@ cdef class HttpParser:
         self._has_value = True
 
     cdef _on_headers_complete(self):
+        cdef str h_upg
+        cdef str enc
+
         self._process_header()
 
         http_version = self.http_version()
@@ -471,8 +474,7 @@ cdef class HttpParser:
             if http_version == HttpVersion11 and hdrs.HOST not in headers:
                 raise BadHttpMessage("Missing 'Host' header in request.")
             h_upg = headers.get("upgrade", "")
-            allowed = upgrade and h_upg.isascii() and h_upg.lower() in ALLOWED_UPGRADES
-            if allowed or self._cparser.method == cparser.HTTP_CONNECT:
+            if (upgrade and h_upg.isascii() and h_upg.lower() in ALLOWED_UPGRADES) or self._cparser.method == cparser.HTTP_CONNECT:
                 self._upgraded = True
         else:
             if upgrade and self._cparser.status_code == 101:

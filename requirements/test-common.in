@@ -1,7 +1,7 @@
 blockbuster
 coverage
 freezegun
-isal; python_version < "3.14" # no wheel for 3.14
+isal; python_version < "3.14" and implementation_name == "cpython" # no wheel for 3.14, no PyPy wheel for 1.8.0+
 mypy; implementation_name == "cpython"
 pkgconfig
 proxy.py >= 2.4.4rc5
@@ -9,6 +9,7 @@ pytest
 pytest-aiohttp
 pytest-cov
 pytest-mock
+pytest-timeout
 pytest-xdist
 pytest_codspeed
 python-on-whales

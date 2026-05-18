@@ -37,10 +37,10 @@ from .formdata import FormData
 from .helpers import (
     _SENTINEL,
     BaseTimerContext,
-    BasicAuth,
     HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
+    encode_basic_auth,
     frozen_dataclass_decorator,
     is_expected_content_type,
     parse_mimetype,
@@ -179,7 +179,6 @@ class ConnectionKey(NamedTuple):
     is_ssl: bool
     ssl: SSLContext | bool | Fingerprint
     proxy: URL | None
-    proxy_auth: BasicAuth | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
 
 
@@ -684,7 +683,6 @@ class ClientRequestBase:
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
 
-    auth = None
     proxy: URL | None = None
     response_class = ClientResponse
     server_hostname: str | None = None  # Needed in connector.py
@@ -711,7 +709,6 @@ class ClientRequestBase:
         url: URL,
         *,
         headers: CIMultiDict[str],
-        auth: BasicAuth | None,
         loop: asyncio.AbstractEventLoop,
         ssl: SSLContext | bool | Fingerprint,
         trust_env: bool = False,
@@ -732,9 +729,13 @@ class ClientRequestBase:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._update_host(url)
+        if not url.raw_host:
+            raise InvalidURL(url)
         self._update_headers(headers)
-        self._update_auth(auth, trust_env)
+        if url.raw_user or url.raw_password:
+            self.headers[hdrs.AUTHORIZATION] = encode_basic_auth(
+                url.user or "", url.password or ""
+            )
 
     def _reset_writer(self, _: object = None) -> None:
         self._writer_task = None
@@ -783,31 +784,8 @@ class ClientRequestBase:
                 self._ssl,
                 None,
                 None,
-                None,
             ),
         )
-
-    def _update_auth(self, auth: BasicAuth | None, trust_env: bool = False) -> None:
-        """Set basic auth."""
-        if auth is None:
-            auth = self.auth
-        if auth is None:
-            return
-
-        if not isinstance(auth, BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
-
-    def _update_host(self, url: URL) -> None:
-        """Update destination host, port and connection type (ssl)."""
-        # get host/port
-        if not url.raw_host:
-            raise InvalidURL(url)
-
-        # basic auth info
-        if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
@@ -926,7 +904,6 @@ class ClientRequestArgs(TypedDict, total=False):
     skip_auto_headers: Iterable[str] | None
     data: Any
     cookies: BaseCookie[str]
-    auth: BasicAuth | None
     version: HttpVersion
     compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
@@ -934,7 +911,6 @@ class ClientRequestArgs(TypedDict, total=False):
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
     proxy: URL | None
-    proxy_auth: BasicAuth | None
     timer: BaseTimerContext
     session: "ClientSession"
     ssl: SSLContext | bool | Fingerprint
@@ -970,7 +946,6 @@ class ClientRequest(ClientRequestBase):
         skip_auto_headers: Iterable[str] | None,
         data: Any,
         cookies: BaseCookie[str],
-        auth: BasicAuth | None,
         version: HttpVersion,
         compress: Literal["deflate", "gzip"] | bool,
         chunked: bool | None,
@@ -978,7 +953,6 @@ class ClientRequest(ClientRequestBase):
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
         proxy: URL | None,
-        proxy_auth: BasicAuth | None,
         timer: BaseTimerContext,
         session: "ClientSession",
         ssl: SSLContext | bool | Fingerprint,
@@ -996,7 +970,7 @@ class ClientRequest(ClientRequestBase):
 
         if params:
             url = url.extend_query(params)
-        super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
+        super().__init__(method, url, headers=headers, loop=loop, ssl=ssl)
 
         if proxy is not None:
             assert type(proxy) is URL, proxy
@@ -1010,7 +984,7 @@ class ClientRequest(ClientRequestBase):
         self._update_auto_headers(skip_auto_headers)
         self._update_cookies(cookies)
         self._update_content_encoding(data, compress)
-        self._update_proxy(proxy, proxy_auth, proxy_headers)
+        self._update_proxy(proxy, proxy_headers)
 
         self._update_body_from_data(data)
         if data is not None or self.method not in self.GET_METHODS:
@@ -1041,7 +1015,6 @@ class ClientRequest(ClientRequestBase):
                 url.scheme in _SSL_SCHEMES,
                 self._ssl,
                 self.proxy,
-                self.proxy_auth,
                 h,
             ),
         )
@@ -1272,18 +1245,20 @@ class ClientRequest(ClientRequestBase):
     def _update_proxy(
         self,
         proxy: URL | None,
-        proxy_auth: BasicAuth | None,
         proxy_headers: CIMultiDict[str] | None,
     ) -> None:
-        self.proxy = proxy
         if proxy is None:
-            self.proxy_auth = None
+            self.proxy = None
             self.proxy_headers = None
             return
-
-        if proxy_auth and not isinstance(proxy_auth, BasicAuth):
-            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
-        self.proxy_auth = proxy_auth
+        # URL-embedded credentials on the proxy map to Proxy-Authorization.
+        if proxy.raw_user or proxy.raw_password:
+            auth_header = encode_basic_auth(proxy.user or "", proxy.password or "")
+            if proxy_headers is None:
+                proxy_headers = CIMultiDict()
+            proxy_headers.setdefault(hdrs.PROXY_AUTHORIZATION, auth_header)
+            proxy = proxy.with_user(None)
+        self.proxy = proxy
         self.proxy_headers = proxy_headers
 
     def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
