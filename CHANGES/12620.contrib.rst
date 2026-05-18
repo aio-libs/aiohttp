@@ -1,3 +1,2 @@
-Moved the pytest configuration out of ``setup.cfg`` into a dedicated
-``pytest.ini`` file, aligning the layout with other ``aio-libs``
-projects -- by :user:`aiolibsbot`.
+Moved pytest config from :file:`setup.cfg` to :file:`pytest.ini`
+-- by :user:`aiolibsbot`.
