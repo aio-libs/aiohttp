@@ -6,7 +6,7 @@
 #
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.4.0
+ast-serialize==0.5.0
     # via mypy
 blockbuster==1.5.26
     # via -r requirements/test-common.in
@@ -72,6 +72,7 @@ pytest==9.0.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-timeout
     #   pytest-xdist
 pytest-codspeed==5.0.2
     # via -r requirements/test-common.in
