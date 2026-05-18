@@ -92,8 +92,9 @@ async def test_simple_get_with_text(aiohttp_client) -> None:
     await resp.release()
 
 
-async def test_handler_returns_not_response(aiohttp_server, aiohttp_client) -> None:
-    asyncio.get_event_loop().set_debug(True)
+async def test_handler_returns_not_response(
+    aiohttp_server, aiohttp_client, loop_debug_mode: None
+) -> None:
     logger = mock.Mock()
 
     async def handler(request):
@@ -108,8 +109,9 @@ async def test_handler_returns_not_response(aiohttp_server, aiohttp_client) -> N
         assert resp.status == 500
 
 
-async def test_handler_returns_none(aiohttp_server, aiohttp_client) -> None:
-    asyncio.get_event_loop().set_debug(True)
+async def test_handler_returns_none(
+    aiohttp_server, aiohttp_client, loop_debug_mode: None
+) -> None:
     logger = mock.Mock()
 
     async def handler(request):
