@@ -56,6 +56,8 @@ This file provides guidance to AI coding agents working with this repository.
 - **No `Co-Authored-By:`** LLM trailers in commits or PR body.
 - Agent run output (test logs) goes in a collapsed `<details>` block **below** the template summary.
 
+**Commits**: Don't use conventional commits; match recent imperative subjects.
+
 ## Threat model
 
 `THREAT_MODEL.md` is a living document and should be revised when:
