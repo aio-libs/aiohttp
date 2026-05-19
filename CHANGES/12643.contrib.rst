@@ -1,0 +1,5 @@
+Merged the "Update pip, wheel, setuptools, build, twine" step into
+the following ``Install dependencies`` (or ``Install cython``) step
+in every job in ``.github/workflows/ci-cd.yml``, so each job now
+runs a single ``pip``/``uv pip install`` invocation instead of two
+-- by :user:`bdraco`.
