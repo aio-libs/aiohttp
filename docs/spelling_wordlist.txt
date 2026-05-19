@@ -108,6 +108,7 @@ Dev
 dict
 Dict
 Discord
+dists
 django
 Django
 dns
@@ -265,6 +266,7 @@ pydantic
 pyenv
 pyflakes
 pypa
+PyPI
 pyright
 pytest
 Pytest
