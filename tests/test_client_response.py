@@ -229,6 +229,9 @@ def test_url_obj_deprecated() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with pytest.warns(DeprecationWarning):
         response.url_obj
