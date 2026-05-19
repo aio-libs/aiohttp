@@ -310,5 +310,3 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   request parser (strict).
 
 These are all currently in place; this section assumes no regression.
-
----
