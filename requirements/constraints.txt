@@ -295,7 +295,7 @@ wait-for-it==2.3.0
     # via -r requirements/test-common.in
 wheel==0.47.0
     # via pip-tools
-yarl==1.22.0
+yarl==1.24.2
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via
