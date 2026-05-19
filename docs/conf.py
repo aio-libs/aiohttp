@@ -95,7 +95,7 @@ suppress_warnings = ["myst.xref_missing"]
 
 mermaid_init_config = {
     "startOnLoad": False,  # From the default config
-    "themeVariables": {"background": "transparent"}
+    "themeVariables": {"background": "transparent"},
 }
 
 intersphinx_mapping = {
