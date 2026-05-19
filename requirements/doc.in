@@ -1,5 +1,5 @@
 aiohttp-theme
+myst-parser
 sphinx
 sphinxcontrib-towncrier
 towncrier
-myst-parser
