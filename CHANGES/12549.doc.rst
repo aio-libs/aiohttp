@@ -1,2 +1,2 @@
-Added the project :doc:`threat model <threat_model>` to the rendered
+Added the :doc:`threat_model` to the Sphinx
 documentation -- by :user:`omkar-334`.
