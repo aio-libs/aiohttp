@@ -57,7 +57,7 @@ async def connector(
     async def make_conn() -> BaseConnector:
         return BaseConnector()
 
-    key = ConnectionKey("localhost", 80, False, True, None, None, None)
+    key = ConnectionKey("localhost", 80, False, True, None, None)
     conn = await make_conn()
     proto = create_mocked_conn()
     conn._conns[key] = deque([(proto, 123)])
@@ -892,54 +892,34 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
-@pytest.mark.filterwarnings(
-    r"ignore:The 'proxy_auth' parameter is deprecated:DeprecationWarning"
-)
 async def test_default_proxy() -> None:
     proxy_url = URL("http://proxy.example.com")
-    proxy_auth = mock.Mock()
     proxy_url2 = URL("http://proxy.example2.com")
-    proxy_auth2 = mock.Mock()
 
     class OnCall(Exception):
         pass
 
     request_class_mock = mock.Mock(side_effect=OnCall())
-    session = ClientSession(
-        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
-    )
+    session = ClientSession(proxy=proxy_url, request_class=request_class_mock)
 
     assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
-    assert (
-        session._default_proxy_auth == proxy_auth
-    ), "`ClientSession._default_proxy_auth` not set"
 
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com",
-        )
+        await session.get("http://example.com")
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url
     ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
 
     request_class_mock.reset_mock()
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
-        )
+        await session.get("http://example.com", proxy=proxy_url2)
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url2
-    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+    ), "`ClientSession._request` uses per-request proxy not session default"
 
     await session.close()
 
@@ -1438,7 +1418,6 @@ async def test_instantiation_with_invalid_timeout_value() -> None:
     ("outer_name", "inner_name"),
     [
         ("skip_auto_headers", "_skip_auto_headers"),
-        ("auth", "_default_auth"),
         ("json_serialize", "_json_serialize"),
         ("connector_owner", "_connector_owner"),
         ("raise_for_status", "_raise_for_status"),
@@ -1500,40 +1479,19 @@ async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
 
 
 @pytest.mark.usefixtures("netrc_default_contents")
-@pytest.mark.filterwarnings(
-    r"ignore:The 'auth' parameter is deprecated:DeprecationWarning",
-    r"ignore:BasicAuth is deprecated:DeprecationWarning",
-)
 async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
     """Test that explicit auth parameter overrides netrc authentication."""
+    explicit = aiohttp.encode_basic_auth("explicit_user", "explicit_pass")
     async with (
         ClientSession(trust_env=True) as session,
         session.get(
             auth_server.make_url("/"),
-            auth=aiohttp.BasicAuth("explicit_user", "explicit_pass"),
+            headers={"Authorization": explicit},
         ) as resp,
     ):
         text = await resp.text()
         # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
         assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
-
-
-async def test_client_session_auth_deprecated() -> None:
-    """ClientSession(auth=...) emits a DeprecationWarning."""
-    with pytest.warns(DeprecationWarning, match="'auth' parameter is deprecated"):
-        session = ClientSession(
-            auth=aiohttp.helpers._basic_auth_no_warn("user", "pass")
-        )
-    await session.close()
-
-
-async def test_client_session_proxy_auth_deprecated() -> None:
-    """ClientSession(proxy_auth=...) emits a DeprecationWarning."""
-    with pytest.warns(DeprecationWarning, match="'proxy_auth' parameter is deprecated"):
-        session = ClientSession(
-            proxy_auth=aiohttp.helpers._basic_auth_no_warn("user", "pass")
-        )
-    await session.close()
 
 
 @pytest.mark.usefixtures("netrc_other_host")

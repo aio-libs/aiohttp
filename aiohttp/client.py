@@ -94,9 +94,8 @@ from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
-    BasicAuth,
     TimeoutHandle,
-    basicauth_from_netrc,
+    _auth_header_from_netrc,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
     netrc_from_env,
@@ -181,7 +180,6 @@ class _RequestOptions(TypedDict, total=False):
     cookies: LooseCookies | None
     headers: LooseHeaders | None
     skip_auto_headers: Iterable[str] | None
-    auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
     compress: Literal["deflate", "gzip"] | bool
@@ -190,7 +188,6 @@ class _RequestOptions(TypedDict, total=False):
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
     read_until_eof: bool
     proxy: StrOrURL | None
-    proxy_auth: BasicAuth | None
     timeout: "ClientTimeout | _SENTINEL | None"
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
@@ -212,12 +209,10 @@ class _WSConnectOptions(TypedDict, total=False):
     autoclose: bool
     autoping: bool
     heartbeat: float | None
-    auth: BasicAuth | None
     origin: str | None
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    proxy_auth: BasicAuth | None
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
@@ -281,7 +276,6 @@ class ClientSession:
         "_loop",
         "_cookie_jar",
         "_connector_owner",
-        "_default_auth",
         "_version",
         "_json_serialize",
         "_json_serialize_bytes",
@@ -302,7 +296,6 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
-        "_default_proxy_auth",
         "_retry_connection",
         "_middlewares",
     )
@@ -315,9 +308,7 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         skip_auto_headers: Iterable[str] | None = None,
-        auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
@@ -394,24 +385,7 @@ class ClientSession:
         if cookies:
             self._cookie_jar.update_cookies(cookies)
 
-        if auth is not None:
-            warnings.warn(
-                "The 'auth' parameter is deprecated and will be removed in v4;"
-                " pass headers={'Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
-        if proxy_auth is not None:
-            warnings.warn(
-                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
-                " pass proxy_headers={'Proxy-Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=2,
-            )
         self._connector_owner = connector_owner
-        self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
         self._json_serialize_bytes = json_serialize_bytes
@@ -446,7 +420,6 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
-        self._default_proxy_auth = proxy_auth
         self._retry_connection: bool = True
         self._middlewares = middlewares
 
@@ -501,7 +474,6 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         skip_auto_headers: Iterable[str] | None = None,
-        auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
         compress: Literal["deflate", "gzip"] | bool = False,
@@ -512,7 +484,6 @@ class ClientSession:
         ) = None,
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
@@ -531,23 +502,6 @@ class ClientSession:
 
         if self.closed:
             raise RuntimeError("Session is closed")
-
-        if auth is not None:
-            warnings.warn(
-                "The 'auth' parameter is deprecated and will be removed in v4;"
-                " pass headers={'Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-        if proxy_auth is not None:
-            warnings.warn(
-                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
-                " pass proxy_headers={'Proxy-Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=3,
-            )
 
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
@@ -594,8 +548,6 @@ class ClientSession:
 
         if proxy is None:
             proxy = self._default_proxy
-        if proxy_auth is None:
-            proxy_auth = self._default_proxy_auth
 
         if proxy is None:
             proxy_headers = None
@@ -662,43 +614,29 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    # If `auth` was passed for an already authenticated URL,
-                    # disallow only if this is the initial URL; this is to avoid issues
-                    # with sketchy redirects that are not the caller's responsibility
-                    if not history and (auth and auth_from_url):
-                        raise ValueError(
-                            "Cannot combine AUTH argument with "
-                            "credentials encoded in URL"
-                        )
 
-                    # Override the auth with the one from the URL only if we
-                    # have no auth, or if we got an auth from a redirect URL
-                    if auth is None or (history and auth_from_url is not None):
-                        auth = auth_from_url
-
-                    if (
-                        auth is None
-                        and self._default_auth
-                        and (
-                            not self._base_url or self._base_url_origin == url.origin()
-                        )
+                    if auth_from_url is not None:
+                        # URL-embedded credentials override any Authorization
+                        # header already present (e.g. carried from a previous
+                        # redirect). On the initial request, refuse to silently
+                        # shadow an explicit Authorization header.
+                        if not history and hdrs.AUTHORIZATION in headers:
+                            raise ValueError(
+                                "Cannot combine AUTHORIZATION header with "
+                                "credentials encoded in URL"
+                            )
+                        headers[hdrs.AUTHORIZATION] = auth_from_url
+                    elif (
+                        self._trust_env
+                        and url.host is not None
+                        and hdrs.AUTHORIZATION not in headers
                     ):
-                        auth = self._default_auth
-
-                    # Try netrc if auth is still None and trust_env is enabled.
-                    if auth is None and self._trust_env and url.host is not None:
-                        auth = await self._loop.run_in_executor(
+                        # Fall back to ~/.netrc credentials when trust_env is set.
+                        netrc_auth = await self._loop.run_in_executor(
                             None, self._get_netrc_auth, url.host
                         )
-
-                    # It would be confusing if we support explicit
-                    # Authorization header with auth argument
-                    if auth is not None and hdrs.AUTHORIZATION in headers:
-                        raise ValueError(
-                            "Cannot combine AUTHORIZATION header "
-                            "with AUTH argument or credentials "
-                            "encoded in URL"
-                        )
+                        if netrc_auth is not None:
+                            headers[hdrs.AUTHORIZATION] = netrc_auth
 
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
@@ -717,9 +655,15 @@ class ClientSession:
                         proxy_ = URL(proxy)
                     elif self._trust_env:
                         with suppress(LookupError):
-                            proxy_, proxy_auth = await asyncio.to_thread(
+                            proxy_, env_proxy_auth = await asyncio.to_thread(
                                 get_env_proxy_for_url, url
                             )
+                            if env_proxy_auth is not None and (
+                                proxy_headers is None
+                                or hdrs.PROXY_AUTHORIZATION not in proxy_headers
+                            ):
+                                proxy_headers = proxy_headers or CIMultiDict()
+                                proxy_headers[hdrs.PROXY_AUTHORIZATION] = env_proxy_auth
 
                     req = self._request_class(
                         method,
@@ -729,7 +673,6 @@ class ClientSession:
                         skip_auto_headers=skip_headers,
                         data=data,
                         cookies=all_cookies,
-                        auth=auth,
                         version=version,
                         compress=compress,
                         chunked=chunked,
@@ -737,7 +680,6 @@ class ClientSession:
                         loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy_,
-                        proxy_auth=proxy_auth,
                         timer=timer,
                         session=self,
                         ssl=ssl,
@@ -915,7 +857,7 @@ class ClientSession:
                             ) from origin_val_err
 
                         if url.origin() != redirect_origin:
-                            auth = None
+                            cookies = None
                             headers.pop(hdrs.AUTHORIZATION, None)
                             headers.pop(hdrs.COOKIE, None)
                             headers.pop(hdrs.PROXY_AUTHORIZATION, None)
@@ -1006,12 +948,10 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: float | None = None,
-        auth: BasicAuth | None = None,
         origin: str | None = None,
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
@@ -1030,12 +970,10 @@ class ClientSession:
                 autoclose=autoclose,
                 autoping=autoping,
                 heartbeat=heartbeat,
-                auth=auth,
                 origin=origin,
                 params=params,
                 headers=headers,
                 proxy=proxy,
-                proxy_auth=proxy_auth,
                 ssl=ssl,
                 server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
@@ -1085,12 +1023,10 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: float | None = None,
-        auth: BasicAuth | None = None,
         origin: str | None = None,
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
@@ -1098,22 +1034,6 @@ class ClientSession:
         max_msg_size: int = 4 * 1024 * 1024,
         decode_text: bool = True,
     ) -> "ClientWebSocketResponse[bool]":
-        if auth is not None:
-            warnings.warn(
-                "The 'auth' parameter is deprecated and will be removed in v4;"
-                " pass headers={'Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=3,
-            )
-        if proxy_auth is not None:
-            warnings.warn(
-                "The 'proxy_auth' parameter is deprecated and will be removed in v4;"
-                " pass proxy_headers={'Proxy-Authorization': "
-                "aiohttp.encode_basic_auth(login, password)} instead",
-                DeprecationWarning,
-                stacklevel=3,
-            )
         if timeout is not sentinel:
             if isinstance(timeout, ClientWSTimeout):
                 ws_timeout = timeout
@@ -1176,9 +1096,7 @@ class ClientSession:
             params=params,
             headers=real_headers,
             read_until_eof=False,
-            auth=auth,
             proxy=proxy,
-            proxy_auth=proxy_auth,
             ssl=ssl,
             server_hostname=server_hostname,
             proxy_headers=proxy_headers,
@@ -1320,16 +1238,15 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def _get_netrc_auth(self, host: str) -> BasicAuth | None:
-        """
-        Get auth from netrc for the given host.
+    def _get_netrc_auth(self, host: str) -> str | None:
+        """Return an ``Authorization`` header value for ``host`` from netrc.
 
-        This method is designed to be called in an executor to avoid
-        blocking I/O in the event loop.
+        Designed to be called in an executor to avoid blocking I/O on the
+        event loop.
         """
         netrc_obj = netrc_from_env()
         try:
-            return basicauth_from_netrc(netrc_obj, host)
+            return _auth_header_from_netrc(netrc_obj, host)
         except LookupError:
             return None
 
@@ -1491,11 +1408,6 @@ class ClientSession:
     def skip_auto_headers(self) -> frozenset[istr]:
         """Headers for which autogeneration should be skipped"""
         return self._skip_auto_headers
-
-    @property
-    def auth(self) -> BasicAuth | None:
-        """An object that represents HTTP Basic Authorization"""
-        return self._default_auth
 
     @property
     def json_serialize(self) -> JSONEncoder:
@@ -1660,8 +1572,6 @@ else:
         headers - (optional) Dictionary of HTTP Headers to send with
         the request
         cookies - (optional) Dict object to send with the request
-        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-        auth - aiohttp.helpers.BasicAuth
         allow_redirects - (optional) If set to False, do not follow
         redirects
         version - Request HTTP version.

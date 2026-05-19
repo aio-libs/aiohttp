@@ -40,7 +40,6 @@ Backporting
 backports
 BaseEventLoop
 basename
-BasicAuth
 behaviour
 BodyPartReader
 boolean

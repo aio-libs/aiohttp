@@ -1,0 +1,1 @@
+Fixed per-request ``cookies`` not being dropped on cross-origin redirects -- by :user:`Dreamsorcerer`.

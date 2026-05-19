@@ -1,13 +1,6 @@
 ---
 name: backport-failed
-description: Recover from a patchback auto-backport failure. Given a merged PR number, parse the patchback comments to find which target branches failed, cherry-pick the merge commit onto each failed branch, resolve conflicts, push to the user's fork, and open backport PRs that exactly match patchback's title and body shape so they look indistinguishable from successful auto-backports.
-user-invocable: true
-allowed-tools:
-  - Bash
-  - Read
-  - Edit
-  - Write
-  - AskUserQuestion
+description: Create a manual backport to recover from a Patchback auto-backport failure.
 ---
 
 # /backport-failed — Manual recovery for failed patchback backports

@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test-ft.txt --strip-extras requirements/test-ft.in
 #
-aiodns==4.0.0
+aiodns==4.0.3
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via
@@ -18,7 +18,7 @@ aiosignal==1.4.0
     #   aiohttp
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.4.0
+ast-serialize==0.5.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -38,7 +38,7 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-click==8.3.3
+click==8.4.0
     # via wait-for-it
 coverage==7.14.0
     # via
@@ -123,6 +123,7 @@ pytest==9.0.3
     #   pytest-codspeed
     #   pytest-cov
     #   pytest-mock
+    #   pytest-timeout
     #   pytest-xdist
 pytest-aiohttp==1.1.0
     # via -r requirements/test-common.in
@@ -133,6 +134,8 @@ pytest-codspeed==5.0.2
 pytest-cov==7.1.0
     # via -r requirements/test-common.in
 pytest-mock==3.15.1
+    # via -r requirements/test-common.in
+pytest-timeout==2.4.0
     # via -r requirements/test-common.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in

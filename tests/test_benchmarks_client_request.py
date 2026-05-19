@@ -63,7 +63,6 @@ def test_create_client_request_with_cookies(
             skip_auto_headers=None,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             proxy_headers=None,
             timer=timer,
             session=None,  # type: ignore[arg-type]
@@ -74,7 +73,6 @@ def test_create_client_request_with_cookies(
             headers=headers,
             data=None,
             cookies=cookies,
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
@@ -102,7 +100,6 @@ def test_create_client_request_with_headers(
             skip_auto_headers=None,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             proxy_headers=None,
             timer=timer,
             session=None,  # type: ignore[arg-type]
@@ -113,7 +110,6 @@ def test_create_client_request_with_headers(
             headers=headers,
             data=None,
             cookies=cookies,
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
