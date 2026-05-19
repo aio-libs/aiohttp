@@ -2,3 +2,4 @@ aiohttp-theme
 sphinx
 sphinxcontrib-towncrier
 towncrier
+myst-parser
