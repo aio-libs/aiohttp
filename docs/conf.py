@@ -59,6 +59,7 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
+    "myst_parser",
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
@@ -92,7 +93,10 @@ intersphinx_mapping = {
 templates_path = ["_templates"]
 
 # The suffix of source filenames.
-source_suffix = ".rst"
+source_suffix = {
+    ".rst": "restructuredtext",
+    ".md": "markdown",
+}
 
 # The encoding of source files.
 # source_encoding = 'utf-8-sig'
