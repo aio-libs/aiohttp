@@ -2013,11 +2013,11 @@ def test_parse_payload_response_without_body(
     assert payload.is_eof()
 
 
-def test_parse_payload_response_with_invalid_body(
-    loop: asyncio.AbstractEventLoop,
+async def test_parse_payload_response_with_invalid_body(
     protocol: BaseProtocol,
     response_cls: type[HttpResponseParser],
 ) -> None:
+    loop = asyncio.get_running_loop()
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
     text = (
         b"HTTP/1.1 200 Ok\r\nTransfer-Encoding: chunked\r\n\r\n"
