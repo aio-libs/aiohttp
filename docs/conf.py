@@ -93,11 +93,6 @@ myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
 # TODO: Remove this option once THREAT_MODEL.md is complete.
 suppress_warnings = ["myst.xref_missing"]
 
-mermaid_init_config = {
-    "startOnLoad": False,  # From the default config
-    "themeVariables": {"background": "transparent"},
-}
-
 intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
