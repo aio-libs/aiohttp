@@ -971,6 +971,7 @@ class ClientSession:
 
                         if url.origin() != redirect_origin:
                             auth = None
+                            cookies = None
                             headers.pop(hdrs.AUTHORIZATION, None)
                             headers.pop(hdrs.COOKIE, None)
                             headers.pop(hdrs.PROXY_AUTHORIZATION, None)
