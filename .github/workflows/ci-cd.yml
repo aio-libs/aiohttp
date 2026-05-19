@@ -546,10 +546,15 @@ jobs:
         - os: ubuntu-latest
           qemu: s390x
           musl: musllinux
-        - os: ubuntu-latest
+        # armv7l builds on aarch64 hosts. We still register QEMU so
+        # binfmt picks up the 32-bit ARM userspace handler regardless of
+        # whether the host kernel has CONFIG_COMPAT enabled. Even with
+        # emulation, aarch64-on-aarch64 hosting beats x86_64 by a wide
+        # margin.
+        - os: ubuntu-24.04-arm
           qemu: armv7l
           musl: ""
-        - os: ubuntu-latest
+        - os: ubuntu-24.04-arm
           qemu: armv7l
           musl: musllinux
         - os: ubuntu-latest
