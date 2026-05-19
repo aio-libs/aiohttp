@@ -67,6 +67,7 @@ charset
 charsetdetect
 chunked
 chunking
+cibuildwheel
 CIMultiDict
 ClientSession
 cls
@@ -255,6 +256,7 @@ py
 pydantic
 pyenv
 pyflakes
+pypa
 pyright
 pytest
 Pytest
