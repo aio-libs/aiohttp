@@ -1462,6 +1462,9 @@ async def test_custom_req_rep(loop) -> None:
                 traces=self._traces,
                 loop=self.loop,
                 session=self._session,
+                stream_writer=mock.create_autospec(
+                    AbstractStreamWriter, spec_set=True, instance=True
+                ),
             )
             self.response = resp
             nonlocal called

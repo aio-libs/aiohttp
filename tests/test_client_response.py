@@ -13,6 +13,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, hdrs, http
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.helpers import TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
@@ -47,6 +48,9 @@ async def test_http_processing_error(session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -75,6 +79,9 @@ def test_del(session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -102,6 +109,9 @@ def test_close(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     response._connection = mock.Mock()
@@ -122,6 +132,9 @@ def test_wait_for_100_1(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response._continue is not None
     response.close()
@@ -138,6 +151,9 @@ def test_wait_for_100_2(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response._continue is None
     response.close()
@@ -154,6 +170,9 @@ def test_repr(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 200
     response.reason = "Ok"
@@ -171,6 +190,9 @@ def test_repr_non_ascii_url() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>" in repr(response)
 
@@ -186,6 +208,9 @@ def test_repr_non_ascii_reason() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.reason = "\u03bb"
     assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>" in repr(
@@ -204,6 +229,9 @@ def test_url_obj_deprecated() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with pytest.warns(DeprecationWarning):
         response.url_obj
@@ -220,6 +248,9 @@ async def test_read_and_release_connection(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -246,6 +277,9 @@ async def test_read_and_release_connection_with_error(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     content = response.content = mock.Mock()
     content.read.return_value = loop.create_future()
@@ -267,6 +301,9 @@ async def test_release(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     fut = loop.create_future()
     fut.set_result(b"")
@@ -296,6 +333,9 @@ async def test_release_on_del(loop, session) -> None:
             traces=[],
             loop=loop,
             session=session,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
         )
         response._closed = False
         response._connection = conn
@@ -316,6 +356,9 @@ async def test_response_eof(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -337,6 +380,9 @@ async def test_response_eof_upgraded(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     conn = response._connection = mock.Mock()
@@ -358,6 +404,9 @@ async def test_response_eof_after_connection_detach(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -379,6 +428,9 @@ async def test_text(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -406,6 +458,9 @@ async def test_text_bad_encoding(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -437,6 +492,9 @@ async def test_text_badly_encoded_encoding_header(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object):
@@ -466,6 +524,9 @@ async def test_text_custom_encoding(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -497,6 +558,9 @@ async def test_text_charset_resolver(content_type: str, loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -526,6 +590,9 @@ async def test_get_encoding_body_none(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -556,6 +623,9 @@ async def test_text_after_read(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -583,6 +653,9 @@ async def test_json(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -610,6 +683,9 @@ async def test_json_extended_content_type(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -639,6 +715,9 @@ async def test_json_custom_content_type(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -666,6 +745,9 @@ async def test_json_custom_loader(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "application/json;charset=cp1251"}
     response._body = b"data"
@@ -688,6 +770,9 @@ async def test_json_invalid_content_type(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "data/octet-stream"}
     response._body = b""
@@ -711,6 +796,9 @@ async def test_json_no_content(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "data/octet-stream"}
     response._body = b""
@@ -730,6 +818,9 @@ async def test_json_override_encoding(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -759,6 +850,9 @@ def test_get_encoding_unknown(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     response._headers = {"Content-Type": "application/json"}
@@ -776,6 +870,9 @@ def test_raise_for_status_2xx() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 200
     response.reason = "OK"
@@ -793,6 +890,9 @@ def test_raise_for_status_4xx() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -814,6 +914,9 @@ def test_raise_for_status_4xx_without_reason() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 404
     response.reason = ""
@@ -835,6 +938,9 @@ def test_resp_host() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert "del-cl-resp.org" == response.host
 
@@ -850,6 +956,9 @@ def test_content_type() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "application/json;charset=cp1251"}
 
@@ -867,6 +976,9 @@ def test_content_type_no_header() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {}
 
@@ -884,6 +996,9 @@ def test_charset() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "application/json;charset=cp1251"}
 
@@ -901,6 +1016,9 @@ def test_charset_no_header() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {}
 
@@ -918,6 +1036,9 @@ def test_charset_no_charset() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Type": "application/json"}
 
@@ -935,6 +1056,9 @@ def test_content_disposition_full() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {
         "Content-Disposition": 'attachment; filename="archive.tar.gz"; foo=bar'
@@ -958,6 +1082,9 @@ def test_content_disposition_no_parameters() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {"Content-Disposition": "attachment"}
 
@@ -984,6 +1111,9 @@ def test_content_disposition_empty_parts(content_disposition: str) -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Disposition": content_disposition}
     response._headers = CIMultiDictProxy(CIMultiDict(h))
@@ -1005,6 +1135,9 @@ def test_content_disposition_no_header() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = {}
 
@@ -1022,6 +1155,9 @@ def test_default_encoding_is_utf8() -> None:
         traces=[],
         loop=mock.Mock(),
         session=None,  # type: ignore[arg-type]
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDictProxy(CIMultiDict({}))
     response._body = b""
@@ -1042,6 +1178,9 @@ def test_response_request_info() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert url == response.request_info.url
     assert "get" == response.request_info.method
@@ -1061,6 +1200,9 @@ def test_request_info_in_exception() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1082,6 +1224,9 @@ def test_no_redirect_history_in_exception() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1105,6 +1250,9 @@ def test_redirect_history_in_exception() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1119,6 +1267,9 @@ def test_redirect_history_in_exception() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     hist_response._headers = hist_headers
@@ -1148,6 +1299,9 @@ async def test_response_read_triggers_callback(loop, session) -> None:
         loop=loop,
         session=session,
         traces=[trace],
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args, **kwargs):
@@ -1182,6 +1336,9 @@ def test_response_cookies(
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     cookies = response.cookies
     # Ensure the same cookies object is returned each time
@@ -1202,6 +1359,9 @@ def test_response_real_url(
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response.url == url.with_fragment(None)
     assert response.real_url == url
@@ -1219,6 +1379,9 @@ def test_response_links_comma_separated(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict(
         [
@@ -1249,6 +1412,9 @@ def test_response_links_multiple_headers(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict(
         [
@@ -1274,6 +1440,9 @@ def test_response_links_no_rel(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict([("Link", "<http://example.com/>")])
     assert response.links == {
@@ -1293,6 +1462,9 @@ def test_response_links_quoted(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict(
         [
@@ -1316,6 +1488,9 @@ def test_response_links_relative(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict(
         [
@@ -1339,6 +1514,9 @@ def test_response_links_empty(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = CIMultiDict()
     assert response.links == {}
@@ -1355,6 +1533,9 @@ def test_response_not_closed_after_get_ok(mocker) -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 400
     response.reason = "Bad Request"
@@ -1389,6 +1570,9 @@ def test_response_duplicate_cookie_names(
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Set headers with duplicate cookie names but different domains
@@ -1428,6 +1612,9 @@ def test_response_raw_cookie_headers_preserved(
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Set headers with multiple cookies
@@ -1468,6 +1655,9 @@ def test_response_cookies_setter_updates_raw_headers(
         traces=[],
         loop=loop,
         session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Create a SimpleCookie with some cookies

@@ -4,6 +4,7 @@ from unittest import mock
 from yarl import URL
 
 from aiohttp import http
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
@@ -118,6 +119,9 @@ async def test_multiple_responses_one_byte_at_a_time(
                 traces=[],
                 loop=loop,
                 session=mock.Mock(),
+                stream_writer=mock.create_autospec(
+                    AbstractStreamWriter, spec_set=True, instance=True
+                ),
             )
             await response.start(conn)
             await response.read() == payload
@@ -148,6 +152,9 @@ async def test_unexpected_exception_during_data_received(
             traces=[],
             loop=loop,
             session=mock.Mock(),
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
         )
         await response.start(conn)
         await response.read() == b"ab"
@@ -176,6 +183,9 @@ async def test_client_protocol_readuntil_eof(loop: asyncio.AbstractEventLoop) ->
         traces=[],
         loop=loop,
         session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     proto.set_response_params(read_until_eof=True)
     await response.start(conn)
