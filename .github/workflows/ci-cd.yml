@@ -565,6 +565,9 @@ jobs:
           # Build emulated architectures only if QEMU is set,
           # use default "auto" otherwise
           echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+          # Override pyproject.toml's `build[uv]`: the pypa odd-arch
+          # manylinux/musllinux containers do not ship `uv` preinstalled.
+          echo "CIBW_BUILD_FRONTEND=build" >> $GITHUB_ENV
         fi
       shell: bash
     - name: Setup Python
@@ -588,8 +591,11 @@ jobs:
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing
-        # cibuildwheel with the `uv` extra bundles uv with it; Linux
-        # already has uv inside the manylinux/musllinux container.
+        # cibuildwheel with the `uv` extra bundles uv with it; the
+        # tested-arch manylinux/musllinux containers also ship uv
+        # preinstalled. The odd-arch containers do not, so the
+        # `Prepare emulation` step above sets `CIBW_BUILD_FRONTEND=build`
+        # for those QEMU matrix cells.
         extras: uv
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
