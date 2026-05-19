@@ -1554,7 +1554,7 @@ Response object
 
    .. attribute:: upload_complete
 
-      An :class:`asyncio.Future` set when the request body has been fully sent. 
+      An :class:`asyncio.Future` set when the request body has been fully sent.
 
       Use ``await resp.upload_complete`` to block until the upload finishes, or
       ``resp.upload_complete.done()`` to poll from a progress-sampling loop
