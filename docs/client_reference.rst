@@ -1538,6 +1538,30 @@ Response object
 
       .. versionadded:: 3.2
 
+   .. attribute:: output_size
+
+      Number of bytes sent for this request.
+
+      Pair with :attr:`upload_complete` to display upload progress::
+
+          async with session.post(url, data=mpwriter) as resp:
+              while not resp.upload_complete.done():
+                  print(f"uploaded {resp.output_size} bytes")
+                  await asyncio.sleep(0.5)
+              print(f"upload complete: {resp.output_size} bytes")
+
+      .. versionadded:: 3.14
+
+   .. attribute:: upload_complete
+
+      An :class:`asyncio.Future` set when the request body has been fully sent.
+
+      Use ``await resp.upload_complete`` to block until the upload finishes, or
+      ``resp.upload_complete.done()`` to poll from a progress-sampling loop
+      (see :attr:`output_size`).
+
+      .. versionadded:: 3.14
+
    .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
