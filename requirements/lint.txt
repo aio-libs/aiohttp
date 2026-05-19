@@ -167,7 +167,7 @@ valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==21.3.3
     # via pre-commit
-yarl==1.23.0
+yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/lint.in

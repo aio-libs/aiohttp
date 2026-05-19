@@ -32,9 +32,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   aiohttp
     #   valkey
 attrs==26.1.0
-    # via
-    #   aiohttp
-    #   myst-parser
+    # via aiohttp
 babel==2.18.0
     # via sphinx
 backports-asyncio-runner==1.2.0
@@ -324,7 +322,7 @@ wait-for-it==2.3.0
     # via -r requirements/test-common.in
 wheel==0.47.0
     # via pip-tools
-yarl==1.22.0
+yarl==1.24.2
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
