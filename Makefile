@@ -4,6 +4,7 @@ to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
 to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
 CYTHON_EXTRA ?=
+PIP ?= python -m pip
 CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd) $(wildcard aiohttp/_websocket/*.pyx) $(wildcard aiohttp/_websocket/*.pyi) $(wildcard aiohttp/_websocket/*.pxd)
 PYXS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/_websocket/*.pyx)
 CS := $(wildcard aiohttp/*.c) $(wildcard aiohttp/_websocket/*.c)
@@ -48,10 +49,10 @@ endif
 .SECONDARY: $(call to-hash,$(ALLS))
 
 .update-pip:
-	@python -m pip install --upgrade pip
+	@$(PIP) install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
-	@python -m pip install -r requirements/cython.in -c requirements/cython.txt
+	@$(PIP) install -r requirements/cython.in -c requirements/cython.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -86,7 +87,7 @@ cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c
 cythonize-nodeps: $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c
 
 .install-deps: .install-cython $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c $(call to-hash,$(CYS) $(REQS))
-	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
+	@$(PIP) install -r requirements/dev.in -c requirements/dev.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -101,7 +102,7 @@ mypy:
 	mypy
 
 .develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
-	python -m pip install -e . -c requirements/runtime-deps.txt
+	$(PIP) install -e . -c requirements/runtime-deps.txt
 	@touch .develop
 
 .PHONY: test
@@ -173,7 +174,7 @@ doc-spelling:
 
 .PHONY: install
 install: .update-pip
-	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
+	@$(PIP) install -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
