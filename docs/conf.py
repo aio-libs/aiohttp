@@ -60,7 +60,7 @@ extensions = [
     "sphinx.ext.viewcode",
     # Third-party extensions:
     "myst_parser",  # renders Markdown sources (e.g. ``THREAT_MODEL.md``)
-    "sphinxcontrib.mermaid",  # renders Mermaid diagrams
+    "sphinxcontrib.mermaid",  # renders the Mermaid flowcharts in ``THREAT_MODEL.md``
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
