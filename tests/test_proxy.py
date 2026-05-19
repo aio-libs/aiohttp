@@ -11,6 +11,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
@@ -269,6 +270,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -338,6 +342,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -417,6 +424,9 @@ class TestProxy(unittest.TestCase):
                     timer=TimerNoop(),
                     traces=[],
                     loop=self.loop,
+                    stream_writer=mock.create_autospec(
+                        AbstractStreamWriter, spec_set=True, instance=True
+                    ),
                     session=mock.Mock(),
                 )
                 fingerprint_mock = mock.Mock(spec=Fingerprint, auto_spec=True)
@@ -516,6 +526,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -583,6 +596,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -646,6 +662,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -709,6 +728,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -777,6 +799,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -902,6 +927,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)
@@ -980,6 +1008,9 @@ class TestProxy(unittest.TestCase):
             timer=TimerNoop(),
             traces=[],
             loop=self.loop,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
             session=mock.Mock(),
         )
         proxy_req.send = mock.AsyncMock(return_value=proxy_resp)

@@ -304,6 +304,9 @@ class ClientResponse(HeadersMixin):
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
     __writer: Optional["asyncio.Task[None]"] = None
+    _stream_writer: Optional[AbstractStreamWriter] = None
+    _output_size: int = 0
+    _upload_complete: Optional[asyncio.Future[None]] = None
 
     def __init__(
         self,
@@ -317,6 +320,7 @@ class ClientResponse(HeadersMixin):
         traces: list["Trace"],
         loop: asyncio.AbstractEventLoop,
         session: "ClientSession",
+        stream_writer: AbstractStreamWriter,
     ) -> None:
         # URL forbids subclasses, so a simple type check is enough.
         assert type(url) is URL
@@ -325,7 +329,10 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
-        if writer is not None:
+        if writer is None:  # Request already sent
+            self._output_size = stream_writer.output_size
+        else:
+            self._stream_writer = stream_writer
             self._writer = writer
         if continue100 is not None:
             self._continue = continue100
@@ -346,6 +353,11 @@ class ClientResponse(HeadersMixin):
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
+        if self._upload_complete is not None and not self._upload_complete.done():
+            self._upload_complete.set_result(None)
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
@@ -366,9 +378,28 @@ class ClientResponse(HeadersMixin):
             return
         if writer.done():
             # The writer is already done, so we can clear it immediately.
-            self.__writer = None
+            self.__reset_writer()
         else:
             writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def output_size(self) -> int:
+        """Number of bytes sent for this request."""
+        if self._stream_writer is not None:
+            return self._stream_writer.output_size
+        return self._output_size
+
+    @property
+    def upload_complete(self) -> "asyncio.Future[None]":
+        """Future set when the request body has been fully sent.
+
+        Already done when the request had no body or was written eagerly.
+        """
+        if self._upload_complete is None:
+            self._upload_complete = self._loop.create_future()
+            if self._stream_writer is None:  # upload already finished
+                self._upload_complete.set_result(None)
+        return self._upload_complete
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -652,6 +683,9 @@ class ClientResponse(HeadersMixin):
     def _cleanup_writer(self) -> None:
         if self.__writer is not None:
             self.__writer.cancel()
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
         self._session = None
 
     def _notify_content(self) -> None:
