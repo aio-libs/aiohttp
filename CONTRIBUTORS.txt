@@ -15,6 +15,7 @@ Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
+Alex Grönholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -342,6 +343,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang

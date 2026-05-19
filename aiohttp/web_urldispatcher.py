@@ -29,7 +29,7 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, DEFAULT_CHUNK_SIZE
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
@@ -158,7 +158,7 @@ class AbstractRoute(abc.ABC):
             expect_handler = _default_expect_handler
 
         assert inspect.iscoroutinefunction(expect_handler) or (
-            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)  # type: ignore[deprecated]
         ), f"Coroutine is expected, got {expect_handler!r}"
 
         method = method.upper()
@@ -166,7 +166,7 @@ class AbstractRoute(abc.ABC):
             raise ValueError(f"{method} is not allowed HTTP method")
 
         if inspect.iscoroutinefunction(handler) or (
-            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)  # type: ignore[deprecated]
         ):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
@@ -507,7 +507,7 @@ class StaticResource(PrefixResource):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,
@@ -1133,7 +1133,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
         follow_symlinks: bool = False,
         append_version: bool = False,

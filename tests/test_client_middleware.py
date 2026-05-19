@@ -5,6 +5,7 @@ import socket
 from typing import NoReturn
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 
 from aiohttp import (
     ClientError,
@@ -19,7 +20,6 @@ from aiohttp import (
 from aiohttp.abc import ResolveResult
 from aiohttp.client_middlewares import build_client_middlewares
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
 from aiohttp.tracing import Trace
 
@@ -955,7 +955,7 @@ async def test_middleware_uses_session_avoids_recursion_with_path_check(
         if request.url.path != "/log":
             # Use the session from the request to make the logging call
             async with request.session.post(
-                f"http://localhost:{log_server.port}/log",
+                log_server.make_url("/log"),
                 json={"method": str(request.method), "url": str(request.url)},
             ) as resp:
                 assert resp.status == 200
@@ -1023,7 +1023,7 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
         # Use the session from the request to make the logging call
         # Disable middleware to avoid infinite recursion
         async with request.session.post(
-            f"http://localhost:{log_server.port}/log",
+            log_server.make_url("/log"),
             json={"method": str(request.method), "url": str(request.url)},
             middlewares=(),  # This prevents infinite recursion
         ) as resp:

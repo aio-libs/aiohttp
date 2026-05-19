@@ -6,9 +6,9 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import log, web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
@@ -36,7 +36,7 @@ async def test_app_register_on_finish() -> None:
 
 async def test_app_register_coro() -> None:
     app = web.Application()
-    fut = asyncio.get_event_loop().create_future()
+    fut = asyncio.get_running_loop().create_future()
 
     async def cb(app: web.Application) -> None:
         await asyncio.sleep(0.001)
