@@ -2016,7 +2016,7 @@ def test_parse_payload_response_without_body(
 def test_parse_payload_response_with_invalid_body(
     loop: asyncio.AbstractEventLoop,
     protocol: BaseProtocol,
-    response_cls: Type[HttpResponseParser],
+    response_cls: type[HttpResponseParser],
 ) -> None:
     parser = response_cls(protocol, loop, 2**16, response_with_body=False)
     text = (
