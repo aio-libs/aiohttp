@@ -72,10 +72,12 @@ try:
 except ImportError:
     pass
 
-# THREAT_MODEL.md is already spell-checked by the codespell pre-commit hook.
-# The spelling builder additionally mis-tokenises its ``**S**poofing`` STRIDE
-# list into non-words, so skip the threat model here to avoid double coverage.
-spelling_exclude_patterns = ["threat_model.md"]
+spelling_exclude_patterns = [
+    # THREAT_MODEL.md is already spell-checked by the codespell pre-commit hook.
+    # The spelling builder additionally mis-tokenises its ``**S**poofing`` STRIDE
+    # list into non-words, so skip the threat model here to avoid double coverage.
+    "threat_model.md",
+]
 
 
 # -- MyST (Markdown) configuration ----------------------------------------
