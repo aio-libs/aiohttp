@@ -1,0 +1,3 @@
+Reduced payload sizes and request counts in the slowest client and URL
+dispatcher benchmarks so they no longer dominate CI runtime
+-- by :user:`bdraco`.

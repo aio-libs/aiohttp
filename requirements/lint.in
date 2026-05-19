@@ -1,10 +1,13 @@
 aiodns
+backports.zstd; implementation_name == "cpython" and python_version < "3.14"
 blockbuster
 freezegun
+isal
 mypy; implementation_name == "cpython"
 pre-commit
 proxy.py
 pytest
+pytest-aiohttp
 pytest-mock
 pytest_codspeed
 python-on-whales
@@ -12,3 +15,4 @@ slotscheck
 trustme
 uvloop; platform_system != "Windows"
 valkey
+zlib_ng

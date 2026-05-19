@@ -1,0 +1,2 @@
+Skipped IPv6-only connector and test utility tests when the runtime does not support
+IPv6 -- by :user:`nightcityblade`.

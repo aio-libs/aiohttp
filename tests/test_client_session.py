@@ -3,68 +3,72 @@ import contextlib
 import gc
 import io
 import json
+import sys
+import warnings
 from collections import deque
-from http.cookies import SimpleCookie
-from typing import (
-    Any,
-    Awaitable,
-    Callable,
-    Dict,
-    Iterator,
-    List,
-    NoReturn,
-    TypedDict,
-    Union,
-)
+from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
+from http.cookies import BaseCookie, SimpleCookie
+from types import SimpleNamespace
+from typing import Any, Literal, NoReturn, TypedDict, cast
 from unittest import mock
 from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import client, hdrs, tracing, web
+from aiohttp import abc, client, hdrs, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
-from aiohttp.test_utils import make_mocked_coro
-from aiohttp.tracing import Trace
+from aiohttp.payload import Payload
+from aiohttp.test_utils import TestServer
+from aiohttp.tracing import (
+    Trace,
+    TraceRequestChunkSentParams,
+    TraceRequestEndParams,
+    TraceRequestExceptionParams,
+    TraceRequestHeadersSentParams,
+    TraceRequestRedirectParams,
+    TraceRequestStartParams,
+    TraceResponseChunkReceivedParams,
+)
 
 
 class _Params(TypedDict):
-    headers: Dict[str, str]
+    headers: dict[str, str]
     max_redirects: int
-    compress: str
+    compress: Literal["deflate", "gzip"]
     chunked: bool
     expect100: bool
     read_until_eof: bool
 
 
 @pytest.fixture
-def connector(
-    loop: asyncio.AbstractEventLoop, create_mocked_conn: Callable[[], ResponseHandler]
-) -> Iterator[BaseConnector]:
+async def connector(
+    create_mocked_conn: Callable[[], ResponseHandler],
+) -> AsyncIterator[BaseConnector]:
     async def make_conn() -> BaseConnector:
         return BaseConnector()
 
-    key = ConnectionKey("localhost", 80, False, True, None, None, None)
-    conn = loop.run_until_complete(make_conn())
+    key = ConnectionKey("localhost", 80, False, True, None, None)
+    conn = await make_conn()
     proto = create_mocked_conn()
     conn._conns[key] = deque([(proto, 123)])
-    yield conn
-    loop.run_until_complete(conn.close())
+    try:
+        yield conn
+    finally:
+        await conn.close()
 
 
 @pytest.fixture
-def create_session(  # type: ignore[misc]
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[..., Awaitable[ClientSession]]]:
+async def create_session() -> AsyncIterator[Callable[..., Awaitable[ClientSession]]]:
     session = None
 
     async def maker(*args: Any, **kwargs: Any) -> ClientSession:
@@ -74,15 +78,14 @@ def create_session(  # type: ignore[misc]
 
     yield maker
     if session is not None:
-        loop.run_until_complete(session.close())
+        await session.close()
 
 
 @pytest.fixture
-def session(  # type: ignore[misc]
+async def session(
     create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
 ) -> ClientSession:
-    return loop.run_until_complete(create_session())
+    return await create_session()
 
 
 @pytest.fixture
@@ -95,6 +98,21 @@ def params() -> _Params:
         expect100=True,
         read_until_eof=False,
     )
+
+
+@pytest.fixture
+async def auth_server(aiohttp_server: AiohttpServer) -> TestServer:
+    """Create a server with an auth handler that returns auth header or 'no_auth'."""
+
+    async def handler(request: web.Request) -> web.Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        if auth_header:
+            return web.Response(text=f"auth:{auth_header}")
+        return web.Response(text="no_auth")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    return await aiohttp_server(app)
 
 
 async def test_close_coro(
@@ -322,9 +340,7 @@ async def test_closed(session: ClientSession) -> None:
 
 
 async def test_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     connector = TCPConnector()
     m = mocker.spy(connector, "close")
@@ -337,9 +353,7 @@ async def test_connector(
 
 
 async def test_create_connector(
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
+    create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     session = await create_session()
     m = mocker.spy(session.connector, "close")
@@ -348,7 +362,94 @@ async def test_create_connector(
     assert m.called
 
 
-def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
+@pytest.mark.skipif(
+    sys.version_info < (3, 11),
+    reason="Use test_ssl_shutdown_timeout_passed_to_connector_pre_311 for Python < 3.11",
+)
+async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
+    # Test default value (no warning expected)
+    async with ClientSession() as session:
+        assert isinstance(session.connector, TCPConnector)
+        assert session.connector._ssl_shutdown_timeout == 0
+
+    # Test custom value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
+
+    # Test None value - expect deprecation warning
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(ssl_shutdown_timeout=None) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout is None
+
+    # Test that it doesn't affect when custom connector is provided
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
+
+
+@pytest.mark.skipif(
+    sys.version_info >= (3, 11),
+    reason="This test is for Python < 3.11 runtime warning behavior",
+)
+async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
+    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
+    # Test custom value - expect both deprecation and runtime warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
+            assert isinstance(session.connector, TCPConnector)
+            assert session.connector._ssl_shutdown_timeout == 1.0
+        # Should have deprecation warnings (from ClientSession and TCPConnector) and runtime warning
+        # ClientSession emits 1 DeprecationWarning, TCPConnector emits 1 DeprecationWarning + 1 RuntimeWarning = 3 total
+        assert len(w) == 3
+        deprecation_count = sum(
+            1 for warn in w if issubclass(warn.category, DeprecationWarning)
+        )
+        runtime_count = sum(
+            1 for warn in w if issubclass(warn.category, RuntimeWarning)
+        )
+        assert deprecation_count == 2  # One from ClientSession, one from TCPConnector
+        assert runtime_count == 1  # One from TCPConnector
+
+    # Test with custom connector
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
+        # Should have both deprecation and runtime warnings
+        assert len(w) == 2
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        async with ClientSession(
+            connector=custom_conn, ssl_shutdown_timeout=1.0
+        ) as session:
+            assert session.connector is not None
+            assert isinstance(session.connector, TCPConnector)
+            assert (
+                session.connector._ssl_shutdown_timeout == 2.0
+            )  # Should use connector's value
+
+
+def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
     with contextlib.ExitStack() as stack:
         another_loop = asyncio.new_event_loop()
         stack.enter_context(contextlib.closing(another_loop))
@@ -363,13 +464,13 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
             async def make_sess() -> ClientSession:
                 return ClientSession(connector=connector)
 
-            loop.run_until_complete(make_sess())
+            event_loop.run_until_complete(make_sess())
         expected = "Session and connector have to use same event loop"
         assert str(ctx.value).startswith(expected)
         another_loop.run_until_complete(connector.close())
 
 
-def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
+def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
     conn = session.connector
     assert conn is not None
     try:
@@ -379,7 +480,7 @@ def test_detach(loop: asyncio.AbstractEventLoop, session: ClientSession) -> None
         assert session.closed
         assert not conn.closed
     finally:
-        loop.run_until_complete(conn.close())
+        event_loop.run_until_complete(conn.close())
 
 
 async def test_request_closed_session(session: ClientSession) -> None:
@@ -408,7 +509,8 @@ async def test_double_close(
     assert connector.closed
 
 
-async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) -> None:
+async def test_del(connector: BaseConnector) -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -424,9 +526,8 @@ async def test_del(connector: BaseConnector, loop: asyncio.AbstractEventLoop) ->
     assert logs[0] == expected
 
 
-async def test_del_debug(
-    connector: BaseConnector, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_del_debug(connector: BaseConnector) -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     # N.B. don't use session fixture, it stores extra reference internally
     session = ClientSession(connector=connector)
@@ -447,12 +548,10 @@ async def test_del_debug(
 
 
 async def test_borrow_connector_loop(
-    connector: BaseConnector,
-    create_session: Callable[..., Awaitable[ClientSession]],
-    loop: asyncio.AbstractEventLoop,
+    connector: BaseConnector, create_session: Callable[..., Awaitable[ClientSession]]
 ) -> None:
     async with ClientSession(connector=connector) as session:
-        assert session._loop is loop
+        assert session._loop is asyncio.get_running_loop()
 
 
 async def test_reraise_os_error(
@@ -460,9 +559,10 @@ async def test_reraise_os_error(
     create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
     err = OSError(1, "permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req._send.side_effect = err
+    req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     session = await create_session(request_class=req_factory)
 
     async def create_connection(
@@ -490,9 +590,10 @@ async def test_close_conn_on_error(
         pass
 
     err = UnexpectedException("permission error")
-    req = mock.Mock()
+    req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.Mock(side_effect=err)
+    req._send.side_effect = err
+    req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     session = await create_session(request_class=req_factory)
 
     connections = []
@@ -500,7 +601,7 @@ async def test_close_conn_on_error(
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -521,8 +622,8 @@ async def test_close_conn_on_error(
                 session._connector, "_release", autospec=True, spec_set=True
             ):
                 with pytest.raises(UnexpectedException):
-                    async with session.request("get", "http://example.com") as resp:
-                        await resp.text()
+                    async with session.request("get", "http://example.com"):
+                        pass
 
                 # normally called during garbage collection.  triggers an exception
                 # if the connection wasn't already closed
@@ -538,7 +639,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -547,11 +648,11 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     }
     resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
-    resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
@@ -562,7 +663,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -600,7 +701,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse)
+    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -609,11 +710,11 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     }
     resp.url = URL(f"{protocol}://example")
     resp.cookies = SimpleCookie()
-    resp.start = mock.AsyncMock()
 
     req = mock.create_autospec(aiohttp.ClientRequest, spec_set=True)
+    req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
-    req.send = mock.AsyncMock(return_value=resp)
+    req._send = mock.AsyncMock(return_value=resp)
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
@@ -624,7 +725,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     original_connect = session._connector.connect
 
     async def connect(
-        req: ClientRequest, traces: List[Trace], timeout: aiohttp.ClientTimeout
+        req: ClientRequest, traces: list[Trace], timeout: aiohttp.ClientTimeout
     ) -> Connection:
         conn = await original_connect(req, traces, timeout)
         connections.append(conn)
@@ -654,13 +755,51 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     await session.close()
 
 
-async def test_cookie_jar_usage(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
     req_url = None
 
-    jar = mock.Mock()
-    jar.filter_cookies.return_value = None
+    class MockCookieJar(abc.AbstractCookieJar):
+        def __init__(self) -> None:
+            self._update_cookies_mock = mock.Mock()
+            self._filter_cookies_mock = mock.Mock(return_value=BaseCookie())
+            self._clear_mock = mock.Mock()
+            self._clear_domain_mock = mock.Mock()
+            self._items: list[Any] = []
+
+        @property
+        def unsafe(self) -> bool:
+            return False
+
+        @property
+        def quote_cookie(self) -> bool:
+            return True
+
+        def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
+            self._clear_mock(predicate)
+
+        def clear_domain(self, domain: str) -> None:
+            self._clear_domain_mock(domain)
+
+        def update_cookies(self, cookies: Any, response_url: URL = URL()) -> None:
+            self._update_cookies_mock(cookies, response_url)
+
+        def filter_cookies(self, request_url: URL) -> BaseCookie[str]:
+            return cast(BaseCookie[str], self._filter_cookies_mock(request_url))
+
+        def __len__(self) -> int:
+            return len(self._items)
+
+        def __iter__(self) -> Iterator[Any]:
+            return iter(self._items)
+
+    jar = MockCookieJar()
+
+    assert jar.quote_cookie is True
+    assert jar.unsafe is False
+    assert len(jar) == 0
+    assert list(jar) == []
+    jar.clear()
+    jar.clear_domain("example.com")
 
     async def handler(request: web.Request) -> web.Response:
         nonlocal req_url
@@ -677,23 +816,25 @@ async def test_cookie_jar_usage(
     )
 
     # Updating the cookie jar with initial user defined cookies
-    jar.update_cookies.assert_called_with({"request": "req_value"})
+    jar._update_cookies_mock.assert_called_with({"request": "req_value"}, URL())
 
-    jar.update_cookies.reset_mock()
+    jar._update_cookies_mock.reset_mock()
     resp = await session.get("/")
     resp.release()
     assert req_url is not None
 
     # Filtering the cookie jar before sending the request,
     # getting the request URL as only parameter
-    jar.filter_cookies.assert_called_with(URL(req_url))
+    jar._filter_cookies_mock.assert_called_with(URL(req_url))
 
     # Updating the cookie jar with the response cookies
-    assert jar.update_cookies.called
-    resp_cookies = jar.update_cookies.call_args[0][0]
-    assert isinstance(resp_cookies, SimpleCookie)
-    assert "response" in resp_cookies
-    assert resp_cookies["response"].value == "resp_value"
+    assert jar._update_cookies_mock.called
+    resp_cookies = jar._update_cookies_mock.call_args[0][0]
+    # Now update_cookies is called with a list of tuples
+    assert isinstance(resp_cookies, list)
+    assert len(resp_cookies) == 1
+    assert resp_cookies[0][0] == "response"
+    assert resp_cookies[0][1].value == "resp_value"
 
 
 async def test_cookies_with_not_quoted_cookie_jar(
@@ -712,7 +853,28 @@ async def test_cookies_with_not_quoted_cookie_jar(
     assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
 
 
-async def test_session_default_version(loop: asyncio.AbstractEventLoop) -> None:
+async def test_cookies_with_unsafe_cookie_jar(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+    jar = CookieJar(unsafe=True)
+    # Use an IP-based URL to verify that ad-hoc cookies are sent
+    # when the session cookie jar has unsafe=True.
+    ip_url = server.make_url("/")
+    assert ip_url.host is not None
+    assert ip_url.host.count(".") == 3  # Sanity check it looks like an IP address
+    cookies = {"adhoc": "value"}
+    async with aiohttp.ClientSession(cookie_jar=jar) as sess:
+        async with sess.request("GET", ip_url, cookies=cookies) as resp:
+            assert "adhoc=value" in resp.request_info.headers.get("Cookie", "")
+
+
+async def test_session_default_version() -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
     await session.close()
@@ -730,60 +892,63 @@ async def test_proxy_str(session: ClientSession, params: _Params) -> None:
     ]
 
 
-async def test_default_proxy(loop: asyncio.AbstractEventLoop) -> None:
+async def test_default_proxy() -> None:
     proxy_url = URL("http://proxy.example.com")
-    proxy_auth = mock.Mock()
     proxy_url2 = URL("http://proxy.example2.com")
-    proxy_auth2 = mock.Mock()
 
     class OnCall(Exception):
         pass
 
     request_class_mock = mock.Mock(side_effect=OnCall())
-    session = ClientSession(
-        proxy=proxy_url, proxy_auth=proxy_auth, request_class=request_class_mock
-    )
+    session = ClientSession(proxy=proxy_url, request_class=request_class_mock)
 
     assert session._default_proxy == proxy_url, "`ClientSession._default_proxy` not set"
-    assert (
-        session._default_proxy_auth == proxy_auth
-    ), "`ClientSession._default_proxy_auth` not set"
 
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com",
-        )
+        await session.get("http://example.com")
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url
     ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
 
     request_class_mock.reset_mock()
     with pytest.raises(OnCall):
-        await session.get(
-            "http://example.com", proxy=proxy_url2, proxy_auth=proxy_auth2
-        )
+        await session.get("http://example.com", proxy=proxy_url2)
 
     assert request_class_mock.called, "request class not called"
     assert (
         request_class_mock.call_args[1].get("proxy") == proxy_url2
-    ), "`ClientSession._request` uses default proxy not one used in ClientSession.get"
-    assert (
-        request_class_mock.call_args[1].get("proxy_auth") == proxy_auth2
-    ), "`ClientSession._request` uses default proxy_auth not one used in ClientSession.get"
+    ), "`ClientSession._request` uses per-request proxy not session default"
 
     await session.close()
 
 
-async def test_request_tracing(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
+
+    # Define callback signatures
+    async def on_request_start_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestStartParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_end_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestEndParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_redirect_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestRedirectParams,
+    ) -> None:
+        """Mock signature"""
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -791,9 +956,13 @@ async def test_request_tracing(
     trace_config_ctx = mock.Mock()
     body = "This is request body"
     gathered_req_headers: CIMultiDict[str] = CIMultiDict()
-    on_request_start = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_redirect = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+
+    # Create mocks with signatures(above)
+    on_request_start = mock.create_autospec(on_request_start_callback, spec_set=True)
+    on_request_end = mock.create_autospec(on_request_end_callback, spec_set=True)
+    on_request_redirect = mock.create_autospec(
+        on_request_redirect_callback, spec_set=True
+    )
 
     with io.BytesIO() as gathered_req_body, io.BytesIO() as gathered_res_body:
 
@@ -816,7 +985,7 @@ async def test_request_tracing(
             context: object,
             params: tracing.TraceRequestHeadersSentParams,
         ) -> None:
-            gathered_req_headers.extend(**params.headers)
+            gathered_req_headers.extend(params.headers)
 
         trace_config = aiohttp.TraceConfig(
             trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
@@ -859,21 +1028,85 @@ async def test_request_tracing(
             assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
-async def test_request_tracing_url_params(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:
     async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
 
     async def redirect_handler(request: web.Request) -> NoReturn:
         raise web.HTTPFound("/")
 
+    # Define callback signatures
+    async def on_request_start_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestStartParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_end_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestEndParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_redirect_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestRedirectParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_exception_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestExceptionParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_chunk_sent_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestChunkSentParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_response_chunk_received_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceResponseChunkReceivedParams,
+    ) -> None:
+        """Mock signature"""
+
+    async def on_request_headers_sent_callback(
+        session: ClientSession,
+        trace_config_ctx: SimpleNamespace,
+        params: TraceRequestHeadersSentParams,
+    ) -> None:
+        """Mock signature"""
+
     app = web.Application()
     app.router.add_get("/", root_handler)
     app.router.add_get("/redirect", redirect_handler)
 
-    mocks = [mock.Mock(side_effect=make_mocked_coro(mock.Mock())) for _ in range(7)]
-    (
+    on_request_start = mock.create_autospec(on_request_start_callback, spec_set=True)
+    on_request_redirect = mock.create_autospec(
+        on_request_redirect_callback, spec_set=True
+    )
+    on_request_end = mock.create_autospec(on_request_end_callback, spec_set=True)
+    on_request_exception = mock.create_autospec(
+        on_request_exception_callback, spec_set=True
+    )
+    on_request_chunk_sent = mock.create_autospec(
+        on_request_chunk_sent_callback, spec_set=True
+    )
+    on_response_chunk_received = mock.create_autospec(
+        on_response_chunk_received_callback, spec_set=True
+    )
+    on_request_headers_sent = mock.create_autospec(
+        on_request_headers_sent_callback, spec_set=True
+    )
+    mocks = [
         on_request_start,
         on_request_redirect,
         on_request_end,
@@ -881,7 +1114,7 @@ async def test_request_tracing_url_params(
         on_request_chunk_sent,
         on_response_chunk_received,
         on_request_headers_sent,
-    ) = mocks
+    ]
 
     trace_config = aiohttp.TraceConfig(
         trace_config_ctx_factory=mock.Mock(return_value=mock.Mock())
@@ -900,7 +1133,7 @@ async def test_request_tracing_url_params(
         for m in mocks:
             m.reset_mock()
 
-    def to_trace_urls(mock_func: mock.Mock) -> List[URL]:
+    def to_trace_urls(mock_func: mock.Mock) -> list[URL]:
         return [call_args[0][-1].url for call_args in mock_func.call_args_list]
 
     def to_url(path: str) -> URL:
@@ -963,8 +1196,8 @@ async def test_request_tracing_url_params(
 
 
 async def test_request_tracing_exception() -> None:
-    on_request_end = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
-    on_request_exception = mock.Mock(side_effect=make_mocked_coro(mock.Mock()))
+    on_request_end = mock.AsyncMock()
+    on_request_exception = mock.AsyncMock()
 
     trace_config = aiohttp.TraceConfig()
     trace_config.on_request_end.append(on_request_end)
@@ -993,9 +1226,7 @@ async def test_request_tracing_exception() -> None:
     await session.close()
 
 
-async def test_request_tracing_interpose_headers(
-    loop: asyncio.AbstractEventLoop, aiohttp_client: AiohttpClient
-) -> None:
+async def test_request_tracing_interpose_headers(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -1040,9 +1271,7 @@ async def test_client_session_custom_attr() -> None:
     await session.close()
 
 
-async def test_client_session_timeout_default_args(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_client_session_timeout_default_args() -> None:
     session1 = ClientSession()
     assert session1.timeout == client.DEFAULT_TIMEOUT
     await session1.close()
@@ -1161,8 +1390,8 @@ async def test_requote_redirect_url_default_disable() -> None:
 )
 async def test_build_url_returns_expected_url(  # type: ignore[misc]
     create_session: Callable[..., Awaitable[ClientSession]],
-    base_url: Union[URL, str, None],
-    url: Union[URL, str],
+    base_url: URL | str | None,
+    url: URL | str,
     expected_url: URL,
 ) -> None:
     session = await create_session(base_url)
@@ -1174,9 +1403,8 @@ async def test_base_url_without_trailing_slash() -> None:
         ClientSession(base_url="http://example.com/test")
 
 
-async def test_instantiation_with_invalid_timeout_value(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_instantiation_with_invalid_timeout_value() -> None:
+    loop = asyncio.get_running_loop()
     loop.set_debug(False)
     logs = []
     loop.set_exception_handler(lambda loop, ctx: logs.append(ctx))
@@ -1190,7 +1418,6 @@ async def test_instantiation_with_invalid_timeout_value(
     ("outer_name", "inner_name"),
     [
         ("skip_auto_headers", "_skip_auto_headers"),
-        ("auth", "_default_auth"),
         ("json_serialize", "_json_serialize"),
         ("connector_owner", "_connector_owner"),
         ("raise_for_status", "_raise_for_status"),
@@ -1204,3 +1431,76 @@ async def test_properties(
     value = uuid4()
     setattr(session, inner_name, value)
     assert value == getattr(session, outer_name)
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_with_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication works with ClientSession when NETRC env var is set."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "netrc_user:netrc_pass" is "bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_skipped_without_trust_env(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when trust_env=False."""
+    async with (
+        ClientSession(trust_env=False) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("no_netrc")
+async def test_netrc_auth_skipped_without_netrc_file(auth_server: TestServer) -> None:
+    """Test that netrc authentication is skipped when no netrc file exists."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("netrc_home_directory")
+async def test_netrc_auth_from_home_directory(auth_server: TestServer) -> None:
+    """Test that netrc authentication works from default ~/.netrc location without NETRC env var."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        assert text == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_auth_overridden_by_explicit_auth(auth_server: TestServer) -> None:
+    """Test that explicit auth parameter overrides netrc authentication."""
+    explicit = aiohttp.encode_basic_auth("explicit_user", "explicit_pass")
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(
+            auth_server.make_url("/"),
+            headers={"Authorization": explicit},
+        ) as resp,
+    ):
+        text = await resp.text()
+        # Base64 encoded "explicit_user:explicit_pass" is "ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+        assert text == "auth:Basic ZXhwbGljaXRfdXNlcjpleHBsaWNpdF9wYXNz"
+
+
+@pytest.mark.usefixtures("netrc_other_host")
+async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
+    """Test that netrc lookup returns None when host is not in netrc file."""
+    async with (
+        ClientSession(trust_env=True) as session,
+        session.get(auth_server.make_url("/")) as resp,
+    ):
+        text = await resp.text()
+        # Should not have auth since the host is not in netrc
+        assert text == "no_auth"

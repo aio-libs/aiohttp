@@ -1,1 +1,0 @@
-Detect blocking calls in coroutines using BlockBuster -- by :user:`cbornet`.

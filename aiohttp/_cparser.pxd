@@ -1,7 +1,7 @@
 from libc.stdint cimport int32_t, uint8_t, uint16_t, uint64_t
 
 
-cdef extern from "../vendor/llhttp/build/llhttp.h":
+cdef extern from "llhttp.h":
 
     struct llhttp__internal_s:
         int32_t _index
@@ -145,6 +145,7 @@ cdef extern from "../vendor/llhttp/build/llhttp.h":
 
     int llhttp_should_keep_alive(const llhttp_t* parser)
 
+    void llhttp_resume(llhttp_t* parser)
     void llhttp_resume_after_upgrade(llhttp_t* parser)
 
     llhttp_errno_t llhttp_get_errno(const llhttp_t* parser)

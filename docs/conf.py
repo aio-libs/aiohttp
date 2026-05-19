@@ -59,6 +59,8 @@ extensions = [
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
+    "myst_parser",  # renders Markdown sources (e.g. ``THREAT_MODEL.md``)
+    "sphinxcontrib.mermaid",  # renders the Mermaid flowcharts in ``THREAT_MODEL.md``
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
@@ -70,6 +72,23 @@ try:
 except ImportError:
     pass
 
+spelling_exclude_patterns = [
+    # THREAT_MODEL.md is already spell-checked by the codespell pre-commit hook.
+    # The spelling builder additionally mis-tokenises its ``**S**poofing`` STRIDE
+    # list into non-words, so skip the threat model here to avoid double coverage.
+    "threat_model.md",
+]
+
+
+# -- MyST (Markdown) configuration ----------------------------------------
+
+# ``THREAT_MODEL.md`` lives at the repo root and is surfaced through
+# ``docs/threat_model.md``.
+myst_heading_anchors = 3  # anchors for h1-h3 so the in-page section links work
+myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
+
+# TODO: Remove this option once THREAT_MODEL.md is complete.
+suppress_warnings = ["myst.xref_missing"]
 
 intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
@@ -83,7 +102,9 @@ intersphinx_mapping = {
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
     "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
-    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/stable/", None),
+    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/latest/", None),
+    "isal": ("https://python-isal.readthedocs.io/en/stable/", None),
+    "zlib_ng": ("https://python-zlib-ng.readthedocs.io/en/stable/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -394,8 +415,9 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
     ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
-    ("py:class", "aiohttp.ClientRequest"),  # undocumented
+    ("py:class", "HttpVersion"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
+    ("py:class", "Payload"),  # undocumented
     ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
     ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
@@ -419,6 +441,7 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.MatchedSubAppResource"),  # undocumented
     ("py:attr", "body"),  # undocumented
     ("py:class", "socket.socket"),  # undocumented
+    ("py:func", "socket.socket"),  # undocumented
     ("py:class", "socket.AddressFamily"),  # undocumented
     ("py:obj", "logging.DEBUG"),  # undocumented
     ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented

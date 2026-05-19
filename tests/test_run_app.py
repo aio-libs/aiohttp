@@ -9,20 +9,9 @@ import ssl
 import subprocess
 import sys
 import time
-from typing import (
-    Any,
-    AsyncIterator,
-    Awaitable,
-    Callable,
-    Coroutine,
-    Dict,
-    Iterator,
-    List,
-    NoReturn,
-    Optional,
-    Set,
-    Tuple,
-)
+import traceback
+from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
+from typing import Any, NoReturn
 from unittest import mock
 from uuid import uuid4
 
@@ -31,7 +20,6 @@ from pytest_mock import MockerFixture
 
 from aiohttp import ClientConnectorError, ClientSession, ClientTimeout, WSCloseCode, web
 from aiohttp.log import access_logger
-from aiohttp.test_utils import make_mocked_coro
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_runner import BaseRunner
 
@@ -58,14 +46,14 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 del _has_unix_domain_socks, _abstract_path_failed
 
 HAS_IPV6: bool = socket.has_ipv6
-if HAS_IPV6:
+if HAS_IPV6:  # pragma: no branch
     # The socket.has_ipv6 flag may be True if Python was built with IPv6
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
         with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
             pass
-    except OSError:
+    except OSError:  # pragma: no cover
         HAS_IPV6 = False
 
 
@@ -76,41 +64,43 @@ def skip_if_on_windows() -> None:
 
 @pytest.fixture
 def patched_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
+    server.sockets = []
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
+    unix_server.sockets = []
     with mock.patch.object(
-        loop, "create_server", autospec=True, spec_set=True, return_value=server
+        event_loop, "create_server", autospec=True, spec_set=True, return_value=server
     ):
         with mock.patch.object(
-            loop,
+            event_loop,
             "create_unix_server",
             autospec=True,
             spec_set=True,
             return_value=unix_server,
         ):
-            asyncio.set_event_loop(loop)
-            yield loop
+            asyncio.set_event_loop(event_loop)
+            yield event_loop
 
 
-def stopper(loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
+def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
     def raiser() -> NoReturn:
         raise KeyboardInterrupt
 
     def f(*args: object) -> None:
-        loop.call_soon(raiser)
+        event_loop.call_soon(raiser)
 
     return f
 
 
 def test_run_app_http(patched_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
@@ -130,6 +120,28 @@ def test_run_app_close_loop(patched_loop: asyncio.AbstractEventLoop) -> None:
         mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
     assert patched_loop.is_closed()
+
+
+def test_run_app_preserves_startup_traceback(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Regression: when an exception is raised during startup (here in a
+    # cleanup_ctx async generator), the user code frame must remain in the
+    # traceback that propagates out of run_app. Previously the second
+    # loop.run_until_complete(main_task) in run_app's finally clobbered it.
+
+    async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("boom from failing_ctx")
+        yield  # type: ignore[unreachable]  # required to make this an async generator
+
+    app = web.Application()
+    app.cleanup_ctx.append(failing_ctx)
+
+    with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
+        web.run_app(app, print=None, loop=patched_loop)
+
+    frames = [f.name for f in traceback.extract_tb(exc_info.tb)]
+    assert "failing_ctx" in frames, frames
 
 
 mock_unix_server_single = [
@@ -176,8 +188,8 @@ mock_server_default_8989 = [
     )
 ]
 mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
-mixed_bindings_tests: Tuple[
-    Tuple[str, Dict[str, Any], List[mock._Call], List[mock._Call]], ...
+mixed_bindings_tests: tuple[
+    tuple[str, dict[str, Any], list[mock._Call], list[mock._Call]], ...
 ] = (
     (
         "Nothing Specified",
@@ -443,9 +455,9 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
     ids=mixed_bindings_test_ids,
 )
 def test_run_app_mixed_bindings(  # type: ignore[misc]
-    run_app_kwargs: Dict[str, Any],
-    expected_server_calls: List[mock._Call],
-    expected_unix_server_calls: List[mock._Call],
+    run_app_kwargs: dict[str, Any],
+    expected_server_calls: list[mock._Call],
+    expected_unix_server_calls: list[mock._Call],
     patched_loop: asyncio.AbstractEventLoop,
 ) -> None:
     app = web.Application()
@@ -537,7 +549,9 @@ def test_run_app_custom_backlog(patched_loop: asyncio.AbstractEventLoop) -> None
     )
 
 
-def test_run_app_custom_backlog_unix(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_custom_backlog_unix(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     web.run_app(
         app,
@@ -591,7 +605,9 @@ def test_run_app_https_unix_socket(
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
-def test_run_app_abstract_linux_socket(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_abstract_linux_socket(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
     app = web.Application()
     web.run_app(
@@ -647,15 +663,14 @@ def test_run_app_preexisting_inet6_socket(
 
 @skip_if_no_unix_socks
 def test_run_app_preexisting_unix_socket(
-    patched_loop: asyncio.AbstractEventLoop, mocker: MockerFixture
+    patched_loop: asyncio.AbstractEventLoop, unix_sockname: str, mocker: MockerFixture
 ) -> None:
     app = web.Application()
 
-    sock_path = "/tmp/test_preexisting_sock1"
     sock = socket.socket(socket.AF_UNIX)
     with contextlib.closing(sock):
-        sock.bind(sock_path)
-        os.unlink(sock_path)
+        sock.bind(unix_sockname)
+        os.unlink(unix_sockname)
 
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=sock, print=printer, loop=patched_loop)
@@ -663,7 +678,7 @@ def test_run_app_preexisting_unix_socket(
         patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
             mock.ANY, sock=sock, backlog=128, ssl=None
         )
-        assert f"http://unix:{sock_path}:" in printer.call_args[0][0]
+        assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
 def test_run_app_multiple_preexisting_sockets(
@@ -704,12 +719,10 @@ def test_sigint() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.send_signal(signal.SIGINT)
         assert proc.wait() == 0
 
@@ -718,12 +731,10 @@ def test_sigterm() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.terminate()
         assert proc.wait() == 0
 
@@ -734,9 +745,9 @@ def test_startup_cleanup_signals_even_on_failure(
     patched_loop.create_server.side_effect = RuntimeError()  # type: ignore[attr-defined]
 
     app = web.Application()
-    startup_handler = make_mocked_coro()
+    startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
-    cleanup_handler = make_mocked_coro()
+    cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
     with pytest.raises(RuntimeError):
@@ -752,9 +763,9 @@ def test_run_app_coro(patched_loop: asyncio.AbstractEventLoop) -> None:
     async def make_app() -> web.Application:
         nonlocal startup_handler, cleanup_handler
         app = web.Application()
-        startup_handler = make_mocked_coro()
+        startup_handler = mock.AsyncMock()
         app.on_startup.append(startup_handler)
-        cleanup_handler = make_mocked_coro()
+        cleanup_handler = mock.AsyncMock()
         app.on_cleanup.append(cleanup_handler)
         return app
 
@@ -877,7 +888,7 @@ def test_run_app_cancels_all_pending_tasks(
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(asyncio.sleep(1000))
 
     app.on_startup.append(on_startup)
@@ -887,7 +898,9 @@ def test_run_app_cancels_all_pending_tasks(
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_done_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -896,7 +909,7 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(coro())
 
     app.on_startup.append(on_startup)
@@ -906,7 +919,9 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_failed_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -920,7 +935,7 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(fail())
         await asyncio.sleep(0.01)
 
@@ -940,28 +955,35 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
     exc_handler.assert_called_with(patched_loop, msg)
 
 
-def test_run_app_keepalive_timeout(
+@pytest.mark.parametrize(
+    "param",
+    (
+        "keepalive_timeout",
+        "max_line_size",
+        "max_headers",
+        "max_field_size",
+        "lingering_time",
+        "read_bufsize",
+        "auto_decompress",
+    ),
+)
+def test_run_app_pass_apprunner_kwargs(
+    param: str,
     patched_loop: asyncio.AbstractEventLoop,
-    mocker: MockerFixture,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    new_timeout = 1234
+    m = mock.Mock()
     base_runner_init_orig = BaseRunner.__init__
 
     def base_runner_init_spy(
         self: BaseRunner[web.Request], *args: Any, **kwargs: Any
     ) -> None:
-        assert kwargs["keepalive_timeout"] == new_timeout
+        assert kwargs[param] is m
         base_runner_init_orig(self, *args, **kwargs)
 
     app = web.Application()
     monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
-    web.run_app(
-        app,
-        keepalive_timeout=new_timeout,
-        print=stopper(patched_loop),
-        loop=patched_loop,
-    )
+    web.run_app(app, print=stopper(patched_loop), loop=patched_loop, **{param: m})
 
 
 def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
@@ -996,7 +1018,9 @@ def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
     assert count == 3
 
 
-def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_raises_exception(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
         yield  # type: ignore[unreachable]  # pragma: no cover
@@ -1026,13 +1050,13 @@ class TestShutdown:
         sock: socket.socket,
         timeout: int,
         task: Callable[[], Coroutine[None, None, None]],
-        extra_test: Optional[Callable[[ClientSession], Awaitable[None]]] = None,
-    ) -> Tuple["asyncio.Task[None]", int]:
+        extra_test: Callable[[ClientSession], Awaitable[None]] | None = None,
+    ) -> tuple["asyncio.Task[None]", int]:
         num_connections = -1
         t = test_task = None
         port = sock.getsockname()[1]
 
-        class DictRecordClear(Dict[RequestHandler[web.Request], asyncio.Transport]):
+        class DictRecordClear(dict[RequestHandler[web.Request], asyncio.Transport]):
             def clear(self) -> None:
                 nonlocal num_connections
                 # During Server.shutdown() we want to know how many connections still
@@ -1115,7 +1139,7 @@ class TestShutdown:
         async def task() -> None:
             nonlocal finished
             await asyncio.sleep(2)
-            finished = True
+            finished = True  # pragma: no cover
 
         t, connection_count = self.run_app(sock, 1, task)
 
@@ -1164,7 +1188,7 @@ class TestShutdown:
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
                     async with sess.get(f"http://127.0.0.1:{port}/"):
-                        pass
+                        assert False  # Should fail before here
             assert finished is False
 
         t, connection_count = self.run_app(sock, 10, task, test)
@@ -1257,7 +1281,7 @@ class TestShutdown:
     def test_shutdown_close_websockets(self, unused_port_socket: socket.socket) -> None:
         sock = unused_port_socket
         port = sock.getsockname()[1]
-        WS = web.AppKey("ws", Set[web.WebSocketResponse])
+        WS = web.AppKey("ws", set[web.WebSocketResponse])
         client_finished = server_finished = False
         t = None
 
@@ -1266,7 +1290,7 @@ class TestShutdown:
             await ws.prepare(request)
             request.app[WS].add(ws)
             async for msg in ws:
-                pass
+                assert False  # No messages actually sent
             nonlocal server_finished
             server_finished = True
             return ws
@@ -1283,7 +1307,7 @@ class TestShutdown:
                         pass
 
                     async for msg in ws:
-                        pass
+                        assert False  # No messages actually sent
                     nonlocal client_finished
                     client_finished = True
 
@@ -1291,6 +1315,7 @@ class TestShutdown:
             nonlocal t
             t = asyncio.create_task(test())
             yield
+            await asyncio.sleep(0)  # In case test() hasn't resumed yet.
             t.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await t
@@ -1315,18 +1340,20 @@ class TestShutdown:
         port = sock.getsockname()[1]
         actions = []
         t = None
+        suppressed = asyncio.Event()
 
         async def test() -> None:
             async def test_resp(sess: ClientSession) -> None:
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
-                        assert await resp.text() == "FOO"
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t):
+                        assert False  # Should timeout before this
                 actions.append("CANCELLED")
 
             async with ClientSession() as sess:
                 t = asyncio.create_task(test_resp(sess))
-                await asyncio.sleep(0.5)
+                # Wait until the handler has observed its cancellation.
+                await asyncio.wait_for(suppressed.wait(), timeout=3)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
                 async with sess.get(f"http://127.0.0.1:{port}/stop"):
@@ -1347,6 +1374,7 @@ class TestShutdown:
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 actions.append("SUPPRESSED")
+                suppressed.set()
                 await asyncio.sleep(2)
                 actions.append("DONE")
             return web.Response(text="FOO")

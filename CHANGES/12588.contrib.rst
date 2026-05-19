@@ -1,0 +1,5 @@
+Added a ``CLAUDE.md`` at the repository root that imports
+:file:`AGENTS.md` via Claude Code's ``@``-syntax, so the
+project's LLM contributor rules load automatically when
+working in Claude Code
+-- by :user:`aiolibsbot`.

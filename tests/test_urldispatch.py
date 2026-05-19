@@ -1,9 +1,17 @@
-import asyncio
 import pathlib
+import platform
 import re
-from collections.abc import Container, Iterable, Mapping, MutableMapping, Sized
+from collections.abc import (
+    Awaitable,
+    Callable,
+    Container,
+    Iterable,
+    Mapping,
+    MutableMapping,
+    Sized,
+)
 from functools import partial
-from typing import Awaitable, Callable, Dict, List, NoReturn, Optional, Type
+from typing import NoReturn
 from urllib.parse import quote, unquote
 
 import pytest
@@ -46,8 +54,8 @@ def router(app: web.Application) -> web.UrlDispatcher:
 
 
 @pytest.fixture
-def fill_routes(router: web.UrlDispatcher) -> Callable[[], List[web.AbstractRoute]]:
-    def go() -> List[web.AbstractRoute]:
+def fill_routes(router: web.UrlDispatcher) -> Callable[[], list[web.AbstractRoute]]:
+    def go() -> list[web.AbstractRoute]:
         route1 = router.add_route("GET", "/plain", make_handler())
         route2 = router.add_route("GET", "/variable/{name}", make_handler())
         resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
@@ -365,8 +373,8 @@ def test_add_static_path_checks(
     """Test that static paths must exist and be directories."""
     with pytest.raises(ValueError, match="does not exist"):
         router.add_static("/", tmp_path / "does-not-exist")
-        with pytest.raises(ValueError, match="is not a directory"):
-            router.add_static("/", __file__)
+    with pytest.raises(ValueError, match="is not a directory"):
+        router.add_static("/", __file__)
 
 
 def test_add_static_path_resolution(router: web.UrlDispatcher) -> None:
@@ -614,7 +622,7 @@ def test_static_remove_trailing_slash(router: web.UrlDispatcher) -> None:
     ),
 )
 async def test_add_route_with_re(
-    router: web.UrlDispatcher, pattern: str, url: str, expected: Dict[str, str]
+    router: web.UrlDispatcher, pattern: str, url: str, expected: dict[str, str]
 ) -> None:
     handler = make_handler()
     router.add_route("GET", f"/handler/{pattern}", handler)
@@ -853,21 +861,21 @@ def test_add_route_invalid_method(router: web.UrlDispatcher) -> None:
 
 
 def test_routes_view_len(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     fill_routes()
     assert 4 == len(router.routes())
 
 
 def test_routes_view_iter(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     routes = fill_routes()
     assert list(routes) == list(router.routes())
 
 
 def test_routes_view_contains(
-    router: web.UrlDispatcher, fill_routes: Callable[[], List[web.AbstractRoute]]
+    router: web.UrlDispatcher, fill_routes: Callable[[], list[web.AbstractRoute]]
 ) -> None:
     routes = fill_routes()
     for route in routes:
@@ -1075,6 +1083,19 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
     assert (None, {"HEAD", "GET"}) == ret
 
 
+@pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
+async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
+    """Test relative path traversing outside root does not resolve."""
+    static_file = pathlib.Path(aiohttp.__file__)
+    request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
+    assert pathlib.Path(request_path).resolve() == static_file
+
+    resource = router.add_static("/st", static_file.parent)
+    ret = await resource.resolve(make_mocked_request("GET", request_path))
+    # Should not resolve, otherwise filesystem information may be leaked.
+    assert (None, set()) == ret
+
+
 async def test_check_allowed_method_for_found_resource(
     router: web.UrlDispatcher,
 ) -> None:
@@ -1119,7 +1140,7 @@ def test_subapp_get_info(app: web.Application) -> None:
         ("example$com", ValueError),
     ],
 )
-def test_domain_validation_error(domain: Optional[str], error: Type[Exception]) -> None:
+def test_domain_validation_error(domain: str | None, error: type[Exception]) -> None:
     with pytest.raises(error):
         Domain(domain)  # type: ignore[arg-type]
 
@@ -1172,17 +1193,13 @@ def test_subapp_rule_resource(app: web.Application) -> None:
         resource.url_for()
 
 
-async def test_add_domain_not_str(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain_not_str(app: web.Application) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)  # type: ignore[arg-type]
 
 
-async def test_add_domain(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain(app: web.Application) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)
@@ -1278,16 +1295,9 @@ def test_frozen_app_on_subapp(app: web.Application) -> None:
 
 def test_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
-    options = None
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is None
+    assert all(r.method != "OPTIONS" for r in resource)
     resource.set_options_route(make_handler())
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is not None
+    assert any(r.method == "OPTIONS" for r in resource)
 
     with pytest.raises(RuntimeError):
         resource.set_options_route(make_handler())

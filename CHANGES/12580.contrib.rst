@@ -1,0 +1,8 @@
+Documented in :file:`AGENTS.md` that the coverage report covers
+``tests/`` as well as ``aiohttp/`` (so unreachable defensive
+``raise`` guards in patched stubs and one-sided cleanup branches
+in tests will surface as uncovered on the codecov patch report),
+and that the docs spell check (``make doc-spelling``) is a hard
+CI gate that reads every ``CHANGES/*.rst`` fragment and should be
+run locally before pushing
+-- by :user:`bdraco`.

@@ -1,8 +1,9 @@
 """Models for WebSocket protocol versions 13 and 8."""
 
 import json
+from collections.abc import Callable
 from enum import IntEnum
-from typing import Any, Callable, Final, Literal, NamedTuple, Optional, Union, cast
+from typing import Any, Final, Literal, NamedTuple, cast
 
 WS_DEFLATE_TRAILING: Final[bytes] = bytes([0x00, 0x00, 0xFF, 0xFF])
 
@@ -41,19 +42,32 @@ class WSMsgType(IntEnum):
 class WSMessageContinuation(NamedTuple):
     data: bytes
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.CONTINUATION] = WSMsgType.CONTINUATION
 
 
 class WSMessageText(NamedTuple):
     data: str
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
 
     def json(
-        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+        self, *, loads: Callable[[str | bytes | bytearray], Any] = json.loads
     ) -> Any:
+        """Return parsed JSON data."""
+        return loads(self.data)
+
+
+class WSMessageTextBytes(NamedTuple):
+    """WebSocket TEXT message with raw bytes (no UTF-8 decoding)."""
+
+    data: bytes
+    size: int
+    extra: str | None = None
+    type: Literal[WSMsgType.TEXT] = WSMsgType.TEXT
+
+    def json(self, *, loads: Callable[[bytes], Any] = json.loads) -> Any:
         """Return parsed JSON data."""
         return loads(self.data)
 
@@ -61,11 +75,11 @@ class WSMessageText(NamedTuple):
 class WSMessageBinary(NamedTuple):
     data: bytes
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.BINARY] = WSMsgType.BINARY
 
     def json(
-        self, *, loads: Callable[[Union[str, bytes, bytearray]], Any] = json.loads
+        self, *, loads: Callable[[str | bytes | bytearray], Any] = json.loads
     ) -> Any:
         """Return parsed JSON data."""
         return loads(self.data)
@@ -74,56 +88,65 @@ class WSMessageBinary(NamedTuple):
 class WSMessagePing(NamedTuple):
     data: bytes
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.PING] = WSMsgType.PING
 
 
 class WSMessagePong(NamedTuple):
     data: bytes
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.PONG] = WSMsgType.PONG
 
 
 class WSMessageClose(NamedTuple):
     data: int
     size: int
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.CLOSE] = WSMsgType.CLOSE
 
 
 class WSMessageClosing(NamedTuple):
     data: None = None
     size: int = 0
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.CLOSING] = WSMsgType.CLOSING
 
 
 class WSMessageClosed(NamedTuple):
     data: None = None
     size: int = 0
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.CLOSED] = WSMsgType.CLOSED
 
 
 class WSMessageError(NamedTuple):
     data: BaseException
     size: int = 0
-    extra: Optional[str] = None
+    extra: str | None = None
     type: Literal[WSMsgType.ERROR] = WSMsgType.ERROR
 
 
-WSMessage = Union[
-    WSMessageContinuation,
-    WSMessageText,
-    WSMessageBinary,
-    WSMessagePing,
-    WSMessagePong,
-    WSMessageClose,
-    WSMessageClosing,
-    WSMessageClosed,
-    WSMessageError,
-]
+# Base message types (excluding TEXT variants)
+_WSMessageBase = (
+    WSMessageContinuation
+    | WSMessageBinary
+    | WSMessagePing
+    | WSMessagePong
+    | WSMessageClose
+    | WSMessageClosing
+    | WSMessageClosed
+    | WSMessageError
+)
+
+# All message types
+WSMessage = _WSMessageBase | WSMessageText | WSMessageTextBytes
+
+# Message type when decode_text=True (default) - TEXT messages have str data
+WSMessageDecodeText = _WSMessageBase | WSMessageText
+
+# Message type when decode_text=False - TEXT messages have bytes data
+WSMessageNoDecodeText = _WSMessageBase | WSMessageTextBytes
 
 WS_CLOSED_MESSAGE = WSMessageClosed()
 WS_CLOSING_MESSAGE = WSMessageClosing()
