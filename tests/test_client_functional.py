@@ -3603,10 +3603,7 @@ async def test_auth_persist_on_redirect_to_other_host_with_global_auth(
             assert resp.status == 200
         async with client.get(
             url_from,
-            headers={
-                "Authorization": "Basic dXNlcjpwYXNz",
-                "Proxy-Authorization": "Basic dXNlcjpwYXNz",
-            },
+            headers={"Proxy-Authorization": "Basic dXNlcjpwYXNz"},
             cookies={"a": "b"},
         ) as resp:
             assert resp.status == 200
