@@ -1521,6 +1521,7 @@ class ClientRequest:
             traces=self._traces,
             loop=self.loop,
             session=self._session,
+            stream_writer=self._stream_writer,
         )
         return self.response
 
