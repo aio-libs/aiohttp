@@ -847,8 +847,6 @@ def test_get_encoding_unknown(loop, session) -> None:
         traces=[],
         loop=loop,
         session=session,
-        request_headers=CIMultiDict[str](),
-        original_url=url,
         stream_writer=mock.create_autospec(
             AbstractStreamWriter, spec_set=True, instance=True
         ),
@@ -1177,8 +1175,6 @@ def test_response_request_info() -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
-        request_headers=headers,
-        original_url=url,
         stream_writer=mock.create_autospec(
             AbstractStreamWriter, spec_set=True, instance=True
         ),
@@ -1534,8 +1530,6 @@ def test_response_not_closed_after_get_ok(mocker) -> None:
         traces=[],
         loop=mock.Mock(),
         session=mock.Mock(),
-        request_headers=CIMultiDict[str](),
-        original_url=url,
         stream_writer=mock.create_autospec(
             AbstractStreamWriter, spec_set=True, instance=True
         ),
