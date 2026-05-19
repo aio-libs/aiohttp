@@ -5844,7 +5844,10 @@ async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
             await next_chunk.wait()
             next_chunk.clear()
             samples.append(resp.output_size)
+            assert not resp.upload_complete.done()
             sample_taken.set()
+        await resp.upload_complete
+        assert resp.upload_complete.done()
         await resp.read()
 
     # Each sample after the first reflects exactly one more chunk on the wire.
@@ -5883,3 +5886,15 @@ async def test_output_size_writer_released(aiohttp_client: AiohttpClient) -> Non
         await resp.read()
         assert resp._stream_writer is None
     assert resp.output_size >= len(body)
+
+
+async def test_upload_complete_no_body(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.upload_complete.done()

@@ -214,6 +214,7 @@ class ClientResponse(HeadersMixin):
     __writer: asyncio.Task[None] | None = None
     _stream_writer: AbstractStreamWriter | None = None
     _output_size: int = 0
+    _upload_complete: asyncio.Future[None]
 
     def __init__(
         self,
@@ -243,8 +244,10 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
+        self._upload_complete = loop.create_future()
         if writer is None:  # Request already sent
             self._output_size = stream_writer.output_size
+            self._upload_complete.set_result(None)
         else:
             self._stream_writer = stream_writer
             self._writer = writer
@@ -270,6 +273,8 @@ class ClientResponse(HeadersMixin):
         if self._stream_writer is not None:
             self._output_size = self._stream_writer.output_size
             self._stream_writer = None
+        if not self._upload_complete.done():
+            self._upload_complete.set_result(None)
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:
@@ -300,6 +305,14 @@ class ClientResponse(HeadersMixin):
         if self._stream_writer is not None:
             return self._stream_writer.output_size
         return self._output_size
+
+    @property
+    def upload_complete(self) -> "asyncio.Future[None]":
+        """Future set when the request body has been fully sent.
+
+        Already done when the request had no body or was written eagerly.
+        """
+        return self._upload_complete
 
     @property
     def cookies(self) -> SimpleCookie:
