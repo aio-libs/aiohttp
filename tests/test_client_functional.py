@@ -5898,3 +5898,21 @@ async def test_upload_complete_no_body(aiohttp_client: AiohttpClient) -> None:
 
     async with client.get("/") as resp:
         assert resp.upload_complete.done()
+
+
+async def test_upload_complete_late_access(aiohttp_client: AiohttpClient) -> None:
+    """Accessing upload_complete after the upload finished returns a done future."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", data=b"x" * 1024) as resp:
+        await resp.read()
+        # Writer task is done; future is created lazily on this first access.
+        assert resp._upload_complete is None
+        assert resp.upload_complete.done()
