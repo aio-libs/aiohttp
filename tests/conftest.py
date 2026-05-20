@@ -19,6 +19,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+import pytest_aiohttp  # noqa: F401  # We require pytest-aiohttp to avoid confusing debugging if it's not installed.
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -69,8 +70,7 @@ else:
     from typing import Any as Unpack
 
 
-# We require pytest-aiohttp to avoid confusing debugging if it's not installed.
-pytest_plugins = ("pytest_aiohttp.plugin", "pytester")
+pytest_plugins = ("pytester",)
 
 
 IS_HPUX = sys.platform.startswith("hp-ux")
