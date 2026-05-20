@@ -310,7 +310,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels and test
-      uses: pypa/cibuildwheel@v3.4.0
+      uses: pypa/cibuildwheel@v3.4.1
       env:
         CIBW_BUILD: ${{ matrix.pyver }}-*
         CIBW_PLATFORM: ${{ matrix.config.platform }}
