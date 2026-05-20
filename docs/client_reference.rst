@@ -2586,6 +2586,21 @@ Utilities
 
       .. versionadded:: 4.0
 
+   .. attribute:: cookies
+
+      A read-only view of the jar's cookies as a
+      :class:`~types.MappingProxyType` mapping ``(domain, path)`` tuples
+      to :class:`~http.cookies.SimpleCookie` instances.
+
+      .. versionadded:: 3.14
+
+   .. attribute:: host_only_cookies
+
+      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
+      cookies are host-only (not sent to subdomains).
+
+      .. versionadded:: 3.14
+
 
 .. class:: DummyCookieJar(*, loop=None)
 
