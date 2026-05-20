@@ -462,7 +462,7 @@ def test_add_static_append_version_follow_symlink(
 
     # Register global static route:
     resource = router.add_static(
-        "/st", str(tmp_path), follow_symlinks=True, append_version=True
+        "/st", str(tmp_path), break_symlink_sandbox=True, append_version=True
     )
 
     url = resource.url_for(filename="/append_version_symlink/data.unknown_mime_type")
@@ -486,7 +486,7 @@ def test_add_static_append_version_not_follow_symlink(
 
     # Register global static route:
     resource = router.add_static(
-        "/st", str(tmp_path), follow_symlinks=False, append_version=True
+        "/st", str(tmp_path), break_symlink_sandbox=False, append_version=True
     )
 
     filename = "/append_version_symlink/data.unknown_mime_type"
