@@ -290,17 +290,19 @@ jobs:
       uses: actions/checkout@v6
       with:
         submodules: true
-    - name: Setup Python
-      uses: actions/setup-python@v6
+    - name: Setup Python ${{ matrix.pyver }}
+      id: python-install
+      # important: do not use system python
+      env:
+        UV_PYTHON_PREFERENCE: only-managed
+      uses: astral-sh/setup-uv@v8.1.0
       with:
-        python-version: 3.x
-    - name: Update pip, wheel, setuptools, build, twine
+        python-version: ${{ matrix.pyver }}
+        activate-environment: true
+        enable-cache: true
+    - name: Install build tooling and cython
       run: |
-        python -m pip install -U pip wheel setuptools build twine
-    - name: Install cython
-      run: >-
-        python -m
-        pip install -r requirements/cython.in -c requirements/cython.txt
+        uv pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:
