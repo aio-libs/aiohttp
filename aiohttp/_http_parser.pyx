@@ -506,11 +506,11 @@ cdef class HttpParser:
         if (
             self._response_with_body
             and (
-                 ULLONG_MAX > self._cparser.content_length > 0 or chunked or
-                 self._cparser.method == cparser.HTTP_CONNECT or
-                 (self._cparser.status_code >= 199 and
-                  self._cparser.content_length == 0 and
-                  self._read_until_eof)
+                ULLONG_MAX > self._cparser.content_length > 0 or chunked or
+                self._cparser.method == cparser.HTTP_CONNECT or
+                (self._cparser.status_code >= 199 and
+                 self._cparser.content_length == 0 and
+                 self._read_until_eof)
             )
         ):
             payload = StreamReader(
@@ -849,8 +849,9 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
     else:
         if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
             return 2
-        else:
-            return 0
+        if not pyparser._response_with_body:
+            return 1
+        return 0
 
 
 cdef int cb_on_body(cparser.llhttp_t* parser,
@@ -924,7 +925,6 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_CB_MESSAGE_COMPLETE,
                  cparser.HPE_CB_CHUNK_HEADER,
                  cparser.HPE_CB_CHUNK_COMPLETE,
-                 cparser.HPE_INVALID_CONSTANT,
                  cparser.HPE_INVALID_HEADER_TOKEN,
                  cparser.HPE_INVALID_CONTENT_LENGTH,
                  cparser.HPE_INVALID_CHUNK_SIZE,
@@ -934,8 +934,9 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
     elif errno == cparser.HPE_INVALID_METHOD:
         return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
-                   cparser.HPE_INVALID_VERSION}:
-        return BadStatusLine(error=err_msg)
+                   cparser.HPE_INVALID_VERSION,
+                   cparser.HPE_INVALID_CONSTANT}:
+        return BadStatusLine(error=f"Bad status line:\n  {err_msg}")
     elif errno == cparser.HPE_INVALID_URL:
         return InvalidURLError(err_msg)
 
