@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base-ft.txt --strip-extras requirements/base-ft.in
 #
-aiodns==4.0.0 ; sys_platform != "android" and sys_platform != "ios"
+aiodns==4.0.4
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.2
     # via -r requirements/runtime-deps.in
 aiosignal==1.4.0
     # via -r requirements/runtime-deps.in
@@ -22,17 +22,17 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==25.1.0
+gunicorn==26.0.0
     # via -r requirements/base-ft.in
-idna==3.11
+idna==3.15
     # via yarl
 multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==26.0
+packaging==26.2
     # via gunicorn
-propcache==0.4.1
+propcache==0.5.2
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -45,5 +45,5 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   -r requirements/runtime-deps.in
     #   aiosignal
     #   multidict
-yarl==1.22.0
+yarl==1.24.2
     # via -r requirements/runtime-deps.in

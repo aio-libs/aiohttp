@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp import streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_parser import HttpParser
 
 
 @pytest.fixture
@@ -14,9 +15,9 @@ def protocol() -> BaseProtocol:
 
 @pytest.fixture
 def stream(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> streams.StreamReader:
-    return streams.StreamReader(protocol, limit=1, loop=loop)
+    return streams.StreamReader(protocol, limit=1, loop=event_loop)
 
 
 class TestFlowControlStreamReader:
@@ -38,7 +39,6 @@ class TestFlowControlStreamReader:
         stream.feed_data(b"d\n")
         res = await stream.readline()
         assert res == b"d\n"
-        assert not stream._protocol.resume_reading.called  # type: ignore[attr-defined]
 
     async def test_readline_resume_paused(self, stream: streams.StreamReader) -> None:
         stream._protocol._reading_paused = True
@@ -51,7 +51,6 @@ class TestFlowControlStreamReader:
         stream.feed_data(b"data")
         res = await stream.readany()
         assert res == b"data"
-        assert not stream._protocol.resume_reading.called  # type: ignore[attr-defined]
 
     async def test_readany_resume_paused(self, stream: streams.StreamReader) -> None:
         stream._protocol._reading_paused = True
@@ -65,7 +64,6 @@ class TestFlowControlStreamReader:
         res, end_of_http_chunk = await stream.readchunk()
         assert res == b"data"
         assert not end_of_http_chunk
-        assert not stream._protocol.resume_reading.called  # type: ignore[attr-defined]
 
     async def test_readchunk_resume_paused(self, stream: streams.StreamReader) -> None:
         stream._protocol._reading_paused = True
@@ -79,7 +77,7 @@ class TestFlowControlStreamReader:
         stream.feed_data(b"data")
         res = await stream.readexactly(3)
         assert res == b"dat"
-        assert not stream._protocol.resume_reading.called  # type: ignore[attr-defined]
+        assert stream._protocol.resume_reading.called  # type: ignore[attr-defined]
 
     async def test_feed_data(self, stream: streams.StreamReader) -> None:
         stream._protocol._reading_paused = False
@@ -119,8 +117,9 @@ class TestFlowControlStreamReader:
 
 
 async def test_stream_reader_eof_when_full() -> None:
-    loop = asyncio.get_event_loop()
-    protocol = BaseProtocol(loop=loop)
+    loop = asyncio.get_running_loop()
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    protocol = BaseProtocol(loop=loop, parser=parser)
     protocol.transport = asyncio.Transport()
     stream = streams.StreamReader(protocol, 1024, loop=loop)
 

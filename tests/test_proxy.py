@@ -10,6 +10,8 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
+from aiohttp import hdrs
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
@@ -81,7 +83,6 @@ async def test_connect(  # type: ignore[misc]
             ClientRequestMock.assert_called_with(
                 "GET",
                 URL("http://proxy.example.com"),
-                auth=None,
                 headers={"Host": "www.python.org"},
                 loop=event_loop,
                 ssl=True,
@@ -143,7 +144,6 @@ async def test_proxy_headers(  # type: ignore[misc]
             ClientRequestMock.assert_called_with(
                 "GET",
                 URL("http://proxy.example.com"),
-                auth=None,
                 headers={"Host": "www.python.org", "Foo": "Bar"},
                 loop=event_loop,
                 ssl=True,
@@ -151,26 +151,6 @@ async def test_proxy_headers(  # type: ignore[misc]
 
             conn.close()
     await connector.close()
-
-
-@mock.patch(
-    "aiohttp.connector.aiohappyeyeballs.start_connection",
-    autospec=True,
-    spec_set=True,
-)
-async def test_proxy_auth(  # type: ignore[misc]
-    start_connection: mock.Mock,
-    make_client_request: _RequestMaker,
-) -> None:
-    msg = r"proxy_auth must be None or BasicAuth\(\) tuple"
-    with pytest.raises(ValueError, match=msg):
-        make_client_request(
-            "GET",
-            URL("http://python.org"),
-            proxy=URL("http://proxy.example.com"),
-            proxy_auth=("user", "pass"),  # type: ignore[arg-type]
-            loop=mock.Mock(),
-        )
 
 
 @mock.patch(
@@ -254,7 +234,6 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -273,6 +252,9 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -338,7 +320,6 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -357,6 +338,9 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -425,7 +409,6 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -448,6 +431,9 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     fingerprint_mock = mock.Mock(spec=Fingerprint, auto_spec=True)
     fingerprint_mock.check.side_effect = aiohttp.ServerFingerprintMismatch(
@@ -535,7 +521,6 @@ async def test_https_connect(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -554,6 +539,9 @@ async def test_https_connect(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -618,7 +606,6 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -637,6 +624,9 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -697,7 +687,6 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -716,6 +705,9 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -776,7 +768,6 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -795,6 +786,9 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -855,7 +849,6 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -874,6 +867,9 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(
@@ -957,32 +953,6 @@ async def test_request_port(  # type: ignore[misc]
     await connector.close()
 
 
-async def test_proxy_auth_property(
-    event_loop: asyncio.AbstractEventLoop, make_client_request: _RequestMaker
-) -> None:
-    req = make_client_request(
-        "GET",
-        URL("http://localhost:1234/path"),
-        proxy=URL("http://proxy.example.com"),
-        proxy_auth=aiohttp.helpers.BasicAuth("user", "pass"),
-        loop=event_loop,
-    )
-    assert ("user", "pass", "latin1") == req.proxy_auth
-
-
-async def test_proxy_auth_property_default(
-    event_loop: asyncio.AbstractEventLoop,
-    make_client_request: _RequestMaker,
-) -> None:
-    req = make_client_request(
-        "GET",
-        URL("http://localhost:1234/path"),
-        proxy=URL("http://proxy.example.com"),
-        loop=event_loop,
-    )
-    assert req.proxy_auth is None
-
-
 @mock.patch("aiohttp.connector.ClientRequestBase")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
@@ -998,7 +968,6 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=None,
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
@@ -1017,6 +986,9 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -1087,13 +1059,13 @@ async def test_https_auth(  # type: ignore[misc]
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
+    proxy_auth_header = aiohttp.encode_basic_auth("user", "pass")
     proxy_req = ClientRequestBase(
         "GET",
         URL("http://proxy.example.com"),
-        auth=aiohttp.helpers.BasicAuth("user", "pass"),
         loop=event_loop,
         ssl=True,
-        headers=CIMultiDict({}),
+        headers=CIMultiDict({hdrs.PROXY_AUTHORIZATION: proxy_auth_header}),
     )
     ClientRequestMock.return_value = proxy_req
 
@@ -1109,6 +1081,9 @@ async def test_https_auth(  # type: ignore[misc]
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     with mock.patch.object(proxy_req, "_send", autospec=True, return_value=proxy_resp):
         with mock.patch.object(proxy_resp, "start", autospec=True) as m:
@@ -1139,8 +1114,8 @@ async def test_https_auth(  # type: ignore[misc]
                         autospec=True,
                         return_value=mock.Mock(),
                     ):
-                        assert "AUTHORIZATION" in proxy_req.headers
-                        assert "PROXY-AUTHORIZATION" not in proxy_req.headers
+                        assert "AUTHORIZATION" not in proxy_req.headers
+                        assert "PROXY-AUTHORIZATION" in proxy_req.headers
 
                         req = make_client_request(
                             "GET",

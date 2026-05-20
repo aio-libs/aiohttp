@@ -1,8 +1,11 @@
 -r test-common-base.in
 
 blockbuster
-isal; python_version < "3.14" # no wheel for 3.14
+coverage
+isal; python_version < "3.14" and implementation_name == "cpython" # no wheel for 3.14, no PyPy wheel for 1.8.0+
 mypy; implementation_name == "cpython"
+pytest-aiohttp
+pytest-timeout
 pytest-xdist
 pytest_codspeed
 python-on-whales

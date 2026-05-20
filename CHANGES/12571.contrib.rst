@@ -1,0 +1,4 @@
+Fixed two flakey ``test_middleware_uses_session_avoids_recursion_with_*`` tests
+that hard coded ``localhost`` in the inner middleware request; they now target
+the bound server URL so happy eyeballs cannot pick an unbound address on
+Windows runners -- by :user:`bdraco`.

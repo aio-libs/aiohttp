@@ -5,16 +5,16 @@ import asyncio
 import pytest
 
 pytest.importorskip("pytest_codspeed")
+from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
 
 
 def test_ten_web_middlewares(
     benchmark: BenchmarkFixture,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
 ) -> None:
     """Benchmark 100 requests with 10 middlewares."""
@@ -43,4 +43,4 @@ def test_ten_web_middlewares(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_client_benchmark())
+        event_loop.run_until_complete(run_client_benchmark())

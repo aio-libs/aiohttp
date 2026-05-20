@@ -14,7 +14,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .compression_utils import ZLibCompressor
+from .compression_utils import MAX_SYNC_CHUNK_SIZE, ZLibCompressor
 from .helpers import (
     ETAG_ANY,
     QUOTED_ETAG_RE,
@@ -35,7 +35,6 @@ from .payload import Payload
 from .typedefs import JSONBytesEncoder, JSONEncoder, LooseHeaders
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
-LARGE_BODY_SIZE = 1024**2
 
 __all__ = (
     "ContentCoding",
@@ -547,7 +546,7 @@ class Response(StreamResponse):
         headers: LooseHeaders | None = None,
         content_type: str | None = None,
         charset: str | None = None,
-        zlib_executor_size: int | None = None,
+        zlib_executor_size: int = MAX_SYNC_CHUNK_SIZE,
         zlib_executor: Executor | None = None,
     ) -> None:
         if body is not None and text is not None:
@@ -726,13 +725,6 @@ class Response(StreamResponse):
             executor=self._zlib_executor,
         )
         assert self._body is not None
-        if self._zlib_executor_size is None and len(self._body) > LARGE_BODY_SIZE:
-            warnings.warn(
-                "Synchronous compression of large response bodies "
-                f"({len(self._body)} bytes) might block the async event loop. "
-                "Consider providing a custom value to zlib_executor_size/"
-                "zlib_executor response properties or disabling compression on it."
-            )
         self._compressed_body = (
             await compressor.compress(self._body) + compressor.flush()
         )

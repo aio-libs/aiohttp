@@ -159,6 +159,13 @@ include = [
 
 
 [tool.cibuildwheel]
+# `build[uv]` makes cibuildwheel use `uv` for every venv it provisions,
+# both on the build side (passed to `python -m build` as `--installer=uv`)
+# and when materializing the build isolation environment. uv resolves and
+# installs the build requirements in roughly a second; the previous
+# pip-based path took noticeably longer per ABI and ran once per matrix
+# cell.
+build-frontend = "build[uv]"
 test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
