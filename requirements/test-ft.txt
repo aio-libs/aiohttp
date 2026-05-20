@@ -6,7 +6,7 @@
 #
 aiodns==4.0.3
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.2
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
