@@ -210,7 +210,7 @@ pytest==9.0.3
 pytest-aiohttp==1.1.0
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test-common.in
+    #   -r requirements/test-common-base.in
 pytest-asyncio==1.4.0a2
     # via pytest-aiohttp
 pytest-codspeed==5.0.2
@@ -224,7 +224,7 @@ pytest-mock==3.15.1
     #   -r requirements/lint.in
     #   -r requirements/test-common-base.in
 pytest-timeout==2.4.0
-    # via -r requirements/test-common.in
+    # via -r requirements/test-common-base.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
