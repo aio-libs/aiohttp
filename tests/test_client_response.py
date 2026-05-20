@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import sys
+import weakref
 from http.cookies import SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
@@ -1834,3 +1835,121 @@ def test_response_cookies_setter_updates_raw_headers(
     response.cookies = empty_cookies
     # Should not set _raw_cookie_headers for empty cookies
     assert response._raw_cookie_headers is None
+
+
+def test_close_clears_traces_and_session(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    trace = mock.Mock()
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[trace],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    response._closed = False
+    response._connection = mock.Mock()
+    response.close()
+    assert response._traces == []
+    assert response._session is None
+
+
+def test_release_clears_traces_and_session(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    trace = mock.Mock()
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[trace],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    response._closed = False
+    response._connection = mock.Mock()
+    response.release()
+    assert response._traces == []
+    assert response._session is None
+
+
+def test_response_eof_clears_traces_and_session(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    trace = mock.Mock()
+    response = ClientResponse(
+        "get",
+        url,
+        writer=None,
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[trace],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    response._closed = False
+    conn = response._connection = mock.Mock()
+    conn.protocol.upgraded = False
+
+    response._response_eof()
+    assert response._traces == []
+    assert response._session is None
+
+
+@pytest.mark.skipif(
+    sys.implementation.name != "cpython",
+    reason="Other implementations have different GC strategies",
+)
+def test_no_circular_ref_after_close(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org")
+    trace = mock.Mock()
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[trace],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    response._closed = False
+    response._connection = mock.Mock()
+
+    ref = weakref.ref(response)
+    response.close()
+    del response
+    gc.collect()
+
+    assert ref() is None

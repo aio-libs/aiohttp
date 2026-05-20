@@ -1,0 +1,1 @@
+Fixed a slow memory leak where ``ClientResponse`` retained a circular reference to ``ClientSession`` via ``_traces`` after the response was closed.

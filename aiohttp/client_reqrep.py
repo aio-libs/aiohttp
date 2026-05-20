@@ -593,6 +593,7 @@ class ClientResponse(HeadersMixin):
             self._output_size = self._stream_writer.output_size
             self._stream_writer = None
         self._session = None
+        self._traces = []
 
     def _notify_content(self) -> None:
         content = self.content
