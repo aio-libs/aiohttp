@@ -10,9 +10,9 @@ from typing import Any, NoReturn
 
 import pytest
 import yarl
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.web_urldispatcher import Resource, SystemRoute
 
 
@@ -248,7 +248,7 @@ async def test_follow_symlink_directory_traversal(
     # We need to use a raw socket to test this, as the client will normalize
     # the path before sending it to the server.
     reader, writer = await asyncio.open_connection(client.host, client.port)
-    writer.write(b"GET /../private_file HTTP/1.1\r\n\r\n")
+    writer.write(b"GET /../private_file HTTP/1.1\r\nHost: a\r\n\r\n")
     response = await reader.readuntil(b"\r\n\r\n")
     assert b"404 Not Found" in response
     writer.close()
@@ -300,14 +300,14 @@ async def test_follow_symlink_directory_traversal_after_normalization(
     # We need to use a raw socket to test this, as the client will normalize
     # the path before sending it to the server.
     reader, writer = await asyncio.open_connection(client.host, client.port)
-    writer.write(b"GET /my_symlink/../private_file HTTP/1.1\r\n\r\n")
+    writer.write(b"GET /my_symlink/../private_file HTTP/1.1\r\nHost: a\r\n\r\n")
     response = await reader.readuntil(b"\r\n\r\n")
     assert b"404 Not Found" in response
     writer.close()
     await writer.wait_closed()
 
     reader, writer = await asyncio.open_connection(client.host, client.port)
-    writer.write(b"GET /my_symlink/symlink_target_file HTTP/1.1\r\n\r\n")
+    writer.write(b"GET /my_symlink/symlink_target_file HTTP/1.1\r\nHost: a\r\n\r\n")
     response = await reader.readuntil(b"\r\n\r\n")
     assert b"200 OK" in response
     response = await reader.readuntil(b"readable")
@@ -570,7 +570,7 @@ async def test_access_special_resource(
     unix_sockname: str, aiohttp_client: AiohttpClient
 ) -> None:
     """Test access to non-regular files is forbidden using a UNIX domain socket."""
-    if not getattr(socket, "AF_UNIX", None):
+    if not getattr(socket, "AF_UNIX", None):  # pragma: no cover
         pytest.skip("UNIX domain sockets not supported")
 
     my_special = pathlib.Path(unix_sockname)

@@ -79,7 +79,7 @@ class BaseSite(ABC):
 
 
 class TCPSite(BaseSite):
-    __slots__ = ("_host", "_port", "_reuse_address", "_reuse_port")
+    __slots__ = ("_host", "_port", "_bound_port", "_reuse_address", "_reuse_port")
 
     def __init__(
         self,
@@ -101,18 +101,33 @@ class TCPSite(BaseSite):
         if port is None:
             port = 8443 if self._ssl_context else 8080
         self._port = port
+        self._bound_port: int | None = None
         self._reuse_address = reuse_address
         self._reuse_port = reuse_port
+
+    @property
+    def port(self) -> int:
+        """The port the server is listening on.
+
+        If the server hasn't been started yet, this returns the requested port
+        (which might be 0 for a dynamic port).
+        After the server starts, it returns the actual bound port. This is
+        especially useful when port=0 was requested, as it allows retrieving the
+        dynamically assigned port after the site has started.
+        """
+        if self._bound_port is not None:
+            return self._bound_port
+        return self._port
 
     @property
     def name(self) -> str:
         scheme = "https" if self._ssl_context else "http"
         host = "0.0.0.0" if not self._host else self._host
-        return str(URL.build(scheme=scheme, host=host, port=self._port))
+        return str(URL.build(scheme=scheme, host=host, port=self.port))
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_server(
@@ -124,6 +139,10 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
+        if self._server.sockets:
+            self._bound_port = self._server.sockets[0].getsockname()[1]
+        else:
+            self._bound_port = self._port
 
 
 class UnixSite(BaseSite):
@@ -151,7 +170,7 @@ class UnixSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_unix_server(
@@ -166,7 +185,7 @@ class NamedPipeSite(BaseSite):
     __slots__ = ("_path",)
 
     def __init__(self, runner: "BaseRunner[Any]", path: str) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         if not isinstance(
             loop, asyncio.ProactorEventLoop  # type: ignore[attr-defined]
         ):
@@ -182,7 +201,7 @@ class NamedPipeSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         _server = await loop.start_serving_pipe(  # type: ignore[attr-defined]
@@ -222,7 +241,7 @@ class SockSite(BaseSite):
 
     async def start(self) -> None:
         await super().start()
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
         self._server = await loop.create_server(
@@ -267,7 +286,7 @@ class BaseRunner(ABC, Generic[_Request]):
         return set(self._sites)
 
     async def setup(self) -> None:
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
 
         if self._handle_signals:
             try:

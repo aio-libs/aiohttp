@@ -15,6 +15,7 @@ Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
+Alex Grönholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -215,6 +216,7 @@ Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
+Josu Moreno
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -291,6 +293,7 @@ Nándor Mátravölgyi
 Oisin Aylward
 Olaf Conradi
 Oleg Höfling
+Omkar Kabde
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -341,6 +344,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
@@ -367,6 +371,7 @@ Thomas Forbes
 Thomas Grainger
 Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
 Trevor Gamblin
@@ -419,6 +424,7 @@ Yegor Roganov
 Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
+Yury Novikov
 Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi

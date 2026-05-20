@@ -9,6 +9,7 @@ import ssl
 import subprocess
 import sys
 import time
+import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
 from typing import Any, NoReturn
 from unittest import mock
@@ -45,14 +46,14 @@ skip_if_no_unix_socks = pytest.mark.skipif(
 del _has_unix_domain_socks, _abstract_path_failed
 
 HAS_IPV6: bool = socket.has_ipv6
-if HAS_IPV6:
+if HAS_IPV6:  # pragma: no branch
     # The socket.has_ipv6 flag may be True if Python was built with IPv6
     # support, but the target system still may not have it.
     # So let's ensure that we really have IPv6 support.
     try:
         with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
             pass
-    except OSError:
+    except OSError:  # pragma: no cover
         HAS_IPV6 = False
 
 
@@ -63,32 +64,34 @@ def skip_if_on_windows() -> None:
 
 @pytest.fixture
 def patched_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     server.wait_closed.return_value = None
+    server.sockets = []
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
+    unix_server.sockets = []
     with mock.patch.object(
-        loop, "create_server", autospec=True, spec_set=True, return_value=server
+        event_loop, "create_server", autospec=True, spec_set=True, return_value=server
     ):
         with mock.patch.object(
-            loop,
+            event_loop,
             "create_unix_server",
             autospec=True,
             spec_set=True,
             return_value=unix_server,
         ):
-            asyncio.set_event_loop(loop)
-            yield loop
+            asyncio.set_event_loop(event_loop)
+            yield event_loop
 
 
-def stopper(loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
+def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
     def raiser() -> NoReturn:
         raise KeyboardInterrupt
 
     def f(*args: object) -> None:
-        loop.call_soon(raiser)
+        event_loop.call_soon(raiser)
 
     return f
 
@@ -117,6 +120,28 @@ def test_run_app_close_loop(patched_loop: asyncio.AbstractEventLoop) -> None:
         mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
     )
     assert patched_loop.is_closed()
+
+
+def test_run_app_preserves_startup_traceback(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
+    # Regression: when an exception is raised during startup (here in a
+    # cleanup_ctx async generator), the user code frame must remain in the
+    # traceback that propagates out of run_app. Previously the second
+    # loop.run_until_complete(main_task) in run_app's finally clobbered it.
+
+    async def failing_ctx(_app: web.Application) -> AsyncIterator[None]:
+        raise RuntimeError("boom from failing_ctx")
+        yield  # type: ignore[unreachable]  # required to make this an async generator
+
+    app = web.Application()
+    app.cleanup_ctx.append(failing_ctx)
+
+    with pytest.raises(RuntimeError, match="boom from failing_ctx") as exc_info:
+        web.run_app(app, print=None, loop=patched_loop)
+
+    frames = [f.name for f in traceback.extract_tb(exc_info.tb)]
+    assert "failing_ctx" in frames, frames
 
 
 mock_unix_server_single = [
@@ -524,7 +549,9 @@ def test_run_app_custom_backlog(patched_loop: asyncio.AbstractEventLoop) -> None
     )
 
 
-def test_run_app_custom_backlog_unix(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_custom_backlog_unix(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     web.run_app(
         app,
@@ -578,7 +605,9 @@ def test_run_app_https_unix_socket(
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
 @skip_if_no_abstract_paths
-def test_run_app_abstract_linux_socket(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_abstract_linux_socket(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     sock_path = b"\x00" + uuid4().hex.encode("ascii")
     app = web.Application()
     web.run_app(
@@ -690,12 +719,10 @@ def test_sigint() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.send_signal(signal.SIGINT)
         assert proc.wait() == 0
 
@@ -704,12 +731,10 @@ def test_sigterm() -> None:
     skip_if_on_windows()
 
     with subprocess.Popen(
-        [sys.executable, "-u", "-c", _script_test_signal],
+        (sys.executable, "-u", "-c", _script_test_signal),
         stdout=subprocess.PIPE,
     ) as proc:
-        for line in proc.stdout:  # type: ignore[union-attr]
-            if line.startswith(b"======== Running on"):
-                break
+        assert proc.stdout.readline().startswith(b"======== Running on")  # type: ignore[union-attr]
         proc.terminate()
         assert proc.wait() == 0
 
@@ -863,7 +888,7 @@ def test_run_app_cancels_all_pending_tasks(
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(asyncio.sleep(1000))
 
     app.on_startup.append(on_startup)
@@ -873,7 +898,9 @@ def test_run_app_cancels_all_pending_tasks(
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_done_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -882,7 +909,7 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(coro())
 
     app.on_startup.append(on_startup)
@@ -892,7 +919,9 @@ def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> 
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_failed_tasks(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     app = web.Application()
     task = None
 
@@ -906,7 +935,7 @@ def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -
 
     async def on_startup(app: web.Application) -> None:
         nonlocal task
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         task = loop.create_task(fail())
         await asyncio.sleep(0.01)
 
@@ -989,7 +1018,9 @@ def test_run_app_context_vars(patched_loop: asyncio.AbstractEventLoop) -> None:
     assert count == 3
 
 
-def test_run_app_raises_exception(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_raises_exception(
+    patched_loop: asyncio.AbstractEventLoop,
+) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
         yield  # type: ignore[unreachable]  # pragma: no cover
@@ -1108,7 +1139,7 @@ class TestShutdown:
         async def task() -> None:
             nonlocal finished
             await asyncio.sleep(2)
-            finished = True
+            finished = True  # pragma: no cover
 
         t, connection_count = self.run_app(sock, 1, task)
 
@@ -1157,7 +1188,7 @@ class TestShutdown:
                 # Use a new session to try and open a new connection.
                 async with ClientSession() as sess:
                     async with sess.get(f"http://127.0.0.1:{port}/"):
-                        pass
+                        assert False  # Should fail before here
             assert finished is False
 
         t, connection_count = self.run_app(sock, 10, task, test)
@@ -1259,7 +1290,7 @@ class TestShutdown:
             await ws.prepare(request)
             request.app[WS].add(ws)
             async for msg in ws:
-                pass
+                assert False  # No messages actually sent
             nonlocal server_finished
             server_finished = True
             return ws
@@ -1276,7 +1307,7 @@ class TestShutdown:
                         pass
 
                     async for msg in ws:
-                        pass
+                        assert False  # No messages actually sent
                     nonlocal client_finished
                     client_finished = True
 
@@ -1309,18 +1340,20 @@ class TestShutdown:
         port = sock.getsockname()[1]
         actions = []
         t = None
+        suppressed = asyncio.Event()
 
         async def test() -> None:
             async def test_resp(sess: ClientSession) -> None:
                 t = ClientTimeout(total=0.4)
                 with pytest.raises(asyncio.TimeoutError):
-                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t) as resp:
-                        assert await resp.text() == "FOO"
+                    async with sess.get(f"http://127.0.0.1:{port}/", timeout=t):
+                        assert False  # Should timeout before this
                 actions.append("CANCELLED")
 
             async with ClientSession() as sess:
                 t = asyncio.create_task(test_resp(sess))
-                await asyncio.sleep(0.5)
+                # Wait until the handler has observed its cancellation.
+                await asyncio.wait_for(suppressed.wait(), timeout=3)
                 # Handler is in-progress while we trigger server shutdown.
                 actions.append("PRESTOP")
                 async with sess.get(f"http://127.0.0.1:{port}/stop"):
@@ -1341,6 +1374,7 @@ class TestShutdown:
                 await asyncio.sleep(5)
             except asyncio.CancelledError:
                 actions.append("SUPPRESSED")
+                suppressed.set()
                 await asyncio.sleep(2)
                 actions.append("DONE")
             return web.Response(text="FOO")

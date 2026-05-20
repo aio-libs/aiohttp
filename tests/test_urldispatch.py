@@ -1,4 +1,3 @@
-import asyncio
 import pathlib
 import platform
 import re
@@ -374,8 +373,8 @@ def test_add_static_path_checks(
     """Test that static paths must exist and be directories."""
     with pytest.raises(ValueError, match="does not exist"):
         router.add_static("/", tmp_path / "does-not-exist")
-        with pytest.raises(ValueError, match="is not a directory"):
-            router.add_static("/", __file__)
+    with pytest.raises(ValueError, match="is not a directory"):
+        router.add_static("/", __file__)
 
 
 def test_add_static_path_resolution(router: web.UrlDispatcher) -> None:
@@ -1194,17 +1193,13 @@ def test_subapp_rule_resource(app: web.Application) -> None:
         resource.url_for()
 
 
-async def test_add_domain_not_str(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain_not_str(app: web.Application) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)  # type: ignore[arg-type]
 
 
-async def test_add_domain(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain(app: web.Application) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)
@@ -1300,16 +1295,9 @@ def test_frozen_app_on_subapp(app: web.Application) -> None:
 
 def test_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
-    options = None
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is None
+    assert all(r.method != "OPTIONS" for r in resource)
     resource.set_options_route(make_handler())
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is not None
+    assert any(r.method == "OPTIONS" for r in resource)
 
     with pytest.raises(RuntimeError):
         resource.set_options_route(make_handler())
