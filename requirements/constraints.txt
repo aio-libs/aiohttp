@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --strip-extras requirements/constraints.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -25,9 +25,7 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   -r requirements/runtime-deps.in
     #   valkey
 attrs==26.1.0
-    # via
-    #   -r requirements/runtime-deps.in
-    #   myst-parser
+    # via -r requirements/runtime-deps.in
 babel==2.18.0
     # via sphinx
 backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"

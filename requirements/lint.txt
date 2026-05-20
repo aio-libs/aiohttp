@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --resolver=backtracking --strip-extras requirements/lint.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via -r requirements/lint.in
 annotated-types==0.7.0
     # via pydantic
