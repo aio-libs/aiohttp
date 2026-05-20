@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/constraints.txt --strip-extras requirements/constraints.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in

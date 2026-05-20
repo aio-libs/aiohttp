@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via -r requirements/lint.in
 aiohappyeyeballs==2.6.2
     # via aiohttp
