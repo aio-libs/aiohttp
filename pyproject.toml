@@ -170,6 +170,10 @@ test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
 
+[tool.cibuildwheel.ios]
+# iOS currently does not support build[uv]
+build-frontend = "build"
+
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
 ignore-words-list = 'te,assertIn'
