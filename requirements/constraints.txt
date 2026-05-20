@@ -25,7 +25,9 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   -r requirements/runtime-deps.in
     #   valkey
 attrs==26.1.0
-    # via -r requirements/runtime-deps.in
+    # via
+    #   -r requirements/runtime-deps.in
+    #   myst-parser
 babel==2.18.0
     # via sphinx
 backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
@@ -67,7 +69,9 @@ cython==3.2.4
 distlib==0.4.0
     # via virtualenv
 docutils==0.21.2
-    # via sphinx
+    # via
+    #   myst-parser
+    #   sphinx
 exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
@@ -105,14 +109,21 @@ isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     #   -r requirements/test-common.in
 jinja2==3.1.6
     # via
+    #   myst-parser
     #   sphinx
+    #   sphinxcontrib-mermaid
     #   towncrier
 librt==0.11.0
     # via mypy
-markdown-it-py==4.2.0
-    # via rich
+markdown-it-py==3.0.0
+    # via
+    #   mdit-py-plugins
+    #   myst-parser
+    #   rich
 markupsafe==3.0.3
     # via jinja2
+mdit-py-plugins==0.6.1
+    # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
 multidict==6.7.1
@@ -126,6 +137,8 @@ mypy==2.1.0 ; implementation_name == "cpython"
     #   -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
+myst-parser==4.0.1
+    # via -r requirements/doc.in
 nodeenv==1.10.0
     # via pre-commit
 packaging==26.2
@@ -208,7 +221,10 @@ python-on-whales==0.81.0
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
 pyyaml==6.0.3
-    # via pre-commit
+    # via
+    #   myst-parser
+    #   pre-commit
+    #   sphinxcontrib-mermaid
 re-assert==1.1.0
     # via -r requirements/test-common.in
 regex==2026.5.9
@@ -230,6 +246,8 @@ snowballstemmer==3.0.1
 sphinx==8.1.3
     # via
     #   -r requirements/doc.in
+    #   myst-parser
+    #   sphinxcontrib-mermaid
     #   sphinxcontrib-spelling
     #   sphinxcontrib-towncrier
 sphinxcontrib-applehelp==2.0.0
@@ -240,6 +258,8 @@ sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
+sphinxcontrib-mermaid==2.0.2
+    # via -r requirements/doc.in
 sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
