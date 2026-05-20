@@ -276,14 +276,14 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
 When a symlink that leads outside the static directory is accessed, the server
 responds to the client with ``HTTP/404 Not Found`` by default. To allow the server to
-follow symlinks that lead outside the static root, the parameter ``follow_symlinks``
+follow symlinks that lead outside the static root, the parameter ``break_symlink_sandbox``
 should be set to ``True``::
 
-   web.static('/prefix', path_to_static_folder, follow_symlinks=True)
+   web.static('/prefix', path_to_static_folder, break_symlink_sandbox=True)
 
 .. caution::
 
-   Enabling ``follow_symlinks`` can be a security risk, and may lead to
+   Enabling ``break_symlink_sandbox`` can be a security risk, and may lead to
    a directory transversal attack. You do NOT need this option to follow symlinks
    which point to somewhere else within the static directory, this option is only
    used to break out of the security sandbox. Enabling this option is highly
