@@ -1891,9 +1891,12 @@ def test_release_clears_traces_and_session(
     assert response._session is None
 
 
-def test_response_eof_clears_traces_and_session(
+def test_response_eof_clears_session_but_not_traces(
     event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
+    # _response_eof() must NOT clear _traces: it fires during payload EOF which
+    # happens inside read(), before read() iterates _traces to send callbacks.
+    # Clearing _traces here would silently drop on_response_chunk_received hooks.
     url = URL("http://def-cl-resp.org")
     trace = mock.Mock()
     response = ClientResponse(
@@ -1916,7 +1919,7 @@ def test_response_eof_clears_traces_and_session(
     conn.protocol.upgraded = False
 
     response._response_eof()
-    assert response._traces == []
+    assert response._traces == [trace]  # preserved so read() callbacks can still fire
     assert response._session is None
 
 

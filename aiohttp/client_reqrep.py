@@ -525,6 +525,7 @@ class ClientResponse(HeadersMixin):
             return
 
         self._cleanup_writer()
+        self._traces = []
         if self._connection is not None:
             self._connection.close()
             self._connection = None
@@ -536,6 +537,7 @@ class ClientResponse(HeadersMixin):
         self._closed = True
 
         self._cleanup_writer()
+        self._traces = []
         self._release_connection()
 
     @property
@@ -593,7 +595,6 @@ class ClientResponse(HeadersMixin):
             self._output_size = self._stream_writer.output_size
             self._stream_writer = None
         self._session = None
-        self._traces = []
 
     def _notify_content(self) -> None:
         content = self.content
