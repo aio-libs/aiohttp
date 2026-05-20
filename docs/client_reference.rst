@@ -2543,14 +2543,14 @@ Utilities
       :class:`~types.MappingProxyType` mapping ``(domain, path)`` tuples
       to :class:`~http.cookies.SimpleCookie` instances.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.14
 
    .. attribute:: host_only_cookies
 
       A :class:`frozenset` of ``(domain, name)`` tuples indicating which
       cookies are host-only (not sent to subdomains).
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.14
 
 
 .. class:: DummyCookieJar(*, loop=None)
