@@ -14,6 +14,8 @@ from uuid import uuid4
 import pytest
 
 pytest.importorskip("proxy")
+import proxy
+
 from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
