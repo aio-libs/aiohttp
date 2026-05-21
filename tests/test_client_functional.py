@@ -17,13 +17,11 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
-from typing import Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
 
-try:
+if TYPE_CHECKING:
     import trustme
-except ImportError:  # pragma: no cover
-    pass
 
 try:
     try:
