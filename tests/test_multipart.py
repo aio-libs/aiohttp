@@ -184,6 +184,15 @@ class TestPartReader:
             result = await obj.read()
             assert b"Hello, world!" == result
             assert obj.at_eof()
+            assert type(result) is bytes
+
+    async def test_read_returns_bytes_not_bytearray_with_decode(self) -> None:
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "identity"}))
+        with Stream(b"Hello!\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result = await obj.read(decode=True)
+        assert result == b"Hello!"
+        assert type(result) is bytes
 
     async def test_read_chunk_at_eof(self) -> None:
         with Stream(b"--:") as stream:
