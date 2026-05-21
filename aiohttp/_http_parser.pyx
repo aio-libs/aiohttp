@@ -25,6 +25,7 @@ from .http_exceptions import (
     BadHttpMethod,
     BadStatusLine,
     ContentLengthError,
+    HTTPS_ON_HTTP_PORT_ERROR,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
@@ -932,6 +933,8 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_INVALID_TRANSFER_ENCODING}:
         return BadHttpMessage(err_msg)
     elif errno == cparser.HPE_INVALID_METHOD:
+        if data.startswith(b"\x16\x03"):
+            return BadHttpMethod(error=HTTPS_ON_HTTP_PORT_ERROR)
         return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
                    cparser.HPE_INVALID_VERSION,
