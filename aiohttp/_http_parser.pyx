@@ -21,11 +21,11 @@ from aiohttp.helpers import DEBUG, set_exception
 
 from .helpers import HeadersDictProxy as _HeadersDictProxy
 from .http_exceptions import (
+    HTTPS_ON_HTTP_PORT_ERROR,
     BadHttpMessage,
     BadHttpMethod,
     BadStatusLine,
     ContentLengthError,
-    HTTPS_ON_HTTP_PORT_ERROR,
     InvalidHeader,
     InvalidURLError,
     LineTooLong,
