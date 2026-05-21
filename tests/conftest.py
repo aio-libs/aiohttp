@@ -69,7 +69,8 @@ else:
     from typing import Any as Unpack
 
 
-pytest_plugins = ("aiohttp", "pytester",)
+# We require pytest-aiohttp to avoid confusing debugging if it's not installed.
+pytest_plugins = ("pytest_aiohttp.plugin", "pytester")
 
 
 IS_HPUX = sys.platform.startswith("hp-ux")
