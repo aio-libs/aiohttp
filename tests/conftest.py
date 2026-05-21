@@ -280,7 +280,6 @@ def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
         loop.close()
 
 
-@pytest.hookimpl(optionalhook=True)
 def pytest_asyncio_loop_factories(
     config: pytest.Config, item: pytest.Item
 ) -> dict[str, Callable[[], asyncio.AbstractEventLoop]]:
