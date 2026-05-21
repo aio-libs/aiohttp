@@ -2,17 +2,16 @@
 
 import asyncio
 import sys
-
-import pytest
-
-pytest.importorskip("pytest_codspeed")
 from collections.abc import Callable
 from http.cookies import BaseCookie
 from typing import Any
 
+import pytest
 from multidict import CIMultiDict
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
+
+pytest.importorskip("pytest_codspeed")
+from pytest_codspeed import BenchmarkFixture
 
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.cookiejar import CookieJar
@@ -145,7 +144,6 @@ def test_send_client_request_one_hundred(
             """Swallow writes."""
 
     class MockProtocol(asyncio.BaseProtocol):
-
         def __init__(self) -> None:
             self.transport = MockTransport()
 
@@ -160,7 +158,6 @@ def test_send_client_request_one_hundred(
             """Swallow start_timeout."""
 
     class MockConnector:
-
         def __init__(self) -> None:
             self.force_close = False
 

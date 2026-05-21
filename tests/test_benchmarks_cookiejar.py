@@ -3,10 +3,10 @@
 from http.cookies import BaseCookie
 
 import pytest
+from yarl import URL
 
 pytest.importorskip("pytest_codspeed")
 from pytest_codspeed import BenchmarkFixture
-from yarl import URL
 
 from aiohttp.cookiejar import CookieJar
 

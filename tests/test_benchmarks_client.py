@@ -5,11 +5,11 @@ from collections.abc import Iterator
 from typing import Any
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
+from yarl import URL
 
 pytest.importorskip("pytest_codspeed")
-from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_codspeed import BenchmarkFixture
-from yarl import URL
 
 from aiohttp import hdrs, request, web
 from aiohttp.test_utils import TestServer

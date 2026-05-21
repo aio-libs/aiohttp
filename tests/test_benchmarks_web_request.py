@@ -4,9 +4,9 @@ import asyncio
 import zlib
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 
 pytest.importorskip("pytest_codspeed")
-from pytest_aiohttp import AiohttpClient
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web

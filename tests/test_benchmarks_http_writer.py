@@ -1,9 +1,9 @@
 """codspeed benchmarks for http writer."""
 
 import pytest
+from multidict import CIMultiDict
 
 pytest.importorskip("pytest_codspeed")
-from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import hdrs

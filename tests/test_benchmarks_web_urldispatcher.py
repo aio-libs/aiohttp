@@ -10,11 +10,11 @@ from typing import NoReturn, cast
 from unittest import mock
 
 import pytest
+from multidict import CIMultiDict
+from yarl import URL
 
 pytest.importorskip("pytest_codspeed")
-from multidict import CIMultiDict
 from pytest_codspeed import BenchmarkFixture
-from yarl import URL
 
 import aiohttp
 from aiohttp import web

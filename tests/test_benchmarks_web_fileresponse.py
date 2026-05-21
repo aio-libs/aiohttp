@@ -6,10 +6,10 @@ from collections.abc import Awaitable, Callable, Iterator
 from typing import Any
 
 import pytest
-
-pytest.importorskip("pytest_codspeed")
 from multidict import CIMultiDict
 from pytest_aiohttp import AiohttpClient
+
+pytest.importorskip("pytest_codspeed")
 from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import ClientResponse, web
