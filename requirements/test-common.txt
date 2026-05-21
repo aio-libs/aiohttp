@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test-common.txt --strip-extras requirements/test-common.in
 #
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.2
     # via aiohttp
 aiohttp==3.13.5
     # via pytest-aiohttp
@@ -149,7 +149,7 @@ typing-inspection==0.4.2
     # via pydantic
 wait-for-it==2.3.0
     # via -r requirements/test-common.in
-yarl==1.23.0
+yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/test-common.in

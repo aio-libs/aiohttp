@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/lint.txt --strip-extras requirements/lint.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via -r requirements/lint.in
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.2
     # via aiohttp
 aiohttp==3.13.5
     # via pytest-aiohttp
@@ -167,7 +167,7 @@ valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==21.3.3
     # via pre-commit
-yarl==1.23.0
+yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/lint.in

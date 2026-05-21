@@ -14,6 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, http
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import HeadersDictProxy, TimerNoop
@@ -45,6 +46,9 @@ async def test_http_processing_error(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -74,6 +78,9 @@ def test_del(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     loop.get_debug = mock.Mock()
     loop.get_debug.return_value = True
@@ -103,6 +110,9 @@ def test_close(event_loop: asyncio.AbstractEventLoop, session: ClientSession) ->
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     response._connection = mock.Mock()
@@ -127,6 +137,9 @@ def test_wait_for_100_1(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response._continue is not None
     response.close()
@@ -147,6 +160,9 @@ def test_wait_for_100_2(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response._continue is None
     response.close()
@@ -165,6 +181,9 @@ def test_repr(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> 
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 200
     response.reason = "Ok"
@@ -184,6 +203,9 @@ def test_repr_non_ascii_url() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert "<ClientResponse(http://fake-host.org/%CE%BB) [None None]>" in repr(response)
 
@@ -201,6 +223,9 @@ def test_repr_non_ascii_reason() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.reason = "\u03bb"
     assert "<ClientResponse(http://fake-host.org/path) [None \\u03bb]>" in repr(
@@ -222,6 +247,9 @@ async def test_read_and_release_connection(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -251,6 +279,9 @@ async def test_read_and_release_connection_with_error(session: ClientSession) ->
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     content = response.content = mock.Mock()
     content.read.return_value = loop.create_future()
@@ -275,6 +306,9 @@ async def test_release(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     fut = loop.create_future()
     fut.set_result(b"")
@@ -306,6 +340,9 @@ async def test_release_on_del(session: ClientSession) -> None:
             session=session,
             request_headers=CIMultiDict[str](),
             original_url=url,
+            stream_writer=mock.create_autospec(
+                AbstractStreamWriter, spec_set=True, instance=True
+            ),
         )
         response._closed = False
         response._connection = conn
@@ -328,6 +365,9 @@ async def test_response_eof(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -351,6 +391,9 @@ async def test_response_eof_upgraded(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     conn = response._connection = mock.Mock()
@@ -374,6 +417,9 @@ async def test_response_eof_after_connection_detach(session: ClientSession) -> N
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._closed = False
     conn = response._connection = mock.Mock()
@@ -398,6 +444,9 @@ async def test_text(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -429,6 +478,9 @@ async def test_text_bad_encoding(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -464,6 +516,9 @@ async def test_text_badly_encoded_encoding_header(session: ClientSession) -> Non
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -496,6 +551,9 @@ async def test_text_custom_encoding(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -530,6 +588,9 @@ async def test_text_charset_resolver(content_type: str, session: ClientSession) 
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -562,6 +623,9 @@ async def test_get_encoding_body_none(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     h = {"Content-Type": "text/html"}
@@ -591,6 +655,9 @@ async def test_text_after_read(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -622,6 +689,9 @@ async def test_json(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -653,6 +723,9 @@ async def test_json_extended_content_type(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -684,6 +757,9 @@ async def test_json_custom_content_type(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -714,6 +790,9 @@ async def test_json_custom_loader(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -739,6 +818,9 @@ async def test_json_invalid_content_type(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "data/octet-stream"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -765,6 +847,9 @@ async def test_json_no_content(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "application/json"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -788,6 +873,9 @@ async def test_json_override_encoding(session: ClientSession) -> None:
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -821,6 +909,9 @@ def test_get_encoding_unknown(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     h = {"Content-Type": "application/json"}
@@ -841,6 +932,9 @@ def test_raise_for_status_2xx() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 200
     response.reason = "OK"
@@ -860,6 +954,9 @@ def test_raise_for_status_4xx() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -883,6 +980,9 @@ def test_raise_for_status_4xx_without_reason() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 404
     response.reason = ""
@@ -906,6 +1006,9 @@ def test_resp_host() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert "del-cl-resp.org" == response.host
 
@@ -923,6 +1026,9 @@ def test_content_type() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -943,6 +1049,9 @@ def test_content_type_no_header() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = HeadersDictProxy(CIMultiDict())
 
@@ -962,6 +1071,9 @@ def test_charset() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "application/json;charset=cp1251"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -982,6 +1094,9 @@ def test_charset_no_header() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = HeadersDictProxy(CIMultiDict())
 
@@ -1001,6 +1116,9 @@ def test_charset_no_charset() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Type": "application/json"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1021,6 +1139,9 @@ def test_content_disposition_full() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Disposition": 'attachment; filename="archive.tar.gz"; foo=bar'}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1046,6 +1167,9 @@ def test_content_disposition_no_parameters() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Disposition": "attachment"}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1076,6 +1200,9 @@ def test_content_disposition_empty_parts(content_disposition: str) -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = {"Content-Disposition": content_disposition}
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1099,6 +1226,9 @@ def test_content_disposition_no_header() -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = HeadersDictProxy(CIMultiDict())
 
@@ -1118,6 +1248,9 @@ def test_default_encoding_is_utf8() -> None:
         session=None,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = HeadersDictProxy(CIMultiDict())
     response._body = b""
@@ -1140,6 +1273,9 @@ def test_response_request_info() -> None:
         session=mock.Mock(),
         request_headers=headers,
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert url == response.request_info.url
     assert "get" == response.request_info.method
@@ -1161,6 +1297,9 @@ def test_request_info_in_exception() -> None:
         session=mock.Mock(),
         request_headers=headers,
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1184,6 +1323,9 @@ def test_no_redirect_history_in_exception() -> None:
         session=mock.Mock(),
         request_headers=headers,
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1210,6 +1352,9 @@ def test_redirect_history_in_exception() -> None:
         session=mock.Mock(),
         request_headers=headers,
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 409
     response.reason = "CONFLICT"
@@ -1225,6 +1370,9 @@ def test_redirect_history_in_exception() -> None:
         session=mock.Mock(),
         request_headers=headers,
         original_url=hist_url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     hist_response._headers = HeadersDictProxy(CIMultiDict(hist_headers))
@@ -1255,6 +1403,9 @@ async def test_response_read_triggers_callback(session: ClientSession) -> None:
         traces=[trace],
         request_headers=CIMultiDict[str](),
         original_url=response_url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
@@ -1292,6 +1443,9 @@ def test_response_cookies(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     cookies = response.cookies
     # Ensure the same cookies object is returned each time
@@ -1313,6 +1467,9 @@ def test_response_real_url(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     assert response.url == url.with_fragment(None)
     assert response.real_url == url
@@ -1333,6 +1490,9 @@ def test_response_links_comma_separated(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = (
         (
@@ -1365,6 +1525,9 @@ def test_response_links_multiple_headers(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = (
         ("Link", "<http://example.com/page/1.html>; rel=next"),
@@ -1392,6 +1555,9 @@ def test_response_links_no_rel(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = (("Link", "<http://example.com/>"),)
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1415,6 +1581,9 @@ def test_response_links_quoted(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = (("Link", '<http://example.com/>; rel="home-page"'),)
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1438,6 +1607,9 @@ def test_response_links_relative(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     h = (("Link", "</relative/path>; rel=rel"),)
     response._headers = HeadersDictProxy(CIMultiDict(h))
@@ -1461,6 +1633,9 @@ def test_response_links_empty(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response._headers = HeadersDictProxy(CIMultiDict())
     assert response.links == {}
@@ -1479,6 +1654,9 @@ def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
         session=mock.Mock(),
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
     response.status = 400
     response.reason = "Bad Request"
@@ -1515,6 +1693,9 @@ def test_response_duplicate_cookie_names(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Set headers with duplicate cookie names but different domains
@@ -1554,6 +1735,9 @@ async def test_response_raw_cookie_headers_preserved(session: ClientSession) -> 
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Set headers with multiple cookies
@@ -1611,6 +1795,9 @@ def test_response_cookies_setter_updates_raw_headers(
         session=session,
         request_headers=CIMultiDict[str](),
         original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
     )
 
     # Create a SimpleCookie with some cookies

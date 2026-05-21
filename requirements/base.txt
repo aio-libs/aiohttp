@@ -4,9 +4,9 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/base.txt --strip-extras requirements/base.in
 #
-aiodns==4.0.3
+aiodns==4.0.4
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.1
+aiohappyeyeballs==2.6.2
     # via -r requirements/runtime-deps.in
 aiosignal==1.4.0
     # via -r requirements/runtime-deps.in
@@ -47,5 +47,5 @@ typing-extensions==4.15.0 ; python_version < "3.13"
     #   multidict
 uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.22.0
+yarl==1.24.2
     # via -r requirements/runtime-deps.in

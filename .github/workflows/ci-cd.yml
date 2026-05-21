@@ -80,12 +80,9 @@ jobs:
         path: ~/.cache/pip
         restore-keys: |
             pip-lint-
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/lint.in -c requirements/lint.txt
+        python -m pip install -U pip wheel setuptools build twine -r requirements/lint.in -c requirements/lint.txt
     - name: Install self
       run: |
         python -m pip install . -c requirements/runtime-deps.txt
@@ -198,14 +195,11 @@ jobs:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
         enable-cache: true
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        uv pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       env:
         DEPENDENCY_GROUP: test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
       run: |
-        uv pip install -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
+        uv pip install -U pip wheel setuptools build twine -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
     - name: Set PYTHON_GIL=0 for free-threading builds
       if: ${{ endsWith(matrix.pyver, 't') }}
       run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
@@ -303,14 +297,11 @@ jobs:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
         enable-cache: true
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        uv pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       env:
         DEPENDENCY_GROUP: test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
       run: |
-        uv pip install -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
+        uv pip install -U pip wheel setuptools build twine -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
     - name: Restore llhttp generated files
       if: ${{ matrix.no-extensions == '' }}
       uses: actions/download-artifact@v8
@@ -375,12 +366,9 @@ jobs:
         python-version: 3.13.2
         cache: pip
         cache-dependency-path: requirements/*.txt
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -m pip install -r requirements/test.in -c requirements/test.txt
+        python -m pip install -U pip wheel setuptools build twine -r requirements/test.in -c requirements/test.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:
@@ -419,12 +407,9 @@ jobs:
       uses: actions/setup-python@v6
       with:
         python-version: '3.12'
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
     - name: Install dependencies
       run: |
-        python -Im pip install -r requirements/test.in -c requirements/test.txt
+        python -Im pip install -U pip wheel setuptools build twine -r requirements/test.in -c requirements/test.txt
     - name: Uninstall blocbuster
       run: python -m pip uninstall blockbuster -y
     - name: Restore llhttp generated files
@@ -508,13 +493,10 @@ jobs:
         submodules: true
     - name: Setup Python
       uses: actions/setup-python@v6
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
-    - name: Install cython
+    - name: Install build tooling and cython
       run: >-
         python -m
-        pip install -r requirements/cython.in -c requirements/cython.txt
+        pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:
@@ -564,10 +546,15 @@ jobs:
         - os: ubuntu-latest
           qemu: s390x
           musl: musllinux
-        - os: ubuntu-latest
+        # armv7l builds on aarch64 hosts. We still register QEMU so
+        # binfmt picks up the 32-bit ARM userspace handler regardless of
+        # whether the host kernel has CONFIG_COMPAT enabled. Even with
+        # emulation, aarch64-on-aarch64 hosting beats x86_64 by a wide
+        # margin.
+        - os: ubuntu-24.04-arm
           qemu: armv7l
           musl: ""
-        - os: ubuntu-latest
+        - os: ubuntu-24.04-arm
           qemu: armv7l
           musl: musllinux
         - os: ubuntu-latest
@@ -595,19 +582,19 @@ jobs:
           # Build emulated architectures only if QEMU is set,
           # use default "auto" otherwise
           echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
+          # Override pyproject.toml's `build[uv]`: the pypa odd-arch
+          # manylinux/musllinux containers do not ship `uv` preinstalled.
+          echo "CIBW_BUILD_FRONTEND=build" >> $GITHUB_ENV
         fi
       shell: bash
     - name: Setup Python
       uses: actions/setup-python@v6
       with:
         python-version: 3.x
-    - name: Update pip, wheel, setuptools, build, twine
-      run: |
-        python -m pip install -U pip wheel setuptools build twine
-    - name: Install cython
+    - name: Install build tooling and cython
       run: >-
         python -m
-        pip install -r requirements/cython.in -c requirements/cython.txt
+        pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:
@@ -621,8 +608,11 @@ jobs:
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing
-        # cibuildwheel with the `uv` extra bundles uv with it; Linux
-        # already has uv inside the manylinux/musllinux container.
+        # cibuildwheel with the `uv` extra bundles uv with it; the
+        # tested-arch manylinux/musllinux containers also ship uv
+        # preinstalled. The odd-arch containers do not, so the
+        # `Prepare emulation` step above sets `CIBW_BUILD_FRONTEND=build`
+        # for those QEMU matrix cells.
         extras: uv
       env:
         CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
@@ -673,7 +663,29 @@ jobs:
     - name: Collected dists
       run: |
         tree dist
+    - name: Check whether the GitHub Release already exists
+      # Allows re-running the deploy job after a partial failure (e.g. PyPI
+      # upload error) without the Make Release step failing with HTTP 422
+      # because the tag/release was created on a prior attempt. Treat
+      # only the literal `release not found` reply as "does not exist";
+      # other failures (auth, rate-limit, network) re-raise so the job
+      # fails loudly instead of falling through to Make Release.
+      id: gh-release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
+            >/dev/null 2>err; then
+          echo 'exists=true' >> "${GITHUB_OUTPUT}"
+        elif grep -qx 'release not found' err; then
+          echo 'exists=false' >> "${GITHUB_OUTPUT}"
+        else
+          cat err >&2
+          exit 1
+        fi
     - name: Make Release
+      if: steps.gh-release.outputs.exists != 'true'
       uses: aio-libs/create-release@v1.6.6
       with:
         changes_file: CHANGES.rst
@@ -689,6 +701,10 @@ jobs:
     - name: >-
         Publish 🐍📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
+      with:
+        # Allow re-running the deploy job after a partial PyPI upload
+        # without failing on dists that were already published.
+        skip-existing: true
 
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.3.0

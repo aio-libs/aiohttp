@@ -1,4 +1,4 @@
-# aiohttp Threat Model
+# Threat Model
 
 This document is a STRIDE-based threat model for the
 [aiohttp](https://github.com/aio-libs/aiohttp) library. It is a living document
@@ -429,5 +429,3 @@ Writer-level CR / LF / NUL rejection via `_safe_header` and
 `_write_str_raise_on_nlcr` has been in place since the header-injection
 family of issues was first surfaced (well before CVE-2023-37276, which
 was a parser-side fix).
-
----
