@@ -112,3 +112,14 @@ def test_zlib_gzip_multi_member_max_length_exhausted() -> None:
     member2 = gzip.compress(b"BBBB")
     result = d.decompress_sync(member1 + member2, max_length=4)
     assert result == b"AAAA"
+
+
+def test_zlib_gzip_multi_member_max_length_exhausted_preserves_unused_data() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    member1 = gzip.compress(b"AAAA")
+    member2 = gzip.compress(b"BBBB")
+    member3 = gzip.compress(b"CCCC")
+    result1 = d.decompress_sync(member1 + member2, max_length=4)
+    assert result1 == b"AAAA"
+    result2 = d.decompress_sync(member3)
+    assert result2 == b"BBBBCCCC"

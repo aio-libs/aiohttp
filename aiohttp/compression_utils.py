@@ -278,10 +278,14 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
         self._last_empty = False
+        self._pending_unused_data: bytes | None = None
 
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
+        if self._pending_unused_data is not None:
+            data = self._pending_unused_data + bytes(data)
+            self._pending_unused_data = None
         result = self._decompressor.decompress(
             self._decompressor.unconsumed_tail + data, max_length
         )
@@ -300,6 +304,7 @@ class ZLibDecompressor(DecompressionBaseHandler):
                 else ZLIB_MAX_LENGTH_UNLIMITED
             )
             if max_length != ZLIB_MAX_LENGTH_UNLIMITED and remaining <= 0:
+                self._pending_unused_data = unused
                 break
             chunk = self._decompressor.decompress(unused, remaining)
             self._last_empty = chunk == b""
@@ -316,7 +321,11 @@ class ZLibDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        return bool(self._decompressor.unconsumed_tail) or not self._last_empty
+        return (
+            bool(self._decompressor.unconsumed_tail)
+            or not self._last_empty
+            or self._pending_unused_data is not None
+        )
 
     @property
     def eof(self) -> bool:
