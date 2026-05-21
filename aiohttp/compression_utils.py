@@ -55,6 +55,9 @@ class ZLibDecompressObjProtocol(Protocol):
     @property
     def unconsumed_tail(self) -> bytes: ...
 
+    @property
+    def unused_data(self) -> bytes: ...
+
 
 class ZLibBackendProtocol(Protocol):
     MAX_WBITS: int
@@ -284,6 +287,24 @@ class ZLibDecompressor(DecompressionBaseHandler):
         )
         # Only way to know that isal has no further data is checking we get no output
         self._last_empty = result == b""
+
+        # Handle concatenated gzip/deflate streams (multi-member).
+        # After a member ends, unused_data holds the start of the next member.
+        # Create a fresh decompressor for each subsequent member.
+        while self._decompressor.eof and self._decompressor.unused_data:
+            unused = self._decompressor.unused_data
+            self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
+            remaining = (
+                max_length - len(result)
+                if max_length != ZLIB_MAX_LENGTH_UNLIMITED
+                else ZLIB_MAX_LENGTH_UNLIMITED
+            )
+            if max_length != ZLIB_MAX_LENGTH_UNLIMITED and remaining <= 0:
+                break
+            chunk = self._decompressor.decompress(unused, remaining)
+            self._last_empty = chunk == b""
+            result += chunk
+
         return result
 
     def flush(self, length: int = 0) -> bytes:

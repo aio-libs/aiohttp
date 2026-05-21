@@ -1,0 +1,6 @@
+Fixed :class:`~aiohttp.ZLibDecompressor` silently dropping data past the first
+member when decompressing concatenated gzip/deflate streams. Each subsequent
+member is now handed to a fresh decompressor, matching the behaviour already
+implemented for ZSTD multi-frame streams.
+
+-- by :user:`Ashutosh-177`
