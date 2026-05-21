@@ -59,13 +59,41 @@ For ``text/plain``::
 Authentication
 --------------
 
-Instead of setting the ``Authorization`` header directly,
-:class:`ClientSession` and individual request methods provide an ``auth``
-argument. An instance of :class:`BasicAuth` can be passed in like this::
+For HTTP Basic Authentication, build the ``Authorization`` header using
+:func:`encode_basic_auth` and pass it via ``headers``::
 
-    auth = BasicAuth(login="...", password="...")
-    async with ClientSession(auth=auth) as session:
+    from aiohttp import ClientSession, encode_basic_auth
+
+    headers = {"Authorization": encode_basic_auth("user", "pass")}
+    async with ClientSession(headers=headers) as session:
         ...
+
+For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client middleware::
+
+    from aiohttp import ClientSession, DigestAuthMiddleware
+
+    # Create the middleware with your credentials
+    digest_auth = DigestAuthMiddleware(login="user", password="password")
+
+    # Pass it to the ClientSession as a tuple
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        # The middleware will automatically handle auth challenges
+        async with session.get("https://example.com/protected") as resp:
+            print(await resp.text())
+
+The :class:`DigestAuthMiddleware` implements HTTP Digest Authentication according to RFC 7616,
+providing a more secure alternative to Basic Authentication. It supports all
+standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
+variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
+The middleware automatically handles the authentication flow by intercepting 401 responses
+and retrying with proper credentials.
+
+Note that if the request is redirected and the redirect URL contains
+credentials, those credentials will supersede any previously set credentials.
+In other words, if ``http://user@example.com`` redirects to
+``http://other_user@example.com``, the second request will be authenticated
+as ``other_user``. Providing both the ``auth`` parameter and authentication in
+the *initial* URL will result in a :exc:`ValueError`.
 
 For other authentication flows, the ``Authorization`` header can be set
 directly::
@@ -87,16 +115,78 @@ In cases where the authentication header value expires periodically, an
 :mod:`asyncio` task may be used to update the session's default headers in the
 background.
 
+.. _aiohttp-client-middleware:
+
+Client Middleware
+-----------------
+
+The client supports middleware to intercept requests and responses. This can be
+useful for authentication, logging, request/response modification, retries etc.
+
+For more examples and common middleware patterns, see the :ref:`aiohttp-client-middleware-cookbook`.
+
+Creating a middleware
+^^^^^^^^^^^^^^^^^^^^^
+
+To create a middleware, define an async function (or callable class) that accepts a request object
+and a handler function, and returns a response. Middlewares must follow the
+:type:`ClientMiddlewareType` signature::
+
+    async def auth_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
+        req.headers["Authorization"] = get_auth_header()
+        return await handler(req)
+
+Using Middlewares
+^^^^^^^^^^^^^^^^^
+
+You can apply middlewares to a client session or to individual requests::
+
+    # Apply to all requests in a session
+    async with ClientSession(middlewares=(my_middleware,)) as session:
+        resp = await session.get("http://example.com")
+
+    # Apply to a specific request
+    async with ClientSession() as session:
+        resp = await session.get("http://example.com", middlewares=(my_middleware,))
+
+Middleware Chaining
+^^^^^^^^^^^^^^^^^^^
+
+Multiple middlewares are applied in the order they are listed::
+
+    # Middlewares are applied in order: logging -> auth -> request
+    async with ClientSession(middlewares=(logging_middleware, auth_middleware)) as session:
+        async with session.get("http://example.com") as resp:
+            ...
+
+A key aspect to understand about the middleware sequence is that the execution flow follows this pattern:
+
+1. The first middleware in the list is called first and executes its code before calling the handler
+2. The handler is the next middleware in the chain (or the request handler if there are no more middlewares)
+3. When the handler returns a response, execution continues from the last middleware right after the handler call
+4. This creates a nested "onion-like" pattern for execution
+
+For example, with ``middlewares=(middleware1, middleware2)``, the execution order would be:
+
+1. Enter ``middleware1`` (pre-request code)
+2. Enter ``middleware2`` (pre-request code)
+3. Execute the actual request handler
+4. Exit ``middleware2`` (post-response code)
+5. Exit ``middleware1`` (post-response code)
+
+This flat structure means that a middleware is applied on each retry attempt inside the client's retry loop,
+not just once before all retries. This allows middleware to modify requests freshly on each retry attempt.
+
+For example, if we had a retry middleware and a logging middleware, and we want every retried request to be
+logged separately, then we'd need to specify ``middlewares=(retry_mw, logging_mw)``. If we reversed the order
+to ``middlewares=(logging_mw, retry_mw)``, then we'd only log once regardless of how many retries are done.
+
 .. note::
 
-   The ``Authorization`` header will be removed if you get redirected
-   to a different host or protocol, except the case when  HTTP → HTTPS
-   redirect is performed on the same host.
-
-.. versionchanged:: 4.0
-
-   Started keeping the ``Authorization`` header during HTTP → HTTPS
-   redirects when the host remains the same.
+   Client middleware is a powerful feature but should be used judiciously.
+   Each middleware adds overhead to request processing. For simple use cases
+   like adding static headers, you can often use request parameters
+   (e.g., ``headers``) or session configuration instead.
 
 Custom Cookies
 --------------
@@ -120,14 +210,14 @@ parameter of :class:`ClientSession` constructor::
 between multiple requests::
 
     async with aiohttp.ClientSession() as session:
-        await session.get(
-            'http://httpbin.org/cookies/set?my_cookie=my_value')
-        filtered = session.cookie_jar.filter_cookies(
-            URL('http://httpbin.org'))
-        assert filtered['my_cookie'].value == 'my_value'
-        async with session.get('http://httpbin.org/cookies') as r:
+        async with session.get(
+            "http://httpbin.org/cookies/set?my_cookie=my_value",
+            allow_redirects=False
+        ) as resp:
+            assert resp.cookies["my_cookie"].value == "my_value"
+        async with session.get("http://httpbin.org/cookies") as r:
             json_body = await r.json()
-            assert json_body['cookies']['my_cookie'] == 'my_value'
+            assert json_body["cookies"]["my_cookie"] == "my_value"
 
 Response Headers and Cookies
 ----------------------------
@@ -461,6 +551,42 @@ If your HTTP server uses UNIX domain sockets you can use
   session = aiohttp.ClientSession(connector=conn)
 
 
+Custom socket creation
+^^^^^^^^^^^^^^^^^^^^^^
+
+If the default socket is insufficient for your use case, pass an optional
+``socket_factory`` to the :class:`~aiohttp.TCPConnector`, which implements
+:class:`SocketFactoryType`. This will be used to create all sockets for the
+lifetime of the class object. For example, we may want to change the
+conditions under which we consider a connection dead. The following would
+make all sockets respect 9*7200 = 18 hours::
+
+  import socket
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(socket.SOL_SOCKET,  socket.SO_KEEPALIVE,  True)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPIDLE,  7200)
+      sock.setsockopt(socket.IPPROTO_TCP, socket.TCP_KEEPCNT,      9)
+      return sock
+
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
+
+``socket_factory`` may also be used for binding to the specific network
+interface on supported platforms::
+
+  def socket_factory(addr_info):
+      family, type_, proto, _, _ = addr_info
+      sock = socket.socket(family=family, type=type_, proto=proto)
+      sock.setsockopt(
+          socket.SOL_SOCKET, socket.SO_BINDTODEVICE, b'eth0'
+      )
+      return sock
+
+  conn = aiohttp.TCPConnector(socket_factory=socket_factory)
+
+
 Named pipes in Windows
 ^^^^^^^^^^^^^^^^^^^^^^
 
@@ -480,26 +606,12 @@ checks can be relaxed by setting *ssl* to ``False``::
 
   r = await session.get('https://example.com', ssl=False)
 
-
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
-pass it into the proper :class:`ClientSession` method::
+pass it into the :meth:`ClientSession.request` methods or set it for the
+entire session with ``ClientSession(connector=TCPConnector(ssl=ssl_context))``.
 
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-If you need to verify *self-signed* certificates, you can do the
-same thing as the previous example, but add another call to
-:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
-
-  sslcontext = ssl.create_default_context(
-     cafile='/path/to/ca-bundle.crt')
-  sslcontext.load_cert_chain('/path/to/client/public/device.pem',
-                             '/path/to/client/private/device.key')
-  r = await session.get('https://example.com', ssl=sslcontext)
-
-There is explicit errors when ssl verification fails
+There are explicit errors when ssl verification fails
 
 :class:`aiohttp.ClientConnectorSSLError`::
 
@@ -528,6 +640,34 @@ If you need to skip both ssl related errors
       await session.get('https://wrong.host.badssl.com/')
   except aiohttp.ClientSSLError as e:
       assert isinstance(e, ssl.CertificateError)
+
+Example: Use certifi
+^^^^^^^^^^^^^^^^^^^^
+
+By default, Python uses the system CA certificates. In rare cases, these may not be
+installed or Python is unable to find them, resulting in a error like
+`ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`
+
+One way to work around this problem is to use the `certifi` package::
+
+  ssl_context = ssl.create_default_context(cafile=certifi.where())
+  async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:
+      ...
+
+Example: Use self-signed certificate
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you need to verify *self-signed* certificates, you need to add a call to
+:meth:`ssl.SSLContext.load_cert_chain` with the key pair::
+
+  ssl_context = ssl.create_default_context()
+  ssl_context.load_cert_chain("/path/to/client/public/device.pem",
+                              "/path/to/client/private/device.key")
+  async with sess.get("https://example.com", ssl=ssl_context) as resp:
+      ...
+
+Example: Verify certificate fingerprint
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 You may also verify certificates via *SHA256* fingerprint::
 
@@ -561,6 +701,8 @@ DER with e.g::
    to :class:`TCPConnector` as default, the value from
    :meth:`ClientSession.get` and others override default.
 
+.. _aiohttp-client-proxy-support:
+
 Proxy support
 -------------
 
@@ -577,11 +719,13 @@ To connect, use the *proxy* parameter::
 
 It also supports proxy authorization::
 
+   from aiohttp import encode_basic_auth
+
    async with aiohttp.ClientSession() as session:
-       proxy_auth = aiohttp.BasicAuth('user', 'pass')
+       proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
        async with session.get("http://python.org",
                               proxy="http://proxy.com",
-                              proxy_auth=proxy_auth) as resp:
+                              proxy_headers=proxy_headers) as resp:
            print(resp.status)
 
 Authentication credentials can be passed in proxy URL::
@@ -589,24 +733,36 @@ Authentication credentials can be passed in proxy URL::
    session.get("http://python.org",
                proxy="http://user:pass@some.proxy.com")
 
+And you may set default proxy::
+
+   proxy_headers = {"Proxy-Authorization": encode_basic_auth("user", "pass")}
+   async with aiohttp.ClientSession(
+       proxy="http://proxy.com", proxy_headers=proxy_headers
+   ) as session:
+       async with session.get("http://python.org") as resp:
+           print(resp.status)
+
 Contrary to the ``requests`` library, it won't read environment
 variables by default. But you can do so by passing
 ``trust_env=True`` into :class:`aiohttp.ClientSession`
-constructor for extracting proxy configuration from
-*HTTP_PROXY*, *HTTPS_PROXY*, *WS_PROXY* or *WSS_PROXY* *environment
-variables* (all are case insensitive)::
+constructor.::
 
    async with aiohttp.ClientSession(trust_env=True) as session:
        async with session.get("http://python.org") as resp:
            print(resp.status)
+
+.. note::
+    aiohttp uses :func:`urllib.request.getproxies`
+    for reading the proxy configuration (e.g. from the *HTTP_PROXY* etc. environment variables) and applies them for the *HTTP*, *HTTPS*, *WS* and *WSS* schemes.
+
+    Hosts defined in ``no_proxy`` will bypass the proxy.
 
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
 
 .. attention::
 
-   CPython has introduced the support for TLS in TLS around Python 3.7.
-   But, as of now (Python 3.10), it's disabled for the transports that
+   As of now (Python 3.10), support for TLS in TLS is disabled for the transports that
    :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
    toggles one attribute, it'll *just work™*.
 
@@ -643,18 +799,20 @@ performance improvements. If you plan on reusing the session, a.k.a. creating
 :ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
 as it results in more compact code::
 
-    app.cleanup_ctx.append(persistent_session)
-    persistent_session = aiohttp.web.AppKey("persistent_session", aiohttp.ClientSession)
+    session = aiohttp.web.AppKey("session", aiohttp.ClientSession)
 
+    @contextlib.asynccontextmanager
     async def persistent_session(app):
        app[persistent_session] = session = aiohttp.ClientSession()
        yield
        await session.close()
 
     async def my_request_handler(request):
-       session = request.app[persistent_session]
-       async with session.get("http://python.org") as resp:
+       sess = request.app[session]
+       async with sess.get("http://python.org") as resp:
            print(resp.status)
+
+    app.cleanup_ctx.append(persistent_session)
 
 
 This approach can be successfully used to define numerous sessions given certain
@@ -681,7 +839,7 @@ Graceful Shutdown
 -----------------
 
 When :class:`ClientSession` closes at the end of an ``async with``
-block (or through a direct :meth:`ClientSession.close()` call), the
+block (or through a direct :meth:`ClientSession.close` call), the
 underlying connection remains open due to asyncio internal details. In
 practice, the underlying connection will close after a short
 while. However, if the event loop is stopped before the underlying
@@ -721,3 +879,33 @@ HTTP Pipelining
 ---------------
 
 aiohttp does not support HTTP/HTTPS pipelining.
+
+
+Character Set Detection
+-----------------------
+
+If you encounter a :exc:`UnicodeDecodeError` when using :meth:`ClientResponse.text`
+this may be because the response does not include the charset needed
+to decode the body.
+
+If you know the correct encoding for a request, you can simply specify
+the encoding as a parameter (e.g. ``resp.text("windows-1252")``).
+
+Alternatively, :class:`ClientSession` accepts a ``fallback_charset_resolver`` parameter which
+can be used to introduce charset guessing functionality. When a charset is not found
+in the Content-Type header, this function will be called to get the charset encoding. For
+example, this can be used with the ``chardetng_py`` library.::
+
+    from chardetng_py import detect
+
+    def charset_resolver(resp: ClientResponse, body: bytes) -> str:
+        tld = resp.url.host.rsplit(".", maxsplit=1)[-1]
+        return detect(body, allow_utf8=True, tld=tld.encode())
+
+    ClientSession(fallback_charset_resolver=charset_resolver)
+
+Or, if ``chardetng_py`` doesn't work for you, then ``charset-normalizer`` is another option::
+
+    from charset_normalizer import detect
+
+    ClientSession(fallback_charset_resolver=lambda r, b: detect(b)["encoding"] or "utf-8")

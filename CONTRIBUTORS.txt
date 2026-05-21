@@ -1,6 +1,7 @@
 - Contributors -
 ----------------
 A. Jesse Jiryu Davis
+Abdur Rehman Ali
 Adam Bannister
 Adam Cooper
 Adam Horacek
@@ -8,11 +9,13 @@ Adam Mills
 Adrian Krupa
 Adrián Chaves
 Ahmed Tahri
+Alan Bogarin
 Alan Tse
 Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
+Alex Grönholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -27,7 +30,9 @@ Alexander Shorin
 Alexander Travov
 Alexandru Mihai
 Alexey Firsov
+Alexey Nikitin
 Alexey Popravka
+Alexey Stavrov
 Alexey Stepanov
 Almaz Salakhov
 Amin Etesamian
@@ -40,26 +45,33 @@ Andrej Antonov
 Andrew Leech
 Andrew Lytvyn
 Andrew Svetlov
+Andrew Top
 Andrew Zhou
 Andrii Soldatenko
 Anes Abismail
 Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
+Arcadiy Ivanov
 Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
 Austin Scola
+Bai Haoran
 Ben Bader
+Ben Beasley
 Ben Greiner
+Ben Kallus
 Ben Timby
 Benedikt Reinartz
 Bob Haddleton
 Boris Feld
 Borys Vorona
 Boyi Chen
+Br1an67
 Brett Cannon
+Brett Higgins
 Brian Bouterse
 Brian C. Lane
 Brian Muller
@@ -74,6 +86,8 @@ Chih-Yuan Chen
 Chris AtLee
 Chris Laws
 Chris Moore
+Chris Shucksmith
+Christophe Bornet
 Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
@@ -82,15 +96,19 @@ Damien Nadé
 Dan King
 Dan Xu
 Daniel García
+Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
+Daniele Trifirò
 Danny Song
 David Bibb
+David Dzhalaev
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
 Denis Moshensky
 Dennis Kliban
+Devanshu Koyalkar
 Dima Veselov
 Dimitar Dimitrov
 Diogo Dutra da Mata
@@ -104,6 +122,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Earle Lowe
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
@@ -127,11 +146,16 @@ Franek Magiera
 Frederik Gladhorn
 Frederik Peter Aalund
 Gabriel Tremblay
+Gang Ji
+Gary Leung
 Gary Wilson Jr.
+Gene Hoffman
 Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Grigoriy Soldatov
+Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
@@ -143,9 +167,11 @@ Hrishikesh Paranjape
 Hu Bo
 Hugh Young
 Hugo Herter
+Hugo Hromic
 Hugo van Kemenade
 Hynek Schlawack
 Igor Alexandrov
+Igor Bolshakov
 Igor Davydenko
 Igor Mozharovsky
 Igor Pavlov
@@ -155,13 +181,19 @@ Ilya Gruzinov
 Ingmar Steen
 Ivan Lakovic
 Ivan Larin
+J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
 Jakub Wilk
+James Ward
 Jan Buchar
+Jan Gosmann
+Jarno Elonen
 Jashandeep Sohi
+Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
 Jeonghun Lee
@@ -171,9 +203,12 @@ Jesus Cea
 Jian Zeng
 Jinkyu Yi
 Joel Watts
+John Feusi
+John Parton
 Jon Nabozny
 Jonas Krüger Svensson
 Jonas Obrist
+Jonathan Ballet
 Jonathan Wright
 Jonny Tan
 Joongi Kim
@@ -181,6 +216,7 @@ Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
+Josu Moreno
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -191,14 +227,18 @@ Justin Foo
 Justin Turner Arthur
 Kay Zheng
 Kevin Samuel
+Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
+Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
 Lars P. Søndergaard
+Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
 Loïc Lajeanne
@@ -207,28 +247,38 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
+Marc Mueller
 Marco Paolini
+Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
+Mark Larah
 Marko Kohtala
 Martijn Pieters
 Martin Melka
 Martin Richard
+Martin Sucha
 Mathias Fröjdman
 Mathieu Dugré
 Matt VanEseltine
+Matthew Go
+Matthias Marquardt
 Matthieu Hauglustaine
 Matthieu Rigal
+Matvey Tingaev
 Meet Mangukiya
+Meshya
 Michael Ihnatenko
 Michał Górny
 Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -243,11 +293,16 @@ Nándor Mátravölgyi
 Oisin Aylward
 Olaf Conradi
 Oleg Höfling
+Omkar Kabde
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
+Parag Jain
+Parman Mohammadalizadeh
+Patrick Lee
 Pau Freixes
 Paul Colomiets
+Paul J. Dorn
 Paulius Šileikis
 Paulus Schoutsen
 Pavel Kamaev
@@ -257,19 +312,27 @@ Pavol Vargovčík
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
+Phebe Polk
 Philipp A.
+Pierre-Louis Peeters
 Pieter van Beek
 Qiao Han
 Rafael Viotti
+Rahul Nahata
 Raphael Bialon
 Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Rodrigo Nogueira
 Roman Markeloff
 Roman Podoliaka
+Roman Postnov
+Rong Zhang
+Rouven Bauer
 Samir Akarioh
 Samuel Colvin
+Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
@@ -281,8 +344,11 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shensheng Shen
+Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
+Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks
@@ -290,6 +356,7 @@ Stepan Pletnev
 Stephan Jaensch
 Stephen Cirelli
 Stephen Granade
+Steve Repsher
 Steven Seguin
 Sunghyun Hwang
 Sunit Deshpande
@@ -302,10 +369,14 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Forbes
 Thomas Grainger
+Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
+Trevor Gamblin
 Trinh Hoang Nhu
+Tymofii Tsiapa
 Vadim Suharnikov
 Vaibhav Sagar
 Vamsi Krishna Avula
@@ -322,13 +393,16 @@ Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
 Vitaly Magerya
+Vizonex
 Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
+Vojtěch Boček
 W. Trevor King
 Wei Lin
 Weiwei Wang
@@ -339,6 +413,9 @@ William Grzybowski
 William S.
 Wilson Ong
 wouter bolsterlee
+Xavier Halloran
+Xi Rui
+Xiang Li
 Yang Zhou
 Yannick Koechlin
 Yannick Péroux
@@ -347,11 +424,15 @@ Yegor Roganov
 Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
+Yury Novikov
 Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
 Yuval Ofir
+Yuvi Panda
+Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Łukasz Setla
 Марк Коренберг
 Семён Марьясин

@@ -19,14 +19,25 @@ But in case of custom regular expressions for
 *percent encoded*: if you pass Unicode patterns they don't match to
 *requoted* path.
 
+.. _aiohttp-web-peer-disconnection:
+
 Peer disconnection
 ------------------
 
-When a client peer is gone a subsequent reading or writing raises :exc:`OSError`
-or more specific exception like :exc:`ConnectionResetError`.
+*aiohttp* has 2 approaches to handling client disconnections.
+If you are familiar with asyncio, or scalability is a concern for
+your application, we recommend using the handler cancellation method.
 
-The reason for disconnection is vary; it can be a network issue or explicit
-socket closing on the peer side without reading the whole server response.
+Raise on read/write (default)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When a client peer is gone, a subsequent reading or writing raises :exc:`OSError`
+or a more specific exception like :exc:`ConnectionResetError`.
+
+This behavior is similar to classic WSGI frameworks like Flask and Django.
+
+The reason for disconnection varies; it can be a network issue or explicit
+socket closing on the peer side without reading the full server response.
 
 *aiohttp* handles disconnection properly but you can handle it explicitly, e.g.::
 
@@ -35,6 +46,134 @@ socket closing on the peer side without reading the whole server response.
            text = await request.text()
        except OSError:
            # disconnected
+
+.. _web-handler-cancellation:
+
+Web handler cancellation
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+This method can be enabled using the ``handler_cancellation`` parameter
+to :func:`run_app`.
+
+When a client disconnects, the web handler task will be cancelled. This
+is recommended as it can reduce the load on your server when there is no
+client to receive a response. It can also help make your application
+more resilient to DoS attacks (by requiring an attacker to keep a
+connection open in order to waste server resources).
+
+This behavior is very different from classic WSGI frameworks like
+Flask and Django. It requires a reasonable level of asyncio knowledge to
+use correctly without causing issues in your code. We provide some
+examples here to help understand the complexity and methods
+needed to deal with them.
+
+.. warning::
+
+   :term:`web-handler` execution could be canceled on every ``await`` or
+   ``async with`` if client drops connection without reading entire response's BODY.
+
+Sometimes it is a desirable behavior: on processing ``GET`` request the
+code might fetch data from a database or other web resource, the
+fetching is potentially slow.
+
+Canceling this fetch is a good idea: the client dropped the connection
+already, so there is no reason to waste time and resources (memory etc)
+by getting data from a DB without any chance to send it back to the client.
+
+But sometimes the cancellation is bad: on ``POST`` requests very often
+it is needed to save data to a DB regardless of connection closing.
+
+Cancellation prevention could be implemented in several ways:
+
+* Applying :func:`aiojobs.aiohttp.shield` to a coroutine that saves data.
+* Using aiojobs_ or another third party library to run a task in the background.
+
+:func:`aiojobs.aiohttp.shield` can work well. The only disadvantage is you
+need to split the web handler into two async functions: one for the handler
+itself and another for protected code.
+
+.. warning::
+
+   We don't recommend using :func:`asyncio.shield` for this because the shielded
+   task cannot be tracked by the application and therefore there is a risk that
+   the task will get cancelled during application shutdown. The function provided
+   by aiojobs_ operates in the same way except the inner task will be tracked
+   by the Scheduler and will get waited on during the cleanup phase.
+
+For example the following snippet is not safe::
+
+   from aiojobs.aiohttp import shield
+
+   async def handler(request):
+       await shield(request, write_to_redis(request))
+       await shield(request, write_to_postgres(request))
+       return web.Response(text="OK")
+
+Cancellation might occur while saving data in REDIS, so the
+``write_to_postgres`` function will not be called, potentially
+leaving your data in an inconsistent state.
+
+Instead, you would need to write something like::
+
+   async def write_data(request):
+       await write_to_redis(request)
+       await write_to_postgres(request)
+
+   async def handler(request):
+       await shield(request, write_data(request))
+       return web.Response(text="OK")
+
+Alternatively, if you want to spawn a task without waiting for
+its completion, you can use aiojobs_ which provides an API for
+spawning new background jobs. It stores all scheduled activity in
+internal data structures and can terminate them gracefully::
+
+   from aiojobs.aiohttp import setup, spawn
+
+   async def handler(request):
+       await spawn(request, write_data())
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_get("/", handler)
+
+.. warning::
+
+   Don't use :func:`asyncio.create_task` for this. All tasks
+   should be awaited at some point in your code (``aiojobs`` handles
+   this for you), otherwise you will hide legitimate exceptions
+   and result in warnings being emitted.
+
+   A good case for using :func:`asyncio.create_task` is when
+   you want to run something while you are processing other data,
+   but still want to ensure the task is complete before returning::
+
+       async def handler(request):
+           t = asyncio.create_task(get_some_data())
+           ...  # Do some other things, while data is being fetched.
+           data = await t
+           return web.Response(text=data)
+
+One more approach would be to use :func:`aiojobs.aiohttp.atomic`
+decorator to execute the entire handler as a new job. Essentially
+restoring the default disconnection behavior only for specific handlers::
+
+   from aiojobs.aiohttp import atomic
+
+   @atomic
+   async def handler(request):
+       await write_to_db()
+       return web.Response()
+
+   app = web.Application()
+   setup(app)
+   app.router.add_post("/", handler)
+
+It prevents all of the ``handler`` async function from cancellation,
+so ``write_to_db`` will never be interrupted.
+
+.. _aiojobs: http://aiojobs.readthedocs.io/en/latest/
 
 Passing a coroutine into run_app and Gunicorn
 ---------------------------------------------
@@ -135,11 +274,21 @@ instead could be enabled with ``show_index`` parameter set to ``True``::
 
    web.static('/prefix', path_to_static_folder, show_index=True)
 
-When a symlink from the static directory is accessed, the server responses to
-client with ``HTTP/404 Not Found`` by default. To allow the server to follow
-symlinks, parameter ``follow_symlinks`` should be set to ``True``::
+When a symlink that leads outside the static directory is accessed, the server
+responds to the client with ``HTTP/404 Not Found`` by default. To allow the server to
+follow symlinks that lead outside the static root, the parameter ``break_symlink_sandbox``
+should be set to ``True``::
 
-   web.static('/prefix', path_to_static_folder, follow_symlinks=True)
+   web.static('/prefix', path_to_static_folder, break_symlink_sandbox=True)
+
+.. caution::
+
+   Enabling ``break_symlink_sandbox`` can be a security risk, and may lead to
+   a directory transversal attack. You do NOT need this option to follow symlinks
+   which point to somewhere else within the static directory, this option is only
+   used to break out of the security sandbox. Enabling this option is highly
+   discouraged, and only expected to be used for edge cases in a local
+   development setting where remote users do not have access to the server.
 
 When you want to enable cache busting,
 parameter ``append_version`` can be set to ``True``
@@ -297,10 +446,13 @@ Request's storage
 ^^^^^^^^^^^^^^^^^
 
 Variables that are only needed for the lifetime of a :class:`Request`, can be
-stored in a :class:`Request`::
+stored in a :class:`Request`. Similarly to :class:`Application`, :class:`RequestKey`
+instances or strings can be used as keys::
+
+    my_private_key = web.RequestKey("my_private_key", str)
 
     async def handler(request):
-      request['my_private_key'] = "data"
+      request[my_private_key] = "data"
       ...
 
 This is mostly useful for :ref:`aiohttp-web-middlewares` and
@@ -315,9 +467,11 @@ also support :class:`collections.abc.MutableMapping` interface. This is useful
 when you want to share data with signals and middlewares once all the work in
 the handler is done::
 
+    my_metric_key = web.ResponseKey("my_metric_key", int)
+
     async def handler(request):
       [ do all the work ]
-      response['my_metric'] = 123
+      response[my_metric_key] = 123
       return response
 
 
@@ -419,9 +573,13 @@ A *middleware* is a coroutine that can modify either the request or
 response. For example, here's a simple *middleware* which appends
 ``' wink'`` to the response::
 
-    from aiohttp.web import middleware
+    from aiohttp import web
+    from typing import Callable, Awaitable
 
-    async def middleware(request, handler):
+    async def middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
         resp = await handler(request)
         resp.text = resp.text + ' wink'
         return resp
@@ -470,18 +628,25 @@ post-processing like handling *CORS* and so on.
 The following code demonstrates middlewares execution order::
 
    from aiohttp import web
+   from typing import Callable, Awaitable
 
-   async def test(request):
+   async def test(request: web.Request) -> web.Response:
        print('Handler function called')
        return web.Response(text="Hello")
 
-   async def middleware1(request, handler):
+   async def middleware1(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 1 called')
        response = await handler(request)
        print('Middleware 1 finished')
        return response
 
-   async def middleware2(request, handler):
+   async def middleware2(
+       request: web.Request,
+       handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+   ) -> web.StreamResponse:
        print('Middleware 2 called')
        response = await handler(request)
        print('Middleware 2 finished')
@@ -499,6 +664,84 @@ Produced output::
    Handler function called
    Middleware 2 finished
    Middleware 1 finished
+
+Request Body Stream Consumption
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. warning::
+
+   When middleware reads the request body (using :meth:`~aiohttp.web.BaseRequest.read`,
+   :meth:`~aiohttp.web.BaseRequest.text`, :meth:`~aiohttp.web.BaseRequest.json`, or
+   :meth:`~aiohttp.web.BaseRequest.post`), the body stream is consumed. However, these
+   high-level methods cache their result, so subsequent calls from the handler or other
+   middleware will return the same cached value.
+
+   The important distinction is:
+
+   - High-level methods (:meth:`~aiohttp.web.BaseRequest.read`, :meth:`~aiohttp.web.BaseRequest.text`,
+     :meth:`~aiohttp.web.BaseRequest.json`, :meth:`~aiohttp.web.BaseRequest.post`) cache their
+     results internally, so they can be called multiple times and will return the same value.
+   - Direct stream access via :attr:`~aiohttp.web.BaseRequest.content` does NOT have this
+     caching behavior. Once you read from ``request.content`` directly (e.g., using
+     ``await request.content.read()``), subsequent reads will return empty bytes.
+
+Consider this middleware that logs request bodies::
+
+    from aiohttp import web
+    from typing import Callable, Awaitable
+
+    async def logging_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # This consumes the request body stream
+        body = await request.text()
+        print(f"Request body: {body}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return the same value that was read in the middleware
+        # (i.e., the cached result, not an empty string)
+        body = await request.text()
+        return web.Response(text=f"Received: {body}")
+
+In contrast, when accessing the stream directly (not recommended in middleware)::
+
+    async def stream_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Reading directly from the stream - this consumes it!
+        data = await request.content.read()
+        print(f"Stream data: {data}")
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # This will return empty bytes because the stream was already consumed
+        data = await request.content.read()
+        # data will be b'' (empty bytes)
+
+        # However, high-level methods would still work if called for the first time:
+        # body = await request.text()  # This would read from internal cache if available
+        return web.Response(text=f"Received: {data}")
+
+When working with raw stream data that needs to be shared between middleware and handlers::
+
+    raw_body_key = web.RequestKey("raw_body_key", bytes)
+
+    async def stream_parsing_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]]
+    ) -> web.StreamResponse:
+        # Read stream once and store the data
+        raw_data = await request.content.read()
+        request[raw_body_key] = raw_data
+        return await handler(request)
+
+    async def handler(request: web.Request) -> web.Response:
+        # Access the stored data instead of reading the stream again
+        raw_data = request.get(raw_body_key, b'')
+        return web.Response(body=raw_data)
 
 Example
 ^^^^^^^
@@ -614,6 +857,7 @@ knowledge about startup/cleanup pairs and their execution state.
 
 The solution is :attr:`Application.cleanup_ctx` usage::
 
+    @contextlib.asynccontextmanager
     async def pg_engine(app: web.Application):
         app[pg_engine] = await create_async_engine(
             "postgresql+asyncpg://postgre:@localhost:5432/postgre"
@@ -800,19 +1044,40 @@ Graceful shutdown
 Stopping *aiohttp web server* by just closing all connections is not
 always satisfactory.
 
-The problem is: if application supports :term:`websocket`\s or *data
-streaming* it most likely has open connections at server
-shutdown time.
+When aiohttp is run with :func:`run_app`, it will attempt a graceful shutdown
+by following these steps (if using a :ref:`runner <aiohttp-web-app-runners>`,
+then calling :meth:`AppRunner.cleanup` will perform these steps, excluding
+step 7).
 
-The *library* has no knowledge how to close them gracefully but
-developer can help by registering :attr:`Application.on_shutdown`
-signal handler and call the signal on *web server* closing.
+1. Stop each site listening on sockets, so new connections will be rejected.
+2. Close idle keep-alive connections (and set active ones to close upon completion).
+3. Call the :attr:`Application.on_shutdown` signal. This should be used to shutdown
+   long-lived connections, such as websockets (see below).
+4. Wait a short time for running handlers to complete. This allows any pending handlers
+   to complete successfully. The timeout can be adjusted with ``shutdown_timeout``
+   in :func:`run_app`.
+5. Close any remaining connections and cancel their handlers. It will wait on the
+   canceling handlers for a short time, again adjustable with ``shutdown_timeout``.
+6. Call the :attr:`Application.on_cleanup` signal. This should be used to cleanup any
+   resources (such as DB connections). This includes completing the
+   :ref:`cleanup contexts<aiohttp-web-cleanup-ctx>` which may be used to ensure
+   background tasks are completed successfully (see
+   :ref:`handler cancellation<web-handler-cancellation>` or aiojobs_ for examples).
+7. Cancel any remaining tasks and wait on them to complete.
 
-Developer should keep a list of opened connections
+Websocket shutdown
+^^^^^^^^^^^^^^^^^^
+
+One problem is if the application supports :term:`websockets <websocket>` or
+*data streaming* it most likely has open connections at server shutdown time.
+
+The *library* has no knowledge how to close them gracefully but a developer can
+help by registering an :attr:`Application.on_shutdown` signal handler.
+
+A developer should keep a list of opened connections
 (:class:`Application` is a good candidate).
 
-The following :term:`websocket` snippet shows an example for websocket
-handler::
+The following :term:`websocket` snippet shows an example of a websocket handler::
 
     from aiohttp import web
     import weakref
@@ -834,19 +1099,15 @@ handler::
 
         return ws
 
-Signal handler may look like::
+Then the signal handler may look like::
 
     from aiohttp import WSCloseCode
 
     async def on_shutdown(app):
         for ws in set(app[websockets]):
-            await ws.close(code=WSCloseCode.GOING_AWAY,
-                           message='Server shutdown')
+            await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
     app.on_shutdown.append(on_shutdown)
-
-Both :func:`run_app` and :meth:`AppRunner.cleanup` call shutdown
-signal handlers.
 
 .. _aiohttp-web-ceil-absolute-timeout:
 
@@ -896,29 +1157,27 @@ background tasks could be registered as an :attr:`Application.on_startup`
 signal handler or :attr:`Application.cleanup_ctx` as shown in the example
 below::
 
-
-  async def listen_to_redis(app):
-      try:
-          sub = await aioredis.create_redis(('localhost', 6379))
-          ch, *_ = await sub.subscribe('news')
-          async for msg in ch.iter(encoding='utf-8'):
-              # Forward message to all connected websockets:
-              for ws in app[websockets]:
-                  ws.send_str('{}: {}'.format(ch.name, msg))
-      except asyncio.CancelledError:
-          pass
-      finally:
-          await sub.unsubscribe(ch.name)
-          await sub.quit()
+  async def listen_to_redis(app: web.Application):
+      client = redis.from_url("redis://localhost:6379")
+      channel = "news"
+      async with client.pubsub() as pubsub:
+          await pubsub.subscribe(channel)
+          while True:
+              msg = await pubsub.get_message(ignore_subscribe_messages=True)
+              if msg is not None:
+                  for ws in app["websockets"]:
+                      await ws.send_str("{}: {}".format(channel, msg))
 
 
+  @contextlib.asynccontextmanager
   async def background_tasks(app):
       app[redis_listener] = asyncio.create_task(listen_to_redis(app))
 
       yield
 
       app[redis_listener].cancel()
-      await app[redis_listener]
+      with contextlib.suppress(asyncio.CancelledError):
+          await app[redis_listener]
 
 
   app = web.Application()
@@ -950,6 +1209,7 @@ For example, running a long-lived task alongside the :class:`Application`
 can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 
 
+  @contextlib.asynccontextmanager
   async def run_other_task(_app):
       task = asyncio.create_task(other_long_task())
 
@@ -965,6 +1225,7 @@ can be done with a :ref:`aiohttp-web-cleanup-ctx` function like::
 Or a separate process can be run with something like::
 
 
+  @contextlib.asynccontextmanager
   async def run_process(_app):
       proc = await asyncio.create_subprocess_exec(path)
 
@@ -981,7 +1242,7 @@ Handling error pages
 --------------------
 
 Pages like *404 Not Found* and *500 Internal Error* could be handled
-by custom middleware, see :ref:`polls demo <aiohttp-demos-polls-middlewares>`
+by custom middleware, see :ref:`polls demo <aiohttpdemos:aiohttp-demos-polls-middlewares>`
 for example.
 
 .. _aiohttp-web-forwarded-support:
@@ -1018,20 +1279,13 @@ the middleware might use :meth:`BaseRequest.clone`.
    for modifying *scheme*, *host* and *remote* attributes according
    to ``Forwarded`` and ``X-Forwarded-*`` HTTP headers.
 
-Swagger support
----------------
-
-`aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_ is a
-library that allow to add Swagger documentation and embed the
-Swagger-UI into your :mod:`aiohttp.web` project.
-
 CORS support
 ------------
 
 :mod:`aiohttp.web` itself does not support `Cross-Origin Resource
 Sharing <https://en.wikipedia.org/wiki/Cross-origin_resource_sharing>`_, but
 there is an aiohttp plugin for it:
-`aiohttp_cors <https://github.com/aio-libs/aiohttp_cors>`_.
+`aiohttp-cors <https://github.com/aio-libs/aiohttp-cors>`_.
 
 
 Debug Toolbar
@@ -1074,10 +1328,8 @@ Install with ``pip``:
 
     $ pip install aiohttp-devtools
 
-* ``runserver`` provides a development server with auto-reload,
-  live-reload, static file serving.
-* ``start`` is a `cookiecutter command which does the donkey work
-  of creating new :mod:`aiohttp.web` Applications.
+``adev runserver`` provides a development server with auto-reload,
+live-reload, static file serving.
 
 Documentation and a complete tutorial of creating and running an app
 locally are available at `aiohttp-devtools`_.

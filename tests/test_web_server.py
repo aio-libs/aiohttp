@@ -1,40 +1,42 @@
-# type: ignore
 import asyncio
-from typing import Any
+import gc
+import socket
+from contextlib import suppress
+from typing import Any, NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpRawServer, AiohttpServer
 
-from aiohttp import client, helpers, web
+from aiohttp import client, web
+from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
 
 
-async def test_simple_server(aiohttp_raw_server: Any, aiohttp_client: Any) -> None:
-    async def handler(request):
+async def test_simple_server(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler(request: web.BaseRequest) -> web.Response:
         return web.Response(text=str(request.rel_url))
 
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 200
     txt = await resp.text()
     assert txt == "/path/to"
 
 
-@pytest.mark.xfail(
-    not helpers.NO_EXTENSIONS,
-    raises=client.ServerDisconnectedError,
-    reason="The behavior of C-extensions differs from pure-Python: "
-    "https://github.com/aio-libs/aiohttp/issues/6446",
-)
-async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
+async def test_unsupported_upgrade(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     # don't fail if a client probes for an unsupported protocol upgrade
     # https://github.com/aio-libs/aiohttp/issues/6446#issuecomment-999032039
-    async def handler(request: web.Request):
+    async def handler(request: web.BaseRequest) -> web.Response:
         return web.Response(body=await request.read())
 
     upgrade_headers = {"Connection": "Upgrade", "Upgrade": "unsupported_proto"}
     server = await aiohttp_raw_server(handler)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     test_data = b"Test"
     resp = await cli.post("/path/to", data=test_data, headers=upgrade_headers)
     assert resp.status == 200
@@ -43,19 +45,19 @@ async def test_unsupported_upgrade(aiohttp_raw_server, aiohttp_client) -> None:
 
 
 async def test_raw_server_not_http_exception(
-    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -64,22 +66,154 @@ async def test_raw_server_not_http_exception(
     assert txt.startswith("500 Internal Server Error")
     assert "Traceback" not in txt
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+
+
+async def test_raw_server_logs_invalid_method_with_loop_debug(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_running_loop()
+    loop.set_debug(True)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" in txt
+
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+    logger.debug.reset_mock()
+
+    # Now make another connection to the server
+    # to make sure that the exception is logged
+    # at debug on a second fresh connection
+    cli2 = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli2.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+
+
+async def test_raw_server_logs_invalid_method_without_loop_debug(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_running_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" not in txt
+
+    # BadHttpMethod should be logged as debug
+    # on the first request since the client may
+    # be probing for TLS/SSL support which is
+    # expected to fail
+    logger.debug.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+
+
+async def test_raw_server_logs_invalid_method_second_request(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    exc = BadHttpMethod(b"\x16\x03\x03\x01F\x01".decode(), "error")
+    request_count = 0
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        nonlocal request_count
+        request_count += 1
+        if request_count == 2:
+            raise exc
+        return web.Response()
+
+    loop = asyncio.get_running_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli.get("/path/to")
+    assert resp.status == 200
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+    # BadHttpMethod should be logged as an exception
+    # if its not the first request since we know
+    # that the client already was speaking HTTP
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+
+
+async def test_raw_server_logs_bad_status_line_as_exception(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    exc = BadStatusLine(b"\x16\x03\x03\x01F\x01".decode(), "error")
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise exc
+
+    loop = asyncio.get_running_loop()
+    loop.set_debug(False)
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    assert resp.headers["Content-Type"].startswith("text/plain")
+
+    txt = await resp.text()
+    assert "Traceback (most recent call last):\n" not in txt
+
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_handler_timeout(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     exc = asyncio.TimeoutError("error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 504
 
@@ -88,16 +222,16 @@ async def test_raw_server_handler_timeout(
 
 
 async def test_raw_server_do_not_swallow_exceptions(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise asyncio.CancelledError()
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     with pytest.raises(client.ServerDisconnectedError):
         await cli.get("/path/to")
@@ -105,43 +239,60 @@ async def test_raw_server_do_not_swallow_exceptions(
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
+async def test_raw_server_does_not_swallow_base_exceptions(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    class UnexpectedException(BaseException):
+        """Dummy base exception."""
+
+    async def handler(request: web.BaseRequest) -> NoReturn:
+        raise UnexpectedException()
+
+    loop = asyncio.get_running_loop()
+    loop.set_debug(True)
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to", timeout=client.ClientTimeout(10))
+
+
 async def test_raw_server_cancelled_in_write_eof(
-    aiohttp_raw_server: Any, aiohttp_client: Any
-):
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     class MyResponse(web.Response):
-        async def write_eof(self, data=b""):
+        async def write_eof(self, data: bytes = b"") -> NoReturn:
             raise asyncio.CancelledError("error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> MyResponse:
         resp = MyResponse(text=str(request.rel_url))
         return resp
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
 
-    resp = await cli.get("/path/to")
-    with pytest.raises(client.ClientPayloadError):
-        await resp.read()
+    with pytest.raises(client.ServerDisconnectedError):
+        await cli.get("/path/to")
 
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
 async def test_raw_server_not_http_exception_debug(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to")
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/plain")
@@ -149,23 +300,25 @@ async def test_raw_server_not_http_exception_debug(
     txt = await resp.text()
     assert "Traceback (most recent call last):\n" in txt
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_html_exception(
-    aiohttp_raw_server: Any, aiohttp_client: Any, loop: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     # disable debug mode not to print traceback
-    loop.set_debug(False)
+    asyncio.get_running_loop().set_debug(False)
 
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/html")
@@ -178,22 +331,24 @@ async def test_raw_server_html_exception(
         "</body></html>\n"
     )
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
 
 
 async def test_raw_server_html_exception_debug(
-    aiohttp_raw_server: Any, aiohttp_client: Any
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:
     exc = RuntimeError("custom runtime error")
 
-    async def handler(request):
+    async def handler(request: web.BaseRequest) -> NoReturn:
         raise exc
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     loop.set_debug(True)
     logger = mock.Mock()
     server = await aiohttp_raw_server(handler, logger=logger)
-    cli = await aiohttp_client(server)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
     resp = await cli.get("/path/to", headers={"Accept": "text/html"})
     assert resp.status == 500
     assert resp.headers["Content-Type"].startswith("text/html")
@@ -206,4 +361,133 @@ async def test_raw_server_html_exception_debug(
         "<pre>Traceback (most recent call last):\n"
     )
 
-    logger.exception.assert_called_with("Error handling request", exc_info=exc)
+    logger.exception.assert_called_with(
+        "Error handling request from %s", cli.host, exc_info=exc
+    )
+
+
+async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
+    event = asyncio.Event()
+    sock = unused_port_socket
+    port = sock.getsockname()[1]
+
+    async def on_request(request: web.Request) -> web.Response:
+        try:
+            await asyncio.sleep(10)
+        except asyncio.CancelledError:
+            event.set()
+            raise
+        assert False
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app, handler_cancellation=True)
+    await runner.setup()
+
+    site = web.SockSite(runner, sock=sock)
+
+    await site.start()
+    assert runner.server is not None
+    try:
+        assert runner.server.handler_cancellation, "Flag was not propagated"
+
+        async with client.ClientSession(
+            timeout=client.ClientTimeout(total=0.15)
+        ) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://127.0.0.1:{port}/")
+
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(event.wait(), timeout=1)
+        assert event.is_set(), "Request handler hasn't been cancelled"
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> None:
+    timeout_event = asyncio.Event()
+    done_event = asyncio.Event()
+    sock = unused_port_socket
+    port = sock.getsockname()[1]
+    started = False
+
+    async def on_request(request: web.Request) -> web.Response:
+        nonlocal started
+        started = True
+        await asyncio.wait_for(timeout_event.wait(), timeout=5)
+        done_event.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", on_request)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+
+    site = web.SockSite(runner, sock=sock)
+
+    await site.start()
+    try:
+        async with client.ClientSession(
+            timeout=client.ClientTimeout(total=0.2)
+        ) as sess:
+            with pytest.raises(asyncio.TimeoutError):
+                await sess.get(f"http://127.0.0.1:{port}/")
+        await asyncio.sleep(0.1)
+        timeout_event.set()
+
+        with suppress(asyncio.TimeoutError):
+            await asyncio.wait_for(done_event.wait(), timeout=1)
+        assert started
+        assert done_event.is_set()
+    finally:
+        await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_no_future_warning_on_disconnect_during_backpressure(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    loop = asyncio.get_running_loop()
+    exc_handler_calls: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: exc_handler_calls.append(ctx))
+    protocol = None
+
+    async def handler(request: web.Request) -> NoReturn:
+        nonlocal protocol
+        protocol = request.protocol
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        while True:
+            await resp.write(b"x" * 65536)
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    # aiohttp_server enables handler_cancellation by default so the handler
+    # task is cancelled when connection_lost() fires.
+    server = await aiohttp_server(app)
+
+    # Open a raw asyncio connection so we control exactly when the client
+    # side closes.
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    writer.write(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    await writer.drain()
+
+    try:
+        # Poll until the server protocol reports that writing is paused.
+        async def wait_for_backpressure() -> None:
+            while protocol is None or not protocol.writing_paused:
+                await asyncio.sleep(0.01)
+
+        await asyncio.wait_for(wait_for_backpressure(), timeout=5.0)
+
+        writer.close()
+        await asyncio.sleep(0.1)
+
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    assert not exc_handler_calls

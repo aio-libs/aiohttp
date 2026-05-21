@@ -1,0 +1,1 @@
+Added ``--durations=30`` to the benchmark CI run so the slowest tests are reported when the job hits its timeout -- by :user:`aiolibsbot`.

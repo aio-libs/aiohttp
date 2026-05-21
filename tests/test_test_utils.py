@@ -1,48 +1,60 @@
-# type: ignore
+import asyncio
 import gzip
-from socket import socket
-from typing import Any
+import socket
+import sys
+from collections.abc import AsyncIterator, Mapping
+from typing import NoReturn
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
+from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.test_utils import (
+    REUSE_ADDRESS,
     AioHTTPTestCase,
-    RawTestServer as _RawTestServer,
-    TestClient as _TestClient,
-    TestServer as _TestServer,
-    get_port_socket,
-    loop_context,
+    RawTestServer,
+    TestClient,
+    TestServer,
     make_mocked_request,
 )
+
+if sys.version_info >= (3, 11):
+    from typing import assert_type
+
+HAS_IPV6: bool = socket.has_ipv6
+if HAS_IPV6:  # pragma: no branch
+    try:
+        with socket.socket(socket.AF_INET6, socket.SOCK_STREAM):
+            pass
+    except OSError:  # pragma: no cover
+        HAS_IPV6 = False
+
+_TestClient = TestClient[web.Request, web.Application]
 
 _hello_world_str = "Hello, world"
 _hello_world_bytes = _hello_world_str.encode("utf-8")
 _hello_world_gz = gzip.compress(_hello_world_bytes)
 
 
-def _create_example_app():
-    async def hello(request):
+def _create_example_app() -> web.Application:
+    async def hello(request: web.Request) -> web.Response:
         return web.Response(body=_hello_world_bytes)
 
-    async def websocket_handler(request):
-
+    async def websocket_handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
         msg = await ws.receive()
-        if msg.type == aiohttp.WSMsgType.TEXT:
-            if msg.data == "close":
-                await ws.close()
-            else:
-                await ws.send_str(msg.data + "/answer")
+        assert msg.type == aiohttp.WSMsgType.TEXT
+        await ws.send_str(msg.data + "/answer")
 
         return ws
 
-    async def cookie_handler(request):
+    async def cookie_handler(request: web.Request) -> web.Response:
         resp = web.Response(body=_hello_world_bytes)
         resp.set_cookie("cookie", "val")
         return resp
@@ -54,41 +66,48 @@ def _create_example_app():
     return app
 
 
-# these exist to test the pytest scenario
 @pytest.fixture
-def loop() -> None:
-    with loop_context() as loop:
-        yield loop
-
-
-@pytest.fixture
-def app():
+def app() -> web.Application:
     return _create_example_app()
 
 
 @pytest.fixture
-def test_client(loop: Any, app: Any) -> None:
-    async def make_client():
-        return _TestClient(_TestServer(app))
+async def test_client(app: web.Application) -> AsyncIterator[_TestClient]:
+    client = TestClient(TestServer(app))
 
-    client = loop.run_until_complete(make_client())
-
-    loop.run_until_complete(client.start_server())
-    yield client
-    loop.run_until_complete(client.close())
+    await client.start_server()
+    try:
+        yield client
+    finally:
+        await client.close()
 
 
 async def test_aiohttp_client_close_is_idempotent() -> None:
     # a test client, called multiple times, should
     # not attempt to close the server again.
     app = _create_example_app()
-    client = _TestClient(_TestServer(app))
+    client = TestClient(TestServer(app))
     await client.close()
     await client.close()
+
+
+class TestCaseStartup(AioHTTPTestCase):
+    on_startup_called: bool
+
+    async def get_application(self) -> web.Application:
+        app = web.Application()
+        app.on_startup.append(self.on_startup_hook)
+        return app
+
+    async def on_startup_hook(self, app: web.Application) -> None:
+        self.on_startup_called = True
+
+    async def test_on_startup_hook(self) -> None:
+        self.assertTrue(self.on_startup_called)
 
 
 class TestAioHTTPTestCase(AioHTTPTestCase):
-    def get_app(self):
+    async def get_application(self) -> web.Application:
         return _create_example_app()
 
     async def test_example_with_loop(self) -> None:
@@ -97,22 +116,13 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         text = await request.text()
         assert _hello_world_str == text
 
-    def test_inner_example(self) -> None:
-        async def test_get_route() -> None:
-            resp = await self.client.request("GET", "/")
-            assert resp.status == 200
-            text = await resp.text()
-            assert _hello_world_str == text
-
-        self.loop.run_until_complete(test_get_route())
-
     async def test_example_without_explicit_loop(self) -> None:
         request = await self.client.request("GET", "/")
         assert request.status == 200
         text = await request.text()
         assert _hello_world_str == text
 
-    async def test_inner_example_without_explicit_loop(self) -> None:
+    async def test_inner_example(self) -> None:
         async def test_get_route() -> None:
             resp = await self.client.request("GET", "/")
             assert resp.status == 200
@@ -122,17 +132,14 @@ class TestAioHTTPTestCase(AioHTTPTestCase):
         await test_get_route()
 
 
-def test_get_route(loop: Any, test_client: Any) -> None:
-    async def test_get_route() -> None:
-        resp = await test_client.request("GET", "/")
-        assert resp.status == 200
-        text = await resp.text()
-        assert _hello_world_str == text
-
-    loop.run_until_complete(test_get_route())
+async def test_get_route(test_client: _TestClient) -> None:
+    resp = await test_client.request("GET", "/")
+    assert resp.status == 200
+    text = await resp.text()
+    assert _hello_world_str == text
 
 
-async def test_client_websocket(loop: Any, test_client: Any) -> None:
+async def test_client_websocket(test_client: _TestClient) -> None:
     resp = await test_client.ws_connect("/websocket")
     await resp.send_str("foo")
     msg = await resp.receive()
@@ -143,7 +150,7 @@ async def test_client_websocket(loop: Any, test_client: Any) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSE
 
 
-async def test_client_cookie(loop: Any, test_client: Any) -> None:
+async def test_client_cookie(test_client: _TestClient) -> None:
     assert not test_client.session.cookie_jar
     await test_client.get("/cookie")
     cookies = list(test_client.session.cookie_jar)
@@ -154,34 +161,36 @@ async def test_client_cookie(loop: Any, test_client: Any) -> None:
 @pytest.mark.parametrize(
     "method", ["get", "post", "options", "post", "put", "patch", "delete"]
 )
-async def test_test_client_methods(method: Any, loop: Any, test_client: Any) -> None:
+async def test_test_client_methods(method: str, test_client: _TestClient) -> None:
     resp = await getattr(test_client, method)("/")
     assert resp.status == 200
     text = await resp.text()
     assert _hello_world_str == text
 
 
-async def test_test_client_head(loop: Any, test_client: Any) -> None:
+async def test_test_client_head(test_client: _TestClient) -> None:
     resp = await test_client.head("/")
     assert resp.status == 200
 
 
 @pytest.mark.parametrize("headers", [{"token": "x"}, CIMultiDict({"token": "x"}), {}])
-def test_make_mocked_request(headers: Any) -> None:
+def test_make_mocked_request(headers: Mapping[str, str]) -> None:
     req = make_mocked_request("GET", "/", headers=headers)
     assert req.method == "GET"
     assert req.path == "/"
     assert isinstance(req, web.Request)
-    assert isinstance(req.headers, CIMultiDictProxy)
+    assert isinstance(req.headers, HeadersDictProxy)
 
 
 def test_make_mocked_request_sslcontext() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.transport is not None
     assert req.transport.get_extra_info("sslcontext") is None
 
 
 def test_make_mocked_request_unknown_extra_info() -> None:
     req = make_mocked_request("GET", "/")
+    assert req.transport is not None
     assert req.transport.get_extra_info("unknown_extra_info") is None
 
 
@@ -200,7 +209,7 @@ def test_make_mocked_request_app_can_store_values() -> None:
 def test_make_mocked_request_app_access_non_existing() -> None:
     req = make_mocked_request("GET", "/")
     with pytest.raises(AttributeError):
-        req.app.foo
+        req.app.foo  # type: ignore[attr-defined]
 
 
 def test_make_mocked_request_match_info() -> None:
@@ -214,6 +223,11 @@ def test_make_mocked_request_content() -> None:
     assert req.content is payload
 
 
+async def test_make_mocked_request_empty_payload() -> None:
+    req = make_mocked_request("GET", "/")
+    assert await req.read() == b""
+
+
 def test_make_mocked_request_transport() -> None:
     transport = mock.Mock()
     req = make_mocked_request("GET", "/", transport=transport)
@@ -222,37 +236,41 @@ def test_make_mocked_request_transport() -> None:
 
 async def test_test_client_props() -> None:
     app = _create_example_app()
-    server = _TestServer(app, scheme="http", host="127.0.0.1")
-    client = _TestClient(server)
+    server = TestServer(app, scheme="http", host="127.0.0.1")
+    client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, web.Application)
         assert client.app is not None
-    assert client.port is None
+    assert client.port == 0
 
 
 async def test_test_client_raw_server_props() -> None:
-    async def hello(request):
-        return web.Response(body=_hello_world_bytes)
+    async def hello(request: web.BaseRequest) -> NoReturn:
+        assert False
 
-    server = _RawTestServer(hello, scheme="http", host="127.0.0.1")
-    client = _TestClient(server)
+    server = RawTestServer(hello, scheme="http", host="127.0.0.1")
+    client = TestClient(server)
     assert client.scheme == "http"
     assert client.host == "127.0.0.1"
-    assert client.port is None
+    assert client.port == 0
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
+        if sys.version_info >= (3, 11):
+            assert_type(client.app, None)
         assert client.app is None
-    assert client.port is None
+    assert client.port == 0
 
 
-async def test_test_server_context_manager(loop: Any) -> None:
+async def test_test_server_context_manager() -> None:
     app = _create_example_app()
-    async with _TestServer(app) as server:
+    async with TestServer(app) as server:
         client = aiohttp.ClientSession()
         resp = await client.head(server.make_url("/"))
         assert resp.status == 200
@@ -262,16 +280,16 @@ async def test_test_server_context_manager(loop: Any) -> None:
 
 def test_client_unsupported_arg() -> None:
     with pytest.raises(TypeError) as e:
-        _TestClient("string")
+        TestClient("string")  # type: ignore[call-overload]
 
     assert (
         str(e.value) == "server must be TestServer instance, found type: <class 'str'>"
     )
 
 
-async def test_server_make_url_yarl_compatibility(loop: Any) -> None:
+async def test_server_make_url_yarl_compatibility() -> None:
     app = _create_example_app()
-    async with _TestServer(app) as server:
+    async with TestServer(app) as server:
         make_url = server.make_url
         assert make_url(URL("/foo")) == make_url("/foo")
         with pytest.raises(AssertionError):
@@ -280,23 +298,43 @@ async def test_server_make_url_yarl_compatibility(loop: Any) -> None:
             make_url(URL("http://foo.com"))
 
 
-def test_testcase_no_app(testdir: Any, loop: Any) -> None:
-    testdir.makepyfile(
-        """
+@pytest.mark.xfail(reason="https://github.com/pytest-dev/pytest/issues/13546")
+def test_testcase_no_app(testdir: pytest.Testdir) -> None:
+    testdir.makepyfile("""
         from aiohttp.test_utils import AioHTTPTestCase
 
 
         class InvalidTestCase(AioHTTPTestCase):
             def test_noop(self) -> None:
                 pass
-        """
-    )
+        """)
     result = testdir.runpytest()
-    result.stdout.fnmatch_lines(["*RuntimeError*"])
+    result.stdout.fnmatch_lines(["*TypeError*"])
 
 
-async def test_server_context_manager(app: Any, loop: Any) -> None:
-    async with _TestServer(app) as server:
+async def test_disable_retry_persistent_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+
+        num_requests += 1
+        request.protocol.force_close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    with pytest.raises(aiohttp.ServerDisconnectedError):
+        await client.get("/")
+
+    assert num_requests == 1
+
+
+async def test_server_context_manager(app: web.Application) -> None:
+    async with TestServer(app) as server:
         async with aiohttp.ClientSession() as client:
             async with client.head(server.make_url("/")) as resp:
                 assert resp.status == 200
@@ -306,9 +344,9 @@ async def test_server_context_manager(app: Any, loop: Any) -> None:
     "method", ["head", "get", "post", "options", "post", "put", "patch", "delete"]
 )
 async def test_client_context_manager_response(
-    method: Any, app: Any, loop: Any
+    method: str, app: web.Application
 ) -> None:
-    async with _TestClient(_TestServer(app)) as client:
+    async with TestClient(TestServer(app)) as client:
         async with getattr(client, method)("/") as resp:
             assert resp.status == 200
             if method != "head":
@@ -316,9 +354,14 @@ async def test_client_context_manager_response(
                 assert "Hello, world" in text
 
 
-async def test_custom_port(loop: Any, app: Any, aiohttp_unused_port: Any) -> None:
-    port = aiohttp_unused_port()
-    client = _TestClient(_TestServer(app, port=port))
+async def test_custom_port(
+    app: web.Application, unused_port_socket: socket.socket
+) -> None:
+    sock = unused_port_socket
+    port = sock.getsockname()[1]
+    client = TestClient(
+        TestServer(app, port=port, socket_factory=lambda *args, **kwargs: sock)
+    )
     await client.start_server()
 
     assert client.server.port == port
@@ -333,28 +376,37 @@ async def test_custom_port(loop: Any, app: Any, aiohttp_unused_port: Any) -> Non
 
 @pytest.mark.parametrize(
     ("hostname", "expected_host"),
-    [("127.0.0.1", "127.0.0.1"), ("localhost", "127.0.0.1"), ("::1", "::1")],
+    [
+        ("127.0.0.1", "127.0.0.1"),
+        ("localhost", "127.0.0.1"),
+        pytest.param(
+            "::1",
+            "::1",
+            marks=pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available"),
+        ),
+    ],
 )
-async def test_test_server_hostnames(
-    hostname: Any, expected_host: Any, loop: Any
-) -> None:
+async def test_test_server_hostnames(hostname: str, expected_host: str) -> None:
     app = _create_example_app()
-    server = _TestServer(app, host=hostname, loop=loop)
+    server = TestServer(app, host=hostname, loop=asyncio.get_running_loop())
     async with server:
         pass
     assert server.host == expected_host
 
 
-@pytest.mark.parametrize("test_server_cls", [_TestServer, _RawTestServer])
+@pytest.mark.parametrize("test_server_cls", [TestServer, RawTestServer])
 async def test_base_test_server_socket_factory(
-    test_server_cls: type, app: Any, loop: Any
+    test_server_cls: type, app: web.Application
 ) -> None:
+    loop = asyncio.get_running_loop()
     factory_called = False
 
-    def factory(*args, **kwargs) -> socket:
+    def factory(host: str, port: int, family: socket.AddressFamily) -> socket.socket:
         nonlocal factory_called
         factory_called = True
-        return get_port_socket(*args, **kwargs)
+        return socket.create_server(
+            (host, port), family=family, reuse_port=REUSE_ADDRESS
+        )
 
     server = test_server_cls(app, loop=loop, socket_factory=factory)
     async with server:

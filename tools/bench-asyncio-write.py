@@ -3,7 +3,6 @@ import atexit
 import math
 import os
 import signal
-from typing import List, Tuple
 
 PORT = 8888
 
@@ -52,7 +51,7 @@ def fm_time(s, _fms=("", "m", "µ", "n")):
     return f"{s:.2f}{_fms[i]}s"
 
 
-def _job(j: List[int]) -> Tuple[str, List[bytes]]:
+def _job(j: list[int]) -> tuple[str, list[bytes]]:
     # Always start with a 256B headers chunk
     body = [b"0" * s for s in [256] + list(j)]
     job_title = f"{fm_size(sum(j))} / {len(j)}"
@@ -123,10 +122,11 @@ async def main(loop):
         base = await bench(t, writes[0], c)
         for w in writes[1:]:
             await bench("", w, c, base)
-    with open("bench.md", "w") as f:
-        for line in res:
-            f.write("| {} |\n".format(" | ".join(line)))
+    return res
 
 
 loop = asyncio.get_event_loop()
-loop.run_until_complete(main(loop))
+results = loop.run_until_complete(main(loop))
+with open("bench.md", "w") as f:
+    for line in results:
+        f.write("| {} |\n".format(" | ".join(line)))

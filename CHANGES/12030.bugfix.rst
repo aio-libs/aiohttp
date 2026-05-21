@@ -1,0 +1,2 @@
+Reset the WebSocket heartbeat timer on inbound data to avoid false ping/pong timeouts while receiving large frames
+-- by :user:`hoffmang9`.

@@ -1,0 +1,1 @@
+Removed deprecated ``.loop``, ``.setUpAsync()``, ``.tearDownAsync()`` and ``.get_app()`` from ``AioHTTPTestCase``.

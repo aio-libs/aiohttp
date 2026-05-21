@@ -1,0 +1,5 @@
+-r runtime-deps.in
+
+gunicorn
+uvloop; platform_system != "Windows" and implementation_name == "cpython"  # MagicStack/uvloop#14
+winloop; platform_system == "Windows" and implementation_name == "cpython"

@@ -90,6 +90,10 @@ accepts a list of any non-parsed command-line arguments and returns an
         return app
 
 
+.. note::
+   For local development we typically recommend using
+   `aiohttp-devtools <https://github.com/aio-libs/aiohttp-devtools>`_.
+
 .. _aiohttp-web-handler:
 
 Handler
@@ -147,6 +151,12 @@ for a ``GET`` request. You can also deny ``HEAD`` requests on a route::
 
 Here ``handler`` won't be called on ``HEAD`` request and the server
 will respond with ``405: Method Not Allowed``.
+
+.. seealso::
+
+   :ref:`aiohttp-web-peer-disconnection` section explains how handlers
+   behave when a client connection drops and ways to optimize handling
+   of this.
 
 .. _aiohttp-web-resource-and-route:
 
@@ -444,8 +454,11 @@ third-party library, :mod:`aiohttp_session`, that adds *session* support::
 
     async def handler(request):
         session = await get_session(request)
-        last_visit = session['last_visit'] if 'last_visit' in session else None
-        text = 'Last visited: {}'.format(last_visit)
+
+        last_visit = session.get("last_visit")
+        session["last_visit"] = time.time()
+        text = "Last visited: {}".format(last_visit)
+
         return web.Response(text=text)
 
     async def make_app():

@@ -1,0 +1,1 @@
+Fixed spurious ``Future exception was never retrieved`` warning on disconnect during back-pressure -- by :user:`availov`.

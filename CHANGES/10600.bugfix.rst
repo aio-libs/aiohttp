@@ -1,0 +1,2 @@
+Fixed http parser not rejecting HTTP/1.1 requests that do not have valid Host header.
+-- by :user:`Cycloctane`.

@@ -30,6 +30,10 @@ and located on https://github.com/aio-libs
 aiohttp extensions
 ^^^^^^^^^^^^^^^^^^
 
+- `aiohttp-apischema <https://github.com/aio-libs/aiohttp-apischema>`_
+  provides automatic API schema generation and validation of user input
+  for :mod:`aiohttp.web`.
+
 - `aiohttp-session <https://github.com/aio-libs/aiohttp-session>`_
   provides sessions for :mod:`aiohttp.web`.
 
@@ -112,8 +116,7 @@ support to aiohttp web servers.
 
 - `aiohttp-pydantic <https://github.com/Maillol/aiohttp-pydantic>`_
   An ``aiohttp.View`` to validate the HTTP request's body, query-string, and
-  headers regarding function annotations and generate OpenAPI doc. Python 3.8+
-  required.
+  headers regarding function annotations and generate OpenAPI doc.
 
 - `aiohttp-swagger <https://github.com/cr0hn/aiohttp-swagger>`_
   Swagger API Documentation builder for aiohttp server.
@@ -145,6 +148,9 @@ ask to raise the status.
 
 - `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
   Pytest fixture with simpler api, payload decoding and status code assertions.
+
+- `python-proxy-headers <https://github.com/proxymesh/python-proxy-headers>`_
+  provides ``aiohttp_proxy`` extension for receiving custom response headers from a proxy server
 
 - `octomachinery <https://octomachinery.dev>`_ A framework for developing
   GitHub Apps and GitHub Actions.
@@ -258,6 +264,8 @@ ask to raise the status.
 - `GINO <https://github.com/fantix/gino>`_
   An asyncio ORM on top of SQLAlchemy core, delivered with an aiohttp extension.
 
+- `New Relic <https://github.com/newrelic/newrelic-quickstarts/tree/main/quickstarts/python/aiohttp>`_ An aiohttp middleware for reporting your `Python application performance <https://newrelic.com/instant-observability/aiohttp>`_ metrics to New Relic.
+
 - `eider-py <https://github.com/eider-rpc/eider-py>`_ Python implementation of
   the `Eider RPC protocol <http://eider.readthedocs.io/>`_.
 
@@ -292,3 +300,18 @@ ask to raise the status.
 
 - `aiohttp-catcher <https://github.com/yuvalherziger/aiohttp-catcher>`_
   An aiohttp middleware library for centralized error handling in aiohttp servers.
+
+- `rsocket <https://github.com/rsocket/rsocket-py>`_
+  Python implementation of `RSocket protocol <https://rsocket.io>`_.
+
+- `nacl_middleware <https://github.com/CosmicDNA/nacl_middleware>`_
+  An aiohttp middleware library for asymmetric encryption of data transmitted via http and/or websocket connections.
+
+- `aiohttp-asgi-connector <https://github.com/thearchitector/aiohttp-asgi-connector>`_
+  An aiohttp connector for using a ``ClientSession`` to interface directly with separate ASGI applications.
+
+- `aiohttp-openmetrics <https://github.com/jelmer/aiohttp-openmetrics>`_
+  An aiohttp middleware for exposing Prometheus metrics.
+
+- `wireup <https://github.com/maldoinc/wireup>`_
+  Performant, concise, and easy-to-use dependency injection container.

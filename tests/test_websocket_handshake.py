@@ -2,7 +2,6 @@
 
 import base64
 import os
-from typing import Any, List, Tuple
 
 import pytest
 
@@ -16,7 +15,7 @@ def gen_ws_headers(
     extension_text: str = "",
     server_notakeover: bool = False,
     client_notakeover: bool = False,
-) -> Tuple[List[Tuple[str, str]], str]:
+) -> tuple[list[tuple[str, str]], str]:
     key = base64.b64encode(os.urandom(16)).decode()
     hdrs = [
         ("Upgrade", "websocket"),
@@ -165,7 +164,7 @@ async def test_handshake_protocol_agreement() -> None:
     assert ws.ws_protocol == best_proto
 
 
-async def test_handshake_protocol_unsupported(caplog: Any) -> None:
+async def test_handshake_protocol_unsupported(caplog: pytest.LogCaptureFixture) -> None:
     # Tests if a protocol mismatch handshake warns and returns None
     proto = "chat"
     req = make_mocked_request("GET", "/", headers=gen_ws_headers("test")[0])
@@ -175,7 +174,7 @@ async def test_handshake_protocol_unsupported(caplog: Any) -> None:
 
     assert (
         caplog.records[-1].msg
-        == "Client protocols %r don’t overlap server-known ones %r"
+        == "%s: Client protocols %r don’t overlap server-known ones %r"
     )
     assert ws.ws_protocol is None
 

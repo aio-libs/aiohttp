@@ -35,6 +35,8 @@ body:
       1. Implement the following server or a client '...'
       2. Then run '...'
       3. An error occurs.
+      The chances of someone looking at your issue are *vastly* improved if you provide
+      complete code that can be copy/pasted and executed directly in Python.
   validations:
     required: true
 
@@ -82,6 +84,15 @@ body:
     render: console
     value: |
       $ python -m pip show multidict
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: propcache Version
+    description: Attach your version of propcache.
+    render: console
+    value: |
+      $ python -m pip show propcache
   validations:
     required: true
 - type: textarea

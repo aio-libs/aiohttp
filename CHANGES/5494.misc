@@ -1,3 +1,0 @@
-Made sure to always close most of file descriptors and release other
-resources in tests. Started ignoring ``ResourceWarning``s in pytest for
-warnings that are hard to track.

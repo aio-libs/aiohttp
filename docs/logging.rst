@@ -114,6 +114,16 @@ Example of a drop-in replacement for the default access logger::
                            f'"{request.method} {request.path} '
                            f'done in {time}s: {response.status}')
 
+      @property
+      def enabled(self):
+          """Return True if logger is enabled.
+
+          Override this property if logging is disabled to avoid the
+          overhead of calculating details to feed the logger.
+
+          This property may be omitted if logging is always enabled.
+          """
+          return self.logger.isEnabledFor(logging.INFO)
 
 .. versionadded:: 4.0.0
 
@@ -139,6 +149,15 @@ If your logging needs to perform IO you can instead inherit from
                                     f'"{request.method} {request.path} '
                                     f'done in {time}s: {response.status}')
 
+      @property
+      def enabled(self) -> bool:
+          """Return True if logger is enabled.
+
+          Override this property if logging is disabled to avoid the
+          overhead of calculating details to feed the logger.
+          """
+          return self.logger.isEnabledFor(logging.INFO)
+
 
 This also allows access to the results of coroutines on the ``request`` and
 ``response``, e.g. ``request.text()``.
@@ -147,7 +166,7 @@ This also allows access to the results of coroutines on the ``request`` and
 
 Gunicorn access logs
 ^^^^^^^^^^^^^^^^^^^^
-When `Gunicorn <http://docs.gunicorn.org/en/latest/index.html>`_ is used for
+When `Gunicorn <https://gunicorn.org>`_ is used for
 :ref:`deployment <aiohttp-deployment-gunicorn>`, its default access log format
 will be automatically replaced with the default aiohttp's access log format.
 

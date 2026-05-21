@@ -6,15 +6,14 @@
 # mypy: disallow-any-expr, disallow-any-unimported, disallow-subclassing-any
 
 import os
-from typing import List, Union
 
 from aiohttp import web
 
 WS_FILE = os.path.join(os.path.dirname(__file__), "websocket.html")
-sockets = web.AppKey("sockets", List[web.WebSocketResponse])
+sockets = web.AppKey("sockets", list[web.WebSocketResponse])
 
 
-async def wshandler(request: web.Request) -> Union[web.WebSocketResponse, web.Response]:
+async def wshandler(request: web.Request) -> web.WebSocketResponse | web.Response:
     resp = web.WebSocketResponse()
     available = resp.can_prepare(request)
     if not available:
@@ -31,11 +30,11 @@ async def wshandler(request: web.Request) -> Union[web.WebSocketResponse, web.Re
             await ws.send_str("Someone joined")
         request.app[sockets].append(resp)
 
-        async for msg in resp:  # type: ignore[misc]
-            if msg.type == web.WSMsgType.TEXT:  # type: ignore[misc]
+        async for msg in resp:
+            if msg.type is web.WSMsgType.TEXT:
                 for ws in request.app[sockets]:
                     if ws is not resp:
-                        await ws.send_str(msg.data)  # type: ignore[misc]
+                        await ws.send_str(msg.data)
             else:
                 return resp
         return resp
@@ -54,7 +53,7 @@ async def on_shutdown(app: web.Application) -> None:
 
 def init() -> web.Application:
     app = web.Application()
-    l: List[web.WebSocketResponse] = []
+    l: list[web.WebSocketResponse] = []
     app[sockets] = l
     app.router.add_get("/", wshandler)
     app.on_shutdown.append(on_shutdown)

@@ -1,0 +1,1 @@
+Changed default value to ``compress`` from ``None`` to ``False`` (``None`` is no longer an expected value) -- by :user:`Dreamsorcerer`.

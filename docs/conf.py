@@ -17,6 +17,12 @@ import re
 from pathlib import Path
 
 PROJECT_ROOT_DIR = Path(__file__).parents[1].resolve()
+IS_RELEASE_ON_RTD = (
+    os.getenv("READTHEDOCS", "False") == "True"
+    and os.environ["READTHEDOCS_VERSION_TYPE"] == "tag"
+)
+if IS_RELEASE_ON_RTD:
+    tags.add("is_release")
 
 _docs_path = os.path.dirname(__file__)
 _version_path = os.path.abspath(
@@ -47,13 +53,15 @@ with open(_version_path, encoding="latin1") as fp:
 # ones.
 extensions = [
     # stdlib-party extensions:
+    "sphinx.ext.autodoc",
     "sphinx.ext.extlinks",
+    "sphinx.ext.graphviz",
     "sphinx.ext.intersphinx",
     "sphinx.ext.viewcode",
     # Third-party extensions:
-    "sphinxcontrib.asyncio",
-    "sphinxcontrib.blockdiag",
-    "sphinxcontrib.towncrier",  # provides `towncrier-draft-entries` directive
+    "myst_parser",  # renders Markdown sources (e.g. ``THREAT_MODEL.md``)
+    "sphinxcontrib.mermaid",  # renders the Mermaid flowcharts in ``THREAT_MODEL.md``
+    "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
 ]
 
 
@@ -64,18 +72,39 @@ try:
 except ImportError:
     pass
 
+spelling_exclude_patterns = [
+    # THREAT_MODEL.md is already spell-checked by the codespell pre-commit hook.
+    # The spelling builder additionally mis-tokenises its ``**S**poofing`` STRIDE
+    # list into non-words, so skip the threat model here to avoid double coverage.
+    "threat_model.md",
+]
+
+
+# -- MyST (Markdown) configuration ----------------------------------------
+
+# ``THREAT_MODEL.md`` lives at the repo root and is surfaced through
+# ``docs/threat_model.md``.
+myst_heading_anchors = 3  # anchors for h1-h3 so the in-page section links work
+myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
+
+# TODO: Remove this option once THREAT_MODEL.md is complete.
+suppress_warnings = ["myst.xref_missing"]
 
 intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
     "python": ("http://docs.python.org/3", None),
     "multidict": ("https://multidict.readthedocs.io/en/stable/", None),
+    "propcache": ("https://propcache.aio-libs.org/en/stable", None),
     "yarl": ("https://yarl.readthedocs.io/en/stable/", None),
     "aiosignal": ("https://aiosignal.readthedocs.io/en/stable/", None),
     "aiohttpjinja2": ("https://aiohttp-jinja2.readthedocs.io/en/stable/", None),
     "aiohttpremotes": ("https://aiohttp-remotes.readthedocs.io/en/stable/", None),
     "aiohttpsession": ("https://aiohttp-session.readthedocs.io/en/stable/", None),
     "aiohttpdemos": ("https://aiohttp-demos.readthedocs.io/en/latest/", None),
-    "asynctest": ("https://asynctest.readthedocs.io/en/latest/", None),
+    "aiojobs": ("https://aiojobs.readthedocs.io/en/stable/", None),
+    "aiohappyeyeballs": ("https://aiohappyeyeballs.readthedocs.io/en/latest/", None),
+    "isal": ("https://python-isal.readthedocs.io/en/stable/", None),
+    "zlib_ng": ("https://python-zlib-ng.readthedocs.io/en/stable/", None),
 }
 
 # Add any paths that contain templates here, relative to this directory.
@@ -199,12 +228,6 @@ html_theme_options = {
             "target": f"https://badge.fury.io/py/{project}",
             "height": "20",
             "alt": "Latest PyPI package version",
-        },
-        {
-            "image": f"https://img.shields.io/discourse/status?server=https%3A%2F%2F{github_repo_org}.discourse.group",
-            "target": f"https://{github_repo_org}.discourse.group",
-            "height": "20",
-            "alt": "Discourse status",
         },
         {
             "image": "https://badges.gitter.im/Join%20Chat.svg",
@@ -392,9 +415,11 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.RequestHandler"),  # undocumented
     ("py:class", "aiohttp.NamedPipeConnector"),  # undocumented
     ("py:class", "aiohttp.protocol.HttpVersion"),  # undocumented
-    ("py:class", "aiohttp.ClientRequest"),  # undocumented
+    ("py:class", "HttpVersion"),  # undocumented
     ("py:class", "aiohttp.payload.Payload"),  # undocumented
-    ("py:class", "aiohttp.abc.AbstractResolver"),  # undocumented
+    ("py:class", "Payload"),  # undocumented
+    ("py:class", "aiohttp.resolver.AsyncResolver"),  # undocumented
+    ("py:class", "aiohttp.resolver.ThreadedResolver"),  # undocumented
     ("py:func", "aiohttp.ws_connect"),  # undocumented
     ("py:meth", "start"),  # undocumented
     ("py:exc", "aiohttp.ClientHttpProxyError"),  # undocumented
@@ -416,6 +441,7 @@ nitpick_ignore = [
     ("py:class", "aiohttp.web.MatchedSubAppResource"),  # undocumented
     ("py:attr", "body"),  # undocumented
     ("py:class", "socket.socket"),  # undocumented
+    ("py:func", "socket.socket"),  # undocumented
     ("py:class", "socket.AddressFamily"),  # undocumented
     ("py:obj", "logging.DEBUG"),  # undocumented
     ("py:class", "aiohttp.abc.AbstractAsyncAccessLogger"),  # undocumented
@@ -424,6 +450,7 @@ nitpick_ignore = [
     ("py:class", "cgi.FieldStorage"),  # undocumented
     ("py:meth", "aiohttp.web.UrlDispatcher.register_resource"),  # undocumented
     ("py:func", "aiohttp_debugtoolbar.setup"),  # undocumented
+    ("py:class", "socket.SocketKind"),  # undocumented
 ]
 
 # -- Options for towncrier_draft extension -----------------------------------
