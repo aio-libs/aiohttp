@@ -319,8 +319,7 @@ jobs:
         CIBW_ARCHS: ${{ matrix.config.archs }}
         CIBW_TEST_REQUIRES: -r requirements/test-mobile.txt
         CIBW_TEST_SOURCES: setup.cfg README.rst tests
-        CIBW_TEST_COMMAND: >-
-          python -m pytest -p no:aiohttp -o 'addopts='-v -ra --showlocals -m 'not dev_mode and not autobahn'
+        CIBW_TEST_COMMAND: python -m pytest
 
   autobahn:
     permissions:
