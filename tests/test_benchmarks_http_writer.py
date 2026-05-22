@@ -1,13 +1,18 @@
 """codspeed benchmarks for http writer."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 from multidict import CIMultiDict
 
-pytest.importorskip("pytest_codspeed")
-from pytest_codspeed import BenchmarkFixture
-
 from aiohttp import hdrs
 from aiohttp.http_writer import _serialize_headers
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_serialize_headers(benchmark: BenchmarkFixture) -> None:

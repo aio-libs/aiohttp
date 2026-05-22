@@ -4,14 +4,11 @@ import asyncio
 import sys
 from collections.abc import Callable
 from http.cookies import BaseCookie
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from multidict import CIMultiDict
 from yarl import URL
-
-pytest.importorskip("pytest_codspeed")
-from pytest_codspeed import BenchmarkFixture
 
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.cookiejar import CookieJar
@@ -25,6 +22,11 @@ if sys.version_info >= (3, 11):
     _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 else:
     _RequestMaker = Any
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 async def test_client_request_update_cookies(

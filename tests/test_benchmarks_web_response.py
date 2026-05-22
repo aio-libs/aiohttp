@@ -1,11 +1,16 @@
 """codspeed benchmarks for the web responses."""
 
+from typing import TYPE_CHECKING
+
 import pytest
 
-pytest.importorskip("pytest_codspeed")
-from pytest_codspeed import BenchmarkFixture
-
 from aiohttp import web
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_simple_web_response(benchmark: BenchmarkFixture) -> None:

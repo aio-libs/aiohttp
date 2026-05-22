@@ -3,17 +3,20 @@
 import asyncio
 import pathlib
 from collections.abc import Awaitable, Callable, Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from multidict import CIMultiDict
 from pytest_aiohttp import AiohttpClient
 
-pytest.importorskip("pytest_codspeed")
-from pytest_codspeed import BenchmarkFixture
-
 from aiohttp import ClientResponse, web
 from aiohttp.test_utils import TestClient, TestServer
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 @pytest.fixture

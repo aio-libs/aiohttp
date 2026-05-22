@@ -282,7 +282,6 @@ async def test_static_file_custom_content_type_compress(
     expect_encoding: str,
 ) -> None:
     """Test that custom type with encoding is returned for unencoded requests."""
-
     if expect_encoding == "br" and brotli is None:
         pytest.skip("brotli not available")
 
