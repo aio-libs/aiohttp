@@ -1,6 +1,7 @@
 """codspeed benchmarks for web request reading."""
 
 import asyncio
+from typing import TYPE_CHECKING
 import zlib
 
 import pytest
