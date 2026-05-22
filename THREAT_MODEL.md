@@ -501,7 +501,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.5 | Control-frame size > 125 bytes | T | Oversized control frame would violate RFC 6455 framing and could mis-frame against a non-aiohttp peer. | Low |
 | 3.6 | Fragmented control frame (FIN=0) | T | Fragmented control frame is a protocol violation; accepting one would let a peer interleave control state across the fragment sequence. | Low |
 | 3.7 | Continuation without preceding text/binary | T | Continuation frame without an initial data frame leaves assembly state ambiguous. | Low |
-| 3.8 | Unbounded fragmentation memory growth | D | Per-fragment partial buffer is bounded by `max_msg_size` (default 4 MiB), enforced both pre-FIN and at assembly time (`reader_py.py:WebSocketReader._handle_frame`, `:244-249`). | Low |
+| 3.8 | Unbounded fragmentation memory growth | D | A peer streams many continuation fragments without ever setting FIN; the reassembly buffer grows with each fragment until memory is exhausted. | Low |
 | 3.9 | PMCE decompression bomb | D | Compressed frame expanding to >`max_msg_size`. Mitigated by post-decompress check; some zlib backends (e.g. isal) may overshoot the per-call `max_length` by a chunk before the post-check rejects it. | Medium |
 | 3.10 | PMCE context retention memory | D / I | When `server_no_context_takeover` / `client_no_context_takeover` is *not* negotiated, the zlib context persists across messages on each side. No explicit per-message reset; long-lived sessions accumulate state. | Low–Med |
 | 3.11 | UTF-8 validation on text frames | T | Invalid UTF-8 in a text frame (or close reason) reaching the handler as `str` would surface as bytes via `surrogateescape` and confuse caller code that assumes valid Unicode. | Low |
@@ -520,7 +520,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
 | 3.8 | Fragment memory bound | `max_msg_size` enforced pre-FIN and at assembly. Default 4 MiB. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
-| 3.9 | PMCE decompression bomb | The reader requests decompression with a `max_length` matching `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). Past hardening (CHANGES/11966.bugfix.rst, v3.13) — chunked decompression with 256 KiB granularity to avoid one-shot allocation of huge buffers. | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
+| 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
 | 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Document the memory tradeoff in user-facing WebSocket docs. **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
 | 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
 | 3.12 | Close-code validation | `reader_py.py:WebSocketReader._handle_frame` validates codes < 3000 against `ALLOWED_CLOSE_CODES`; codes ≥ 3000 accepted (RFC reserved for libraries / private use, correct). | None. |
@@ -530,11 +530,11 @@ client-side, the writer adds masks to outgoing frames.
 
 **Past advisories / hardening (recap).**
 
-- **CHANGES/11966.bugfix.rst (v3.13)** — PMCE decompression DoS hardening:
-  chunked inflate with a `max_length` cap, post-decompress size check, and a
-  256 KiB chunk-size budget (`reader_py.py:WebSocketReader._handle_frame`,
-  `compression_utils.py:ZLibDecompressor.decompress_sync`). This is the primary mitigation for
-  zip-bomb-style attacks against WebSocket peers.
+- **PR #11898** (3.13.3) — PMCE decompression DoS hardening:
+  `WebSocketReader._handle_frame` decompresses with a `max_length` cap of
+  `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
+  This is the primary mitigation for zip-bomb-style attacks against
+  WebSocket peers.
 - No formal CVE has been published against the WebSocket framing layer to
   date.
 
