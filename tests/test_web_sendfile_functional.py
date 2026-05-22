@@ -59,7 +59,7 @@ def hello_txt(
     }
     # Uncompressed file is not actually written to test it is not required.
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
-    if brotli is not None:
+    if brotli is not None:  # pragma: no branch  # coverage not available on iOS/Android
         hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
