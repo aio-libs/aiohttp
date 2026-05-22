@@ -11,10 +11,6 @@ on:
   push:
     branches:
       - master
-    paths:
-      - .gitmodules
-      - vendor/llhttp
-      - .github/workflows/dependency-submission.yml
 
 permissions: {}
 
