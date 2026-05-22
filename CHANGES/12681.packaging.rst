@@ -1,1 +1,1 @@
-Updated ``llhttp`` to v3.4.1 -- by :user:`Dreamsorcerer`.
+Updated ``llhttp`` to v9.4.1 -- by :user:`Dreamsorcerer`.
