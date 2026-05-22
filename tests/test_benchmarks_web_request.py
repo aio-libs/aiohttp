@@ -1,8 +1,8 @@
 """codspeed benchmarks for web request reading."""
 
 import asyncio
-from typing import TYPE_CHECKING
 import zlib
+from typing import TYPE_CHECKING
 
 import pytest
 from pytest_aiohttp import AiohttpClient
