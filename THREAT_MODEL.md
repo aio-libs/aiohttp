@@ -6,6 +6,11 @@ intended to (a) make explicit the implicit security assumptions baked into the
 codebase, (b) catalogue known classes of threat against each subsystem, and
 (c) record the existing and recommended mitigations.
 
+Some mitigations are expected to be in the application code built on top
+of aiohttp. Recommendations addressed to application authors rather than
+to aiohttp maintainers are prefixed **User:** to make the responsibility
+explicit.
+
 ---
 
 ## 1. Library Overview
@@ -255,14 +260,14 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.1 | Smuggling via duplicate framing headers | llhttp rejects conflicting `Content-Length`. `http_parser.py:HttpRequestParserPy.parse_headers` rejects coexistence of CL + `Transfer-Encoding: chunked`. The full `SINGLETON_HEADERS` set (CL, CT, Host, TE, ETag, etc.) is duplicate-rejected by the request parser (strict mode); `#12302` disabled this check on the response parser (lax mode), since real-world servers commonly send duplicate `Content-Type` / `Server`. | If new singleton-sensitive headers emerge in HTTP/1.1 RFC errata, add to `SINGLETON_HEADERS`. |
 | 1.2 | Lenient response parsing | Lenient flags (`llhttp_set_lenient_headers`, `llhttp_set_lenient_optional_cr_before_lf`, `llhttp_set_lenient_spaces_after_chunk_size`) are only enabled on the **response** parser and only when `DEBUG` is False (set in `HttpResponseParser.__init__`). The **request** parser is strict. | Documented design decision: keep lenient response parsing for real-world server interop |
 | 1.3 | CRLF / NUL in header values | Bytes `\r`, `\n`, `\x00` rejected in header values (`_http_parser.pyx` callbacks; `http_parser.py:HeadersParser.parse_headers`). | Keep regression tests in `tests/test_http_parser.py` covering each forbidden byte both in name and value, and across both Cython and pure-Python parsers. |
-| 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving; warn against reflecting headers verbatim into responses, logs, or sub-requests without re-validation.** |
+| 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving.** **User**: Re-validate any header value before reflecting it into responses, logs, or sub-requests. |
 | 1.5 | HTTP version regex accepts 0.9 / 2.0 | None (regex is permissive). | **Tighten `VERSRE` (and llhttp configuration if possible) to reject anything outside `HTTP/1.0` and `HTTP/1.1`.** |
-| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document that user route handlers / authorization checks should compare methods case-sensitively to the canonical RFC tokens, or use the framework's `web.RouteTableDef` decorators which already match canonical methods.** |
+| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document the asymmetry.** **User**: Compare HTTP methods case-sensitively to canonical RFC tokens, or use `web.RouteTableDef` decorators (which already match canonical methods). |
 | 1.7 | `Content-Length` parsing | llhttp validates CL is decimal and non-negative; pure-Python parser validates via `DIGITS.fullmatch(r"\d+")` before `int(...)`, rejecting `+`/`-`/non-ASCII-digit forms (`test_bad_headers`, `test_headers_content_length_err_*` cover these). | None. Cross-backend parity is covered by the shared parser tests. |
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
-| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client unsanitised (especially in custom `web_log` configurations).** |
+| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any aiohttp path where `BadHttpMessage` content is reflected to the client unsanitised.** **User**: Review custom `web_log` configurations and any middleware that reflects parser exception messages back to the peer. |
 | 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
@@ -272,12 +277,12 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 - **GHSA-xx9p-xxvh-7g8j (CVE-2023-47641)** (3.8.0) — CL-vs-TE divergence
   between the Cython and pure-Python parsers, allowing request smuggling
   against deployments that switched backends.
-- **CVE-2023-37276 / GHSA-45c4-8wx5-qw6w** (3.8.5) — HTTP request smuggling
+- **GHSA-45c4-8wx5-qw6w (CVE-2023-37276)** (3.8.5) — HTTP request smuggling
   via CR/LF/NUL in header values. Both parsers reject these bytes at the
   byte level.
 - **GHSA-pjjw-qhg8-p2p9** (3.8.6) — smuggling pair in vendored llhttp 8.1.1;
   fixed by bumping llhttp to 9.
-- **GHSA-gfw2-4jvh-wgfg / GHSA-8qpw-xqxj-h4r2** (3.8.6 / 3.9.2) — pure-Python
+- **GHSA-gfw2-4jvh-wgfg (CVE-2023-47627) / GHSA-8qpw-xqxj-h4r2 (CVE-2024-23829)** (3.8.6 / 3.9.2) — pure-Python
   parser accepted lenient separators / weak RFC validation that llhttp
   rejected.
 - **GHSA-8495-4g3g-x7pr (CVE-2024-52304)** (3.10.11) — chunk-extension
@@ -287,12 +292,12 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 - **GHSA-69f9-5gxw-wvc2 (CVE-2025-69224)** (3.13.3) — Unicode codepoints
   matched by `\d` in the pure-Python parser's regexes were treated as
   digits.
-- **GHSA-g84x-mcqj-x9qq** (3.13.3) — CPU-DoS on `request.read()` when
+- **GHSA-g84x-mcqj-x9qq (CVE-2025-69229)** (3.13.3) — CPU-DoS on `request.read()` when
   the body arrives as a very large number of small chunks.
 - **PR #12137** (3.13.4) — precautionary hardening: pure-Python parser
   now explicitly rejects duplicate `Transfer-Encoding: chunked` on
   the request parser.
-- **GHSA-c427-h43c-vf67** (3.13.4) — duplicate `Host` header accepted
+- **GHSA-c427-h43c-vf67 (CVE-2026-34525)** (3.13.4) — duplicate `Host` header accepted
   in request parser, bypassing `Application.add_domain()` host-based
   routing / authorisation. Fixed by adding `Host` to the strict
   request-parser singleton rejection set.
@@ -310,3 +315,117 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   request parser (strict).
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.2. HTTP/1 writer
+
+**Scope.** Serialisation of outbound HTTP/1.x messages — request lines, status
+lines, header blocks, chunked / fixed-length / EOF-terminated bodies, drain /
+backpressure behaviour. Both server-side response emission and client-side
+request emission share the same `StreamWriter`. Out of scope: WebSocket frame
+emission ([§5.3](#53-websocket-framing--per-message-deflate)), payload generation for multipart ([§5.4](#54-multipart-parsing--encoding)), compression codecs
+([§5.5](#55-compression-codecs)), the user-handler-facing parts of `web.Response` and
+`ClientRequest` (covered in [§5.9](#59-server-requestresponse-objects) and [§5.12](#512-client-api--request-lifecycle) respectively, but
+called out where the writer's safety depends on them).
+
+**Components covered.**
+
+- `aiohttp/_http_writer.pyx` — Cython `_serialize_headers` and
+  `_write_str_raise_on_nlcr` (the CR/LF/NUL bytewise rejector).
+- `aiohttp/http_writer.py` — `StreamWriter` (the `AbstractStreamWriter`
+  implementation) plus the pure-Python `_py_serialize_headers` /
+  `_safe_header` fallback and the Cython/pure-Python switch at
+  `http_writer.py:_py_serialize_headers`.
+- `aiohttp/abc.py` — `AbstractStreamWriter` interface.
+- Header-source feeders: `aiohttp/web_response.py` (server),
+  `aiohttp/client_reqrep.py` (client), `aiohttp/helpers.py:populate_with_cookies`.
+
+**Selection.** `_serialize_headers` defaults to the pure-Python
+implementation; if `_http_writer` (Cython) imports successfully and
+`AIOHTTP_NO_EXTENSIONS` is unset, the Cython implementation replaces it
+(`http_writer.py:_py_serialize_headers`). Both implementations apply the same
+CR / LF / NUL rejection on names *and* values *and* the status/request line.
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Handler([User handler / ClientRequest]) -->|status_line, headers, body| SW[StreamWriter]
+  SW --> Serialize[_serialize_headers]
+  Serialize -->|reject CR/LF/NUL| Bytes[Wire bytes]
+  SW --> Body[write / write_eof / write_chunked]
+  Body --> Bytes
+  Bytes --> Transport[(asyncio Transport)]
+```
+
+The writer's input is **trusted** in the threat-model sense — i.e., it comes
+from in-process Python code that ran the user's handler or constructed the
+client request. The writer's job is therefore **structural integrity**: ensure
+that whatever bytes a handler attempts to emit cannot escape the framing of a
+single HTTP message and inject new headers, new status lines, or new requests
+on the wire. The wire-side consumer is the **untrusted** counterparty
+(arbitrary peer or intermediary).
+
+**Assets at risk (chunk-specific).**
+
+- **Outbound framing integrity** — one logical message ↔ one well-framed wire
+  message; no smuggling on the egress side.
+- **Header integrity** — no name/value can introduce additional headers,
+  status lines, or chunk markers.
+- **Liveness of the connection** — a slow / hostile reader cannot drive the
+  server (or client) into unbounded memory growth via writer buffering.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 2.1 | Header name/value with CR / LF / NUL | T / I | Response-splitting / header injection allowing the next "header" or even a complete second response/request to be appended on the wire. | High |
+| 2.2 | Status-line `reason` with CR / LF | T | Same family as 2.1 but on the status line; could let an attacker-controlled reason inject a body or a second status line. | High |
+| 2.3 | Request-line path/method | T | Path-side smuggling via CR / LF / NUL or whitespace inside the path the writer emits. | Medium |
+| 2.4 | `Content-Length` ≠ actual body length | T | If a handler / ClientRequest emits a body whose length disagrees with declared `Content-Length`, an intermediary may interpret framing differently from the writer's peer (smuggling). | Medium |
+| 2.5 | `Content-Length` *and* `Transfer-Encoding: chunked` | T | Both headers reach the wire if user code constructs them via the raw headers dict; intermediaries disagree on which wins. | Medium |
+| 2.6 | Body emission on HEAD / 1xx / 204 / 304 | T | Writer strips CL/TE for empty-body responses but **does not block the application from writing a body**; bytes after the `\r\n\r\n` confuse the next pipelined request. | Medium |
+| 2.7 | `Set-Cookie` / `Cookie` value | T | Cookie name or value containing CR / LF / NUL passes through `SimpleCookie.output()` unchanged; only caught by writer's header validation. | Medium |
+| 2.8 | Compression / `Content-Encoding` | T | Body double-compression when user sets `Content-Encoding` manually and also enables `compress=...`. Intermediaries may reject or mis-decode a doubly-compressed body. | Low |
+| 2.9 | Drain / backpressure on slow readers | D | Slow consumer (or `Sec-WebSocket-Key`-style hold) keeps `transport.write()` queued; writer drains at 64 KiB threshold (`http_writer.py:StreamWriter.write`). A handler that doesn't await `drain()` can blow up. | Medium |
+| 2.10 | Single oversized chunk | D | `write(b)` with a multi-GB blob is handed straight to `transport.write`; memory pressure shifts to asyncio's buffer. | Low |
+| 2.11 | Chunked encoding hex framing | T | Malformed chunk-size lines (negative values, leading-`+`, leading zeros, hex obfuscation) would let a non-aiohttp peer reframe the body differently and smuggle. | Low |
+| 2.12 | Header insertion validation timing | T | CR/LF/NUL rejection is *write-time*, not *insert-time*. A handler that sets a malicious header and then aborts before `write_headers()` will not raise. (Documented; not a recommended change.) | Low |
+| 2.13 | Cython ⇄ pure-Python parity | T | Divergence between the two `_serialize_headers` implementations could let one backend silently pass CR/LF/NUL that the other rejects, weakening egress safety asymmetrically. | Low |
+| 2.14 | Trailers asymmetry | T | The writer never emits trailers, but the parser accepts incoming trailers; not a writer-side threat in itself, just a documentation point for completeness. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 2.1 | Header CR / LF / NUL injection | Both backends reject these bytes via `_write_str_raise_on_nlcr` (`_http_writer.pyx:_write_str_raise_on_nlcr`) and `_safe_header` (`http_writer.py:_safe_header`), raising `ValueError` from `_serialize_headers` before any byte hits the transport. Applied symmetrically to names, values, and the status line. | **The current tests import whichever `_serialize_headers` won the import, so only one backend is exercised. Parameterise like `tests/test_http_parser.py` does (cross-cuts [§6.1](#61-highest-leverage-recommendations) #3).** |
+| 2.2 | Status-line `reason` injection | `web_response.Response._set_status` (`web_response.py:StreamResponse._set_status`) rejects `\r` / `\n` in `reason` *at set-time*. The writer also rejects them at write-time as part of the status-line validation. | None. |
+| 2.3 | Request-line path / method | The full status line (`{method} {path} HTTP/{v}.{v}`) goes through `_write_str_raise_on_nlcr` / `_safe_header`, so CR / LF / NUL are caught regardless of whether `path` came from `yarl` or `method` was a caller-supplied string. yarl additionally rejects these bytes earlier per RFC 3986. | None. |
+| 2.4 | CL / body-length mismatch | None at write-time. `web.Response.write_eof` and the chunked writer write what they're given. | **Recommended hardening: in DEBUG mode, assert / warn when actual bytes-written disagrees with declared `Content-Length` at `write_eof()`. Useful for catching smuggling-adjacent bugs in user handlers.** |
+| 2.5 | CL + TE simultaneous | Server-side `enable_chunked_encoding()` (`web_response.py:StreamResponse.enable_chunked_encoding`) raises if `Content-Length` is already set; client-side `_update_transfer_encoding()` (`client_reqrep.py:ClientRequest._update_transfer_encoding`) raises if user sets `chunked=True` while `Content-Length` is in headers. Manual user injection into the raw headers dict is *not* caught. | **Consider a write-time assert in `StreamWriter` that rejects `Content-Length` and `Transfer-Encoding: chunked` coexisting.** |
+| 2.6 | Body-suppression edge cases | `web_response.py:StreamResponse._prepare_headers` strips `Content-Length` and `Transfer-Encoding` for HEAD / 1xx / 204 / 304 (`EMPTY_BODY_STATUS_CODES`, `helpers.py:EMPTY_BODY_METHODS`). The framework's own machinery doesn't write a body for these. | **User**: Do not call `resp.write(...)` in a handler responding HEAD / 1xx / 204 / 304 — framing strips CL / TE but does not block the byte write. **Optional aiohttp change: have `StreamWriter` short-circuit body writes when `length == 0` and the response was framed as empty-body.** |
+| 2.7 | Cookie injection | `populate_with_cookies` (`helpers.py:populate_with_cookies`) routes the cookie through `SimpleCookie.output()` and then into a regular header, where the CR / LF / NUL check at write-time catches anything `SimpleCookie` happened to pass through. | Documented design decision: rely on writer-level validation rather than tightening `set_cookie` / `populate_with_cookies` further. Keep regression tests covering cookie name/value with CR / LF / NUL across both backends. |
+| 2.8 | Manual `Content-Encoding` | Server side: `enable_compression()` (`web_response.py:StreamResponse.enable_compression`) returns early if `Content-Encoding` already present, so the body is not double-compressed. Client side: `ClientRequest._update_content_encoding` raises `ValueError("compress can not be set if Content-Encoding header is set")` — symmetric guard. | None. |
+| 2.9 | Drain / backpressure | `StreamWriter.write` drains at `LIMIT = 0x10000` bytes (`http_writer.py:StreamWriter.write`) when `drain=True` is set by the caller. Application code is expected to `await write(...)` to honour backpressure. | **User**: `await write(...)` in handlers; tight `for` loops without `await` can starve the event loop. Cross-reference [§5.7](#57-server-connection-lifecycle) for connection-level read/write timeouts that mitigate slow consumers. |
+| 2.10 | Oversized single chunk | None at the writer layer — bytes go straight to `transport.write`. asyncio applies its own high-water marks via the transport. | **User**: Relies on application-level bounds (use streaming, generators, `FileResponse`, etc., for large bodies). |
+| 2.11 | Chunked hex framing | The writer always uses `f"{len(chunk):x}\r\n"` followed by the chunk and `\r\n` (`http_writer.py:StreamWriter._write_chunked_payload`). | None. |
+| 2.12 | Insert-time vs write-time validation | Headers are validated at write-time only; `set_status` validates `reason` at set-time. | Documented design decision: late validation is acceptable; keep behaviour as-is. |
+| 2.13 | Cython ⇄ pure-Python parity | Both backends share the same logic and test surface; the Cython version uses a fast bytewise check, the Python version uses `in` on three sentinel characters. | **Parameterise the writer tests over both backends so egress equivalence on malicious inputs is exercised under both (see [§6.1](#61-highest-leverage-recommendations) #3).** |
+| 2.14 | Trailers asymmetry | Writer does not emit trailers; parser accepts trailers on incoming. Documented for completeness. | None. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-q3qx-c6g2-7pw2 (CVE-2023-49081)** (3.9.0) — `ClientSession`
+  CRLF injection via the HTTP `version` argument.
+- **GHSA-qvrw-v9rv-5rjx (CVE-2023-49082)** (3.9.0) — `ClientSession` CRLF injection via
+  the `method` argument (request-line injection).
+- **GHSA-mwh4-6h8g-pg8w (CVE-2026-34519)** (3.13.4) — response-splitting via `\r` in
+  the status-line `reason`. Fixed by rejecting CR/LF in `reason` at
+  `_set_status` set-time, on top of the existing writer-side check
+  (threat 2.2).
+
+Writer-level CR / LF / NUL rejection via `_safe_header` and
+`_write_str_raise_on_nlcr` has been in place since the header-injection
+family of issues was first surfaced (well before CVE-2023-37276, which
+was a parser-side fix).
