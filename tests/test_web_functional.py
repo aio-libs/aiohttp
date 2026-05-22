@@ -36,7 +36,7 @@ try:
 except ImportError:
     try:
         import brotli
-    except ImportError:
+    except ImportError:  # pragma: no cover  # coverage not available on iOS/Android
         brotli = None
 
 try:

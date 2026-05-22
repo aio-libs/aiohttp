@@ -41,7 +41,7 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:  # pragma: no cover
+except ImportError:  # pragma: no cover  # coverage not available on iOS/Android
     brotli = None
 
 try:
