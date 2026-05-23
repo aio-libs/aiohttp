@@ -111,9 +111,12 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
         out_str = str(s)
 
     for ch in out_str:
-        if ch in {0x0D, 0x0A, 0x00}:
+        # RFC 9110 §5.5 / RFC 9112 §4: reject all ASCII control characters
+        # (0x00-0x08, 0x0A-0x1F, 0x7F) in headers, status lines, and reason
+        # phrases. HTAB (0x09) and SP (0x20) remain permitted.
+        if (ch < 0x20 and ch != 0x09) or ch == 0x7F:
             raise ValueError(
-                "Newline, carriage return, or null byte detected in headers. "
+                "Forbidden control character detected in headers. "
                 "Potential header injection attack."
             )
         if _write_utf8(writer, ch) < 0:
