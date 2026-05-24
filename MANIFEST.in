@@ -11,6 +11,7 @@ graft tools
 graft requirements
 graft vendor
 global-exclude *.pyc
+global-exclude *.hash
 global-exclude *.pyd
 global-exclude *.so
 global-exclude *.lib

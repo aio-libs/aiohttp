@@ -1,0 +1,2 @@
+Excluded internal checksum files from source distributions and wheels.
+-- by :user:`nightcityblade`.
