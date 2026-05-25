@@ -24,7 +24,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.0.0
     # via cryptography
-click==8.4.0
+click==8.4.1
     # via wait-for-it
 coverage==7.14.0
     # via
@@ -44,7 +44,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.15
+idna==3.16
     # via
     #   trustme
     #   yarl

@@ -14,13 +14,13 @@ certifi==2026.5.20
     # via requests
 charset-normalizer==3.4.7
     # via requests
-click==8.4.0
+click==8.4.1
     # via towncrier
 docutils==0.21.2
     # via
     #   myst-parser
     #   sphinx
-idna==3.15
+idna==3.16
     # via requests
 imagesize==2.0.0
     # via sphinx
