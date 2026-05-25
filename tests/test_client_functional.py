@@ -1161,9 +1161,9 @@ async def test_read_timeout_between_chunks(
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
-        # write data 4 times, with pauses. Total time 0.2 seconds.
+        # write data 4 times, with pauses. Total time 0.4 seconds.
         for _ in range(4):
-            await asyncio.sleep(0.05)
+            await asyncio.sleep(0.1)
             await resp.write(b"data\n")
         return resp
 
