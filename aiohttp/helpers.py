@@ -125,7 +125,7 @@ def get_unclosed_warning_message(
 ) -> str:
     if source_traceback is None:
         return message
-    return f"{message}\nThe object was created at (most recent call last):\n{''.join(traceback.format_list(source_traceback)).rstrip()}"  # noqa: E501
+    return f"{message}\nThe object was created at (most recent call last):\n{''.join(traceback.format_list(source_traceback)).rstrip()}"
 
 
 CHAR = {chr(i) for i in range(0, 128)}
