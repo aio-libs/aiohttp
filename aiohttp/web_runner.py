@@ -1,7 +1,9 @@
 import asyncio
+import os
 import signal
 import socket
 from abc import ABC, abstractmethod
+from functools import partial
 from typing import Any, Generic, TypeVar
 
 import aiofastnet
@@ -131,16 +133,8 @@ class TCPSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        # self._server = await loop.create_server(
-        #     server,
-        #     self._host,
-        #     self._port,
-        #     ssl=self._ssl_context,
-        #     backlog=self._backlog,
-        #     reuse_address=self._reuse_address,
-        #     reuse_port=self._reuse_port,
-        # )
-        self._server = await aiofastnet.create_server(loop,
+        create_server = partial(aiofastnet.create_server, loop) if os.environ.get("USE_AIOFN") else loop.create_server
+        self._server = await create_server(
             server,
             self._host,
             self._port,

@@ -132,7 +132,10 @@ class FileResponse(StreamResponse):
         assert transport is not None
 
         try:
-            await aiofastnet.sendfile(loop, transport, fobj, offset, count)
+            if os.environ.get("USE_AIOFN"):
+                await aiofastnet.sendfile(loop, transport, fobj, offset, count)
+            else:
+                await loop.sendfile(transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
