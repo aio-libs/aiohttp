@@ -59,7 +59,7 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.4.0
+click==8.4.1
     # via
     #   pip-tools
     #   slotscheck
@@ -102,7 +102,7 @@ gunicorn==26.0.0
     # via -r requirements/base.in
 identify==2.6.19
     # via pre-commit
-idna==3.15
+idna==3.16
     # via
     #   requests
     #   trustme
