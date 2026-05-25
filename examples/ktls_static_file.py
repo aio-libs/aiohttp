@@ -11,12 +11,10 @@ import uvloop
 from aiohttp import web
 
 
-logger = getLogger(__name__)
 HOST = "0.0.0.0"
 TLS_PORT = 8443
 KTLS_PORT = 8444
-FILE_SIZE = 8 * 1024 * 1024 * 1024
-CHUNK_SIZE = 1024 * 1024
+FILE_SIZE = 2 * 1024 * 1024 * 1024
 STATIC_DIR = pathlib.Path(tempfile.gettempdir()) / "aiohttp-ktls-static"
 HUGE_FILE = STATIC_DIR / "huge.bin"
 
@@ -25,11 +23,7 @@ def make_huge_file() -> pathlib.Path:
     STATIC_DIR.mkdir(parents=True, exist_ok=True)
     if not HUGE_FILE.exists() or HUGE_FILE.stat().st_size != FILE_SIZE:
         with HUGE_FILE.open("wb") as f:
-            remaining = FILE_SIZE
-            while remaining:
-                chunk_size = min(CHUNK_SIZE, remaining)
-                f.write(os.urandom(chunk_size))
-                remaining -= chunk_size
+            f.truncate(FILE_SIZE)
     return HUGE_FILE
 
 
@@ -44,38 +38,12 @@ def make_ssl_context(*, enable_ktls: bool) -> ssl.SSLContext:
     return ssl_context
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Serve one 50 MiB file from two HTTPS ports, one with KTLS enabled."
-        )
-    )
-    parser.add_argument("--host", default=HOST)
-    parser.add_argument("--tls-port", type=int, default=TLS_PORT)
-    parser.add_argument("--ktls-port", type=int, default=KTLS_PORT)
-    parser.add_argument("--uvloop", action="store_true", help="Use uvloop")
-    parser.add_argument("--asyncio-debug", action="store_true", help="Enable loop debugging")
-    parser.add_argument("--level", type=str, default="INFO", help="Logging level")
-    return parser.parse_args()
-
-
-async def index(request: web.Request) -> web.Response:
-    return web.Response(
-        text=(
-            "Download /huge.bin from either HTTPS server.\n"
-            "The startup log shows which port has KTLS enabled.\n"
-        ),
-        content_type="text/plain",
-    )
-
-
 async def huge_file(request: web.Request) -> web.FileResponse:
     return web.FileResponse(make_huge_file())
 
 
 def make_app() -> web.Application:
     app = web.Application()
-    app.router.add_get("/", index)
     app.router.add_get("/huge.bin", huge_file)
     return app
 
@@ -116,14 +84,23 @@ async def main(args) -> None:
 
 
 if __name__ == "__main__":
-    args = parse_args()
+    parser = argparse.ArgumentParser(
+        description=(
+            "Serve one 50 MiB file from two HTTPS ports, one with KTLS enabled."
+        )
+    )
+    parser.add_argument("--host", default=HOST)
+    parser.add_argument("--tls-port", type=int, default=TLS_PORT)
+    parser.add_argument("--ktls-port", type=int, default=KTLS_PORT)
+    parser.add_argument("--uvloop", action="store_true", help="Use uvloop")
+    parser.add_argument("--asyncio-debug", action="store_true", help="Enable loop debugging")
+    parser.add_argument("--level", type=str, default="INFO", help="Logging level")
+
+    args = parser.parse_args()
 
     if args.uvloop:
         uvloop.install()
 
     basicConfig(level=args.level)
 
-    try:
-        asyncio.run(main(args))
-    except KeyboardInterrupt:
-        logger.info("Interrupted by user, shutting down.")
+    asyncio.run(main(args))
