@@ -5,12 +5,13 @@ import os
 import pathlib
 import ssl
 import tempfile
-from logging import basicConfig
+from logging import basicConfig, getLogger
 import uvloop
 
 from aiohttp import web
 
 
+logger = getLogger(__name__)
 HOST = "0.0.0.0"
 TLS_PORT = 8443
 KTLS_PORT = 8444
@@ -125,4 +126,4 @@ if __name__ == "__main__":
     try:
         asyncio.run(main(args))
     except KeyboardInterrupt:
-        pass
+        logger.info("Interrupted by user, shutting down.")
