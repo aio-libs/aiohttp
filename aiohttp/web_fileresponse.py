@@ -10,6 +10,7 @@ from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
+import aiofastnet
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -131,7 +132,7 @@ class FileResponse(StreamResponse):
         assert transport is not None
 
         try:
-            await loop.sendfile(transport, fobj, offset, count)
+            await aiofastnet.sendfile(loop, transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

@@ -4,6 +4,7 @@ import socket
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
+import aiofastnet
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
@@ -130,7 +131,16 @@ class TCPSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        # self._server = await loop.create_server(
+        #     server,
+        #     self._host,
+        #     self._port,
+        #     ssl=self._ssl_context,
+        #     backlog=self._backlog,
+        #     reuse_address=self._reuse_address,
+        #     reuse_port=self._reuse_port,
+        # )
+        self._server = await aiofastnet.create_server(loop,
             server,
             self._host,
             self._port,
@@ -139,6 +149,7 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
+
         if self._server.sockets:
             self._bound_port = self._server.sockets[0].getsockname()[1]
         else:
@@ -244,9 +255,13 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
-            server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+        self._server = await aiofastnet.create_server(
+            loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
+
+        # self._server = await loop.create_server(
+        #     server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+        # )
 
 
 class BaseRunner(ABC, Generic[_Request]):
