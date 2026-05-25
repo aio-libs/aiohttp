@@ -14,6 +14,7 @@ import platform
 import re
 import sys
 import time
+import traceback
 import warnings
 import weakref
 from collections.abc import Callable, Iterable, Iterator, Mapping
@@ -117,6 +118,14 @@ EMPTY_BODY_METHODS = hdrs.METH_HEAD_ALL
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
+
+
+def get_unclosed_warning_message(
+    message: str, source_traceback: traceback.StackSummary | None
+) -> str:
+    if source_traceback is None:
+        return message
+    return f"{message}\nThe object was created at (most recent call last):\n{''.join(traceback.format_list(source_traceback)).rstrip()}"  # noqa: E501
 
 
 CHAR = {chr(i) for i in range(0, 128)}

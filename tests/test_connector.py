@@ -176,10 +176,12 @@ async def test_connection_del_loop_debug() -> None:
     exc_handler = mock.Mock()
     loop.set_exception_handler(exc_handler)
 
-    with pytest.warns(ResourceWarning):
+    with pytest.warns(ResourceWarning) as cm:
         del conn
         gc.collect()
 
+    warning_message = str(cm[0].message)
+    assert "The object was created at" in warning_message
     msg = {
         "message": mock.ANY,
         "client_connection": mock.ANY,

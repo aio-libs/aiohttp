@@ -43,6 +43,7 @@ from .client_reqrep import (
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
+    get_unclosed_warning_message,
     is_ip_address,
     sentinel,
     set_exception,
@@ -130,7 +131,11 @@ class Connection:
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._protocol is not None:
             _warnings.warn(
-                f"Unclosed connection {self!r}", ResourceWarning, source=self
+                get_unclosed_warning_message(
+                    f"Unclosed connection {self!r}", self._source_traceback
+                ),
+                ResourceWarning,
+                source=self,
             )
             if self._loop.is_closed():
                 return
@@ -333,7 +338,13 @@ class BaseConnector:
 
         self._close_immediately()
 
-        _warnings.warn(f"Unclosed connector {self!r}", ResourceWarning, source=self)
+        _warnings.warn(
+            get_unclosed_warning_message(
+                f"Unclosed connector {self!r}", self._source_traceback
+            ),
+            ResourceWarning,
+            source=self,
+        )
         context = {
             "connector": self,
             "connections": conns,

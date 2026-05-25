@@ -98,6 +98,7 @@ from .helpers import (
     _auth_header_from_netrc,
     frozen_dataclass_decorator,
     get_env_proxy_for_url,
+    get_unclosed_warning_message,
     netrc_from_env,
     sentinel,
     strip_auth_from_url,
@@ -431,7 +432,9 @@ class ClientSession:
     def __del__(self, _warnings: Any = warnings) -> None:
         if not self.closed:
             _warnings.warn(
-                f"Unclosed client session {self!r}",
+                get_unclosed_warning_message(
+                    f"Unclosed client session {self!r}", self._source_traceback
+                ),
                 ResourceWarning,
                 source=self,
             )

@@ -42,6 +42,7 @@ from .helpers import (
     TimerNoop,
     encode_basic_auth,
     frozen_dataclass_decorator,
+    get_unclosed_warning_message,
     is_expected_content_type,
     parse_mimetype,
     reify,
@@ -390,7 +391,11 @@ class ClientResponse(HeadersMixin):
 
             if self._loop.get_debug():
                 _warnings.warn(
-                    f"Unclosed response {self!r}", ResourceWarning, source=self
+                    get_unclosed_warning_message(
+                        f"Unclosed response {self!r}", self._source_traceback
+                    ),
+                    ResourceWarning,
+                    source=self,
                 )
                 context = {"client_response": self, "message": "Unclosed response"}
                 if self._source_traceback:
