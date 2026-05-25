@@ -429,3 +429,120 @@ Writer-level CR / LF / NUL rejection via `_safe_header` and
 `_write_str_raise_on_nlcr` has been in place since the header-injection
 family of issues was first surfaced (well before CVE-2023-37276, which
 was a parser-side fix).
+
+---
+
+### 5.3. WebSocket framing & per-message deflate
+
+**Scope.** RFC 6455 frame parsing and serialisation, masking, fragmentation
+and continuation, control frames (close / ping / pong), and the
+permessage-deflate (PMCE; RFC 7692) extension. Both server-side
+(`web_ws.WebSocketResponse`) and client-side (`client_ws.ClientWebSocketResponse`)
+share this layer. Out of scope: the WebSocket *handshake* and per-side
+lifecycle (covered in [§5.11](#511-server-side-websocket-handler) server, [§5.14](#514-client-side-websocket) client) and the underlying
+compression codecs themselves ([§5.5](#55-compression-codecs)).
+
+**Components covered.**
+
+- `aiohttp/http_websocket.py` — public re-export shim.
+- `aiohttp/_websocket/`:
+  - `mask.pyx` / `mask.pxd` — Cython SIMD-style XOR.
+  - `helpers.py` — pure-Python masking fallback (`bytearray.translate`),
+    extension parameter parsing (`ws_ext_parse`), close-code unpacking.
+  - `models.py` — `WSCloseCode`, `WSMsgType`, message dataclasses.
+  - `reader.py` / `reader_c.pyx` / `reader_c.py` / `reader_py.py` — frame
+    reader (Cython preferred, pure-Python fallback).
+  - `writer.py` — frame writer.
+  - `__init__.py`.
+
+**Selection.** The reader's import dance (`reader.py`) prefers
+`reader_c` (Cython) and falls back to `reader_py` on `ImportError`. Both
+implementations apply the same validation rules.
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted peer]) --> Feed[reader.feed_data]
+  Feed --> Parse[Frame state machine]
+  Parse -->|opcode/RSV/length checks| Mask[websocket_mask XOR]
+  Mask --> Inflate[(zlib inflate if RSV1)]
+  Inflate --> Validate[max_msg_size + UTF-8]
+  Validate -->|WSMessage| App[(user code)]
+  App -->|send_*| Writer[writer.send_frame]
+  Writer --> Deflate[(zlib deflate if compress)]
+  Deflate --> Frame[Frame builder + mask]
+  Frame --> Wire
+```
+
+The reader's input is fully attacker-controlled. Output (`WSMessage` with
+`data`, `extra`, `type`) is consumed by user handler code. Server-side, mask
+bytes from the peer's frames are XORed before reaching the application;
+client-side, the writer adds masks to outgoing frames.
+
+**Assets at risk (chunk-specific).**
+
+- **Frame integrity** — opcode, RSV bits, FIN, length, mask all parsed
+  consistently; no path can let a peer smuggle a control frame inside a data
+  frame or coerce the reader into accepting a malformed frame.
+- **Decompression safety** — PMCE-compressed frames cannot drive memory or
+  CPU to denial of service via a small input expanding to a huge output.
+- **Memory bounds across messages** — a peer holding the connection open and
+  drip-feeding fragments cannot grow memory unboundedly.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 3.1 | Server reader accepting unmasked client frames | T / S | The reader does not enforce RFC 6455 §5.1 ("server MUST fail on unmasked client frame"). A non-conformant or malicious client can send unmasked frames; the spec rationale is preventing cache-poisoning of intermediaries. | Medium |
+| 3.2 | Mask key generation | I | Outbound masks come from `random.getrandbits(32)` (`writer.py:WebSocketWriter.__init__`), not `secrets`. RFC 6455 §5.3 says masks must be "unpredictable"; PRNG is not cryptographic. | Low |
+| 3.3 | Reserved bits (RSV1/2/3) | T | RSV2/3 always rejected; RSV1 only allowed when PMCE is negotiated (`reader_py.py:WebSocketReader._feed_data`). Misalignment between negotiation state and frame would let a peer toggle decompression. | Low |
+| 3.4 | Unknown opcode | T | Peer-controlled opcode outside the defined range (`0x0`–`0xA`) could route to an unexpected handler path if accepted. | Low |
+| 3.5 | Control-frame size > 125 bytes | T | Oversized control frame would violate RFC 6455 framing and could mis-frame against a non-aiohttp peer. | Low |
+| 3.6 | Fragmented control frame (FIN=0) | T | Fragmented control frame is a protocol violation; accepting one would let a peer interleave control state across the fragment sequence. | Low |
+| 3.7 | Continuation without preceding text/binary | T | Continuation frame without an initial data frame leaves assembly state ambiguous. | Low |
+| 3.8 | Unbounded fragmentation memory growth | D | A peer streams many continuation fragments without ever setting FIN; the reassembly buffer grows with each fragment until memory is exhausted. | Low |
+| 3.9 | PMCE decompression bomb | D | Compressed frame expanding to >`max_msg_size`. Mitigated by post-decompress check; some zlib backends (e.g. isal) may overshoot the per-call `max_length` by a chunk before the post-check rejects it. | Medium |
+| 3.10 | PMCE context retention memory | D / I | When `server_no_context_takeover` / `client_no_context_takeover` is *not* negotiated, the zlib context persists across messages on each side. No explicit per-message reset; long-lived sessions accumulate state. | Low–Med |
+| 3.11 | UTF-8 validation on text frames | T | Invalid UTF-8 in a text frame (or close reason) reaching the handler as `str` would surface as bytes via `surrogateescape` and confuse caller code that assumes valid Unicode. | Low |
+| 3.12 | Close-frame handling | T | Out-of-range close codes from a peer would let a non-aiohttp consumer of the close reason mis-interpret the disconnect reason. | Low |
+| 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
+| 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
+| 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 3.1 | Unmasked client frames accepted | None — the reader is direction-agnostic; `web_ws.py` does not enforce client-mask either. | **Recommended hardening: Enforce RFC 6455 §5.1 mask direction in strict mode only (gated on `DEBUG`, mirroring the HTTP parser's lenient-default / strict-DEBUG asymmetry): server reader rejects frames with `has_mask == 0`, client reader rejects masked server frames, both with a `PROTOCOL_ERROR`-style close. Production default stays lenient for interop.** |
+| 3.2 | Non-cryptographic mask RNG | `partial(random.getrandbits, 32)` per writer instance. | Documented design decision: WebSocket masking exists for cache-poisoning resistance against intermediaries, not as a confidentiality primitive. The mask needs to be performant — called once per outbound frame on a hot path — and does not need to be cryptographically unpredictable. `random.getrandbits(32)` is the deliberate choice. |
+| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` ties RSV1 acceptance to the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
+| 3.4 | Unknown opcode | Rejected. | None. |
+| 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
+| 3.8 | Fragment memory bound | `max_msg_size` enforced pre-FIN and at assembly. Default 4 MiB. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
+| 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
+| 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Documented design decision: keep the RFC 7692 default (context takeover). **Document the memory tradeoff in user-facing WebSocket docs.** **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
+| 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
+| 3.12 | Close-code validation | `reader_py.py:WebSocketReader._handle_frame` validates codes < 3000 against `ALLOWED_CLOSE_CODES`; codes ≥ 3000 accepted (RFC reserved for libraries / private use, correct). | None. |
+| 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
+| 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
+| 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
+
+**Past advisories / hardening (recap).**
+
+- **PR #11898** (3.13.3) — PMCE decompression DoS hardening:
+  `WebSocketReader._handle_frame` decompresses with a `max_length` cap of
+  `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
+  This is the primary mitigation for zip-bomb-style attacks against
+  WebSocket peers.
+- No formal CVE has been published against the WebSocket framing layer to
+  date.
+
+**Open questions.**
+
+1. Should server-side reader reject unmasked frames (and client-side reject
+   masked ones) per RFC 6455 §5.1? (Threat 3.1 — recommended.)
+2. Is the PRNG mask source (`random.getrandbits`) sufficient, or should it be
+   migrated to `secrets`/`os.urandom`? (Threat 3.2.)
+3. For long-lived WebSocket sessions, is there a use case for *forcing*
+   `no_context_takeover` defaults to limit memory growth? (Threat 3.10.)
