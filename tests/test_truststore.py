@@ -23,7 +23,7 @@ from aiohttp.client_reqrep import Fingerprint
 
 def _has_truststore() -> bool:
     try:
-        import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: F401, I900
+        import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: F401
     except ImportError:
         return False
     return True
@@ -61,7 +61,7 @@ async def test_use_truststore_false_does_not_import_truststore() -> None:
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_use_truststore_true_uses_truststore_context() -> None:
     """Build a truststore SSLContext when the flag is True and the lib exists."""
-    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
+    import truststore  # type: ignore[import-not-found,unused-ignore]
 
     conn = TCPConnector(use_truststore=True)
     try:
@@ -111,7 +111,7 @@ async def test_use_truststore_true_with_ssl_false_raises_value_error() -> None:
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_explicit_ssl_context_overrides_use_truststore() -> None:
     """Prefer an explicit SSLContext over the truststore flag in dispatch."""
-    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
+    import truststore  # type: ignore[import-not-found,unused-ignore]
 
     explicit_ctx = ssl.create_default_context()
     conn = TCPConnector(use_truststore=True, ssl=explicit_ctx)
@@ -128,7 +128,7 @@ async def test_explicit_ssl_context_overrides_use_truststore() -> None:
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_use_truststore_per_instance_no_singleton_bleed() -> None:
     """Give each connector its own truststore context; no module-level sharing."""
-    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
+    import truststore  # type: ignore[import-not-found,unused-ignore]
 
     conn_a = TCPConnector(use_truststore=True)
     conn_b = TCPConnector(use_truststore=True)
@@ -149,7 +149,7 @@ async def test_get_ssl_context_returns_truststore_context_for_verified_request()
     None
 ):
     """Return the per-connector truststore context for verified requests."""
-    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
+    import truststore  # type: ignore[import-not-found,unused-ignore]
 
     conn = TCPConnector(use_truststore=True)
     try:

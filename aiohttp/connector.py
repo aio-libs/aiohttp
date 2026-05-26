@@ -850,7 +850,7 @@ def _import_truststore() -> Any:
     than a cryptic ``ImportError`` later.
     """
     try:
-        import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
+        import truststore  # type: ignore[import-not-found,unused-ignore]
     except ImportError as exc:
         raise RuntimeError(
             "truststore is not installed. Install it with "
