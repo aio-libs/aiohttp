@@ -1158,17 +1158,17 @@ async def test_read_timeout_between_chunks(aiohttp_client, mocker) -> None:
     async def handler(request):
         resp = aiohttp.web.StreamResponse()
         await resp.prepare(request)
-        # write data 4 times, with pauses. Total time 2 seconds.
+        # write data 4 times, with pauses. Total time 0.4 seconds.
         for _ in range(4):
-            await asyncio.sleep(0.5)
+            await asyncio.sleep(0.1)
             await resp.write(b"data\n")
         return resp
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
 
-    # A timeout of 0.2 seconds should apply per read.
-    timeout = aiohttp.ClientTimeout(sock_read=1)
+    # The read timeout should apply per read, not to the whole response.
+    timeout = aiohttp.ClientTimeout(sock_read=0.2)
     client = await aiohttp_client(app, timeout=timeout)
 
     res = b""
