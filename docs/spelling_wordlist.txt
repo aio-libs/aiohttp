@@ -181,6 +181,7 @@ keepalive
 keepalived
 keepalives
 keepaliving
+Keychain
 kib
 KiB
 kwarg
@@ -196,6 +197,7 @@ lookup
 lookups
 lossless
 lowercased
+macOS
 Mako
 manylinux
 metadata
@@ -358,6 +360,7 @@ toolbar
 toplevel
 towncrier
 tp
+truststore
 tuples
 UI
 un
