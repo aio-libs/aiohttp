@@ -1,0 +1,2 @@
+Reduced the runtime of a client timeout regression test by shortening its artificial response delay.
+-- by :user:`nightcityblade`.
