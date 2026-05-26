@@ -23,7 +23,7 @@ from aiohttp.client_reqrep import Fingerprint
 
 def _has_truststore() -> bool:
     try:
-        import truststore  # noqa: F401
+        import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: F401, I900
     except ImportError:
         return False
     return True
@@ -60,9 +60,8 @@ async def test_use_truststore_false_does_not_import_truststore() -> None:
 
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_use_truststore_true_uses_truststore_context() -> None:
-    """When the flag is True and the library is present, a truststore
-    SSLContext is built and returned from the dispatch."""
-    import truststore
+    """Build a truststore SSLContext when the flag is True and the lib exists."""
+    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
 
     conn = TCPConnector(use_truststore=True)
     try:
@@ -73,8 +72,7 @@ async def test_use_truststore_true_uses_truststore_context() -> None:
 
 
 async def test_use_truststore_true_raises_when_truststore_missing() -> None:
-    """A friendly ``RuntimeError`` is raised at construction time when the
-    optional dependency is not installed."""
+    """Raise a friendly RuntimeError at construction when the dep is missing."""
 
     def fake_import() -> Any:
         raise RuntimeError(
@@ -88,11 +86,7 @@ async def test_use_truststore_true_raises_when_truststore_missing() -> None:
 
 
 def test_import_truststore_helper_wraps_importerror() -> None:
-    """The ``_import_truststore`` helper translates ``ImportError`` from a
-    missing ``truststore`` module into a ``RuntimeError`` with install hints.
-
-    This test is synchronous because the helper does not touch the loop.
-    """
+    """Translate a missing ``truststore`` ImportError into a clear RuntimeError."""
     sentinel_missing = object()
     original = sys.modules.get("truststore", sentinel_missing)
     sys.modules["truststore"] = None  # type: ignore[assignment]
@@ -109,18 +103,15 @@ def test_import_truststore_helper_wraps_importerror() -> None:
 
 
 async def test_use_truststore_true_with_ssl_false_raises_value_error() -> None:
-    """``use_truststore=True`` is incompatible with ``ssl=False`` because there
-    is no concept of an unverified trust-store context."""
+    """Reject ``use_truststore=True`` combined with ``ssl=False`` at init."""
     with pytest.raises(ValueError, match="incompatible with ssl=False"):
         TCPConnector(use_truststore=True, ssl=False)
 
 
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_explicit_ssl_context_overrides_use_truststore() -> None:
-    """When the user passes both an explicit ``SSLContext`` and the flag, the
-    explicit context wins. The truststore context remains cached but unused
-    in the dispatch."""
-    import truststore
+    """Prefer an explicit SSLContext over the truststore flag in dispatch."""
+    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
 
     explicit_ctx = ssl.create_default_context()
     conn = TCPConnector(use_truststore=True, ssl=explicit_ctx)
@@ -136,9 +127,8 @@ async def test_explicit_ssl_context_overrides_use_truststore() -> None:
 
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_use_truststore_per_instance_no_singleton_bleed() -> None:
-    """Two connectors get two distinct truststore contexts; enabling the flag
-    on one connector does not affect another connector that did not opt in."""
-    import truststore
+    """Give each connector its own truststore context; no module-level sharing."""
+    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
 
     conn_a = TCPConnector(use_truststore=True)
     conn_b = TCPConnector(use_truststore=True)
@@ -158,9 +148,8 @@ async def test_use_truststore_per_instance_no_singleton_bleed() -> None:
 async def test_get_ssl_context_returns_truststore_context_for_verified_request() -> (
     None
 ):
-    """The dispatch returns the per-connector truststore context in place of
-    the module-level verified singleton when the flag is set."""
-    import truststore
+    """Return the per-connector truststore context for verified requests."""
+    import truststore  # type: ignore[import-not-found,unused-ignore]  # noqa: I900
 
     conn = TCPConnector(use_truststore=True)
     try:
@@ -177,10 +166,7 @@ async def test_get_ssl_context_returns_truststore_context_for_verified_request()
 
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 async def test_use_truststore_with_fingerprint_uses_unverified_context() -> None:
-    """``Fingerprint`` validation happens after the handshake. The existing
-    dispatch returns the unverified singleton for fingerprint-pinned
-    requests; enabling ``use_truststore`` does not change that, because
-    fingerprint pinning replaces CA verification entirely."""
+    """Skip the truststore path when a Fingerprint replaces CA verification."""
     fingerprint = Fingerprint(b"\x00" * 32)
     conn = TCPConnector(use_truststore=True, ssl=fingerprint)
     try:
@@ -194,9 +180,7 @@ async def test_use_truststore_with_fingerprint_uses_unverified_context() -> None
 
 
 def test_make_ssl_context_unverified_ignores_use_truststore() -> None:
-    """When ``verified=False``, ``use_truststore`` is silently ignored — there
-    is no concept of an unverified truststore context. Synchronous because it
-    only exercises the module-level helper."""
+    """Silently ignore use_truststore when verified=False; no truststore import."""
     with mock.patch.object(
         connector_module,
         "_import_truststore",
@@ -208,8 +192,6 @@ def test_make_ssl_context_unverified_ignores_use_truststore() -> None:
 
 @pytest.mark.skipif(not _has_truststore(), reason="truststore not installed")
 def test_make_ssl_context_verified_with_truststore_sets_alpn() -> None:
-    """``set_alpn_protocols`` must work on the truststore-backed context — it
-    is a documented subclass of ``ssl.SSLContext``. Synchronous because it
-    only exercises the module-level helper."""
+    """Verify ``set_alpn_protocols`` works on a truststore-backed context."""
     ctx = connector_module._make_ssl_context(True, use_truststore=True)
     assert isinstance(ctx, ssl.SSLContext)

@@ -15,5 +15,6 @@ pytest_codspeed
 python-on-whales
 setuptools-git
 trustme; platform_machine != "i686"  # no 32-bit wheels
+truststore; python_version >= "3.10" and implementation_name == "cpython"  # optional: gates use_truststore tests
 wait-for-it
 zlib_ng
