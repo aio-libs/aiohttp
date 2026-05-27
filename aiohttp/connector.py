@@ -1345,7 +1345,6 @@ class TCPConnector(BaseConnector):
                             start_tls = self._loop.start_tls
 
                     tls_transport = await start_tls(
-                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,

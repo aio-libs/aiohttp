@@ -249,13 +249,11 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await aiofastnet.create_server(
+        create_server = partial(aiofastnet.create_server, loop) if os.environ.get("USE_AIOFN") else loop.create_server
+
+        self._server = await create_server(
             loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
-
-        # self._server = await loop.create_server(
-        #     server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
-        # )
 
 
 class BaseRunner(ABC, Generic[_Request]):
