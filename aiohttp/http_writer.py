@@ -364,9 +364,8 @@ class StreamWriter(AbstractStreamWriter):
             await protocol._drain_helper()
 
 
-# Per RFC 9110 §5.5 and RFC 9112 §4, header field-values and reason-phrases
-# may contain HTAB, SP, VCHAR (0x21-0x7E), and obs-text (0x80-0xFF) only.
-# All other ASCII control characters (0x00-0x08, 0x0A-0x1F, 0x7F) are forbidden.
+# https://www.rfc-editor.org/info/rfc9110/#section-5.5-5
+# https://www.rfc-editor.org/info/rfc9112/#section-4-3
 _FORBIDDEN_HEADER_CHARS_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
 
 
