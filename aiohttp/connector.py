@@ -1337,7 +1337,10 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if os.environ.get("USE_AIOFN"):
-                        start_tls = functools.partial(aiofastnet.start_tls, self._loop, ssl_shutdown_timeout=self._ssl_shutdown_timeout)
+                        if self._ssl_shutdown_timeout:
+                            start_tls = functools.partial(aiofastnet.start_tls, self._loop, ssl_shutdown_timeout=self._ssl_shutdown_timeout)
+                        else:
+                            start_tls = functools.partial(aiofastnet.start_tls, self._loop)
                     else:
                         if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
                             start_tls = functools.partial(self._loop.start_tls, ssl_shutdown_timeout=self._ssl_shutdown_timeout)
