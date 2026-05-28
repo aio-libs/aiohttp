@@ -101,6 +101,21 @@ def test_payload_content_type() -> None:
     assert p.content_type == "application/json"
 
 
+@pytest.mark.parametrize("bad_byte", ("\r", "\n", "\x00"))
+def test_binary_headers_reject_injection_in_value(bad_byte: str) -> None:
+    p = Payload("test", headers={"X-Custom": f"value{bad_byte}Injected: bad"})
+    with pytest.raises(ValueError, match="header injection"):
+        p._binary_headers
+
+
+@pytest.mark.parametrize("bad_byte", ("\r", "\n", "\x00"))
+def test_binary_headers_reject_injection_in_name(bad_byte: str) -> None:
+    p = Payload("test")
+    p.headers[f"X-Custom{bad_byte}Injected"] = "value"
+    with pytest.raises(ValueError, match="header injection"):
+        p._binary_headers
+
+
 def test_bytes_payload_default_content_type() -> None:
     p = payload.BytesPayload(b"data")
     assert p.content_type == "application/octet-stream"
