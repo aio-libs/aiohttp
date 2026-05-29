@@ -20,6 +20,7 @@ else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
+
 def test_client_request_update_cookies(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:

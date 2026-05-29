@@ -7,9 +7,9 @@ import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from re import match as match_regex
+from typing import TYPE_CHECKING
 from unittest import mock
 from uuid import uuid4
-from typing import TYPE_CHECKING
 
 import pytest
 from yarl import URL
