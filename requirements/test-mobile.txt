@@ -84,10 +84,6 @@ pytest-timeout==2.4.0
     # via -r requirements/test-common-base.in
 python-dateutil==2.9.0.post0
     # via freezegun
-re-assert==1.1.0
-    # via -r requirements/test-common-base.in
-regex==2026.5.9
-    # via re-assert
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0

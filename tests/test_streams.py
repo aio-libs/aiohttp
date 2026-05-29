@@ -9,7 +9,6 @@ from itertools import groupby
 from unittest import mock
 
 import pytest
-from re_assert import Matches
 
 from aiohttp import streams
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
@@ -1104,7 +1103,7 @@ class TestStreamReader:
         loop = asyncio.get_event_loop()
         stream = self._make_one()
         stream._waiter = loop.create_future()
-        assert Matches(r"<StreamReader w=<Future pending[\S ]*>>") == repr(stream)
+        assert repr(stream).startswith("<StreamReader w=<Future pending")
         stream._waiter.set_result(None)
         await stream._waiter
         stream._waiter = None

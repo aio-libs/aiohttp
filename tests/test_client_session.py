@@ -15,7 +15,6 @@ from uuid import uuid4
 
 import pytest
 from multidict import CIMultiDict, MultiDict
-from re_assert import Matches
 from yarl import URL
 
 import aiohttp
@@ -435,10 +434,8 @@ def test_connector_loop(loop: asyncio.AbstractEventLoop) -> None:
                 return ClientSession(connector=connector, loop=loop)
 
             loop.run_until_complete(make_sess())
-        assert (
-            Matches("Session and connector has to use same event loop")
-            == str(ctx.value).strip()
-        )
+        expected = "Session and connector has to use same event loop"
+        assert str(ctx.value).startswith(expected)
         another_loop.run_until_complete(connector.close())
 
 

@@ -124,10 +124,6 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.81.0
     # via -r requirements/test-common.in
-re-assert==1.1.0
-    # via -r requirements/test-common-base.in
-regex==2026.5.9
-    # via re-assert
 rich==15.0.0
     # via pytest-codspeed
 setuptools-git==1.2

@@ -223,10 +223,6 @@ pyyaml==6.0.3
     #   myst-parser
     #   pre-commit
     #   sphinxcontrib-mermaid
-re-assert==1.1.0
-    # via -r requirements/test-common-base.in
-regex==2026.5.9
-    # via re-assert
 requests==2.34.2
     # via
     #   sphinx
