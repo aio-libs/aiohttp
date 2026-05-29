@@ -63,7 +63,7 @@ def hello_txt(
         hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
-    if (encoding == "br" and brotli is None):
+    if encoding == "br" and brotli is None:
         pytest.skip("brotli not available")
     return hello[encoding]
 
@@ -282,7 +282,7 @@ async def test_static_file_custom_content_type_compress(
     expect_encoding: str,
 ) -> None:
     """Test that custom type with encoding is returned for unencoded requests."""
-    if (expect_encoding == "br" and brotli is None):
+    if expect_encoding == "br" and brotli is None:
         pytest.skip("brotli not available")
 
     async def handler(request: web.Request) -> web.FileResponse:
@@ -319,7 +319,7 @@ async def test_static_file_with_encoding_and_enable_compression(
     forced_compression: web.ContentCoding | None,
 ) -> None:
     """Test that enable_compression does not double compress when an encoded file is also present."""
-    if (expect_encoding == "br" and brotli is None):
+    if expect_encoding == "br" and brotli is None:
         pytest.skip("brotli not available")
 
     async def handler(request: web.Request) -> web.FileResponse:
