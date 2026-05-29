@@ -2,10 +2,8 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
-from functools import partial
 from typing import Any, Generic, TypeVar
 
-import aiofastnet
 from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
@@ -143,7 +141,6 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
-
         if self._server.sockets:
             self._bound_port = self._server.sockets[0].getsockname()[1]
         else:

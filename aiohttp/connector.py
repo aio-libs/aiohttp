@@ -1260,7 +1260,6 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-
                 return await create_connection(self._loop, *args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
@@ -1343,7 +1342,7 @@ class TCPConnector(BaseConnector):
                             sslcontext,
                             server_hostname=req.server_hostname or req.url.raw_host,
                             ssl_handshake_timeout=timeout.total,
-                            ssl_shutdown_timeout=self._ssl_shutdown_timeout
+                            ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
                         tls_transport = await start_tls(
@@ -1352,9 +1351,8 @@ class TCPConnector(BaseConnector):
                             tls_proto,
                             sslcontext,
                             server_hostname=req.server_hostname or req.url.raw_host,
-                            ssl_handshake_timeout=timeout.total
+                            ssl_handshake_timeout=timeout.total,
                         )
-
                 except BaseException:
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a
