@@ -9,6 +9,7 @@ from contextlib import suppress
 from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
+from typing import TYPE_CHECKING
 
 import pytest
 from yarl import URL
