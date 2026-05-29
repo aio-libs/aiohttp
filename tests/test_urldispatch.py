@@ -6,7 +6,6 @@ from typing import NoReturn
 from urllib.parse import quote, unquote
 
 import pytest
-from re_assert import Matches
 from yarl import URL
 
 import aiohttp
@@ -317,10 +316,9 @@ def test_double_add_url_with_the_same_name(router) -> None:
     handler2 = make_handler()
     router.add_route("GET", "/get", handler1, name="name")
 
-    regexp = "Duplicate 'name', already handled by"
     with pytest.raises(ValueError) as ctx:
         router.add_route("GET", "/get_other", handler2, name="name")
-    assert Matches(regexp) == str(ctx.value)
+    assert str(ctx.value).startswith("Duplicate 'name', already handled by")
 
 
 def test_route_plain(router) -> None:
@@ -561,7 +559,7 @@ def test_contains(router) -> None:
 
 def test_static_repr(router) -> None:
     router.add_static("/get", pathlib.Path(aiohttp.__file__).parent, name="name")
-    assert Matches(r"<StaticResource 'name' /get") == repr(router["name"])
+    assert repr(router["name"]).startswith("<StaticResource 'name' /get")
 
 
 def test_static_adds_slash(router) -> None:
@@ -688,7 +686,8 @@ async def test_regular_match_info(router) -> None:
     req = make_mocked_request("GET", "/get/john")
     match_info = await router.resolve(req)
     assert {"name": "john"} == match_info
-    assert Matches("<MatchInfo {'name': 'john'}: .+<Dynamic.+>>") == repr(match_info)
+    assert repr(match_info).startswith("<MatchInfo {'name': 'john'}:")
+    assert "<Dynamic" in repr(match_info)
 
 
 async def test_match_info_with_plus(router) -> None:
@@ -1021,7 +1020,7 @@ def test_static_route_user_home(router) -> None:
     except ValueError:  # pragma: no cover
         pytest.skip("aiohttp folder is not placed in user's HOME")
     route = router.add_static("/st", str(static_dir))
-    assert here == route.get_info()["directory"]
+    assert here.resolve() == route.get_info()["directory"]
 
 
 def test_static_route_points_to_file(router) -> None:
@@ -1045,7 +1044,7 @@ async def test_405_for_resource_adapter(router) -> None:
 @pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
 async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
     """Test relative path traversing outside root does not resolve."""
-    static_file = pathlib.Path(aiohttp.__file__)
+    static_file = pathlib.Path(aiohttp.__file__).resolve()
     request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
     assert pathlib.Path(request_path).resolve() == static_file
 

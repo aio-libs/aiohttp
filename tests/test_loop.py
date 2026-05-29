@@ -1,5 +1,6 @@
 import asyncio
 import platform
+import sys
 import threading
 
 import pytest
@@ -10,6 +11,9 @@ from aiohttp.test_utils import AioHTTPTestCase, loop_context
 
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
+)
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
 )
 async def test_subprocess_co(loop) -> None:
     proc = await asyncio.create_subprocess_shell(
@@ -38,6 +42,9 @@ def test_default_loop(loop: asyncio.AbstractEventLoop) -> None:
     assert asyncio.get_event_loop() is loop
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
+)
 def test_setup_loop_non_main_thread() -> None:
     child_exc = None
 

@@ -1,4 +1,5 @@
 # HTTP client functional tests against aiohttp.web server
+from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
@@ -25,7 +26,7 @@ try:
     except ImportError:
         import brotli
 except ImportError:
-    brotli = None  # pragma: no cover
+    brotli = None
 
 try:
     from backports.zstd import ZstdCompressor

@@ -1,13 +1,19 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import pytest
-from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
 from aiohttp.pytest_plugin import AiohttpClient
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_one_thousand_round_trip_websocket_text_messages(

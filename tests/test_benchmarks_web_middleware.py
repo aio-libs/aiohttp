@@ -1,12 +1,19 @@
 """codspeed benchmarks for web middlewares."""
 
 import asyncio
+from typing import TYPE_CHECKING
 
-from pytest_codspeed import BenchmarkFixture
+import pytest
 
 from aiohttp import web
 from aiohttp.pytest_plugin import AiohttpClient
 from aiohttp.typedefs import Handler
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_ten_web_middlewares(

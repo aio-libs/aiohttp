@@ -1,0 +1,9 @@
+freezegun
+pkgconfig
+proxy.py >= 2.4.4rc5
+pytest
+pytest-cov
+pytest-mock
+pytest-timeout
+setuptools-git
+wait-for-it

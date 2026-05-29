@@ -113,7 +113,7 @@ class StreamWithShortenRead(Stream):
 
 
 class TestMultipartResponseWrapper:
-    def test_at_eof(self) -> None:
+    async def test_at_eof(self) -> None:
         wrapper = MultipartResponseWrapper(mock.Mock(), mock.Mock())
         wrapper.at_eof()
         assert wrapper.resp.content.at_eof.called

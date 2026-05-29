@@ -2,9 +2,10 @@
 
 import asyncio
 from http.cookies import BaseCookie
+from typing import TYPE_CHECKING
 
+import pytest
 from multidict import CIMultiDict
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp.client_reqrep import ClientRequest, ClientResponse
@@ -12,6 +13,12 @@ from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_client_request_update_cookies(
@@ -135,7 +142,6 @@ def test_send_client_request_one_hundred(
             """Swallow writes."""
 
     class MockProtocol(asyncio.BaseProtocol):
-
         def __init__(self) -> None:
             self.transport = MockTransport()
             self._paused = False
@@ -151,7 +157,6 @@ def test_send_client_request_one_hundred(
             """Swallow start_timeout."""
 
     class MockConnector:
-
         def __init__(self) -> None:
             self.force_close = False
 
