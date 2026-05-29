@@ -217,7 +217,7 @@ async def test_follow_symlink(
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(tmp_path), follow_symlinks=True)
+    app.router.add_static("/", str(tmp_path), break_symlink_sandbox=True)
     client = await aiohttp_client(app)
 
     # Request the root of the static directory.
@@ -229,7 +229,7 @@ async def test_follow_symlink(
 async def test_follow_symlink_directory_traversal(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
-    # Tests that follow_symlinks does not allow directory transversal
+    # Tests that break_symlink_sandbox does not allow directory transversal
     data = "private"
 
     private_file = tmp_path / "private_file"
@@ -241,7 +241,7 @@ async def test_follow_symlink_directory_traversal(
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(safe_path), follow_symlinks=True)
+    app.router.add_static("/", str(safe_path), break_symlink_sandbox=True)
     client = await aiohttp_client(app)
 
     await client.start_server()
@@ -259,7 +259,7 @@ async def test_follow_symlink_directory_traversal(
 async def test_follow_symlink_directory_traversal_after_normalization(
     tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
 ) -> None:
-    # Tests that follow_symlinks does not allow directory transversal
+    # Tests that break_symlink_sandbox does not allow directory transversal
     # after normalization
     #
     # Directory structure
@@ -293,7 +293,7 @@ async def test_follow_symlink_directory_traversal_after_normalization(
     app = web.Application()
 
     # Register global static route:
-    app.router.add_static("/", str(sandbox_path), follow_symlinks=True)
+    app.router.add_static("/", str(sandbox_path), break_symlink_sandbox=True)
     client = await aiohttp_client(app)
 
     await client.start_server()

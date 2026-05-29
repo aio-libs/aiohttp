@@ -6,6 +6,11 @@ intended to (a) make explicit the implicit security assumptions baked into the
 codebase, (b) catalogue known classes of threat against each subsystem, and
 (c) record the existing and recommended mitigations.
 
+Some mitigations are expected to be in the application code built on top
+of aiohttp. Recommendations addressed to application authors rather than
+to aiohttp maintainers are prefixed **User:** to make the responsibility
+explicit.
+
 ---
 
 ## 1. Library Overview
@@ -255,14 +260,14 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.1 | Smuggling via duplicate framing headers | llhttp rejects conflicting `Content-Length`. `http_parser.py:HttpRequestParserPy.parse_headers` rejects coexistence of CL + `Transfer-Encoding: chunked`. The full `SINGLETON_HEADERS` set (CL, CT, Host, TE, ETag, etc.) is duplicate-rejected by the request parser (strict mode); `#12302` disabled this check on the response parser (lax mode), since real-world servers commonly send duplicate `Content-Type` / `Server`. | If new singleton-sensitive headers emerge in HTTP/1.1 RFC errata, add to `SINGLETON_HEADERS`. |
 | 1.2 | Lenient response parsing | Lenient flags (`llhttp_set_lenient_headers`, `llhttp_set_lenient_optional_cr_before_lf`, `llhttp_set_lenient_spaces_after_chunk_size`) are only enabled on the **response** parser and only when `DEBUG` is False (set in `HttpResponseParser.__init__`). The **request** parser is strict. | Documented design decision: keep lenient response parsing for real-world server interop |
 | 1.3 | CRLF / NUL in header values | Bytes `\r`, `\n`, `\x00` rejected in header values (`_http_parser.pyx` callbacks; `http_parser.py:HeadersParser.parse_headers`). | Keep regression tests in `tests/test_http_parser.py` covering each forbidden byte both in name and value, and across both Cython and pure-Python parsers. |
-| 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving; warn against reflecting headers verbatim into responses, logs, or sub-requests without re-validation.** |
+| 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving.** **User**: Re-validate any header value before reflecting it into responses, logs, or sub-requests. |
 | 1.5 | HTTP version regex accepts 0.9 / 2.0 | None (regex is permissive). | **Tighten `VERSRE` (and llhttp configuration if possible) to reject anything outside `HTTP/1.0` and `HTTP/1.1`.** |
-| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document that user route handlers / authorization checks should compare methods case-sensitively to the canonical RFC tokens, or use the framework's `web.RouteTableDef` decorators which already match canonical methods.** |
+| 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document the asymmetry.** **User**: Compare HTTP methods case-sensitively to canonical RFC tokens, or use `web.RouteTableDef` decorators (which already match canonical methods). |
 | 1.7 | `Content-Length` parsing | llhttp validates CL is decimal and non-negative; pure-Python parser validates via `DIGITS.fullmatch(r"\d+")` before `int(...)`, rejecting `+`/`-`/non-ASCII-digit forms (`test_bad_headers`, `test_headers_content_length_err_*` cover these). | None. Cross-backend parity is covered by the shared parser tests. |
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
-| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any path where `BadHttpMessage` content is reflected to the client unsanitised (especially in custom `web_log` configurations).** |
+| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` for line errors. Server-side error path renders 4xx with the exception message; tracebacks only when `DEBUG=True`. | **Audit any aiohttp path where `BadHttpMessage` content is reflected to the client unsanitised.** **User**: Review custom `web_log` configurations and any middleware that reflects parser exception messages back to the peer. |
 | 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
@@ -272,12 +277,12 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 - **GHSA-xx9p-xxvh-7g8j (CVE-2023-47641)** (3.8.0) — CL-vs-TE divergence
   between the Cython and pure-Python parsers, allowing request smuggling
   against deployments that switched backends.
-- **CVE-2023-37276 / GHSA-45c4-8wx5-qw6w** (3.8.5) — HTTP request smuggling
+- **GHSA-45c4-8wx5-qw6w (CVE-2023-37276)** (3.8.5) — HTTP request smuggling
   via CR/LF/NUL in header values. Both parsers reject these bytes at the
   byte level.
 - **GHSA-pjjw-qhg8-p2p9** (3.8.6) — smuggling pair in vendored llhttp 8.1.1;
   fixed by bumping llhttp to 9.
-- **GHSA-gfw2-4jvh-wgfg / GHSA-8qpw-xqxj-h4r2** (3.8.6 / 3.9.2) — pure-Python
+- **GHSA-gfw2-4jvh-wgfg (CVE-2023-47627) / GHSA-8qpw-xqxj-h4r2 (CVE-2024-23829)** (3.8.6 / 3.9.2) — pure-Python
   parser accepted lenient separators / weak RFC validation that llhttp
   rejected.
 - **GHSA-8495-4g3g-x7pr (CVE-2024-52304)** (3.10.11) — chunk-extension
@@ -287,12 +292,12 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 - **GHSA-69f9-5gxw-wvc2 (CVE-2025-69224)** (3.13.3) — Unicode codepoints
   matched by `\d` in the pure-Python parser's regexes were treated as
   digits.
-- **GHSA-g84x-mcqj-x9qq** (3.13.3) — CPU-DoS on `request.read()` when
+- **GHSA-g84x-mcqj-x9qq (CVE-2025-69229)** (3.13.3) — CPU-DoS on `request.read()` when
   the body arrives as a very large number of small chunks.
 - **PR #12137** (3.13.4) — precautionary hardening: pure-Python parser
   now explicitly rejects duplicate `Transfer-Encoding: chunked` on
   the request parser.
-- **GHSA-c427-h43c-vf67** (3.13.4) — duplicate `Host` header accepted
+- **GHSA-c427-h43c-vf67 (CVE-2026-34525)** (3.13.4) — duplicate `Host` header accepted
   in request parser, bypassing `Application.add_domain()` host-based
   routing / authorisation. Fixed by adding `Host` to the strict
   request-parser singleton rejection set.
@@ -310,3 +315,245 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   request parser (strict).
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.2. HTTP/1 writer
+
+**Scope.** Serialisation of outbound HTTP/1.x messages — request lines, status
+lines, header blocks, chunked / fixed-length / EOF-terminated bodies, drain /
+backpressure behaviour. Both server-side response emission and client-side
+request emission share the same `StreamWriter`. Out of scope: WebSocket frame
+emission ([§5.3](#53-websocket-framing--per-message-deflate)), payload generation for multipart ([§5.4](#54-multipart-parsing--encoding)), compression codecs
+([§5.5](#55-compression-codecs)), the user-handler-facing parts of `web.Response` and
+`ClientRequest` (covered in [§5.9](#59-server-requestresponse-objects) and [§5.12](#512-client-api--request-lifecycle) respectively, but
+called out where the writer's safety depends on them).
+
+**Components covered.**
+
+- `aiohttp/_http_writer.pyx` — Cython `_serialize_headers` and
+  `_write_str_raise_on_nlcr` (the forbidden-CTL bytewise rejector: rejects
+  `0x00-0x08`, `0x0A-0x1F`, `0x7F`; HTAB and SP remain permitted).
+- `aiohttp/http_writer.py` — `StreamWriter` (the `AbstractStreamWriter`
+  implementation) plus the pure-Python `_py_serialize_headers` /
+  `_safe_header` fallback and the Cython/pure-Python switch at
+  `http_writer.py:_py_serialize_headers`.
+- `aiohttp/abc.py` — `AbstractStreamWriter` interface.
+- Header-source feeders: `aiohttp/web_response.py` (server),
+  `aiohttp/client_reqrep.py` (client), `aiohttp/helpers.py:populate_with_cookies`.
+
+**Selection.** `_serialize_headers` defaults to the pure-Python
+implementation; if `_http_writer` (Cython) imports successfully and
+`AIOHTTP_NO_EXTENSIONS` is unset, the Cython implementation replaces it
+(`http_writer.py:_py_serialize_headers`). Both implementations apply the same
+RFC 9110 §5.5 / RFC 9112 §4 forbidden-CTL rejection (`0x00-0x08`,
+`0x0A-0x1F`, `0x7F`; HTAB and SP permitted) on names *and* values *and*
+the status/request line.
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Handler([User handler / ClientRequest]) -->|status_line, headers, body| SW[StreamWriter]
+  SW --> Serialize[_serialize_headers]
+  Serialize -->|reject forbidden CTLs| Bytes[Wire bytes]
+  SW --> Body[write / write_eof / write_chunked]
+  Body --> Bytes
+  Bytes --> Transport[(asyncio Transport)]
+```
+
+The writer's input is **trusted** in the threat-model sense — i.e., it comes
+from in-process Python code that ran the user's handler or constructed the
+client request. The writer's job is therefore **structural integrity**: ensure
+that whatever bytes a handler attempts to emit cannot escape the framing of a
+single HTTP message and inject new headers, new status lines, or new requests
+on the wire. The wire-side consumer is the **untrusted** counterparty
+(arbitrary peer or intermediary).
+
+**Assets at risk (chunk-specific).**
+
+- **Outbound framing integrity** — one logical message ↔ one well-framed wire
+  message; no smuggling on the egress side.
+- **Header integrity** — no name/value can introduce additional headers,
+  status lines, or chunk markers.
+- **Liveness of the connection** — a slow / hostile reader cannot drive the
+  server (or client) into unbounded memory growth via writer buffering.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 2.1 | Header name/value with forbidden CTL | T / I | Response-splitting / header injection (CR / LF) or non-RFC-compliant CTLs (`0x01-0x08`, `0x0B-0x1F`, `0x7F`) that downstream agents historically treat inconsistently. | High |
+| 2.2 | Status-line `reason` with CR / LF | T | Same family as 2.1 but on the status line; could let an attacker-controlled reason inject a body or a second status line. | High |
+| 2.3 | Request-line path/method | T | Path-side smuggling via forbidden CTLs or whitespace inside the path the writer emits. | Medium |
+| 2.4 | `Content-Length` ≠ actual body length | T | If a handler / ClientRequest emits a body whose length disagrees with declared `Content-Length`, an intermediary may interpret framing differently from the writer's peer (smuggling). | Medium |
+| 2.5 | `Content-Length` *and* `Transfer-Encoding: chunked` | T | Both headers reach the wire if user code constructs them via the raw headers dict; intermediaries disagree on which wins. | Medium |
+| 2.6 | Body emission on HEAD / 1xx / 204 / 304 | T | Writer strips CL/TE for empty-body responses but **does not block the application from writing a body**; bytes after the `\r\n\r\n` confuse the next pipelined request. | Medium |
+| 2.7 | `Set-Cookie` / `Cookie` value | T | Cookie name or value containing forbidden CTLs passes through `SimpleCookie.output()` unchanged; only caught by writer's header validation. | Medium |
+| 2.8 | Compression / `Content-Encoding` | T | Body double-compression when user sets `Content-Encoding` manually and also enables `compress=...`. Intermediaries may reject or mis-decode a doubly-compressed body. | Low |
+| 2.9 | Drain / backpressure on slow readers | D | Slow consumer (or `Sec-WebSocket-Key`-style hold) keeps `transport.write()` queued; writer drains at 64 KiB threshold (`http_writer.py:StreamWriter.write`). A handler that doesn't await `drain()` can blow up. | Medium |
+| 2.10 | Single oversized chunk | D | `write(b)` with a multi-GB blob is handed straight to `transport.write`; memory pressure shifts to asyncio's buffer. | Low |
+| 2.11 | Chunked encoding hex framing | T | Malformed chunk-size lines (negative values, leading-`+`, leading zeros, hex obfuscation) would let a non-aiohttp peer reframe the body differently and smuggle. | Low |
+| 2.12 | Header insertion validation timing | T | Forbidden-CTL rejection is *write-time*, not *insert-time*. A handler that sets a malicious header and then aborts before `write_headers()` will not raise. (Documented; not a recommended change.) | Low |
+| 2.13 | Cython ⇄ pure-Python parity | T | Divergence between the two `_serialize_headers` implementations could let one backend silently pass a forbidden CTL that the other rejects, weakening egress safety asymmetrically. | Low |
+| 2.14 | Trailers asymmetry | T | The writer never emits trailers, but the parser accepts incoming trailers; not a writer-side threat in itself, just a documentation point for completeness. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 2.1 | Header forbidden-CTL injection | Both backends reject the full RFC 9110 §5.5 / RFC 9112 §4 forbidden set (`0x00-0x08`, `0x0A-0x1F`, `0x7F`; HTAB and SP permitted) via `_write_str_raise_on_nlcr` (`_http_writer.pyx:_write_str_raise_on_nlcr`) and `_safe_header` (`http_writer.py:_safe_header`), raising `ValueError` from `_serialize_headers` before any byte hits the transport. Applied symmetrically to names, values, and the status line. | **The current tests import whichever `_serialize_headers` won the import, so only one backend is exercised. Parameterise like `tests/test_http_parser.py` does (cross-cuts [§6.1](#61-highest-leverage-recommendations) #3).** |
+| 2.2 | Status-line `reason` injection | `web_response.Response._set_status` (`web_response.py:StreamResponse._set_status`) rejects `\r` / `\n` in `reason` *at set-time*. The writer also rejects the full forbidden-CTL set at write-time as part of the status-line validation. | None. |
+| 2.3 | Request-line path / method | The full status line (`{method} {path} HTTP/{v}.{v}`) goes through `_write_str_raise_on_nlcr` / `_safe_header`, so forbidden CTLs are caught regardless of whether `path` came from `yarl` or `method` was a caller-supplied string. yarl additionally rejects CR/LF/NUL earlier per RFC 3986. | None. |
+| 2.4 | CL / body-length mismatch | None at write-time. `web.Response.write_eof` and the chunked writer write what they're given. | **Recommended hardening: in DEBUG mode, assert / warn when actual bytes-written disagrees with declared `Content-Length` at `write_eof()`. Useful for catching smuggling-adjacent bugs in user handlers.** |
+| 2.5 | CL + TE simultaneous | Server-side `enable_chunked_encoding()` (`web_response.py:StreamResponse.enable_chunked_encoding`) raises if `Content-Length` is already set; client-side `_update_transfer_encoding()` (`client_reqrep.py:ClientRequest._update_transfer_encoding`) raises if user sets `chunked=True` while `Content-Length` is in headers. Manual user injection into the raw headers dict is *not* caught. | **Consider a write-time assert in `StreamWriter` that rejects `Content-Length` and `Transfer-Encoding: chunked` coexisting.** |
+| 2.6 | Body-suppression edge cases | `web_response.py:StreamResponse._prepare_headers` strips `Content-Length` and `Transfer-Encoding` for HEAD / 1xx / 204 / 304 (`EMPTY_BODY_STATUS_CODES`, `helpers.py:EMPTY_BODY_METHODS`). The framework's own machinery doesn't write a body for these. | **User**: Do not call `resp.write(...)` in a handler responding HEAD / 1xx / 204 / 304 — framing strips CL / TE but does not block the byte write. **Optional aiohttp change: have `StreamWriter` short-circuit body writes when `length == 0` and the response was framed as empty-body.** |
+| 2.7 | Cookie injection | `populate_with_cookies` (`helpers.py:populate_with_cookies`) routes the cookie through `SimpleCookie.output()` and then into a regular header, where the forbidden-CTL check at write-time catches anything `SimpleCookie` happened to pass through. | Documented design decision: rely on writer-level validation rather than tightening `set_cookie` / `populate_with_cookies` further. Keep regression tests covering cookie name/value with forbidden CTLs across both backends. |
+| 2.8 | Manual `Content-Encoding` | Server side: `enable_compression()` (`web_response.py:StreamResponse.enable_compression`) returns early if `Content-Encoding` already present, so the body is not double-compressed. Client side: `ClientRequest._update_content_encoding` raises `ValueError("compress can not be set if Content-Encoding header is set")` — symmetric guard. | None. |
+| 2.9 | Drain / backpressure | `StreamWriter.write` drains at `LIMIT = 0x10000` bytes (`http_writer.py:StreamWriter.write`) when `drain=True` is set by the caller. Application code is expected to `await write(...)` to honour backpressure. | **User**: `await write(...)` in handlers; tight `for` loops without `await` can starve the event loop. Cross-reference [§5.7](#57-server-connection-lifecycle) for connection-level read/write timeouts that mitigate slow consumers. |
+| 2.10 | Oversized single chunk | None at the writer layer — bytes go straight to `transport.write`. asyncio applies its own high-water marks via the transport. | **User**: Relies on application-level bounds (use streaming, generators, `FileResponse`, etc., for large bodies). |
+| 2.11 | Chunked hex framing | The writer always uses `f"{len(chunk):x}\r\n"` followed by the chunk and `\r\n` (`http_writer.py:StreamWriter._write_chunked_payload`). | None. |
+| 2.12 | Insert-time vs write-time validation | Headers are validated at write-time only; `set_status` validates `reason` at set-time. | Documented design decision: late validation is acceptable; keep behaviour as-is. |
+| 2.13 | Cython ⇄ pure-Python parity | Both backends share the same logic and test surface; the Cython version uses a fast per-codepoint range check (`ch < 0x20 and ch != 0x09`, plus `0x7F`), the Python version uses a precompiled `re` over the same forbidden set. | **Parameterise the writer tests over both backends so egress equivalence on malicious inputs is exercised under both (see [§6.1](#61-highest-leverage-recommendations) #3).** |
+| 2.14 | Trailers asymmetry | Writer does not emit trailers; parser accepts trailers on incoming. Documented for completeness. | None. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-q3qx-c6g2-7pw2 (CVE-2023-49081)** (3.9.0) — `ClientSession`
+  CRLF injection via the HTTP `version` argument.
+- **GHSA-qvrw-v9rv-5rjx (CVE-2023-49082)** (3.9.0) — `ClientSession` CRLF injection via
+  the `method` argument (request-line injection).
+- **GHSA-mwh4-6h8g-pg8w (CVE-2026-34519)** (3.13.4) — response-splitting via `\r` in
+  the status-line `reason`. Fixed by rejecting CR/LF in `reason` at
+  `_set_status` set-time, on top of the existing writer-side check
+  (threat 2.2).
+- **[#12689](https://github.com/aio-libs/aiohttp/pull/12689)** (hardening, no
+  CVE) — outbound header serialization only rejected CR/LF/NUL; other
+  RFC 9110 §5.5 / RFC 9112 §4 forbidden CTLs (`0x01-0x08`, `0x0B-0x1F`,
+  `0x7F`) could be emitted on the wire if a handler placed them into a
+  header. Tightened `_safe_header` and `_write_str_raise_on_nlcr` to
+  reject the full forbidden set (threat 2.1).
+
+Writer-level forbidden-CTL rejection via `_safe_header` and
+`_write_str_raise_on_nlcr` has been in place since the header-injection
+family of issues was first surfaced (well before CVE-2023-37276, which
+was a parser-side fix); the rejected set was broadened from
+{CR, LF, NUL} to the full RFC 9110 forbidden set in
+[#12689](https://github.com/aio-libs/aiohttp/pull/12689).
+
+---
+
+### 5.3. WebSocket framing & per-message deflate
+
+**Scope.** RFC 6455 frame parsing and serialisation, masking, fragmentation
+and continuation, control frames (close / ping / pong), and the
+permessage-deflate (PMCE; RFC 7692) extension. Both server-side
+(`web_ws.WebSocketResponse`) and client-side (`client_ws.ClientWebSocketResponse`)
+share this layer. Out of scope: the WebSocket *handshake* and per-side
+lifecycle (covered in [§5.11](#511-server-side-websocket-handler) server, [§5.14](#514-client-side-websocket) client) and the underlying
+compression codecs themselves ([§5.5](#55-compression-codecs)).
+
+**Components covered.**
+
+- `aiohttp/http_websocket.py` — public re-export shim.
+- `aiohttp/_websocket/`:
+  - `mask.pyx` / `mask.pxd` — Cython SIMD-style XOR.
+  - `helpers.py` — pure-Python masking fallback (`bytearray.translate`),
+    extension parameter parsing (`ws_ext_parse`), close-code unpacking.
+  - `models.py` — `WSCloseCode`, `WSMsgType`, message dataclasses.
+  - `reader.py` / `reader_c.pyx` / `reader_c.py` / `reader_py.py` — frame
+    reader (Cython preferred, pure-Python fallback).
+  - `writer.py` — frame writer.
+  - `__init__.py`.
+
+**Selection.** The reader's import dance (`reader.py`) prefers
+`reader_c` (Cython) and falls back to `reader_py` on `ImportError`. Both
+implementations apply the same validation rules.
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted peer]) --> Feed[reader.feed_data]
+  Feed --> Parse[Frame state machine]
+  Parse -->|opcode/RSV/length checks| Mask[websocket_mask XOR]
+  Mask --> Inflate[(zlib inflate if RSV1)]
+  Inflate --> Validate[max_msg_size + UTF-8]
+  Validate -->|WSMessage| App[(user code)]
+  App -->|send_*| Writer[writer.send_frame]
+  Writer --> Deflate[(zlib deflate if compress)]
+  Deflate --> Frame[Frame builder + mask]
+  Frame --> Wire
+```
+
+The reader's input is fully attacker-controlled. Output (`WSMessage` with
+`data`, `extra`, `type`) is consumed by user handler code. Server-side, mask
+bytes from the peer's frames are XORed before reaching the application;
+client-side, the writer adds masks to outgoing frames.
+
+**Assets at risk (chunk-specific).**
+
+- **Frame integrity** — opcode, RSV bits, FIN, length, mask all parsed
+  consistently; no path can let a peer smuggle a control frame inside a data
+  frame or coerce the reader into accepting a malformed frame.
+- **Decompression safety** — PMCE-compressed frames cannot drive memory or
+  CPU to denial of service via a small input expanding to a huge output.
+- **Memory bounds across messages** — a peer holding the connection open and
+  drip-feeding fragments cannot grow memory unboundedly.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 3.1 | Server reader accepting unmasked client frames | T / S | The reader does not enforce RFC 6455 §5.1 ("server MUST fail on unmasked client frame"). A non-conformant or malicious client can send unmasked frames; the spec rationale is preventing cache-poisoning of intermediaries. | Medium |
+| 3.2 | Mask key generation | I | Outbound masks come from `random.getrandbits(32)` (`writer.py:WebSocketWriter.__init__`), not `secrets`. RFC 6455 §5.3 says masks must be "unpredictable"; PRNG is not cryptographic. | Low |
+| 3.3 | Reserved bits (RSV1/2/3) | T | RSV2/3 always rejected; RSV1 only allowed when PMCE is negotiated (`reader_py.py:WebSocketReader._feed_data`). Misalignment between negotiation state and frame would let a peer toggle decompression. | Low |
+| 3.4 | Unknown opcode | T | Peer-controlled opcode outside the defined range (`0x0`–`0xA`) could route to an unexpected handler path if accepted. | Low |
+| 3.5 | Control-frame size > 125 bytes | T | Oversized control frame would violate RFC 6455 framing and could mis-frame against a non-aiohttp peer. | Low |
+| 3.6 | Fragmented control frame (FIN=0) | T | Fragmented control frame is a protocol violation; accepting one would let a peer interleave control state across the fragment sequence. | Low |
+| 3.7 | Continuation without preceding text/binary | T | Continuation frame without an initial data frame leaves assembly state ambiguous. | Low |
+| 3.8 | Unbounded fragmentation memory growth | D | A peer streams many continuation fragments without ever setting FIN; the reassembly buffer grows with each fragment until memory is exhausted. | Low |
+| 3.9 | PMCE decompression bomb | D | Compressed frame expanding to >`max_msg_size`. Mitigated by post-decompress check; some zlib backends (e.g. isal) may overshoot the per-call `max_length` by a chunk before the post-check rejects it. | Medium |
+| 3.10 | PMCE context retention memory | D / I | When `server_no_context_takeover` / `client_no_context_takeover` is *not* negotiated, the zlib context persists across messages on each side. No explicit per-message reset; long-lived sessions accumulate state. | Low–Med |
+| 3.11 | UTF-8 validation on text frames | T | Invalid UTF-8 in a text frame (or close reason) reaching the handler as `str` would surface as bytes via `surrogateescape` and confuse caller code that assumes valid Unicode. | Low |
+| 3.12 | Close-frame handling | T | Out-of-range close codes from a peer would let a non-aiohttp consumer of the close reason mis-interpret the disconnect reason. | Low |
+| 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
+| 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
+| 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 3.1 | Unmasked client frames accepted | None — the reader is direction-agnostic; `web_ws.py` does not enforce client-mask either. | **Recommended hardening: Enforce RFC 6455 §5.1 mask direction in strict mode only (gated on `DEBUG`, mirroring the HTTP parser's lenient-default / strict-DEBUG asymmetry): server reader rejects frames with `has_mask == 0`, client reader rejects masked server frames, both with a `PROTOCOL_ERROR`-style close. Production default stays lenient for interop.** |
+| 3.2 | Non-cryptographic mask RNG | `partial(random.getrandbits, 32)` per writer instance. | Documented design decision: WebSocket masking exists for cache-poisoning resistance against intermediaries, not as a confidentiality primitive. The mask needs to be performant — called once per outbound frame on a hot path — and does not need to be cryptographically unpredictable. `random.getrandbits(32)` is the deliberate choice. |
+| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` ties RSV1 acceptance to the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
+| 3.4 | Unknown opcode | Rejected. | None. |
+| 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
+| 3.8 | Fragment memory bound | `max_msg_size` enforced pre-FIN and at assembly. Default 4 MiB. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
+| 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
+| 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Documented design decision: keep the RFC 7692 default (context takeover). **Document the memory tradeoff in user-facing WebSocket docs.** **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
+| 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
+| 3.12 | Close-code validation | `reader_py.py:WebSocketReader._handle_frame` validates codes < 3000 against `ALLOWED_CLOSE_CODES`; codes ≥ 3000 accepted (RFC reserved for libraries / private use, correct). | None. |
+| 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
+| 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
+| 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
+
+**Past advisories / hardening (recap).**
+
+- **PR #11898** (3.13.3) — PMCE decompression DoS hardening:
+  `WebSocketReader._handle_frame` decompresses with a `max_length` cap of
+  `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
+  This is the primary mitigation for zip-bomb-style attacks against
+  WebSocket peers.
+- No formal CVE has been published against the WebSocket framing layer to
+  date.
+
+**Open questions.**
+
+1. Should server-side reader reject unmasked frames (and client-side reject
+   masked ones) per RFC 6455 §5.1? (Threat 3.1 — recommended.)
+2. Is the PRNG mask source (`random.getrandbits`) sufficient, or should it be
+   migrated to `secrets`/`os.urandom`? (Threat 3.2.)
+3. For long-lived WebSocket sessions, is there a use case for *forcing*
+   `no_context_takeover` defaults to limit memory growth? (Threat 3.10.)

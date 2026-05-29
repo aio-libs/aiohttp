@@ -1882,7 +1882,7 @@ Application and Router
                           chunk_size=256*1024, \
                           response_factory=StreamResponse, \
                           show_index=False, \
-                          follow_symlinks=False, \
+                          break_symlink_sandbox=False, \
                           append_version=False)
 
       Adds a router and a handler for returning static files.
@@ -1929,9 +1929,9 @@ Application and Router
                               by default it's not allowed and HTTP/403 will
                               be returned on directory access.
 
-      :param bool follow_symlinks: flag for allowing to follow symlinks that lead
+      :param bool break_symlink_sandbox: flag for allowing to follow symlinks that lead
                               outside the static root directory, by default it's not allowed and
-                              HTTP/404 will be returned on access.  Enabling ``follow_symlinks``
+                              HTTP/404 will be returned on access.  Enabling ``break_symlink_sandbox``
                               can be a security risk, and may lead to a directory transversal attack.
                               You do NOT need this option to follow symlinks which point to somewhere
                               else within the static directory, this option is only used to break out
@@ -2509,7 +2509,7 @@ The definition is created by functions like :func:`get` or
 
 .. function:: static(prefix, path, *, name=None, expect_handler=None, \
                      chunk_size=256*1024, \
-                     show_index=False, follow_symlinks=False, \
+                     show_index=False, break_symlink_sandbox=False, \
                      append_version=False)
    :canonical: aiohttp.web_routedef.static
 
@@ -2622,7 +2622,7 @@ A routes table definition used for describing routes by decorators
 
    .. method:: static(prefix, path, *, name=None, expect_handler=None, \
                       chunk_size=256*1024, \
-                      show_index=False, follow_symlinks=False, \
+                      show_index=False, break_symlink_sandbox=False, \
                       append_version=False)
 
 
