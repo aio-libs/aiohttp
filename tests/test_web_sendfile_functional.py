@@ -19,7 +19,10 @@ from aiohttp.web_fileresponse import NOSENDFILE
 try:
     import brotlicffi as brotli
 except ImportError:
-    import brotli
+    try:
+        import brotli
+    except ImportError:
+        brotli = None
 
 try:
     import ssl
@@ -46,9 +49,12 @@ def hello_txt(request, tmp_path_factory) -> pathlib.Path:
     }
     # Uncompressed file is not actually written to test it is not required.
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
-    hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
+    if brotli is not None:
+        hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
+    if encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
     return hello[encoding]
 
 
@@ -279,6 +285,8 @@ async def test_static_file_custom_content_type_compress(
     expect_encoding: str,
 ):
     """Test that custom type with encoding is returned for unencoded requests."""
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
 
     async def handler(request):
         resp = sender(hello_txt, chunk_size=16)
@@ -314,6 +322,8 @@ async def test_static_file_with_encoding_and_enable_compression(
     forced_compression: web.ContentCoding | None,
 ):
     """Test that enable_compression does not double compress when an encoded file is also present."""
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
 
     async def handler(request):
         resp = sender(hello_txt)

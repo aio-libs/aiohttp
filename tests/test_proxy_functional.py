@@ -10,7 +10,6 @@ from re import match as match_regex
 from unittest import mock
 from uuid import uuid4
 
-import proxy
 import pytest
 from yarl import URL
 
@@ -20,6 +19,11 @@ from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.helpers import IS_MACOS, IS_WINDOWS
 from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.test_utils import TestServer
+
+if TYPE_CHECKING:
+    import proxy
+else:
+    proxy = pytest.importorskip("proxy")
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 

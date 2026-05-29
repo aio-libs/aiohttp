@@ -1,13 +1,19 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
+from typing import TYPE_CHECKING
 
 import pytest
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp import hdrs, request, web
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_one_hundred_simple_get_requests(

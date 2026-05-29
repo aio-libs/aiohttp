@@ -2,12 +2,19 @@
 
 import asyncio
 import pathlib
+from typing import TYPE_CHECKING
 
+import pytest
 from multidict import CIMultiDict
-from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import ClientResponse, web
 from aiohttp.pytest_plugin import AiohttpClient
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 def test_simple_web_file_response(
