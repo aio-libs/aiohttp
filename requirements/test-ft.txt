@@ -30,7 +30,7 @@ cffi==2.0.0
     #   pycares
 click==8.4.1
     # via wait-for-it
-coverage==7.14.0
+coverage==7.14.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
