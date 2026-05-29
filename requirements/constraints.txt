@@ -8,6 +8,8 @@ aiodns==4.0.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
+aiofastnet==0.7.0 ; platform_python_implementation == "CPython" and (platform_machine == "x86_64" or platform_machine == "AMD64" or platform_machine == "aarch64")
+    # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
 aiohttp-theme==0.1.7

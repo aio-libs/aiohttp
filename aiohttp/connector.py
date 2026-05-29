@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import os
 import random
 import socket
 import sys
@@ -15,7 +14,6 @@ from time import monotonic
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
 
-import aiofastnet
 import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
@@ -51,6 +49,10 @@ from .helpers import (
     set_result,
 )
 from .log import client_logger
+from .net_helpers import (
+    create_connection,
+    start_tls
+)
 from .resolver import DefaultResolver
 
 if sys.version_info >= (3, 12):
@@ -1259,10 +1261,7 @@ class TCPConnector(BaseConnector):
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
 
-                if os.environ.get("USE_AIOFN", 0):
-                    return await aiofastnet.create_connection(self._loop, *args, **kwargs, sock=sock)
-                else:
-                    return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                return await create_connection(self._loop, *args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1336,18 +1335,19 @@ class TCPConnector(BaseConnector):
             ):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
-                    if os.environ.get("USE_AIOFN"):
-                        if self._ssl_shutdown_timeout:
-                            start_tls = functools.partial(aiofastnet.start_tls, self._loop, ssl_shutdown_timeout=self._ssl_shutdown_timeout)
-                        else:
-                            start_tls = functools.partial(aiofastnet.start_tls, self._loop)
+                    if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
+                        tls_transport = await start_tls(
+                            self._loop,
+                            underlying_transport,
+                            tls_proto,
+                            sslcontext,
+                            server_hostname=req.server_hostname or req.url.raw_host,
+                            ssl_handshake_timeout=timeout.total,
+                            ssl_shutdown_timeout=self._ssl_shutdown_timeout
+                        )
                     else:
-                        if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                            start_tls = functools.partial(self._loop.start_tls, ssl_shutdown_timeout=self._ssl_shutdown_timeout)
-                        else:
-                            start_tls = self._loop.start_tls
-
-                    tls_transport = await start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,

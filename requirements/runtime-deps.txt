@@ -10,7 +10,7 @@ aiohappyeyeballs==2.6.1
     # via -r requirements/runtime-deps.in
 aiosignal==1.4.0
     # via -r requirements/runtime-deps.in
-aiofastnet >= 0.6.0
+aiofastnet==0.7.0 ; platform_python_implementation == "CPython" and (platform_machine == "x86_64" or platform_machine == "AMD64" or platform_machine == "aarch64")
     # via -r requirements/runtime-deps.in
 async-timeout==5.0.1 ; python_version < "3.11"
     # via -r requirements/runtime-deps.in

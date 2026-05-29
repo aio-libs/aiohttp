@@ -1,9 +1,9 @@
 # Extracted from `pyproject.toml` via `make sync-direct-runtime-deps`
 
 aiodns >= 3.3.0
+aiofastnet >= 0.7.0; platform_python_implementation == 'CPython' and (platform_machine == 'x86_64' or platform_machine == 'AMD64' or platform_machine == 'aarch64')
 aiohappyeyeballs >= 2.5.0
 aiosignal >= 1.4.0
-aiofastnet >= 0.6.0
 async-timeout >= 4.0, < 6.0 ; python_version < '3.11'
 backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14'
 Brotli >= 1.2; platform_python_implementation == 'CPython'

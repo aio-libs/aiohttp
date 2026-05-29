@@ -1,5 +1,4 @@
 import asyncio
-import os
 import signal
 import socket
 from abc import ABC, abstractmethod
@@ -11,6 +10,7 @@ from yarl import URL
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
+from .net_helpers import create_server
 from .streams import StreamReader
 from .typedefs import PathLike
 from .web_app import Application
@@ -133,8 +133,8 @@ class TCPSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        create_server = partial(aiofastnet.create_server, loop) if os.environ.get("USE_AIOFN") else loop.create_server
         self._server = await create_server(
+            loop,
             server,
             self._host,
             self._port,
@@ -249,10 +249,8 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        create_server = partial(aiofastnet.create_server, loop) if os.environ.get("USE_AIOFN") else loop.create_server
-
         self._server = await create_server(
-            server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+            loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
 
 
