@@ -1,4 +1,5 @@
 # HTTP client functional tests against aiohttp.web server
+from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
@@ -16,15 +17,18 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
-from typing import Any, NoReturn
+from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
+
+if TYPE_CHECKING:
+    import trustme
 
 try:
     try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:  # pragma: no cover
+except ImportError:
     brotli = None
 
 try:
@@ -33,7 +37,6 @@ except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
-import trustme
 from multidict import MultiDict
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture

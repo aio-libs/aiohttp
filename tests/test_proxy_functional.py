@@ -11,7 +11,6 @@ from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 
-import proxy
 import pytest
 from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
@@ -22,6 +21,11 @@ from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.test_utils import TestServer
+
+if TYPE_CHECKING:
+    import proxy
+else:
+    proxy = pytest.importorskip("proxy")
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 

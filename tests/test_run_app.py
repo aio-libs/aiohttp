@@ -715,6 +715,9 @@ web.run_app(app, host=())
 """
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
+)
 def test_sigint() -> None:
     skip_if_on_windows()
 
@@ -727,6 +730,9 @@ def test_sigint() -> None:
         assert proc.wait() == 0
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
+)
 def test_sigterm() -> None:
     skip_if_on_windows()
 

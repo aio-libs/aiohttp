@@ -34,7 +34,10 @@ from aiohttp.web_protocol import RequestHandler
 try:
     import brotlicffi as brotli
 except ImportError:
-    import brotli
+    try:
+        import brotli
+    except ImportError:
+        brotli = None
 
 try:
     import ssl
@@ -1156,6 +1159,7 @@ async def test_response_with_precompressed_body(
     resp.release()
 
 
+@pytest.mark.skipif(brotli is None, reason="brotli not available")
 async def test_response_with_precompressed_body_brotli(
     aiohttp_client: AiohttpClient,
 ) -> None:
