@@ -12,6 +12,8 @@ aiohappyeyeballs==2.6.2
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
+aiohttp==3.13.5
+    # via pytest-aiohttp
 aiohttp-theme==0.1.7
     # via -r requirements/doc.in
 aiosignal==1.4.0
@@ -157,12 +159,10 @@ packaging==26.2
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip==26.1.1
-    # via pip-tools
 pip-tools==7.5.3
     # via -r requirements/dev.in
 pkgconfig==1.6.0
-    # via -r requirements/test-common.in
+    # via -r requirements/test-common-base.in
 platformdirs==4.10.0
     # via
     #   python-discovery
@@ -215,7 +215,7 @@ pytest==9.0.3
 pytest-aiohttp==1.1.0
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test-common.in
+    #   -r requirements/test-common-base.in
 pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
@@ -251,13 +251,11 @@ requests==2.34.2
     #   sphinxcontrib-spelling
 rich==15.0.0
     # via pytest-codspeed
-setuptools==82.0.1
-    # via pip-tools
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
-slotscheck==0.19.1
+slotscheck==0.20.0
     # via -r requirements/lint.in
 snowballstemmer==3.1.0
     # via sphinx
@@ -344,4 +342,7 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-# aiohttp
+pip==26.1.1
+    # via pip-tools
+setuptools==82.0.1
+    # via pip-tools
