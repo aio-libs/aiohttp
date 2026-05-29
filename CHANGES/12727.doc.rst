@@ -1,0 +1,1 @@
+Added ``aiointercept`` to list of third-party libraries -- by :user:`Polandia94`.
