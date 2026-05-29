@@ -230,7 +230,7 @@ setuptools-git==1.2
     # via -r requirements/test-common.in
 six==1.17.0
     # via python-dateutil
-slotscheck==0.19.1
+slotscheck==0.20.0
     # via -r requirements/lint.in
 snowballstemmer==3.1.0
     # via sphinx

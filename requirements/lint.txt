@@ -103,7 +103,7 @@ rich==15.0.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
-slotscheck==0.19.1
+slotscheck==0.20.0
     # via -r requirements/lint.in
 tomli==2.4.1
     # via
