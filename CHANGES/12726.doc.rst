@@ -1,0 +1,1 @@
+Removed archived and deprecated repos from third party list -- by :user:`Polandia94`.
