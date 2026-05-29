@@ -17,11 +17,8 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import Any, NoReturn
 from unittest import mock
-
-if TYPE_CHECKING:
-    import trustme
 
 try:
     try:
