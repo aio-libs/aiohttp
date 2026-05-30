@@ -94,15 +94,12 @@ class BadStatusLine(BadHttpMessage):
         self.line = line
 
 
-HTTPS_ON_HTTP_PORT_ERROR = "Received HTTPS traffic on an HTTP port"
-
-
 class BadHttpMethod(BadStatusLine):
     """Invalid HTTP method in status line."""
 
     def __init__(self, line: str = "", error: str | None = None) -> None:
         if error is None and line.startswith("\x16\x03"):
-            error = HTTPS_ON_HTTP_PORT_ERROR
+            error = "Received HTTPS traffic on an HTTP port"
         super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
 
 

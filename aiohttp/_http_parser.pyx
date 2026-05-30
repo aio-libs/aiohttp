@@ -21,7 +21,6 @@ from aiohttp.helpers import DEBUG, set_exception
 
 from .helpers import HeadersDictProxy as _HeadersDictProxy
 from .http_exceptions import (
-    HTTPS_ON_HTTP_PORT_ERROR,
     BadHttpMessage,
     BadHttpMethod,
     BadStatusLine,
@@ -934,7 +933,7 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
         return BadHttpMessage(err_msg)
     elif errno == cparser.HPE_INVALID_METHOD:
         if data.startswith(b"\x16\x03"):
-            return BadHttpMethod(error=HTTPS_ON_HTTP_PORT_ERROR)
+            return BadHttpMethod(error="Received HTTPS traffic on an HTTP port")
         return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
                    cparser.HPE_INVALID_VERSION,
