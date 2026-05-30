@@ -2639,10 +2639,7 @@ class TestParsePayload:
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
 
-
-    async def test_http_payload_gzip_multi_member(
-        self, protocol: BaseProtocol
-    ) -> None:
+    async def test_http_payload_gzip_multi_member(self, protocol: BaseProtocol) -> None:
         member1 = gzip.compress(b"first")
         member2 = gzip.compress(b"second")
         payload = member1 + member2
