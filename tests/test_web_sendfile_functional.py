@@ -13,7 +13,7 @@ from _pytest.fixtures import SubRequest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
-from aiohttp import web, net_helpers
+from aiohttp import net_helpers, web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
