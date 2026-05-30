@@ -528,7 +528,9 @@ def test_run_app_https(
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
-    web.run_app(app, ssl_context=ssl_context, print=stopper(event_loop), loop=event_loop)
+    web.run_app(
+        app, ssl_context=ssl_context, print=stopper(event_loop), loop=event_loop
+    )
 
     create_server_mock.assert_called_with(
         event_loop,
