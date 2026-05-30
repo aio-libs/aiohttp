@@ -2543,9 +2543,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_zero() -> None:
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(
-            connector_module, "start_tls", side_effect=OSError("TLS failed")
-        ),
+        mock.patch.object(connector_module, "start_tls", side_effect=OSError("TLS failed")),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
@@ -2577,9 +2575,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero() -> None:
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(
-            connector_module, "start_tls", side_effect=OSError("TLS failed")
-        ),
+        mock.patch.object(connector_module, "start_tls", side_effect=OSError("TLS failed")),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
@@ -2614,9 +2610,7 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -
         mock.patch.object(
             conn, "_get_ssl_context", return_value=ssl.create_default_context()
         ),
-        mock.patch.object(
-            connector_module, "start_tls", side_effect=OSError("TLS failed")
-        ),
+        mock.patch.object(connector_module, "start_tls", side_effect=OSError("TLS failed")),
     ):
         with pytest.raises(OSError):
             await conn._start_tls_connection(underlying_transport, req, ClientTimeout())

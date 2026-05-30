@@ -940,10 +940,7 @@ async def test_request_port(  # type: ignore[misc]
         tr.get_extra_info.return_value = None
         # Called on connection to http://proxy.example.com
         with mock.patch.object(
-            connector_module,
-            "create_connection",
-            autospec=True,
-            return_value=(tr, proto),
+            connector_module, "create_connection", autospec=True, return_value=(tr, proto)
         ):
             req = make_client_request(
                 "GET",

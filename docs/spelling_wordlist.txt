@@ -130,7 +130,6 @@ epoll
 et
 etag
 ETag
-ethtool
 expirations
 Facebook
 facto
