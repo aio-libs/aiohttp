@@ -862,7 +862,7 @@ async def test_tcp_connector_multiple_hosts_errors(
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            conn._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -963,7 +963,7 @@ async def test_tcp_connector_happy_eyeballs(  # type: ignore[misc]
             side_effect=sock_connect,
         ):
             with mock.patch.object(
-                conn._loop,
+                connector_module,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
@@ -1056,7 +1056,7 @@ async def test_tcp_connector_interleave(
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            conn._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -1137,7 +1137,7 @@ async def test_tcp_connector_family_is_respected(
             side_effect=sock_connect,
         ):
             with mock.patch.object(
-                conn._loop,
+                connector_module,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
@@ -1251,7 +1251,7 @@ async def test_tcp_connector_multiple_hosts_one_timeout(  # type: ignore[misc]
             side_effect=_resolve_host,
         ),
         mock.patch.object(
-            conn._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             spec_set=True,
@@ -4568,7 +4568,7 @@ def test_connector_multiple_event_loop(make_client_request: _RequestMaker) -> No
         req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
         with suppress(aiohttp.ClientConnectorError):
             with mock.patch.object(
-                conn._loop,
+                connector_module,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
@@ -4612,7 +4612,7 @@ async def test_tcp_connector_socket_factory(
         )
 
         with mock.patch.object(
-            conn._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             spec_set=True,
