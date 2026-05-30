@@ -18,7 +18,7 @@ import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
 
-from . import hdrs, helpers
+from . import hdrs, helpers, net_helpers
 from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
     ClientConnectionError,
@@ -49,7 +49,6 @@ from .helpers import (
     set_result,
 )
 from .log import client_logger
-from .net_helpers import create_connection, start_tls
 from .resolver import DefaultResolver
 
 if sys.version_info >= (3, 12):
@@ -1257,7 +1256,7 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await create_connection(self._loop, *args, **kwargs, sock=sock)  # type: ignore[no-any-return]
+                return await net_helpers.create_connection(self._loop, *args, **kwargs, sock=sock)  # type: ignore[no-any-return]
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1338,7 +1337,7 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await start_tls(
+                        tls_transport = await net_helpers.start_tls(
                             self._loop,
                             underlying_transport,
                             tls_proto,
@@ -1348,7 +1347,7 @@ class TCPConnector(BaseConnector):
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
-                        tls_transport = await start_tls(
+                        tls_transport = await net_helpers.start_tls(
                             self._loop,
                             underlying_transport,
                             tls_proto,

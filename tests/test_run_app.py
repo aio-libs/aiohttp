@@ -23,8 +23,8 @@ from aiohttp import (
     ClientSession,
     ClientTimeout,
     WSCloseCode,
-    web,
-    web_runner as web_runner_module,
+    net_helpers,
+    web
 )
 from aiohttp.log import access_logger
 from aiohttp.web_protocol import RequestHandler
@@ -76,7 +76,7 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
     server.sockets = []
     create_server_mock = mock.AsyncMock(return_value=server)
 
-    with mock.patch.object(web_runner_module, "create_server", create_server_mock):
+    with mock.patch.object(net_helpers, "create_server", create_server_mock):
         yield create_server_mock
 
 

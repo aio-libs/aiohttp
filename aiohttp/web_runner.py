@@ -6,9 +6,9 @@ from typing import Any, Generic, TypeVar
 
 from yarl import URL
 
+from . import net_helpers
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
-from .net_helpers import create_server
 from .streams import StreamReader
 from .typedefs import PathLike
 from .web_app import Application
@@ -131,7 +131,7 @@ class TCPSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await create_server(
+        self._server = await net_helpers.create_server(
             loop,
             server,
             self._host,
@@ -246,7 +246,7 @@ class SockSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await create_server(
+        self._server = await net_helpers.create_server(
             loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
 
