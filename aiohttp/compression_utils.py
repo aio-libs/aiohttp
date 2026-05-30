@@ -298,17 +298,20 @@ class ZLibDecompressor(DecompressionBaseHandler):
         while self._decompressor.eof and self._decompressor.unused_data:
             unused = self._decompressor.unused_data
             self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
-            remaining = (
-                max_length - len(result)
-                if max_length != ZLIB_MAX_LENGTH_UNLIMITED
-                else ZLIB_MAX_LENGTH_UNLIMITED
-            )
-            if max_length != ZLIB_MAX_LENGTH_UNLIMITED and remaining <= 0:
-                self._pending_unused_data = unused
-                break
-            chunk = self._decompressor.decompress(unused, remaining)
+            if max_length != ZLIB_MAX_LENGTH_UNLIMITED:
+                max_length -= len(result)
+                if max_length <= 0:
+                    self._pending_unused_data = unused
+                    break
+            chunk = self._decompressor.decompress(unused, max_length)
             self._last_empty = chunk == b""
             result += chunk
+
+        # Member ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        # Prepare a fresh one for the next chunk.
+        if self._decompressor.eof:
+            self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
 
         return result
 
