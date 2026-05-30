@@ -655,21 +655,27 @@ proxies that rely on a locally-installed root CA.
 
 The `truststore <https://truststore.readthedocs.io/>`_ library provides an
 ``SSLContext`` that delegates verification to the OS-native APIs. *aiohttp*
-ships an opt-in integration via :class:`~aiohttp.TCPConnector`::
-
-  conn = aiohttp.TCPConnector(use_truststore=True)
-  async with aiohttp.ClientSession(connector=conn) as sess:
-      ...
-
-Install the optional dependency with::
+prefers it automatically whenever the library is importable -- there is no
+constructor flag to set::
 
   pip install aiohttp[truststore]
 
-If ``truststore`` is not installed, passing ``use_truststore=True`` raises
-:exc:`RuntimeError` at connector construction. ``use_truststore=True`` is
-incompatible with ``ssl=False`` (verification disabled) and has no effect when
-an explicit :class:`ssl.SSLContext` is passed via ``ssl=`` -- the explicit
-context always wins.
+With the optional dependency installed, the default
+:class:`~aiohttp.TCPConnector` uses :class:`truststore.SSLContext` for its
+verified SSL context. Without it, the stdlib defaults are used and behaviour
+is unchanged.
+
+To force the stdlib trust paths even when ``truststore`` is installed, pass
+an explicit context built from :func:`ssl.create_default_context`::
+
+  conn = aiohttp.TCPConnector(ssl=ssl.create_default_context())
+  async with aiohttp.ClientSession(connector=conn) as sess:
+      ...
+
+Installing the extra causes the verified default SSL context to be built at
+``import aiohttp`` time via OS trust-store APIs; this is intentional, so any
+blocking I/O happens before the event loop starts, consistent with how the
+stdlib default context has always been built at import time.
 
 Example: Use certifi
 ^^^^^^^^^^^^^^^^^^^^

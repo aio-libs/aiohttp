@@ -1185,8 +1185,7 @@ is controlled by *force_close* constructor's parameter).
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
                  happy_eyeballs_delay=0.25, interleave=None, loop=None, \
-                 socket_factory=None, ssl_shutdown_timeout=0, \
-                 use_truststore=False)
+                 socket_factory=None, ssl_shutdown_timeout=0)
    :canonical: aiohttp.connector.TCPConnector
 
    Connector for working with *HTTP* and *HTTPS* via *TCP* sockets.
@@ -1279,21 +1278,25 @@ is controlled by *force_close* constructor's parameter).
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
 
-   :param bool use_truststore: if ``True``, use the
-      `truststore <https://truststore.readthedocs.io/>`_ library to delegate
-      certificate verification to the operating system's native trust store
-      (macOS Keychain, Windows certificate stores). This avoids
-      ``CERTIFICATE_VERIFY_FAILED`` errors in environments where
-      OS-managed roots -- including those installed by an administrator or an
-      enterprise TLS-intercepting proxy -- are not in OpenSSL's default
-      paths. Requires the optional dependency, installable via
-      ``pip install aiohttp[truststore]``; passing ``True`` without the
-      dependency installed raises :exc:`RuntimeError`. Incompatible with
-      ``ssl=False``. Has no effect when an explicit :class:`ssl.SSLContext`
-      is passed via ``ssl=``: the explicit context always wins. Default:
-      ``False``.
+   .. note::
 
-      .. versionadded:: 3.14
+      When the optional `truststore <https://truststore.readthedocs.io/>`_
+      library is importable (install it via
+      ``pip install aiohttp[truststore]``), *aiohttp* automatically uses
+      :class:`truststore.SSLContext` for its default verified SSL context.
+      This delegates certificate verification to the operating system's
+      native trust store (macOS Keychain, Windows certificate stores, OpenSSL
+      default paths on Linux) and fixes ``CERTIFICATE_VERIFY_FAILED`` errors
+      in environments where OS-managed roots -- including those installed by
+      an administrator or an enterprise TLS-intercepting proxy -- are not in
+      OpenSSL's default paths. Without the dependency, the stdlib defaults
+      are used. Passing an explicit :class:`ssl.SSLContext` via ``ssl=``
+      always wins.
+
+      .. versionchanged:: 3.14
+
+         Automatically prefer ``truststore`` when the optional dependency
+         is installed.
 
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
