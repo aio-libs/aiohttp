@@ -8,8 +8,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import web
-from aiohttp import web_runner as web_runner_module
+from aiohttp import web, web_runner as web_runner_module
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import REUSE_ADDRESS
 from aiohttp.web_log import AccessLogger
@@ -267,10 +266,14 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     assert site.name == "http://0.0.0.0:8080"
 
     m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
-    create_server = mock.AsyncMock(return_value=mock.create_autospec(asyncio.Server, spec_set=True))
+    create_server = mock.AsyncMock(
+        return_value=mock.create_autospec(asyncio.Server, spec_set=True)
+    )
 
     with (
-        mock.patch("asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m),
+        mock.patch(
+            "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
+        ),
         mock.patch.object(web_runner_module, "create_server", create_server),
     ):
         await site.start()

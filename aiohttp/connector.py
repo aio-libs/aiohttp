@@ -49,10 +49,7 @@ from .helpers import (
     set_result,
 )
 from .log import client_logger
-from .net_helpers import (
-    create_connection,
-    start_tls
-)
+from .net_helpers import create_connection, start_tls
 from .resolver import DefaultResolver
 
 if sys.version_info >= (3, 12):
@@ -1260,7 +1257,7 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await create_connection(self._loop, *args, **kwargs, sock=sock) # type: ignore[no-any-return]
+                return await create_connection(self._loop, *args, **kwargs, sock=sock)  # type: ignore[no-any-return]
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:

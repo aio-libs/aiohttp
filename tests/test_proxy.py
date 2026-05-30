@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import hdrs, connector as connector_module
+from aiohttp import connector as connector_module, hdrs
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import (
     ClientRequest,
@@ -940,7 +940,10 @@ async def test_request_port(  # type: ignore[misc]
         tr.get_extra_info.return_value = None
         # Called on connection to http://proxy.example.com
         with mock.patch.object(
-            connector_module, "create_connection", autospec=True, return_value=(tr, proto)
+            connector_module,
+            "create_connection",
+            autospec=True,
+            return_value=(tr, proto),
         ):
             req = make_client_request(
                 "GET",

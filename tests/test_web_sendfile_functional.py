@@ -13,10 +13,9 @@ from _pytest.fixtures import SubRequest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
-from aiohttp import web
+from aiohttp import web, web_fileresponse
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
-from aiohttp import web_fileresponse
 from aiohttp.web_fileresponse import NOSENDFILE
 
 try:
