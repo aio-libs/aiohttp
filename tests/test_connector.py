@@ -4116,7 +4116,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         first_conn = next(iter(conn._conns.values()))[0][0]
 
         assert first_conn.transport is not None
-        _sslcontext = first_conn.transport._ssl_protocol._sslcontext  # type: ignore[attr-defined]
+        _sslcontext = first_conn.transport.get_extra_info("sslcontext")  # type: ignore[attr-defined]
 
         assert _sslcontext is client_ssl_ctx
         r.close()
