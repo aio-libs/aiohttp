@@ -24,7 +24,7 @@ from aiohttp import (
     ClientTimeout,
     WSCloseCode,
     net_helpers,
-    web
+    web,
 )
 from aiohttp.log import access_logger
 from aiohttp.web_protocol import RequestHandler
