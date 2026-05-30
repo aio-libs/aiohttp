@@ -1,7 +1,6 @@
 import os
 from asyncio import AbstractEventLoop
 
-
 if os.environ.get("AIOHTTP_NO_EXTENSIONS"):
     HAS_AIOFASTNET = False
 else:
