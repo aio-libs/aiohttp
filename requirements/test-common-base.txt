@@ -74,7 +74,7 @@ setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
-tomli==2.4.0
+tomli==2.4.1
     # via
     #   coverage
     #   pytest
