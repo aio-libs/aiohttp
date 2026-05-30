@@ -565,3 +565,64 @@ async def test_pipelined_request_after_failed_upgrade(
         writer.close()
         with suppress(ConnectionResetError, OSError):
             await writer.wait_closed()
+
+
+async def test_pipelined_invalid_request_after_failed_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Reply 400 when pipelined bytes after a failed upgrade are invalid HTTP.
+
+    The pipelined buffer goes through the parser again in finish_response;
+    any parse error must be surfaced as a 400 response, not silently
+    swallowed (#12734).
+    """
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", ws_handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # Failed WS upgrade followed by an invalid request line so the
+        # second feed_data call raises HttpProcessingError.
+        writer.write(
+            b"GET /ws HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 999\r\n"
+            b"\r\n"
+            b"GET / FOO/1.1\r\n"
+            b"\r\n"
+        )
+        await writer.drain()
+
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + 5.0
+        data = b""
+        while data.count(b"HTTP/1.1 ") < 2:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                break
+            try:
+                chunk = await asyncio.wait_for(reader.read(4096), timeout=remaining)
+            except asyncio.TimeoutError:
+                break
+            if not chunk:
+                break
+            data += chunk
+
+        # Two 400s: one for the failed WS upgrade, one for the pipelined
+        # invalid request that finish_response surfaces from the parser.
+        assert data.count(b" 400 Bad Request") == 2
+        assert b"Bad status line" in data
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, OSError):
+            await writer.wait_closed()
