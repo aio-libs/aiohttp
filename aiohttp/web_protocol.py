@@ -731,8 +731,29 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                self._parser.feed_data(self._message_tail)
+                # Upgrade handler failed while pipelined bytes were parked in
+                # _message_tail; queue them like data_received does so the
+                # main loop sees them instead of blocking on _waiter (#12734).
+                try:
+                    messages, upgraded, tail = self._parser.feed_data(
+                        self._message_tail
+                    )
+                except HttpProcessingError as exc:
+                    messages = [
+                        (
+                            _ErrInfo(status=400, exc=exc, message=exc.message),
+                            EMPTY_PAYLOAD,
+                        )
+                    ]
+                    upgraded = False
+                    tail = b""
                 self._message_tail = b""
+                for msg, payload in messages or ():
+                    self._request_count += 1
+                    self._messages.append((msg, payload))
+                self._upgraded = upgraded
+                if upgraded and tail:
+                    self._message_tail = tail
         try:
             prepare_meth = resp.prepare
         except AttributeError:

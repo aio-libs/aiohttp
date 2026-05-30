@@ -491,3 +491,76 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
         loop.set_exception_handler(original_handler)
 
     assert not exc_handler_calls
+
+
+async def test_pipelined_request_after_failed_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A request pipelined after a failed upgrade handler must still be
+    served, instead of sitting in the parser's tail buffer while the
+    connection blocks on the keep-alive timer (#12734).
+    """
+    ping_calls = 0
+
+    async def ping_handler(request: web.Request) -> web.Response:
+        nonlocal ping_calls
+        ping_calls += 1
+        return web.Response(text="pong")
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/ws", ws_handler)
+    app.router.add_route("GET", "/ping", ping_handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # Pipeline a WS upgrade with an unsupported version and a plain GET
+        # in the same TCP write so both arrive in one data_received call.
+        # WebSocketResponse.prepare() raises HTTPBadRequest on the bad
+        # Sec-WebSocket-Version, leaving the pipelined /ping in
+        # _message_tail. The fix in finish_response queues that pipelined
+        # message before the main loop awaits the waiter.
+        writer.write(
+            b"GET /ws HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 999\r\n"
+            b"\r\n"
+            b"GET /ping HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"\r\n"
+        )
+        await writer.drain()
+
+        loop = asyncio.get_running_loop()
+        deadline = loop.time() + 5.0
+        data = b""
+        while data.count(b"HTTP/1.1 ") < 2:
+            remaining = deadline - loop.time()
+            if remaining <= 0:
+                break
+            try:
+                chunk = await asyncio.wait_for(reader.read(4096), timeout=remaining)
+            except asyncio.TimeoutError:
+                break
+            if not chunk:
+                break
+            data += chunk
+
+        # Without the fix, the pipelined /ping is silently dropped and the
+        # second status line never arrives within the deadline.
+        assert b"HTTP/1.1 400" in data
+        assert b"HTTP/1.1 200" in data
+        assert b"pong" in data
+        assert ping_calls == 1
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, OSError):
+            await writer.wait_closed()

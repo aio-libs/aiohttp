@@ -1,0 +1,5 @@
+Fixed a hang when a request was pipelined after a WebSocket upgrade
+whose handler failed (e.g. raised ``HTTPBadRequest`` from
+``WebSocketResponse.prepare``). The pipelined request was parked in
+the parser's tail buffer and silently discarded, leaving the
+connection idle until the keep-alive timer fired -- by :user:`truffle-dev`.
