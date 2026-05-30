@@ -13,7 +13,7 @@ from _pytest.fixtures import SubRequest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
-from aiohttp import web, web_fileresponse
+from aiohttp import web, net_helpers
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
@@ -74,13 +74,13 @@ async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
         ret = web.FileResponse(path, chunk_size=chunk_size)
-        is_patched = web_fileresponse.sendfile is sendfile_mock
+        is_patched = net_helpers.sendfile is sendfile_mock
         assert is_patched if request.param == "no_sendfile" else not is_patched
         return ret
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            web_fileresponse,
+            net_helpers,
             "sendfile",
             autospec=True,
             spec_set=True,

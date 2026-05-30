@@ -11,10 +11,9 @@ from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
-from . import hdrs
+from . import hdrs, net_helpers
 from .abc import AbstractStreamWriter
 from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
-from .net_helpers import sendfile
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -133,7 +132,7 @@ class FileResponse(StreamResponse):
             raise ConnectionResetError("Connection lost")
 
         try:
-            await sendfile(loop, transport, fobj, offset, count)
+            await net_helpers.sendfile(loop, transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
