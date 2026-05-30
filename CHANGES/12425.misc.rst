@@ -1,0 +1,2 @@
+Replaced uses of the ``get_event_loop()`` function with ``get_running_loop()``
+-- by :user:`agronholm`.

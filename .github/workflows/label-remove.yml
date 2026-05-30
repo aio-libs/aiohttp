@@ -1,6 +1,6 @@
 name: Clear needs-info/pr-unfinished on activity
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize, review_requested]
   issue_comment:
     types: [created]
@@ -11,6 +11,8 @@ jobs:
   clear-pr-unfinished:
     runs-on: ubuntu-latest
     permissions:
+      id-token: write
+      issues: write
       pull-requests: write
 
     steps:

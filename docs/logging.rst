@@ -193,7 +193,7 @@ instance) to the :meth:`aiohttp.web.AppRunner` constructor.
 
 
 .. _access_logformat:
-    http://docs.gunicorn.org/en/stable/settings.html#access-log-format
+    https://gunicorn.org/reference/settings/#access_log_format
 
 .. _accesslog:
-    http://docs.gunicorn.org/en/stable/settings.html#accesslog
+    https://gunicorn.org/reference/settings/#accesslog

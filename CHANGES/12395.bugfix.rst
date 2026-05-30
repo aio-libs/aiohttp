@@ -1,0 +1,4 @@
+Fixed a crash (:external+python:exc:`~http.cookies.CookieError`) in the cookie parser when receiving cookies
+containing ASCII control characters on CPython builds with the :cve:`2026-3644`
+patch. The parser now gracefully skips cookies whose value contains control
+characters instead of letting the exception propagate -- by :user:`rodrigobnogueira`.

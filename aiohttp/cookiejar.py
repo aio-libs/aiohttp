@@ -4,15 +4,15 @@ import datetime
 import heapq
 import itertools
 import json
-import os  # noqa
+import os
 import pathlib
-import pickle
 import re
 import time
 import warnings
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from types import MappingProxyType
 from typing import Union
 
 from yarl import URL
@@ -36,41 +36,6 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
-
-
-class _RestrictedCookieUnpickler(pickle.Unpickler):
-    """A restricted unpickler that only allows cookie-related types.
-
-    This prevents arbitrary code execution when loading pickled cookie data
-    from untrusted sources. Only types that are expected in a serialized
-    CookieJar are permitted.
-
-    See: https://docs.python.org/3/library/pickle.html#restricting-globals
-    """
-
-    _ALLOWED_CLASSES: frozenset[tuple[str, str]] = frozenset(
-        {
-            # Core cookie types
-            ("http.cookies", "SimpleCookie"),
-            ("http.cookies", "Morsel"),
-            # Container types used by CookieJar._cookies
-            ("collections", "defaultdict"),
-            # builtins that pickle uses for reconstruction
-            ("builtins", "tuple"),
-            ("builtins", "set"),
-            ("builtins", "frozenset"),
-            ("builtins", "dict"),
-        }
-    )
-
-    def find_class(self, module: str, name: str) -> type:
-        if (module, name) not in self._ALLOWED_CLASSES:
-            raise pickle.UnpicklingError(
-                f"Forbidden class: {module}.{name}. "
-                "CookieJar.load() only allows cookie-related types for security. "
-                "See https://docs.python.org/3/library/pickle.html#restricting-globals"
-            )
-        return super().find_class(module, name)  # type: ignore[no-any-return]
 
 
 class CookieJar(AbstractCookieJar):
@@ -144,8 +109,22 @@ class CookieJar(AbstractCookieJar):
         self._expirations: dict[tuple[str, str, str], float] = {}
 
     @property
+    def unsafe(self) -> bool:
+        return self._unsafe
+
+    @property
     def quote_cookie(self) -> bool:
         return self._quote_cookie
+
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return the cookies stored in this jar."""
+        return MappingProxyType(self._cookies)
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return the host-only cookies stored in this jar."""
+        return frozenset(self._host_only_cookies)
 
     def save(self, file_path: PathLike) -> None:
         """Save cookies to a file using JSON format.
@@ -170,29 +149,28 @@ class CookieJar(AbstractCookieJar):
                     if attr_val:
                         morsel_data[attr] = attr_val
                 data[key][name] = morsel_data
-        with file_path.open(mode="w", encoding="utf-8") as f:
+
+        # Cookie persistence may include authentication/session tokens.
+        # Use 0o600 at creation time to avoid umask-dependent overexposure
+        # and enforce least-privilege access to sensitive credential data.
+        with open(
+            file_path,
+            mode="w",
+            encoding="utf-8",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as f:
             json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:
-        """Load cookies from a file.
-
-        Tries to load JSON format first. Falls back to loading legacy
-        pickle format (using a restricted unpickler) for backward
-        compatibility with existing cookie files.
+        """Load cookies from a JSON file.
 
         :param file_path: Path to file from where cookies will be
             imported, :class:`str` or :class:`pathlib.Path` instance.
         """
         file_path = pathlib.Path(file_path)
-        # Try JSON format first
-        try:
-            with file_path.open(mode="r", encoding="utf-8") as f:
-                data = json.load(f)
-            self._cookies = self._load_json_data(data)
-        except (json.JSONDecodeError, UnicodeDecodeError, ValueError):
-            # Fall back to legacy pickle format with restricted unpickler
-            with file_path.open(mode="rb") as f:
-                self._cookies = _RestrictedCookieUnpickler(f).load()
+        with file_path.open(mode="r", encoding="utf-8") as f:
+            data = json.load(f)
+        self._cookies = self._load_json_data(data)
 
     def _load_json_data(
         self, data: dict[str, dict[str, dict[str, str | bool]]]
@@ -495,8 +473,7 @@ class CookieJar(AbstractCookieJar):
             coded_value = value = cookie.value
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
-        # setting protected attributes directly and unlikely to change since it would
-        # break pickling.
+        # setting protected attributes directly.
         morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
         return morsel
 
@@ -595,8 +572,22 @@ class DummyCookieJar(AbstractCookieJar):
         return 0
 
     @property
+    def unsafe(self) -> bool:
+        return False
+
+    @property
     def quote_cookie(self) -> bool:
         return True
+
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return an empty mapping."""
+        return MappingProxyType({})
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return an empty frozenset."""
+        return frozenset()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         pass

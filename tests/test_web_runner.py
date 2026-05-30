@@ -1,7 +1,8 @@
 import asyncio
 import platform
 import signal
-from collections.abc import Iterator
+import socket
+from collections.abc import AsyncIterator
 from typing import Any, NoReturn, Protocol
 from unittest import mock
 
@@ -10,7 +11,7 @@ import pytest
 from aiohttp import web
 from aiohttp import web_runner as web_runner_module
 from aiohttp.abc import AbstractAccessLogger
-from aiohttp.test_utils import get_unused_port_socket
+from aiohttp.test_utils import REUSE_ADDRESS
 from aiohttp.web_log import AccessLogger
 
 
@@ -24,10 +25,7 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def make_runner(
-    loop: asyncio.AbstractEventLoop, app: web.Application
-) -> Iterator[_RunnerMaker]:
-    asyncio.set_event_loop(loop)
+async def make_runner(app: web.Application) -> AsyncIterator[_RunnerMaker]:
     runners = []
 
     def go(handle_signals: bool = False, **kwargs: Any) -> web.AppRunner:
@@ -37,7 +35,7 @@ def make_runner(
 
     yield go
     for runner in runners:
-        loop.run_until_complete(runner.cleanup())
+        await runner.cleanup()
 
 
 async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
@@ -88,7 +86,7 @@ async def test_runner_setup_without_signal_handling(make_runner: _RunnerMaker) -
 
 
 async def test_site_double_added(make_runner: _RunnerMaker) -> None:
-    _sock = get_unused_port_socket("127.0.0.1")
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS)
     runner = make_runner()
     await runner.setup()
     site = web.SockSite(runner, _sock)
@@ -223,7 +221,7 @@ async def test_app_make_handler_no_access_log_class() -> None:
 
 
 async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
-    _sock = get_unused_port_socket("127.0.0.1")
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=True)
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
@@ -238,8 +236,9 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("selector",))
 async def test_named_pipe_runner_wrong_loop(
-    app: web.Application, selector_loop: asyncio.AbstractEventLoop, pipe_name: str
+    app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
@@ -250,8 +249,9 @@ async def test_named_pipe_runner_wrong_loop(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_runner_proactor_loop(
-    proactor_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
+    app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()

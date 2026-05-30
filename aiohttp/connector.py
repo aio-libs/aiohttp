@@ -566,16 +566,16 @@ class BaseConnector:
             hdrs.METH_GET,
             url,
             headers=headers,
-            auth=req.proxy_auth,
             loop=self._loop,
             ssl=req.ssl,
         )
-        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
-        if auth is not None:
-            if not req.is_ssl():
-                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
-            else:
-                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
+        if not req.is_ssl():
+            # For non-SSL proxies the request goes directly through the proxy,
+            # so any Proxy-Authorization belongs on the request itself, not on
+            # the synthetic proxy request used for SSL CONNECT.
+            proxy_auth = proxy_req.headers.pop(hdrs.PROXY_AUTHORIZATION, None)
+            if proxy_auth is not None:
+                req.headers[hdrs.PROXY_AUTHORIZATION] = proxy_auth
         return proxy_req
 
     async def connect(
@@ -1279,6 +1279,12 @@ class TCPConnector(BaseConnector):
         if req.url.scheme != "https":
             return
 
+        # TLS-in-TLS only applies when the proxy itself is HTTPS.
+        # When the proxy is HTTP, start_tls upgrades a plain TCP connection,
+        # which is standard TLS and works on all event loops and Python versions.
+        if req.proxy is None or req.proxy.scheme != "https":
+            return
+
         # Check if uvloop is being used, which supports TLS in TLS,
         # otherwise assume that asyncio's native transport is being used.
         if type(underlying_transport).__module__.startswith("uvloop"):
@@ -1520,9 +1526,7 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = req.connection_key._replace(
-                proxy=None, proxy_auth=None, proxy_headers_hash=None
-            )
+            key = req.connection_key._replace(proxy=None, proxy_headers_hash=None)
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
             proxy_resp = await proxy_req._send(conn)
             try:
