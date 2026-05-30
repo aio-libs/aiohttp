@@ -496,9 +496,10 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
 async def test_pipelined_request_after_failed_upgrade(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """A request pipelined after a failed upgrade handler must still be
-    served, instead of sitting in the parser's tail buffer while the
-    connection blocks on the keep-alive timer (#12734).
+    """Serve a request pipelined after a failed upgrade handler.
+
+    The pipelined request must not sit in the parser's tail buffer
+    while the connection blocks on the keep-alive timer (#12734).
     """
     ping_calls = 0
 
