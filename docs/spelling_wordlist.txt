@@ -2,6 +2,7 @@ abc
 addons
 aiodns
 aioes
+aiofastnet
 aiohttp
 aiohttpdemo
 aiohttp’s
@@ -125,6 +126,7 @@ epoll
 et
 etag
 ETag
+ethtool
 expirations
 Facebook
 facto
@@ -176,6 +178,7 @@ keepalive
 keepalived
 keepalives
 keepaliving
+KTLS
 kib
 KiB
 kwarg
@@ -220,6 +223,7 @@ namedtuple
 nameservers
 namespace
 netrc
+NIC
 nginx
 Nginx
 Nikolay
@@ -229,6 +233,7 @@ nowait
 OAuth
 Online
 optimizations
+OpenSSL
 orjson
 os
 outcoming
