@@ -265,22 +265,16 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     site = web.TCPSite(runner)
     assert site.name == "http://0.0.0.0:8080"
 
-    m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
     create_server = mock.AsyncMock(
         return_value=mock.create_autospec(asyncio.Server, spec_set=True)
     )
 
-    with (
-        mock.patch(
-            "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
-        ),
-        mock.patch.object(net_helpers, "create_server", create_server),
-    ):
+    with mock.patch.object(net_helpers, "create_server", create_server):
         await site.start()
 
     create_server.assert_called_once()
     args, kwargs = create_server.call_args
-    assert args == (m, runner.server, None, 8080)
+    assert args == (asyncio.get_running_loop(), runner.server, None, 8080)
 
 
 async def test_tcpsite_empty_str_host(make_runner: _RunnerMaker) -> None:

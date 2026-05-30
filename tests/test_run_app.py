@@ -82,21 +82,21 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
 
 @pytest.fixture
 def patched_loop(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
     unix_server.sockets = []
 
     with mock.patch.object(
-        loop,
+        event_loop,
         "create_unix_server",
         autospec=True,
         spec_set=True,
         return_value=unix_server,
     ):
-        asyncio.set_event_loop(loop)
-        yield loop
+        asyncio.set_event_loop(event_loop)
+        yield event_loop
 
 
 def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
@@ -110,7 +110,7 @@ def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
 
 
 def test_run_app_http(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
     startup_handler = mock.AsyncMock()
@@ -118,10 +118,10 @@ def test_run_app_http(
     cleanup_handler = mock.AsyncMock()
     app.on_cleanup.append(cleanup_handler)
 
-    web.run_app(app, print=stopper(loop), loop=loop)
+    web.run_app(app, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         None,
         8080,
@@ -135,13 +135,13 @@ def test_run_app_http(
 
 
 def test_run_app_close_loop(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
-    web.run_app(app, print=stopper(loop), loop=loop)
+    web.run_app(app, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         None,
         8080,
@@ -150,7 +150,7 @@ def test_run_app_close_loop(
         reuse_address=None,
         reuse_port=None,
     )
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_app_preserves_startup_traceback(
@@ -523,15 +523,15 @@ def test_run_app_mixed_bindings(  # type: ignore[misc]
 
 
 def test_run_app_https(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
-    web.run_app(app, ssl_context=ssl_context, print=stopper(loop), loop=loop)
+    web.run_app(app, ssl_context=ssl_context, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         None,
         8443,
@@ -543,7 +543,7 @@ def test_run_app_https(
 
 
 def test_run_app_nondefault_host_port(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     unused_port_socket: socket.socket,
     create_server_mock: mock.AsyncMock,
 ) -> None:
@@ -551,10 +551,10 @@ def test_run_app_nondefault_host_port(
     host = "127.0.0.1"
 
     app = web.Application()
-    web.run_app(app, host=host, port=port, print=stopper(loop), loop=loop)
+    web.run_app(app, host=host, port=port, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         host,
         port,
@@ -566,7 +566,7 @@ def test_run_app_nondefault_host_port(
 
 
 def test_run_app_with_sock(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     unused_port_socket: socket.socket,
     create_server_mock: mock.AsyncMock,
 ) -> None:
@@ -575,26 +575,26 @@ def test_run_app_with_sock(
     web.run_app(
         app,
         sock=sock,
-        print=stopper(loop),
-        loop=loop,
+        print=stopper(event_loop),
+        loop=event_loop,
     )
 
     create_server_mock.assert_called_with(
-        loop, mock.ANY, sock=sock, ssl=None, backlog=128
+        event_loop, mock.ANY, sock=sock, ssl=None, backlog=128
     )
 
 
 def test_run_app_multiple_hosts(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     hosts = ("127.0.0.1", "127.0.0.2")
 
     app = web.Application()
-    web.run_app(app, host=hosts, print=stopper(loop), loop=loop)
+    web.run_app(app, host=hosts, print=stopper(event_loop), loop=event_loop)
 
     calls = map(
         lambda h: mock.call(
-            loop,
+            event_loop,
             mock.ANY,
             h,
             8080,
@@ -609,13 +609,13 @@ def test_run_app_multiple_hosts(
 
 
 def test_run_app_custom_backlog(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
-    web.run_app(app, backlog=10, print=stopper(loop), loop=loop)
+    web.run_app(app, backlog=10, print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         None,
         8080,
@@ -700,7 +700,7 @@ def test_run_app_abstract_linux_socket(
 
 
 def test_run_app_preexisting_inet_socket(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     mocker: MockerFixture,
     create_server_mock: mock.AsyncMock,
 ) -> None:
@@ -711,18 +711,18 @@ def test_run_app_preexisting_inet_socket(
         sock.bind(("127.0.0.1", 0))
         _, port = sock.getsockname()
 
-        printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, sock=sock, print=printer, loop=loop)
+        printer = mock.Mock(wraps=stopper(event_loop))
+        web.run_app(app, sock=sock, print=printer, loop=event_loop)
 
         create_server_mock.assert_called_with(
-            loop, mock.ANY, sock=sock, backlog=128, ssl=None
+            event_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://127.0.0.1:{port}" in printer.call_args[0][0]
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
 def test_run_app_preexisting_inet6_socket(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
 
@@ -731,18 +731,18 @@ def test_run_app_preexisting_inet6_socket(
         sock.bind(("::1", 0))
         port = sock.getsockname()[1]
 
-        printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, sock=sock, print=printer, loop=loop)
+        printer = mock.Mock(wraps=stopper(event_loop))
+        web.run_app(app, sock=sock, print=printer, loop=event_loop)
 
         create_server_mock.assert_called_with(
-            loop, mock.ANY, sock=sock, backlog=128, ssl=None
+            event_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://[::1]:{port}" in printer.call_args[0][0]
 
 
 @skip_if_no_unix_socks
 def test_run_app_preexisting_unix_socket(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     unix_sockname: str,
     mocker: MockerFixture,
     create_server_mock: mock.AsyncMock,
@@ -754,17 +754,17 @@ def test_run_app_preexisting_unix_socket(
         sock.bind(unix_sockname)
         os.unlink(unix_sockname)
 
-        printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, sock=sock, print=printer, loop=loop)
+        printer = mock.Mock(wraps=stopper(event_loop))
+        web.run_app(app, sock=sock, print=printer, loop=event_loop)
 
         create_server_mock.assert_called_with(
-            loop, mock.ANY, sock=sock, backlog=128, ssl=None
+            event_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
 def test_run_app_multiple_preexisting_sockets(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     app = web.Application()
 
@@ -776,13 +776,13 @@ def test_run_app_multiple_preexisting_sockets(
         sock2.bind(("localhost", 0))
         _, port2 = sock2.getsockname()
 
-        printer = mock.Mock(wraps=stopper(loop))
-        web.run_app(app, sock=(sock1, sock2), print=printer, loop=loop)
+        printer = mock.Mock(wraps=stopper(event_loop))
+        web.run_app(app, sock=(sock1, sock2), print=printer, loop=event_loop)
 
         create_server_mock.assert_has_calls(
             [
-                mock.call(loop, mock.ANY, sock=sock1, backlog=128, ssl=None),
-                mock.call(loop, mock.ANY, sock=sock2, backlog=128, ssl=None),
+                mock.call(event_loop, mock.ANY, sock=sock1, backlog=128, ssl=None),
+                mock.call(event_loop, mock.ANY, sock=sock2, backlog=128, ssl=None),
             ]
         )
         assert f"http://127.0.0.1:{port1}" in printer.call_args[0][0]
@@ -828,7 +828,7 @@ def test_sigterm() -> None:
 
 
 def test_startup_cleanup_signals_even_on_failure(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     create_server_mock.side_effect = RuntimeError()
 
@@ -839,14 +839,14 @@ def test_startup_cleanup_signals_even_on_failure(
     app.on_cleanup.append(cleanup_handler)
 
     with pytest.raises(RuntimeError):
-        web.run_app(app, print=stopper(loop), loop=loop)
+        web.run_app(app, print=stopper(event_loop), loop=event_loop)
 
     startup_handler.assert_called_once_with(app)
     cleanup_handler.assert_called_once_with(app)
 
 
 def test_run_app_coro(
-    loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+    event_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
 ) -> None:
     startup_handler = cleanup_handler = None
 
@@ -859,10 +859,10 @@ def test_run_app_coro(
         app.on_cleanup.append(cleanup_handler)
         return app
 
-    web.run_app(make_app(), print=stopper(loop), loop=loop)
+    web.run_app(make_app(), print=stopper(event_loop), loop=event_loop)
 
     create_server_mock.assert_called_with(
-        loop,
+        event_loop,
         mock.ANY,
         None,
         8080,
@@ -878,7 +878,7 @@ def test_run_app_coro(
 
 
 def test_run_app_default_logger(
-    monkeypatch: pytest.MonkeyPatch, loop: asyncio.AbstractEventLoop
+    monkeypatch: pytest.MonkeyPatch, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     logger = access_logger
     attrs = {
@@ -893,9 +893,9 @@ def test_run_app_default_logger(
     web.run_app(
         app,
         debug=True,
-        print=stopper(loop),
+        print=stopper(event_loop),
         access_log=mock_logger,
-        loop=loop,
+        loop=event_loop,
     )
     mock_logger.setLevel.assert_any_call(logging.DEBUG)
     mock_logger.hasHandlers.assert_called_with()
@@ -903,7 +903,7 @@ def test_run_app_default_logger(
 
 
 def test_run_app_default_logger_setup_requires_debug(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     logger = access_logger
     attrs = {
@@ -918,9 +918,9 @@ def test_run_app_default_logger_setup_requires_debug(
     web.run_app(
         app,
         debug=False,
-        print=stopper(loop),
+        print=stopper(event_loop),
         access_log=mock_logger,
-        loop=loop,
+        loop=event_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
@@ -928,7 +928,7 @@ def test_run_app_default_logger_setup_requires_debug(
 
 
 def test_run_app_default_logger_setup_requires_default_logger(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     logger = access_logger
     attrs = {
@@ -943,9 +943,9 @@ def test_run_app_default_logger_setup_requires_default_logger(
     web.run_app(
         app,
         debug=True,
-        print=stopper(loop),
+        print=stopper(event_loop),
         access_log=mock_logger,
-        loop=loop,
+        loop=event_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_not_called()
@@ -953,7 +953,7 @@ def test_run_app_default_logger_setup_requires_default_logger(
 
 
 def test_run_app_default_logger_setup_only_if_unconfigured(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     logger = access_logger
     attrs = {
@@ -968,9 +968,9 @@ def test_run_app_default_logger_setup_only_if_unconfigured(
     web.run_app(
         app,
         debug=True,
-        print=stopper(loop),
+        print=stopper(event_loop),
         access_log=mock_logger,
-        loop=loop,
+        loop=event_loop,
     )
     mock_logger.setLevel.assert_not_called()
     mock_logger.hasHandlers.assert_called_with()
@@ -978,7 +978,7 @@ def test_run_app_default_logger_setup_only_if_unconfigured(
 
 
 def test_run_app_cancels_all_pending_tasks(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     app = web.Application()
     task = None
@@ -990,12 +990,12 @@ def test_run_app_cancels_all_pending_tasks(
 
     app.on_startup.append(on_startup)
 
-    web.run_app(app, print=stopper(loop), loop=loop)
+    web.run_app(app, print=stopper(event_loop), loop=event_loop)
     assert task is not None
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_done_tasks(event_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
     task = None
 
@@ -1009,12 +1009,12 @@ def test_run_app_cancels_done_tasks(loop: asyncio.AbstractEventLoop) -> None:
 
     app.on_startup.append(on_startup)
 
-    web.run_app(app, print=stopper(loop), loop=loop)
+    web.run_app(app, print=stopper(event_loop), loop=event_loop)
     assert task is not None
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_cancels_failed_tasks(event_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
     task = None
 
@@ -1035,8 +1035,8 @@ def test_run_app_cancels_failed_tasks(loop: asyncio.AbstractEventLoop) -> None:
     app.on_startup.append(on_startup)
 
     exc_handler = mock.Mock()
-    loop.set_exception_handler(exc_handler)
-    web.run_app(app, print=stopper(loop), loop=loop)
+    event_loop.set_exception_handler(exc_handler)
+    web.run_app(app, print=stopper(event_loop), loop=event_loop)
     assert task is not None
     assert task.done()
 
@@ -1045,7 +1045,7 @@ def test_run_app_cancels_failed_tasks(loop: asyncio.AbstractEventLoop) -> None:
         "exception": exc,
         "task": task,
     }
-    exc_handler.assert_called_with(loop, msg)
+    exc_handler.assert_called_with(event_loop, msg)
 
 
 @pytest.mark.parametrize(
@@ -1062,7 +1062,7 @@ def test_run_app_cancels_failed_tasks(loop: asyncio.AbstractEventLoop) -> None:
 )
 def test_run_app_pass_apprunner_kwargs(
     param: str,
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     m = mock.Mock()
@@ -1076,10 +1076,10 @@ def test_run_app_pass_apprunner_kwargs(
 
     app = web.Application()
     monkeypatch.setattr(BaseRunner, "__init__", base_runner_init_spy)
-    web.run_app(app, print=stopper(loop), loop=loop, **{param: m})
+    web.run_app(app, print=stopper(event_loop), loop=event_loop, **{param: m})
 
 
-def test_run_app_context_vars(loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_context_vars(event_loop: asyncio.AbstractEventLoop) -> None:
     from contextvars import ContextVar
 
     count = 0
@@ -1107,11 +1107,11 @@ def test_run_app_context_vars(loop: asyncio.AbstractEventLoop) -> None:
         count += 1
         return app
 
-    web.run_app(init(), print=stopper(loop), loop=loop)
+    web.run_app(init(), print=stopper(event_loop), loop=event_loop)
     assert count == 3
 
 
-def test_run_app_raises_exception(loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_raises_exception(event_loop: asyncio.AbstractEventLoop) -> None:
     async def context(app: web.Application) -> AsyncIterator[None]:
         raise RuntimeError("foo")
         yield  # type: ignore[unreachable]  # pragma: no cover
@@ -1120,10 +1120,10 @@ def test_run_app_raises_exception(loop: asyncio.AbstractEventLoop) -> None:
     app.cleanup_ctx.append(context)
 
     with mock.patch.object(
-        loop, "call_exception_handler", autospec=True, spec_set=True
+        event_loop, "call_exception_handler", autospec=True, spec_set=True
     ) as m:
         with pytest.raises(RuntimeError, match="foo"):
-            web.run_app(app, loop=loop)
+            web.run_app(app, loop=event_loop)
 
     assert not m.called
 
