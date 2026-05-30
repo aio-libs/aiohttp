@@ -943,10 +943,11 @@ async def test_write_headers_with_compression_coalescing(
     [
         "\n",
         "\r",
+        "\x00",
     ],
 )
 def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> None:
-    """Verify serialize_headers raises on cr or nl in the headers."""
+    """Verify serialize_headers raises on cr, nl, or null byte in the headers."""
     status_line = "HTTP/1.1 200 OK"
     headers = CIMultiDict(
         {
@@ -961,19 +962,67 @@ def test_serialize_headers_raises_on_new_line_or_carriage_return(char: str) -> N
         _serialize_headers(status_line, headers)
 
 
-def test_serialize_headers_raises_on_null_byte() -> None:
+@pytest.mark.parametrize(
+    "char",
+    [chr(c) for c in (*range(0x01, 0x09), *range(0x0B, 0x20), 0x7F)],
+)
+def test_serialize_headers_raises_on_forbidden_control_chars_in_value(
+    char: str,
+) -> None:
+    """Verify serialize_headers rejects RFC 9110-forbidden CTLs in values."""
     status_line = "HTTP/1.1 200 OK"
-    headers = CIMultiDict(
-        {
-            hdrs.CONTENT_TYPE: "text/plain\x00",
-        }
-    )
+    headers = CIMultiDict({hdrs.CONTENT_TYPE: f"text/plain{char}"})
 
     with pytest.raises(
         ValueError,
-        match="null byte detected in headers",
+        match="Forbidden control character detected in headers",
     ):
         _serialize_headers(status_line, headers)
+
+
+@pytest.mark.parametrize(
+    "char",
+    [chr(c) for c in (*range(0x01, 0x09), *range(0x0B, 0x20), 0x7F)],
+)
+def test_serialize_headers_raises_on_forbidden_control_chars_in_name(
+    char: str,
+) -> None:
+    """Verify serialize_headers rejects RFC 9110-forbidden CTLs in names."""
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict({f"X-Bad{char}Header": "value"})
+
+    with pytest.raises(
+        ValueError,
+        match="Forbidden control character detected in headers",
+    ):
+        _serialize_headers(status_line, headers)
+
+
+@pytest.mark.parametrize(
+    "char",
+    [chr(c) for c in (*range(0x01, 0x09), *range(0x0B, 0x20), 0x7F)],
+)
+def test_serialize_headers_raises_on_forbidden_control_chars_in_status_line(
+    char: str,
+) -> None:
+    """Verify serialize_headers rejects RFC 9110-forbidden CTLs in status line."""
+    status_line = f"HTTP/1.1 200 OK{char}"
+    headers: CIMultiDict[str] = CIMultiDict()
+
+    with pytest.raises(
+        ValueError,
+        match="Forbidden control character detected in headers",
+    ):
+        _serialize_headers(status_line, headers)
+
+
+def test_serialize_headers_allows_htab_in_value() -> None:
+    """Verify HTAB (0x09) remains permitted in field values per RFC 9110."""
+    status_line = "HTTP/1.1 200 OK"
+    headers = CIMultiDict({hdrs.CONTENT_TYPE: "text/plain\tcharset=utf-8"})
+
+    result = _serialize_headers(status_line, headers)
+    assert b"text/plain\tcharset=utf-8" in result
 
 
 async def test_write_compressed_data_with_headers_coalescing(

@@ -1,11 +1,11 @@
 # Extracted from `pyproject.toml` via `make sync-direct-runtime-deps`
 
-aiodns >= 3.3.0
+aiodns >= 3.3.0; sys_platform != 'android' and sys_platform != 'ios'
 aiohappyeyeballs >= 2.5.0
 aiosignal >= 1.4.0
 async-timeout >= 4.0, < 6.0 ; python_version < '3.11'
-backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14'
-Brotli >= 1.2; platform_python_implementation == 'CPython'
+backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14' and sys_platform != 'android' and sys_platform != 'ios'
+Brotli >= 1.2; platform_python_implementation == 'CPython' and sys_platform != 'android' and sys_platform != 'ios'
 brotlicffi >= 1.2; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
 multidict >=4.5, < 7.0

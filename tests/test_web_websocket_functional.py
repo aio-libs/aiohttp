@@ -30,6 +30,31 @@ async def test_websocket_can_prepare(aiohttp_client: AiohttpClient) -> None:
     assert resp.status == 426
 
 
+async def test_handshake_connection_header_substring_not_a_token(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/",
+        headers={
+            "Upgrade": "websocket",
+            "Connection": "keep-alive, notupgrade",
+            "Sec-WebSocket-Key": "dGhlIHNhbXBsZSBub25jZQ==",
+            "Sec-WebSocket-Version": "13",
+        },
+    )
+    assert resp.status == 400
+
+
 async def test_websocket_json(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()

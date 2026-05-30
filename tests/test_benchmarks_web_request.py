@@ -2,12 +2,18 @@
 
 import asyncio
 import zlib
+from typing import TYPE_CHECKING
 
 import pytest
 from pytest_aiohttp import AiohttpClient
-from pytest_codspeed import BenchmarkFixture
 
 from aiohttp import web
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")

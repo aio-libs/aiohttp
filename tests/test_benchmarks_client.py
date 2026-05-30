@@ -2,15 +2,20 @@
 
 import asyncio
 from collections.abc import Iterator
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 from aiohttp import hdrs, request, web
 from aiohttp.test_utils import TestServer
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 @pytest.fixture

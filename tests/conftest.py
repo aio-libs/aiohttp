@@ -14,12 +14,14 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 from uuid import uuid4
 
+if TYPE_CHECKING:
+    import trustme
+
 import pytest
-import trustme
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -112,6 +114,8 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
+    if not TYPE_CHECKING:
+        trustme = pytest.importorskip("trustme")
     return trustme.CA()
 
 
