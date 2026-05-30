@@ -1355,6 +1355,7 @@ class TCPConnector(BaseConnector):
                             server_hostname=req.server_hostname or req.url.raw_host,
                             ssl_handshake_timeout=timeout.total,
                         )
+                    tls_transport = cast(asyncio.BaseTransport | None, tls_transport)
                 except BaseException:
                     # We need to close the underlying transport since
                     # `start_tls()` probably failed before it had a

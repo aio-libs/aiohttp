@@ -607,7 +607,7 @@ def test_run_app_multiple_hosts(
         ),
         hosts,
     )
-    create_server_mock.assert_has_calls(calls)
+    create_server_mock.assert_has_calls(list(calls))
 
 
 def test_run_app_custom_backlog(
