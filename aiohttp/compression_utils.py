@@ -309,8 +309,9 @@ class ZLibDecompressor(DecompressionBaseHandler):
 
         # Member ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.
-        # Prepare a fresh one for the next chunk.
-        if self._decompressor.eof:
+        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
+        # confirm the stream is complete.
+        if self._decompressor.eof and self._mode > self._zlib_backend.MAX_WBITS:
             self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
 
         return result
