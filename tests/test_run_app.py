@@ -11,7 +11,7 @@ import sys
 import time
 import traceback
 from collections.abc import AsyncIterator, Awaitable, Callable, Coroutine, Iterator
-from typing import NoReturn
+from typing import Any, NoReturn
 from unittest import mock
 from uuid import uuid4
 
