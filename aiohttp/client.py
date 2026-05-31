@@ -1122,16 +1122,11 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            # RFC 9110 §7.6.1: Connection is a comma-separated list of tokens.
-            # Tokenize (as http_parser._parse_headers does) so a spec-compliant
-            # response like "Connection: upgrade, keep-alive" is accepted.
-            conn_values = resp.headers.get(hdrs.CONNECTION, "")
-            conn_tokens = {
-                token.lower()
-                for token in (part.strip(" \t") for part in conn_values.split(","))
-                if token and token.isascii()
-            }
-            if "upgrade" not in conn_tokens:
+            # The parser already tokenizes the Connection header per
+            # RFC 9110 §7.6.1 and records the "upgrade" token in resp._upgraded,
+            # so a response like "Connection: upgrade, keep-alive" is accepted.
+            # This mirrors the server-side check in web_ws.
+            if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,

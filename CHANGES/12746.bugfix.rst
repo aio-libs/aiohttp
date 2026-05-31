@@ -1,1 +1,1 @@
-Fixed the WebSocket client handshake to parse the response ``Connection`` header as a comma-separated token list per :rfc:`9110#section-7.6.1`, so spec-compliant responses such as ``Connection: upgrade, keep-alive`` are now accepted instead of being rejected -- by :user:`rodrigobnogueira`.
+Fixed the WebSocket client handshake rejecting spec-compliant responses whose ``Connection`` header lists ``upgrade`` alongside other tokens, such as ``Connection: upgrade, keep-alive`` (:rfc:`9110#section-7.6.1`) -- by :user:`rodrigobnogueira`.
