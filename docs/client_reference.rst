@@ -1283,7 +1283,7 @@ is controlled by *force_close* constructor's parameter).
       When the optional `truststore <https://truststore.readthedocs.io/>`_
       library is importable (install it via
       ``pip install aiohttp[truststore]``), *aiohttp* automatically uses
-      :class:`truststore.SSLContext` for its default verified SSL context.
+      :class:`!truststore.SSLContext` for its default verified SSL context.
       This delegates certificate verification to the operating system's
       native trust store (macOS Keychain, Windows certificate stores, OpenSSL
       default paths on Linux) and fixes ``CERTIFICATE_VERIFY_FAILED`` errors

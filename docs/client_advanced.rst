@@ -661,7 +661,7 @@ constructor flag to set::
   pip install aiohttp[truststore]
 
 With the optional dependency installed, the default
-:class:`~aiohttp.TCPConnector` uses :class:`truststore.SSLContext` for its
+:class:`~aiohttp.TCPConnector` uses :class:`!truststore.SSLContext` for its
 verified SSL context. Without it, the stdlib defaults are used and behaviour
 is unchanged.
 
