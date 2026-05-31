@@ -4511,19 +4511,15 @@ async def test_connector_does_not_remove_needed_waiters(
 def test_connector_multiple_event_loop(make_client_request: _RequestMaker) -> None:
     """Test the connector with multiple event loops."""
 
+    async def create_connection(*args: object, **kwargs: object) -> NoReturn:
+        raise ssl.CertificateError
+
     async def async_connect() -> Literal[True]:
         conn = aiohttp.TCPConnector()
         loop = asyncio.get_running_loop()
         req = make_client_request("GET", URL("https://127.0.0.1"), loop=loop)
         with suppress(aiohttp.ClientConnectorError):
-            with mock.patch.object(
-                net_helpers,
-                "create_connection",
-                autospec=True,
-                spec_set=True,
-                side_effect=ssl.CertificateError,
-            ):
-                await conn.connect(req, [], ClientTimeout())
+            await conn.connect(req, [], ClientTimeout())
         return True
 
     def test_connect() -> Literal[True]:
@@ -4533,9 +4529,10 @@ def test_connector_multiple_event_loop(make_client_request: _RequestMaker) -> No
         finally:
             loop.close()
 
-    with futures.ThreadPoolExecutor() as executor:
-        res_list = [executor.submit(test_connect) for _ in range(2)]
-        raw_response_list = [res.result() for res in futures.as_completed(res_list)]
+    with mock.patch.object(net_helpers, "create_connection", create_connection):
+        with futures.ThreadPoolExecutor() as executor:
+            res_list = [executor.submit(test_connect) for _ in range(2)]
+            raw_response_list = [res.result() for res in futures.as_completed(res_list)]
 
     assert raw_response_list == [True, True]
 
