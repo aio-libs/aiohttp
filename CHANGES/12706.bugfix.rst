@@ -1,0 +1,1 @@
+Fixed invalid bytes being allowed in multipart/payload headers -- by :user:`Dreamsorcerer`.

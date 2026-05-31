@@ -41,7 +41,7 @@ try:
         import brotlicffi as brotli
     except ImportError:
         import brotli
-except ImportError:  # pragma: no cover
+except ImportError:
     brotli = None
 
 try:
@@ -1600,6 +1600,15 @@ def test_http_request_parser_bad_method(
         )
 
 
+def test_http_request_parser_tls_handshake_on_http_port(
+    parser: HttpRequestParser,
+) -> None:
+    with pytest.raises(http_exceptions.BadHttpMethod) as ctx:
+        parser.feed_data(b"\x16\x03\x03\x01F\x01\r\n\r\n")
+
+    assert "Received HTTPS traffic on an HTTP port" in str(ctx.value)
+
+
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(b"GET //get HT/11\r\nHost: a\r\n\r\n")
@@ -2702,6 +2711,9 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert buf._eof
 
+    @pytest.mark.skipif(
+        sys.platform in ("android", "ios"), reason="brotli not available"
+    )
     async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "br")

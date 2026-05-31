@@ -279,7 +279,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 )
             )
 
-        if "upgrade" not in headers.get(hdrs.CONNECTION, "").lower():
+        if not request._message.upgrade:
             raise HTTPBadRequest(
                 text=f"No CONNECTION upgrade hdr: {headers.get(hdrs.CONNECTION)}"
             )
