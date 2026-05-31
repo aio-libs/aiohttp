@@ -1085,7 +1085,7 @@ class TestShutdown:
         app.router.add_get("/", handler)
         app.router.add_get("/stop", self.stop)
 
-        with mock.patch("aiohttp.web_runner.Server", ServerWithRecordClear):
+        with mock.patch("aiohttp.web_app.Server", ServerWithRecordClear):
             # TODO: print is a bit of a hack, we should have a proper callback/condition
             web.run_app(app, sock=sock, shutdown_timeout=timeout, print=on_ready)
         assert test_task is not None
