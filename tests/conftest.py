@@ -108,9 +108,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             ("os.stat", ("_configure_context", "_capath_contains_certs")),
             ("os.listdir", ("_capath_contains_certs",)),
         ):
-            bb.functions[func].can_block_in(
-                "truststore/_openssl.py", fn_names
-            )
+            bb.functions[func].can_block_in("truststore/_openssl.py", fn_names)
         # Note: coverage.py uses locking internally which can cause false positives
         # in blockbuster when it instruments code. This is particularly problematic
         # on Windows where it can lead to flaky test failures.
