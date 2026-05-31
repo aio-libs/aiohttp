@@ -19,14 +19,14 @@ attrs==26.1.0
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
 blockbuster==1.5.26
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 cffi==2.0.0
     # via cryptography
 click==8.4.1
     # via wait-for-it
 coverage==7.14.1
     # via
-    #   -r test-common.in
+    #   -r requirements/test-common.in
     #   pytest-cov
 cryptography==48.0.0
     # via trustme
@@ -37,7 +37,7 @@ execnet==2.1.2
 forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 frozenlist==1.8.0
     # via
     #   aiohttp
@@ -49,7 +49,7 @@ idna==3.17
 iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 librt==0.11.0
     # via mypy
 markdown-it-py==4.2.0
@@ -61,7 +61,7 @@ multidict==6.7.1
     #   aiohttp
     #   yarl
 mypy==2.1.0 ; implementation_name == "cpython"
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
 packaging==26.2
@@ -69,7 +69,7 @@ packaging==26.2
 pathspec==1.1.1
     # via mypy
 pkgconfig==1.6.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pluggy==1.6.0
     # via
     #   pytest
@@ -79,7 +79,7 @@ propcache==0.5.2
     #   aiohttp
     #   yarl
 proxy-py==2.4.10
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pycparser==3.0
     # via cffi
 pydantic==2.13.4
@@ -92,7 +92,7 @@ pygments==2.20.0
     #   rich
 pytest==9.0.3
     # via
-    #   -r test-common-base.in
+    #   -r requirements/test-common-base.in
     #   pytest-aiohttp
     #   pytest-asyncio
     #   pytest-codspeed
@@ -101,27 +101,27 @@ pytest==9.0.3
     #   pytest-timeout
     #   pytest-xdist
 pytest-aiohttp==1.1.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 pytest-cov==7.1.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-mock==3.15.1
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-timeout==2.4.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-xdist==3.8.0
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
 python-on-whales==0.81.0
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 rich==15.0.0
     # via pytest-codspeed
 setuptools-git==1.2
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
 tomli==2.4.1
@@ -130,7 +130,7 @@ tomli==2.4.1
     #   mypy
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 typing-extensions==4.15.0
     # via
     #   aiosignal
@@ -146,11 +146,11 @@ typing-extensions==4.15.0
 typing-inspection==0.4.2
     # via pydantic
 wait-for-it==2.3.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
 # aiohttp
