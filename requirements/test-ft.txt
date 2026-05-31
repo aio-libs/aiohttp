@@ -8,8 +8,6 @@ aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 aiofastnet==0.7.0 ; platform_python_implementation == "CPython" and (platform_machine == "x86_64" or platform_machine == "AMD64" or platform_machine == "aarch64")
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.1
-    # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.6.2
     # via
     #   -r requirements/runtime-deps.in
