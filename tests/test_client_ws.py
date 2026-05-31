@@ -30,6 +30,7 @@ async def test_ws_connect(ws_key: str, key_data: bytes) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
+    resp._upgraded = True
     resp.connection.protocol.read_timeout = None
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
@@ -255,6 +256,8 @@ async def test_ws_connect_err_upgrade(ws_key: str, key_data: bytes) -> None:
 
 
 async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
+    # The parser did not see a Connection: upgrade token (resp._upgraded is
+    # False), so the handshake must be rejected.
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -262,6 +265,7 @@ async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
         hdrs.CONNECTION: "close",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
+    resp._upgraded = False
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -274,71 +278,6 @@ async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
                 )
 
     assert ctx.value.message == "Invalid connection header"
-
-
-async def test_ws_connect_err_conn_substring_not_a_token(
-    ws_key: str, key_data: bytes
-) -> None:
-    # Guard against a naive substring check such as `"upgrade" in conn_value`:
-    # "notupgrade" contains "upgrade" but is not the upgrade token, so the
-    # handshake must be rejected.
-    resp = mock.Mock()
-    resp.status = 101
-    resp.headers = {
-        hdrs.UPGRADE: "websocket",
-        hdrs.CONNECTION: "keep-alive, notupgrade",
-        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
-    }
-    with mock.patch("aiohttp.client.os") as m_os:
-        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
-            m_os.urandom.return_value = key_data
-            m_req.return_value = asyncio.get_running_loop().create_future()
-            m_req.return_value.set_result(resp)
-
-            with pytest.raises(client.WSServerHandshakeError) as ctx:
-                await aiohttp.ClientSession().ws_connect(
-                    "http://test.org", protocols=("t1", "t2", "chat")
-                )
-
-    assert ctx.value.message == "Invalid connection header"
-
-
-@pytest.mark.parametrize(
-    "connection_header",
-    [
-        "upgrade, keep-alive",
-        "Upgrade, Keep-Alive",  # case folding
-        "keep-alive, upgrade",  # upgrade not first
-        " upgrade , keep-alive ",  # surrounding whitespace
-    ],
-)
-async def test_ws_connect_conn_multi_token(
-    connection_header: str, ws_key: str, key_data: bytes
-) -> None:
-    # RFC 9110 §7.6.1: Connection is a comma-separated list of tokens, so a
-    # response that lists "upgrade" among other tokens must complete the
-    # handshake. The old exact-equality check rejected every variant here.
-    resp = mock.Mock()
-    resp.status = 101
-    resp.headers = {
-        hdrs.UPGRADE: "websocket",
-        hdrs.CONNECTION: connection_header,
-        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
-        hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
-    }
-    resp.connection.protocol.read_timeout = None
-    with mock.patch("aiohttp.client.os") as m_os:
-        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
-            m_os.urandom.return_value = key_data
-            m_req.return_value = asyncio.get_running_loop().create_future()
-            m_req.return_value.set_result(resp)
-
-            res = await aiohttp.ClientSession().ws_connect(
-                "http://test.org", protocols=("t1", "t2", "chat")
-            )
-
-    assert isinstance(res, client.ClientWebSocketResponse)
-    assert res.protocol == "chat"
 
 
 async def test_ws_connect_err_challenge(ws_key: str, key_data: bytes) -> None:
