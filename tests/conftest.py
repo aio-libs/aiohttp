@@ -101,14 +101,6 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             bb.functions[func].can_block_in(
                 "aiohttp/web_urldispatcher.py", "add_static"
             )
-        # truststore's _configure_context probes well-known CA file/dir
-        # locations on every wrap_socket call; on Linux this is a no-op
-        # versus stdlib but blockbuster flags the os.path.is* probes.
-        for func, fn_names in (
-            ("os.stat", ("_configure_context", "_capath_contains_certs")),
-            ("os.listdir", ("_capath_contains_certs",)),
-        ):
-            bb.functions[func].can_block_in("truststore/_openssl.py", fn_names)
         # Note: coverage.py uses locking internally which can cause false positives
         # in blockbuster when it instruments code. This is particularly problematic
         # on Windows where it can lead to flaky test failures.

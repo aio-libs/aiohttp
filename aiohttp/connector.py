@@ -848,24 +848,31 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
-def _make_ssl_context(verified: bool) -> SSLContext:
+def _make_ssl_context(verified: bool, *, use_truststore: bool = False) -> SSLContext:
     """Create SSL context.
 
     This method is not async-friendly and should be called from a thread
     because it will load certificates from disk and do other blocking I/O.
 
-    When the optional ``truststore`` library is importable and ``verified``
-    is ``True``, the returned context is a :class:`truststore.SSLContext`,
-    which delegates certificate verification to the operating system's
-    native trust store (macOS Keychain, Windows certificate stores, OpenSSL
-    default paths on Linux). Otherwise the stdlib default context is used.
+    When ``use_truststore`` is ``True`` and ``verified`` is also ``True``,
+    the returned context is a :class:`truststore.SSLContext`, which delegates
+    certificate verification to the operating system's native trust store
+    (macOS Keychain, Windows certificate stores). Caller is responsible for
+    confirming ``truststore`` is importable; this function will raise
+    ``RuntimeError`` if the dependency is missing.
     """
     if ssl is None:
         # No ssl support
         return None  # type: ignore[unreachable]
     sslcontext: SSLContext
     if verified:
-        if HAS_TRUSTSTORE:
+        if use_truststore:
+            if not HAS_TRUSTSTORE:
+                raise RuntimeError(
+                    "truststore is not installed. Install it with "
+                    "`pip install aiohttp[truststore]` to enable "
+                    "use_truststore=True."
+                )
             sslcontext = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         else:
             sslcontext = ssl.create_default_context()
@@ -885,8 +892,6 @@ def _make_ssl_context(verified: bool) -> SSLContext:
 # since they do blocking I/O to load certificates from disk,
 # and imports should always be done before the event loop starts
 # or in a thread.
-# _SSL_CONTEXT_VERIFIED is frozen at module import; tests that toggle
-# HAS_TRUSTSTORE must call _make_ssl_context(True) fresh, not inspect this.
 _SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
 _SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
 
@@ -928,14 +933,15 @@ class TCPConnector(BaseConnector):
                            notifying the remote peer of connection closure,
                            while avoiding excessive delays during connector cleanup.
                            Note: Only takes effect on Python 3.11+.
-
-    When the optional ``truststore`` library is installed
-    (``pip install aiohttp[truststore]``), the default verified SSL context
-    delegates certificate verification to the operating system's native
-    trust store (macOS Keychain, Windows certificate stores, OpenSSL default
-    paths on Linux). Without the dependency, the stdlib defaults are used.
-    Passing an explicit :class:`ssl.SSLContext` via ``ssl=`` always wins
-    over the default behaviour.
+    use_truststore - If True, use the ``truststore`` library to delegate
+                     certificate verification to the operating system's
+                     native trust store (macOS Keychain, Windows certificate
+                     stores). Requires ``pip install aiohttp[truststore]``.
+                     Adds per-handshake file I/O on the event loop, so leave
+                     disabled unless OS-managed roots are required (typically
+                     enterprise TLS-intercepting proxies). Has no effect when
+                     an explicit ``SSLContext`` is passed via ``ssl=``.
+                     Incompatible with ``ssl=False``.
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
@@ -960,6 +966,7 @@ class TCPConnector(BaseConnector):
         interleave: int | None = None,
         socket_factory: SocketFactoryType | None = None,
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        use_truststore: bool = False,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -975,7 +982,22 @@ class TCPConnector(BaseConnector):
                 "ssl should be SSLContext, Fingerprint, or bool, "
                 f"got {ssl!r} instead."
             )
+        if use_truststore and ssl is False:
+            raise ValueError(
+                "use_truststore=True is incompatible with ssl=False; "
+                "truststore is only meaningful for verified TLS."
+            )
         self._ssl = ssl
+        self._ssl_context_truststore: SSLContext | None = None
+        if use_truststore:
+            # Build the truststore-backed context eagerly so a missing
+            # dependency surfaces at the opt-in site, not at first request.
+            # _make_ssl_context does blocking I/O; this must run before the
+            # event loop starts (i.e. before TCPConnector is used in an
+            # async context, which is the expected construction pattern).
+            self._ssl_context_truststore = _make_ssl_context(
+                True, use_truststore=True
+            )
 
         self._resolver: AbstractResolver
         if resolver is None:
@@ -1244,6 +1266,8 @@ class TCPConnector(BaseConnector):
         if sslcontext is not True:
             # not verified or fingerprinted
             return _SSL_CONTEXT_UNVERIFIED
+        if self._ssl_context_truststore is not None:
+            return self._ssl_context_truststore
         return _SSL_CONTEXT_VERIFIED
 
     def _get_fingerprint(self, req: ClientRequestBase) -> "Fingerprint | None":

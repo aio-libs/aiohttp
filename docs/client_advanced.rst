@@ -654,28 +654,26 @@ browsers succeed -- a common situation behind enterprise TLS-intercepting
 proxies that rely on a locally-installed root CA.
 
 The `truststore <https://truststore.readthedocs.io/>`_ library provides an
-``SSLContext`` that delegates verification to the OS-native APIs. *aiohttp*
-prefers it automatically whenever the library is importable -- there is no
-constructor flag to set::
+``SSLContext`` that delegates verification to the OS-native APIs. Install the
+optional dependency and opt in per connector::
 
   pip install aiohttp[truststore]
 
-With the optional dependency installed, the default
-:class:`~aiohttp.TCPConnector` uses :class:`!truststore.SSLContext` for its
-verified SSL context. Without it, the stdlib defaults are used and behaviour
-is unchanged.
+Then pass ``use_truststore=True`` when constructing the connector::
 
-To force the stdlib trust paths even when ``truststore`` is installed, pass
-an explicit context built from :func:`ssl.create_default_context`::
-
-  conn = aiohttp.TCPConnector(ssl=ssl.create_default_context())
+  conn = aiohttp.TCPConnector(use_truststore=True)
   async with aiohttp.ClientSession(connector=conn) as sess:
       ...
 
-Installing the extra causes the verified default SSL context to be built at
-``import aiohttp`` time via OS trust-store APIs; this is intentional, so any
-blocking I/O happens before the event loop starts, consistent with how the
-stdlib default context has always been built at import time.
+The default behaviour is unchanged -- without ``use_truststore=True`` the
+verified context is the stdlib :func:`ssl.create_default_context`, built once
+at import time. Opting in trades that one-shot import-time cost for per-handshake
+file I/O on the event loop (truststore's context re-probes trust paths inside
+``wrap_socket``), so leave the flag off unless OS-managed roots are required.
+
+An explicit :class:`ssl.SSLContext` passed via ``ssl=`` always wins over
+``use_truststore=True``. The flag is rejected with ``ssl=False`` because
+truststore is only meaningful for verified TLS.
 
 Example: Use certifi
 ^^^^^^^^^^^^^^^^^^^^

@@ -1278,25 +1278,23 @@ is controlled by *force_close* constructor's parameter).
       *ssl_context* may be used for configuring certification
       authority channel, supported SSL options etc.
 
-   .. note::
+   :param bool use_truststore: If ``True``, build the verified SSL context
+      via the optional `truststore <https://truststore.readthedocs.io/>`_
+      library (install it with ``pip install aiohttp[truststore]``).
+      Truststore's :class:`!truststore.SSLContext` delegates certificate
+      verification to the operating system's native trust store (macOS
+      Keychain, Windows certificate stores) and fixes
+      ``CERTIFICATE_VERIFY_FAILED`` errors when OS-managed roots -- including
+      those installed by an administrator or an enterprise TLS-intercepting
+      proxy -- are not in OpenSSL's default paths.
 
-      When the optional `truststore <https://truststore.readthedocs.io/>`_
-      library is importable (install it via
-      ``pip install aiohttp[truststore]``), *aiohttp* automatically uses
-      :class:`!truststore.SSLContext` for its default verified SSL context.
-      This delegates certificate verification to the operating system's
-      native trust store (macOS Keychain, Windows certificate stores, OpenSSL
-      default paths on Linux) and fixes ``CERTIFICATE_VERIFY_FAILED`` errors
-      in environments where OS-managed roots -- including those installed by
-      an administrator or an enterprise TLS-intercepting proxy -- are not in
-      OpenSSL's default paths. Without the dependency, the stdlib defaults
-      are used. Passing an explicit :class:`ssl.SSLContext` via ``ssl=``
-      always wins.
+      Default is ``False``. The flag adds per-handshake file I/O on the
+      event loop, so leave it off unless OS-managed roots are required.
+      An explicit :class:`ssl.SSLContext` passed via ``ssl=`` always wins.
+      Setting ``use_truststore=True`` together with ``ssl=False`` raises
+      :exc:`ValueError`.
 
-      .. versionchanged:: 3.14
-
-         Automatically prefer ``truststore`` when the optional dependency
-         is installed.
+      .. versionadded:: 3.14
 
    :param tuple local_addr: tuple of ``(local_host, local_port)`` used to bind
       socket locally if specified.
