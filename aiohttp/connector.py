@@ -1395,7 +1395,7 @@ class TCPConnector(BaseConnector):
             ) from type_err
         else:
             if tls_transport is None:
-                msg = "Failed to start TLS (possibly caused by closing transport)" # type: ignore[unreachable]
+                msg = "Failed to start TLS (possibly caused by closing transport)"  # type: ignore[unreachable]
                 raise client_error(req.connection_key, OSError(msg))
             tls_proto.connection_made(
                 tls_transport
