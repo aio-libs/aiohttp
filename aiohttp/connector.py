@@ -1282,8 +1282,12 @@ class TCPConnector(BaseConnector):
             return
 
         # Check if uvloop is being used, which supports TLS in TLS,
-        # otherwise assume that asyncio's native transport is being used.
         if type(underlying_transport).__module__.startswith("uvloop"):
+            return
+
+        # Check if aiofastnet is being used, which supports TLS in TLS,
+        # otherwise assume that asyncio's native transport is being used.
+        if net_helpers.HAS_AIOFASTNET:
             return
 
         # Support in asyncio was added in Python 3.11 (bpo-44011)
