@@ -995,9 +995,7 @@ class TCPConnector(BaseConnector):
             # _make_ssl_context does blocking I/O; this must run before the
             # event loop starts (i.e. before TCPConnector is used in an
             # async context, which is the expected construction pattern).
-            self._ssl_context_truststore = _make_ssl_context(
-                True, use_truststore=True
-            )
+            self._ssl_context_truststore = _make_ssl_context(True, use_truststore=True)
 
         self._resolver: AbstractResolver
         if resolver is None:
