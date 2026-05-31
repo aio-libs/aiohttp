@@ -12,6 +12,7 @@ al
 alives
 api
 api’s
+APIs
 app
 app’s
 apps
@@ -236,6 +237,7 @@ normalizer
 nowait
 OAuth
 Online
+OpenSSL
 optimizations
 orjson
 os
