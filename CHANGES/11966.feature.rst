@@ -1,0 +1,8 @@
+Large overhaul of parser/decompression code.
+
+The zip bomb security fix in 3.13 stopped highly compressed payloads
+from being decompressed, regardless of validity. Now aiohttp will
+decompress such payloads in chunks of 256+ KiB, allowing safe decompression
+of such payloads.
+
+-- by :user:`Dreamsorcerer`.

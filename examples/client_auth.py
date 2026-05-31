@@ -13,9 +13,8 @@ async def fetch(session: aiohttp.ClientSession) -> None:
 
 
 async def go() -> None:
-    async with aiohttp.ClientSession(
-        auth=aiohttp.BasicAuth("andrew", "password")
-    ) as session:
+    headers = {"Authorization": aiohttp.encode_basic_auth("andrew", "password")}
+    async with aiohttp.ClientSession(headers=headers) as session:
         await fetch(session)
 
 

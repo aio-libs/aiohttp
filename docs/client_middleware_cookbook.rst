@@ -60,6 +60,8 @@ efficient to implement without a middleware:
 
 .. literalinclude:: code/client_middleware_cookbook.py
    :pyobject: token_refresh_preemptively_example
+   :lines: 2-
+   :dedent:
 
 Or combine the above approaches to create a more robust solution.
 
@@ -97,6 +99,29 @@ Using both of these together in a session should provide full SSRF protection.
 
 Best Practices
 --------------
+
+.. important::
+
+   **Request-level middlewares replace session middlewares**: When you pass ``middlewares``
+   to ``request()`` or its convenience methods (``get()``, ``post()``, etc.), it completely
+   replaces the session-level middlewares, rather than extending them. This differs from
+   other parameters like ``headers``, which are merged.
+
+   .. code-block:: python
+
+      session = ClientSession(middlewares=[middleware_session])
+
+      # Session middleware is used
+      await session.get("http://example.com")
+
+      # Session middleware is NOT used, only request middleware
+      await session.get("http://example.com", middlewares=[middleware_request])
+
+      # To use both, explicitly pass both
+      await session.get(
+          "http://example.com",
+          middlewares=[middleware_session, middleware_request]
+      )
 
 1. **Keep middleware focused**: Each middleware should have a single responsibility.
 

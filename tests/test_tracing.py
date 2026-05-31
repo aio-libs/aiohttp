@@ -1,6 +1,6 @@
 import sys
 from types import SimpleNamespace
-from typing import Any, Tuple
+from typing import Any
 from unittest import mock
 from unittest.mock import Mock
 
@@ -58,6 +58,19 @@ class TestTraceConfig:
             trace_request_ctx=trace_request_ctx
         )
         assert trace_config_ctx.trace_request_ctx is trace_request_ctx
+
+    def test_trace_config_ctx_custom_class(self) -> None:
+        """Custom class instances should be accepted as trace_request_ctx (#10753)."""
+
+        class MyContext:
+            def __init__(self, request_id: int) -> None:
+                self.request_id = request_id
+
+        ctx = MyContext(request_id=42)
+        trace_config = TraceConfig()
+        trace_config_ctx = trace_config.trace_config_ctx(trace_request_ctx=ctx)
+        assert trace_config_ctx.trace_request_ctx is ctx
+        assert trace_config_ctx.trace_request_ctx.request_id == 42
 
     def test_freeze(self) -> None:
         trace_config = TraceConfig()
@@ -119,7 +132,7 @@ class TestTrace:
         ],
     )
     async def test_send(  # type: ignore[misc]
-        self, signal: str, params: Tuple[Mock, ...], param_obj: Any
+        self, signal: str, params: tuple[Mock, ...], param_obj: Any
     ) -> None:
         session = Mock()
         trace_request_ctx = Mock()

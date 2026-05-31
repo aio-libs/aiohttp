@@ -1,0 +1,74 @@
+name: Dependency submission
+
+# GitHub's automatically generated dependency graph (and the SBOM exported from
+# it) only covers dependencies declared in recognised package manifests. llhttp
+# is vendored as a git submodule under vendor/llhttp, so that scan never sees
+# it. This workflow submits llhttp explicitly through the Dependency submission
+# API so it shows up in the dependency graph, the exported SBOM and Dependabot
+# alerts.
+
+on:
+  push:
+    branches:
+      - master
+
+permissions: {}
+
+jobs:
+  llhttp:
+    name: Submit vendored llhttp
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write  # Required by the Dependency submission API
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6
+      with:
+        submodules: true
+    - name: Read vendored llhttp version
+      id: llhttp
+      run: echo "version=$(jq -re .version vendor/llhttp/package.json)" >> "$GITHUB_OUTPUT"
+    - name: Submit llhttp to the dependency graph
+      uses: actions/github-script@v9
+      env:
+        LLHTTP_VERSION: ${{ steps.llhttp.outputs.version }}
+      with:
+        script: |
+          const version = process.env.LLHTTP_VERSION;
+          const response = await github.request(
+            'POST /repos/{owner}/{repo}/dependency-graph/snapshots',
+            {
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              version: 0,
+              sha: context.sha,
+              ref: context.ref,
+              job: {
+                correlator: context.workflow,
+                id: context.runId.toString(),
+              },
+              detector: {
+                name: 'aiohttp vendored dependency submission',
+                version: '1.0.0',
+                url: `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`,
+              },
+              scanned: new Date().toISOString(),
+              manifests: {
+                'vendor/llhttp': {
+                  name: 'vendor/llhttp',
+                  file: {
+                    source_location: '.gitmodules',
+                  },
+                  resolved: {
+                    llhttp: {
+                      package_url: `pkg:npm/llhttp@${version}`,
+                      relationship: 'direct',
+                      scope: 'runtime',
+                    },
+                  },
+                },
+              },
+            },
+          );
+          core.info(`Submitted llhttp ${version}: ${response.data.message}`);

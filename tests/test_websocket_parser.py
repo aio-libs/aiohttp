@@ -2,7 +2,6 @@ import asyncio
 import pickle
 import random
 import struct
-from typing import Optional, Union
 from unittest import mock
 
 import pytest
@@ -20,7 +19,7 @@ from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
-from aiohttp.http import WebSocketError, WSCloseCode, WSMsgType
+from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
     WSMessageBinary,
@@ -36,14 +35,14 @@ class PatchableWebSocketReader(WebSocketReader):
 
     def parse_frame(
         self, data: bytes
-    ) -> list[tuple[bool, int, Union[bytes, bytearray], int]]:
+    ) -> list[tuple[bool, int, bytes | bytearray, int]]:
         # This method is overridden to allow for patching in tests.
-        frames: list[tuple[bool, int, Union[bytes, bytearray], int]] = []
+        frames: list[tuple[bool, int, bytes | bytearray, int]] = []
 
         def _handle_frame(
             fin: bool,
             opcode: int,
-            payload: Union[bytes, bytearray],
+            payload: bytes | bytearray,
             compressed: int,
         ) -> None:
             # This method is overridden to allow for patching in tests.
@@ -59,7 +58,7 @@ def build_frame(
     opcode: int,
     noheader: bool = False,
     is_fin: bool = True,
-    ZLibBackend: Optional[ZLibBackendWrapper] = None,
+    ZLibBackend: ZLibBackendWrapper | None = None,
     mask: bool = False,
 ) -> bytes:
     # Send a frame over the websocket with message as its payload.
@@ -69,8 +68,8 @@ def build_frame(
         compressobj = ZLibBackend.compressobj(wbits=-9)
         message = compressobj.compress(message)
         message = message + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
-        if message.endswith(WS_DEFLATE_TRAILING):
-            message = message[:-4]
+        assert message.endswith(WS_DEFLATE_TRAILING)
+        message = message[:-4]
     msg_length = len(message)
 
     if is_fin:
@@ -113,23 +112,24 @@ def build_close_frame(
 
 
 @pytest.fixture()
-def protocol(loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+def protocol(event_loop: asyncio.AbstractEventLoop) -> BaseProtocol:
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     transport = mock.Mock(spec_set=asyncio.Transport)
-    protocol = BaseProtocol(loop)
+    protocol = BaseProtocol(event_loop, parser=parser)
     protocol.connection_made(transport)
     return protocol
 
 
 @pytest.fixture()
-def out(loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
-    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=loop)
+def out(event_loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
+    return WebSocketDataQueue(mock.Mock(_reading_paused=False), 2**16, loop=event_loop)
 
 
 @pytest.fixture()
 def out_low_limit(
-    loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
+    event_loop: asyncio.AbstractEventLoop, protocol: BaseProtocol
 ) -> WebSocketDataQueue:
-    return WebSocketDataQueue(protocol, 16, loop=loop)
+    return WebSocketDataQueue(protocol, 16, loop=event_loop)
 
 
 @pytest.fixture()
@@ -237,12 +237,11 @@ def test_parse_frame_header_control_frame(
         parser.parse_frame(struct.pack("!BB", 0b00001000, 0b00000000))
 
 
-@pytest.mark.xfail()
-def test_parse_frame_header_new_data_err(
-    out: WebSocketDataQueue, parser: PatchableWebSocketReader
-) -> None:
-    with pytest.raises(WebSocketError):
-        parser.parse_frame(struct.pack("!BB", 0b000000000, 0b00000000))
+def test_parse_frame_header_new_data_err(parser: PatchableWebSocketReader) -> None:
+    with pytest.raises(WebSocketError) as msg:
+        parser._feed_data(struct.pack("!BB", 0b00000000, 0b00000000))
+    assert msg.value.code == WSCloseCode.PROTOCOL_ERROR
+    assert str(msg.value) == "Continuation frame for non started message"
 
 
 def test_parse_frame_header_payload_size(
@@ -262,7 +261,7 @@ def test_parse_frame_header_payload_size(
 def test_ping_frame(
     out: WebSocketDataQueue,
     parser: PatchableWebSocketReader,
-    data: Union[bytes, bytearray, memoryview],
+    data: bytes | bytearray | memoryview,
 ) -> None:
     parser._handle_frame(True, WSMsgType.PING, b"data", 0)
     res = out._buffer[0]
@@ -597,7 +596,6 @@ def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
 
     with pytest.raises(WebSocketError) as ctx:
         parser.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
@@ -606,7 +604,6 @@ def test_parse_no_compress_frame_single(out: WebSocketDataQueue) -> None:
     parser_no_compress = PatchableWebSocketReader(out, 0, compress=False)
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress.parse_frame(struct.pack("!BB", 0b11000001, 0b00000001))
-        parser_no_compress.parse_frame(b"1")
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 

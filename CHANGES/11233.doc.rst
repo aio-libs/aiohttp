@@ -1,1 +1,0 @@
-Added ``Wireup`` to third-party libraries -- by :user:`maldoinc`.

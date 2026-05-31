@@ -185,6 +185,7 @@ Classes
 -------
 
 .. class:: TraceConfig(trace_config_ctx_factory=SimpleNamespace)
+   :canonical: aiohttp.tracing.TraceConfig
 
    Trace config is the configuration object used to trace requests
    launched by a :class:`ClientSession` object using different events
@@ -339,6 +340,7 @@ Classes
 
 
 .. class:: TraceRequestStartParams
+   :canonical: aiohttp.tracing.TraceRequestStartParams
 
    See :attr:`TraceConfig.on_request_start` for details.
 
@@ -356,6 +358,7 @@ Classes
 
 
 .. class:: TraceRequestChunkSentParams
+   :canonical: aiohttp.tracing.TraceRequestChunkSentParams
 
    .. versionadded:: 3.1
 
@@ -375,6 +378,7 @@ Classes
 
 
 .. class:: TraceResponseChunkReceivedParams
+   :canonical: aiohttp.tracing.TraceResponseChunkReceivedParams
 
    .. versionadded:: 3.1
 
@@ -394,6 +398,7 @@ Classes
 
 
 .. class:: TraceRequestEndParams
+   :canonical: aiohttp.tracing.TraceRequestEndParams
 
    See :attr:`TraceConfig.on_request_end` for details.
 
@@ -415,6 +420,7 @@ Classes
 
 
 .. class:: TraceRequestExceptionParams
+   :canonical: aiohttp.tracing.TraceRequestExceptionParams
 
    See :attr:`TraceConfig.on_request_exception` for details.
 
@@ -436,6 +442,7 @@ Classes
 
 
 .. class:: TraceRequestRedirectParams
+   :canonical: aiohttp.tracing.TraceRequestRedirectParams
 
    See :attr:`TraceConfig.on_request_redirect` for details.
 
@@ -457,6 +464,7 @@ Classes
 
 
 .. class:: TraceConnectionQueuedStartParams
+   :canonical: aiohttp.tracing.TraceConnectionQueuedStartParams
 
    See :attr:`TraceConfig.on_connection_queued_start` for details.
 
@@ -464,6 +472,7 @@ Classes
 
 
 .. class:: TraceConnectionQueuedEndParams
+   :canonical: aiohttp.tracing.TraceConnectionQueuedEndParams
 
    See :attr:`TraceConfig.on_connection_queued_end` for details.
 
@@ -471,6 +480,7 @@ Classes
 
 
 .. class:: TraceConnectionCreateStartParams
+   :canonical: aiohttp.tracing.TraceConnectionCreateStartParams
 
    See :attr:`TraceConfig.on_connection_create_start` for details.
 
@@ -478,6 +488,7 @@ Classes
 
 
 .. class:: TraceConnectionCreateEndParams
+   :canonical: aiohttp.tracing.TraceConnectionCreateEndParams
 
    See :attr:`TraceConfig.on_connection_create_end` for details.
 
@@ -485,6 +496,7 @@ Classes
 
 
 .. class:: TraceConnectionReuseconnParams
+   :canonical: aiohttp.tracing.TraceConnectionReuseconnParams
 
    See :attr:`TraceConfig.on_connection_reuseconn` for details.
 
@@ -492,6 +504,7 @@ Classes
 
 
 .. class:: TraceDnsResolveHostStartParams
+   :canonical: aiohttp.tracing.TraceDnsResolveHostStartParams
 
    See :attr:`TraceConfig.on_dns_resolvehost_start` for details.
 
@@ -501,6 +514,7 @@ Classes
 
 
 .. class:: TraceDnsResolveHostEndParams
+   :canonical: aiohttp.tracing.TraceDnsResolveHostEndParams
 
    See :attr:`TraceConfig.on_dns_resolvehost_end` for details.
 
@@ -510,6 +524,7 @@ Classes
 
 
 .. class:: TraceDnsCacheHitParams
+   :canonical: aiohttp.tracing.TraceDnsCacheHitParams
 
    See :attr:`TraceConfig.on_dns_cache_hit` for details.
 
@@ -519,6 +534,7 @@ Classes
 
 
 .. class:: TraceDnsCacheMissParams
+   :canonical: aiohttp.tracing.TraceDnsCacheMissParams
 
    See :attr:`TraceConfig.on_dns_cache_miss` for details.
 
@@ -528,6 +544,7 @@ Classes
 
 
 .. class:: TraceRequestHeadersSentParams
+   :canonical: aiohttp.tracing.TraceRequestHeadersSentParams
 
    See :attr:`TraceConfig.on_request_headers_sent` for details.
 

@@ -2,16 +2,20 @@
 
 import io
 import re
+import time
+from collections.abc import Generator
 from hashlib import md5, sha1
-from typing import Generator, Literal, Union
+from typing import Literal
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 from yarl import URL
 
 from aiohttp import ClientSession, hdrs
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
+    _HEADER_PAIRS_PATTERN,
     DigestAuthChallenge,
     DigestAuthMiddleware,
     DigestFunctions,
@@ -21,7 +25,6 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
 
@@ -111,6 +114,13 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "test", "nonce": "abc", "qop": "auth"},
         ),
+        # Valid digest with empty realm (RFC 7616 Section 3.3 allows this)
+        (
+            401,
+            {"www-authenticate": 'Digest realm="", nonce="abc", qop="auth"'},
+            True,
+            {"realm": "", "nonce": "abc", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
@@ -177,6 +187,47 @@ async def test_encode_digest_with_md5(
     assert header.startswith("Digest ")
     assert 'username="user"' in header
     assert "algorithm=MD5" in header
+
+
+@pytest.mark.parametrize(
+    ("url", "expected_uri"),
+    [
+        (
+            URL("http://example.com/axis-cgi/io/port.cgi?action=9:\\"),
+            "/axis-cgi/io/port.cgi?action=9:%5C",
+        ),
+        (
+            URL("http://example.com/path with space/file"),
+            "/path%20with%20space/file",
+        ),
+        (
+            URL("http://example.com/p?q=a&b=1+2"),
+            "/p?q=a&b=1+2",
+        ),
+        (
+            URL.build(
+                scheme="http",
+                host="example.com",
+                path="/p",
+                query={"x": "[]"},
+            ),
+            "/p?x=%5B%5D",
+        ),
+    ],
+    ids=["backslash-and-colon", "space-in-path", "ampersand-and-plus", "brackets"],
+)
+async def test_encode_uri_uses_wire_encoded_request_target(
+    auth_mw_with_challenge: DigestAuthMiddleware,
+    url: URL,
+    expected_uri: str,
+) -> None:
+    """The digest uri/A2 must use the encoded request-target sent on the wire.
+
+    Servers compute the digest signature against the encoded request-target
+    they actually receive, so the client must sign the same encoded form.
+    """
+    header = await auth_mw_with_challenge._encode("GET", url, b"")
+    assert f'uri="{expected_uri}"' in header
 
 
 @pytest.mark.parametrize(
@@ -323,7 +374,7 @@ def compute_expected_digest(
 async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[Literal[b""], BytesIOPayload],
+    body: Literal[b""] | BytesIOPayload,
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
@@ -1326,3 +1377,21 @@ async def test_case_sensitive_algorithm_server(
     assert request_count == 2  # Initial 401 + successful retry
     assert len(auth_algorithms) == 1
     assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
+
+
+def test_regex_performance() -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues."""
+    REGEX_TIME_THRESHOLD_SECONDS = 0.08
+    value = "0" * 54773 + "\\0=a"
+
+    start = time.perf_counter()
+    matches = _HEADER_PAIRS_PATTERN.findall(value)
+    elapsed = time.perf_counter() - start
+
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < REGEX_TIME_THRESHOLD_SECONDS, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
+    # This example shouldn't produce a match either.
+    assert not matches

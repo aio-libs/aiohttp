@@ -1,6 +1,7 @@
 import asyncio
+import json
 import time
-from typing import Optional, Protocol
+from typing import Protocol
 from unittest import mock
 
 import aiosignal
@@ -21,13 +22,13 @@ class _RequestMaker(Protocol):
         self,
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request: ...
 
 
 @pytest.fixture
-def app(loop: asyncio.AbstractEventLoop) -> web.Application:
+def app() -> web.Application:
     ret: web.Application = mock.create_autospec(web.Application, spec_set=True)
     ret.on_response_prepare = aiosignal.Signal(ret)  # type: ignore[misc]
     ret.on_response_prepare.freeze()
@@ -38,6 +39,7 @@ def app(loop: asyncio.AbstractEventLoop) -> web.Application:
 def protocol() -> web.RequestHandler[web.Request]:
     ret = mock.Mock()
     ret.set_parser.return_value = ret
+    ret._timeout_ceil_threshold = 5
     return ret
 
 
@@ -48,7 +50,7 @@ def make_request(
     def maker(
         method: str,
         path: str,
-        headers: Optional[CIMultiDict[str]] = None,
+        headers: CIMultiDict[str] | None = None,
         protocols: bool = False,
     ) -> web.Request:
         if headers is None:
@@ -118,6 +120,39 @@ async def test_nonstarted_receive_str() -> None:
         await ws.receive_str()
 
 
+async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = asyncio.get_running_loop()
+    ws._on_data_received()
+    handle = ws._heartbeat_reset_handle
+    assert handle is not None
+
+    ws._cancel_heartbeat()
+
+    assert ws._heartbeat_reset_handle is None
+    assert ws._need_heartbeat_reset is False
+    assert handle.cancelled()
+
+
+async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = False
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._flush_heartbeat_reset()
+        reset.assert_not_called()
+
+
+async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._need_heartbeat_reset = True
+
+    ws._send_heartbeat()
+
+    assert ws._pong_response_cb is None
+    assert ws._ping_task is None
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -154,6 +189,26 @@ async def test_send_json_nonjson(make_request: _RequestMaker) -> None:
         await ws.send_json(set())
 
 
+async def test_nonstarted_send_json_bytes() -> None:
+    ws = web.WebSocketResponse()
+    with pytest.raises(RuntimeError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
+async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    with pytest.raises(TypeError):
+        await ws.send_json_bytes(set(), dumps=lambda x: json.dumps(x).encode("utf-8"))
+
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+
 async def test_write_non_prepared() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
@@ -162,8 +217,7 @@ async def test_write_non_prepared() -> None:
 
 async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     """Verify the transport is closed when the heartbeat timeout is reached."""
-    loop = asyncio.get_running_loop()
-    future = loop.create_future()
+    future = asyncio.get_running_loop().create_future()
     req = make_request("GET", "/")
     assert req.transport is not None
     req.transport.close.side_effect = lambda: future.set_result(None)  # type: ignore[attr-defined]
@@ -173,6 +227,36 @@ async def test_heartbeat_timeout(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     await future
     assert ws.closed
+
+
+async def test_heartbeat_reset_coalesces_on_data(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    await ws.prepare(req)
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        ws._on_data_received()
+        ws._on_data_received()
+
+        await asyncio.sleep(0)
+
+        assert reset.call_count == 1
+
+
+async def test_receive_does_not_reset_heartbeat() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    msg = mock.Mock(type=WSMsgType.TEXT)
+    reader = mock.Mock()
+    reader.read = mock.AsyncMock(return_value=msg)
+    ws._reader = reader
+
+    with mock.patch.object(ws, "_reset_heartbeat") as reset:
+        received = await ws.receive()
+
+    assert received is msg
+    reset.assert_not_called()
 
 
 def test_websocket_ready() -> None:
@@ -317,6 +401,20 @@ async def test_send_json_closed(make_request: _RequestMaker) -> None:
         await ws.send_json({"type": "json"})
 
 
+async def test_send_json_bytes_closed(make_request: _RequestMaker) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+    await ws.close()
+
+    with pytest.raises(ConnectionError):
+        await ws.send_json_bytes(
+            {"type": "json"}, dumps=lambda x: json.dumps(x).encode("utf-8")
+        )
+
+
 async def test_send_frame_closed(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
@@ -412,9 +510,7 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_eofstream_in_reader(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_eofstream_in_reader(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -423,7 +519,7 @@ async def test_receive_eofstream_in_reader(
     exc = EofStream()
     ws._reader.read = mock.AsyncMock(side_effect=exc)
     assert ws._payload_writer is not None
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     f.set_result(True)
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     msg = await ws.receive()
@@ -431,9 +527,7 @@ async def test_receive_eofstream_in_reader(
     assert ws.closed
 
 
-async def test_receive_exception_in_reader(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_exception_in_reader(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -442,7 +536,7 @@ async def test_receive_exception_in_reader(
     exc = Exception()
     ws._reader.read = mock.AsyncMock(side_effect=exc)
 
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -453,9 +547,7 @@ async def test_receive_exception_in_reader(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_close_but_left_open(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_close_but_left_open(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -464,7 +556,7 @@ async def test_receive_close_but_left_open(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=close_message)
 
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -475,9 +567,7 @@ async def test_receive_close_but_left_open(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
 
-async def test_receive_closing(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_closing(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -487,7 +577,7 @@ async def test_receive_closing(
     read_mock = mock.AsyncMock(return_value=closing_message)
     ws._reader.read = read_mock
 
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -505,9 +595,7 @@ async def test_receive_closing(
     assert msg.type == WSMsgType.CLOSING
 
 
-async def test_close_after_closing(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_close_after_closing(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -516,7 +604,7 @@ async def test_close_after_closing(
     ws._reader = mock.Mock()
     ws._reader.read = mock.AsyncMock(return_value=closing_message)
 
-    f = loop.create_future()
+    f = asyncio.get_running_loop().create_future()
     assert ws._payload_writer is not None
     ws._payload_writer.drain.return_value = f  # type: ignore[attr-defined]
     f.set_result(True)
@@ -531,9 +619,7 @@ async def test_close_after_closing(
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[unreachable]
 
 
-async def test_receive_timeouterror(
-    make_request: _RequestMaker, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_receive_timeouterror(make_request: _RequestMaker) -> None:
     req = make_request("GET", "/")
     ws = web.WebSocketResponse()
     await ws.prepare(req)
@@ -658,7 +744,7 @@ async def test_no_transfer_encoding_header(
 async def test_get_extra_info(
     make_request: _RequestMaker,
     mocker: MockerFixture,
-    ws_transport: Optional[mock.MagicMock],
+    ws_transport: mock.MagicMock | None,
     expected_result: str,
 ) -> None:
     valid_key = "test"

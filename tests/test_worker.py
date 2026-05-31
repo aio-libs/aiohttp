@@ -3,7 +3,7 @@ import asyncio
 import os
 import socket
 import ssl
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING
 from unittest import mock
 
 import pytest
@@ -29,9 +29,9 @@ ACCEPTABLE_LOG_FORMAT = '%a "%{Referrer}i" %s'
 
 class BaseTestWorker:
     def __init__(self) -> None:
-        self.servers: Dict[object, object] = {}
+        self.servers: dict[object, object] = {}
         self.exit_code = 0
-        self._notify_waiter: Optional[asyncio.Future[bool]] = None
+        self._notify_waiter: asyncio.Future[bool] | None = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
         self.pid = "pid"
@@ -53,9 +53,9 @@ if uvloop is not None:
 
 @pytest.fixture(params=PARAMS)
 def worker(
-    request: SubRequest, loop: asyncio.AbstractEventLoop
+    request: SubRequest, event_loop: asyncio.AbstractEventLoop
 ) -> base_worker.GunicornWebWorker:
-    asyncio.set_event_loop(loop)
+    asyncio.set_event_loop(event_loop)
     ret = request.param()
     ret.notify = mock.Mock()
     return ret  # type: ignore[no-any-return]
@@ -73,7 +73,7 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
 
 
 def test_run(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -82,15 +82,15 @@ def test_run(
     worker.cfg.graceful_timeout = 100
     worker.sockets = []
 
-    worker.loop = loop
+    worker.loop = event_loop
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_async_factory(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
@@ -105,28 +105,28 @@ def test_run_async_factory(
 
     worker.wsgi = make_app
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_not_called()
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_run_not_app(
-    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
 
-    worker.loop = loop
+    worker.loop = event_loop
     worker.wsgi = "not-app"
     worker.alive = False
     with pytest.raises(SystemExit):
         worker.run()
     worker.log.exception.assert_called_with("Exception in gunicorn worker")
-    assert loop.is_closed()
+    assert event_loop.is_closed()
 
 
 def test_handle_abort(worker: base_worker.GunicornWebWorker) -> None:
@@ -204,16 +204,14 @@ def test__get_valid_log_format_exc(worker: base_worker.GunicornWebWorker) -> Non
 
 
 async def test__run_ok_parent_changed(
-    worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
     worker.ppid = 0
     worker.alive = True
     sock = unused_port_socket
     worker.sockets = [sock]
     worker.log = mock.Mock()
-    worker.loop = loop
+    worker.loop = asyncio.get_running_loop()
     worker.max_requests = 0
     worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
     worker.cfg.is_ssl = False
@@ -225,10 +223,9 @@ async def test__run_ok_parent_changed(
 
 
 async def test__run_exc(
-    worker: base_worker.GunicornWebWorker,
-    loop: asyncio.AbstractEventLoop,
-    unused_port_socket: socket.socket,
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
+    loop = asyncio.get_running_loop()
     worker.ppid = os.getppid()
     worker.alive = True
     sock = unused_port_socket

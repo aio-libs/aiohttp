@@ -1,1 +1,0 @@
-Started including the ``llhttp`` :file:`LICENSE` file in wheels by adding ``vendor/llhttp/LICENSE`` to ``license-files`` in :file:`setup.cfg` -- by :user:`threexc`.
