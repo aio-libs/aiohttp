@@ -315,3 +315,6 @@ ask to raise the status.
 
 - `wireup <https://github.com/maldoinc/wireup>`_
   Performant, concise, and easy-to-use dependency injection container.
+
+- `aiointercept <https://github.com/Polandia94/aiointercept>`_
+  Mock aiohttp HTTP requests by routing them through a real aiohttp.web test server.
