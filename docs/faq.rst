@@ -267,7 +267,7 @@ How do I enable Kernel TLS, and should I do it?
 -----------------------------------------------
 
 Kernel TLS (KTLS) allows aiohttp to move encryption and decryption of
-TLS traffic from userspace to the kernel. It was added to the Linux kernel in
+TLS traffic from user space to the kernel. It was added to the Linux kernel in
 4.13, but full support for TLS 1.3 and modern ciphers is available only
 since 5.19.
 
