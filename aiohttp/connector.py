@@ -65,7 +65,7 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 try:
-    import truststore  # type: ignore[import-not-found,unused-ignore]
+    import truststore
 
     HAS_TRUSTSTORE = True
 except ImportError:
