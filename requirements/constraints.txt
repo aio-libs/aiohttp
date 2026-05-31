@@ -63,7 +63,7 @@ click==8.4.1
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.14.0
+coverage==7.14.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -100,7 +100,7 @@ gunicorn==26.0.0
     # via -r requirements/base.in
 identify==2.6.19
     # via pre-commit
-idna==3.16
+idna==3.17
     # via
     #   requests
     #   trustme
@@ -162,7 +162,7 @@ pip==26.1.1
 pip-tools==7.5.3
     # via -r requirements/dev.in
 pkgconfig==1.6.0
-    # via -r requirements/test-common.in
+    # via -r requirements/test-common-base.in
 platformdirs==4.10.0
     # via
     #   python-discovery
@@ -215,7 +215,7 @@ pytest==9.0.3
 pytest-aiohttp==1.1.0
     # via
     #   -r requirements/lint.in
-    #   -r requirements/test-common.in
+    #   -r requirements/test-common-base.in
 pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
@@ -257,7 +257,7 @@ setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
-slotscheck==0.19.1
+slotscheck==0.20.0
     # via -r requirements/lint.in
 snowballstemmer==3.1.0
     # via sphinx
@@ -344,4 +344,5 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-# aiohttp
+aiohttp==3.13.5
+    # via pytest-aiohttp

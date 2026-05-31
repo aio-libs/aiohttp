@@ -1,6 +1,7 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import gzip
 import platform
 import re
 import sys
@@ -1600,6 +1601,15 @@ def test_http_request_parser_bad_method(
         )
 
 
+def test_http_request_parser_tls_handshake_on_http_port(
+    parser: HttpRequestParser,
+) -> None:
+    with pytest.raises(http_exceptions.BadHttpMethod) as ctx:
+        parser.feed_data(b"\x16\x03\x03\x01F\x01\r\n\r\n")
+
+    assert "Received HTTPS traffic on an HTTP port" in str(ctx.value)
+
+
 def test_http_request_parser_bad_version(parser: HttpRequestParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(b"GET //get HT/11\r\nHost: a\r\n\r\n")
@@ -2632,6 +2642,81 @@ class TestParsePayload:
             out,
             length=len(payload),
             compression="zstd",
+            headers_parser=HeadersParser(),
+        )
+        p.feed_data(payload)
+        assert b"".join(parts) == b"".join(out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_gzip_multi_member(self, protocol: BaseProtocol) -> None:
+        member1 = gzip.compress(b"first")
+        member2 = gzip.compress(b"second")
+        payload = member1 + member2
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(payload),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        p.feed_data(payload)
+        assert b"firstsecond" == b"".join(out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_gzip_multi_member_chunked(
+        self, protocol: BaseProtocol
+    ) -> None:
+        member1 = gzip.compress(b"chunk1")
+        member2 = gzip.compress(b"chunk2")
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(member1) + len(member2),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        p.feed_data(member1)
+        p.feed_data(member2)
+        assert b"chunk1chunk2" == b"".join(out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_gzip_member_split_mid_chunk(
+        self, protocol: BaseProtocol
+    ) -> None:
+        member1 = gzip.compress(b"AAAA")
+        member2 = gzip.compress(b"BBBB")
+        combined = member1 + member2
+        split_point = len(member1) + 3  # 3 bytes into member2
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(combined),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        p.feed_data(combined[:split_point])
+        p.feed_data(combined[split_point:])
+        assert b"AAAABBBB" == b"".join(out._buffer)
+        assert out.is_eof()
+
+    async def test_http_payload_gzip_many_small_members(
+        self, protocol: BaseProtocol
+    ) -> None:
+        parts = [f"part{i}".encode() for i in range(10)]
+        payload = b"".join(gzip.compress(p) for p in parts)
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(payload),
+            compression="gzip",
             headers_parser=HeadersParser(),
         )
         p.feed_data(payload)

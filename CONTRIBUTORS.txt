@@ -57,6 +57,7 @@ Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Ashutosh Kumar Singh
 Austin Scola
 Bai Haoran
 Ben Bader
@@ -317,6 +318,7 @@ Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
+Puneet Dixit
 Qiao Han
 Rafael Viotti
 Rahul Nahata
