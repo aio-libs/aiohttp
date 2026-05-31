@@ -1,0 +1,1 @@
+Fixed WebSocket client handshake to accept spec-compliant responses where the ``Connection`` header is a list of tokens such as ``upgrade, keep-alive``, and to reject responses whose ``Connection`` value merely contains ``upgrade`` as a substring (for example ``keep-alive, notupgrade``) -- by :user:`rodrigobnogueira`.

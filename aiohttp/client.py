@@ -1122,7 +1122,16 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
+            # RFC 9110 §7.6.1: Connection is a comma-separated list of tokens.
+            # Tokenize so a spec-compliant response like
+            # "Connection: upgrade, keep-alive" is accepted.
+            conn_value = resp.headers.get(hdrs.CONNECTION, "")
+            conn_tokens = {
+                token.lower()
+                for token in (part.strip(" \t") for part in conn_value.split(","))
+                if token
+            }
+            if "upgrade" not in conn_tokens:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
