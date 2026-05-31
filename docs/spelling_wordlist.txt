@@ -98,6 +98,7 @@ Cython
 Cythonize
 cythonized
 de
+decompressor
 deduplicate
 defs
 Dependabot
@@ -144,6 +145,7 @@ github
 google
 gunicorn
 gunicorn’s
+gzip
 gzipped
 hackish
 highlevel
