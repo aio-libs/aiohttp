@@ -1123,13 +1123,13 @@ class ClientSession:
                 )
 
             # RFC 9110 §7.6.1: Connection is a comma-separated list of tokens.
-            # Tokenize so a spec-compliant response like
-            # "Connection: upgrade, keep-alive" is accepted.
-            conn_value = resp.headers.get(hdrs.CONNECTION, "")
+            # Tokenize (as http_parser._parse_headers does) so a spec-compliant
+            # response like "Connection: upgrade, keep-alive" is accepted.
+            conn_values = resp.headers.get(hdrs.CONNECTION, "")
             conn_tokens = {
                 token.lower()
-                for token in (part.strip(" \t") for part in conn_value.split(","))
-                if token
+                for token in (part.strip(" \t") for part in conn_values.split(","))
+                if token and token.isascii()
             }
             if "upgrade" not in conn_tokens:
                 raise WSServerHandshakeError(
