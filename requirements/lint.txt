@@ -144,6 +144,8 @@ tomli==2.4.1
     #   slotscheck
 trustme==1.2.1
     # via -r requirements/lint.in
+truststore==0.10.4 ; implementation_name == "cpython"
+    # via -r requirements/lint.in
 typing-extensions==4.15.0
     # via
     #   aiosignal
