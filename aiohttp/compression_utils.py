@@ -55,6 +55,9 @@ class ZLibDecompressObjProtocol(Protocol):
     @property
     def unconsumed_tail(self) -> bytes: ...
 
+    @property
+    def unused_data(self) -> bytes: ...
+
 
 class ZLibBackendProtocol(Protocol):
     MAX_WBITS: int
@@ -275,15 +278,42 @@ class ZLibDecompressor(DecompressionBaseHandler):
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
         self._last_empty = False
+        self._pending_unused_data: bytes | None = None
 
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
+        if self._pending_unused_data is not None:
+            data = self._pending_unused_data + bytes(data)
+            self._pending_unused_data = None
         result = self._decompressor.decompress(
             self._decompressor.unconsumed_tail + data, max_length
         )
         # Only way to know that isal has no further data is checking we get no output
         self._last_empty = result == b""
+
+        # Handle concatenated gzip/deflate streams (multi-member).
+        # After a member ends, unused_data holds the start of the next member.
+        # Create a fresh decompressor for each subsequent member.
+        while self._decompressor.eof and self._decompressor.unused_data:
+            unused = self._decompressor.unused_data
+            self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
+            if max_length != ZLIB_MAX_LENGTH_UNLIMITED:
+                max_length -= len(result)
+                if max_length <= 0:
+                    self._pending_unused_data = unused
+                    break
+            chunk = self._decompressor.decompress(unused, max_length)
+            self._last_empty = chunk == b""
+            result += chunk
+
+        # Member ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
+        # confirm the stream is complete.
+        if self._decompressor.eof and self._mode > self._zlib_backend.MAX_WBITS:
+            self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
+
         return result
 
     def flush(self, length: int = 0) -> bytes:
@@ -295,7 +325,11 @@ class ZLibDecompressor(DecompressionBaseHandler):
 
     @property
     def data_available(self) -> bool:
-        return bool(self._decompressor.unconsumed_tail) or not self._last_empty
+        return (
+            bool(self._decompressor.unconsumed_tail)
+            or not self._last_empty
+            or self._pending_unused_data is not None
+        )
 
     @property
     def eof(self) -> bool:

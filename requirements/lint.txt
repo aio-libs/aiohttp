@@ -10,8 +10,6 @@ aiofastnet==0.7.0
     # via -r requirements/lint.in
 aiohappyeyeballs==2.6.2
     # via aiohttp
-aiohttp==3.13.5
-    # via pytest-aiohttp
 aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.7.0
@@ -58,7 +56,7 @@ frozenlist==1.8.0
     #   aiosignal
 identify==2.6.19
     # via pre-commit
-idna==3.16
+idna==3.17
     # via
     #   trustme
     #   yarl
