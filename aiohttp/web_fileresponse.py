@@ -267,7 +267,7 @@ class BaseIOResponse(StreamResponse, ABC):
             try:
                 rng = request.http_range
                 start = rng.start
-                end: int | None = rng.stop
+                end = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
@@ -285,25 +285,17 @@ class BaseIOResponse(StreamResponse, ABC):
             # If a range request has been made, convert start, end slice
             # notation into file pointer offset and count
             if start is not None:
-                if start < 0 and end is None:  # return tail of file
-                    start += open_file.size
-                    if start < 0:
-                        # if Range:bytes=-1000 in request header but file size
-                        # is only 200, there would be trouble without this
-                        start = 0
-                    count = open_file.size - start
-                else:
-                    # rfc7233:If the last-byte-pos value is
-                    # absent, or if the value is greater than or equal to
-                    # the current length of the representation data,
-                    # the byte range is interpreted as the remainder
-                    # of the representation (i.e., the server replaces the
-                    # value of last-byte-pos with a value that is one less than
-                    # the current length of the selected representation).
-                    count = (
-                        min(end if end is not None else open_file.size, open_file.size)
-                        - start
-                    )
+                # rfc7233:If the last-byte-pos value is
+                # absent, or if the value is greater than or equal to
+                # the current length of the representation data,
+                # the byte range is interpreted as the remainder
+                # of the representation (i.e., the server replaces the
+                # value of last-byte-pos with a value that is one less than
+                # the current length of the selected representation).
+                count = (
+                    min(end if end is not None else open_file.size, open_file.size)
+                    - start
+                )
 
                 if start >= open_file.size:
                     # HTTP 416 should be returned in this case.
