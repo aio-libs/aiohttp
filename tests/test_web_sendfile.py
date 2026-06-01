@@ -152,13 +152,19 @@ async def test_file_response_sends_headers_immediately() -> None:
 
     file_sender = FileResponse(filepath)
     file_sender._path = filepath
-    file_sender._sendfile = mock.AsyncMock(return_value=None)  # type: ignore[method-assign]
 
     # FileResponse inherits from StreamResponse, so should send immediately
     assert file_sender._send_headers_immediately is True
 
-    # Prepare the response
-    await file_sender.prepare(request)
+    # Mock the actual transfer but let _sendfile call super().prepare() to write headers
+    with (
+        mock.patch.object(
+            file_sender, "_sendfile_fallback", autospec=True, spec_set=True
+        ) as sendfile_fallback,
+        mock.patch("aiohttp.web_fileresponse.NOSENDFILE", True),
+    ):
+        sendfile_fallback.return_value = writer
+        await file_sender.prepare(request)
 
     # Headers should be sent immediately
     writer.send_headers.assert_called_once()
