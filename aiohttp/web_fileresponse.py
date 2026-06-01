@@ -416,12 +416,10 @@ class FileResponse(BaseIOResponse):
                 encoding=encoding,
             )
 
-        return await asyncio.get_running_loop().run_in_executor(None, func=open_func)
+        return await asyncio.to_thread(open_func)
 
     async def _close(self, open_file: _ResponseOpenFile) -> None:
-        return await asyncio.get_running_loop().run_in_executor(
-            None, open_file.fobj.close
-        )
+        return await asyncio.to_thread(open_file.fobj.close)
 
 
 class IOResponse(BaseIOResponse):
@@ -456,7 +454,7 @@ class IOResponse(BaseIOResponse):
             self._fobj.seek(0)
             return size
 
-        size = await asyncio.get_running_loop().run_in_executor(None, get_size)
+        size = await asyncio.to_thread(get_size)
         return _ResponseOpenFile(
             self._fobj,
             size,
@@ -468,4 +466,4 @@ class IOResponse(BaseIOResponse):
 
     async def _close(self, open_file: _ResponseOpenFile) -> None:
         if self._close_after_response:
-            await asyncio.get_running_loop().run_in_executor(None, open_file.fobj.close)
+            await asyncio.to_thread(open_file.fobj.close)
