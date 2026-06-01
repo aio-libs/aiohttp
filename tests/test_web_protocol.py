@@ -178,9 +178,7 @@ async def test_finish_response_stores_upgraded_tail(
 
     parser = mock.Mock()
     parser.set_upgraded = mock.Mock()
-    parser.feed_data = mock.Mock(
-        return_value=([(raw_msg, payload)], True, leftover)
-    )
+    parser.feed_data = mock.Mock(return_value=([(raw_msg, payload)], True, leftover))
     handler._parser = parser
     handler._upgraded = True
     handler._message_tail = b"GET /ws HTTP/1.1\r\n\r\n"
