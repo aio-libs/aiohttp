@@ -1,4 +1,0 @@
-Silenced the ``DeprecationWarning`` raised by ``uvloop`` 0.22+ when it
-accesses the ``asyncio.AbstractEventLoopPolicy`` alias that Python 3.14
-marks for removal in 3.16, so the test suite passes against the newer
-``uvloop`` release -- by :user:`bdraco`.

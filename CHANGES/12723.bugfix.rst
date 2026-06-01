@@ -1,1 +1,0 @@
-Fixed websocket upgrade occurring when header contained a value like `notupgrade` -- by :user:`Dreamsorcerer`.
