@@ -1,8 +1,0 @@
-Fixed flaky ``test_handler_returns_not_response`` and
-``test_handler_returns_none`` by routing ``loop.set_debug(True)``
-through a new ``loop_debug_mode`` fixture that disables debug
-mode before the ``aiohttp_client`` fixture finalizes. Leaving
-debug on through teardown let PyPy 3.11's asyncio slow-callback
-logger walk into ``Task.__repr__`` during connector close,
-surfacing a spurious ``RuntimeWarning: coroutine was never
-awaited`` -- by :user:`bdraco`.

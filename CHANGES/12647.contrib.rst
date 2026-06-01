@@ -1,4 +1,0 @@
-Override ``CIBW_BUILD_FRONTEND=build`` on the QEMU-emulated odd-arch wheel
-jobs so cibuildwheel falls back to plain pip, because the pypa
-``manylinux``/``musllinux`` containers for those arches do not ship ``uv``
-preinstalled -- by :user:`bdraco`.

@@ -1,1 +1,0 @@
-Added wheels for Android and iOS platforms -- by :user:`timrid`.

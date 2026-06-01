@@ -1,1 +1,0 @@
-Added deprecation warning to ``aiohttp.pytest_plugin``, please switch to ``pytest-aiohttp`` -- by :user:`Dreamsorcerer`.

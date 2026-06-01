@@ -1,6 +1,0 @@
-Reduced runtime of several of the slowest unit tests
-(decompress size-limit payloads from 64 MiB to 2 MiB,
-``test_chunk_splits_after_pause`` chunk count from 50000
-to 20000, and ``test_set_cookies_max_age`` sleep from 2
-seconds to 1.1 seconds) without changing what they
-exercise -- by :user:`bdraco`.
