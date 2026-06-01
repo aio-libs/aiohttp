@@ -2,6 +2,7 @@ import asyncio
 import io
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
+import tempfile
 from unittest import mock
 
 from aiohttp import hdrs
@@ -187,6 +188,28 @@ async def test_io_response_open():
     assert open_file.etag == "test-etag"
     assert open_file.last_modified == 1234
     assert open_file.guessed_content_type == FALLBACK_CONTENT_TYPE
+
+
+async def test_change_file_size_after_open():
+    with tempfile.NamedTemporaryFile() as temp:
+        path = Path(temp.name)
+        path.write_bytes(b"a")
+        response = FileResponse(path)
+
+        original_func = response._get_file_path_stat_encoding
+
+        # replace the get_file_path_stat_encoding function by one that alters the file size afterwards
+        def sneaky_func(accept_encoding: str):
+            val = original_func(accept_encoding)
+            path.write_bytes(b"ab")
+            return val
+
+        response._get_file_path_stat_encoding = sneaky_func
+
+        # make sure that the _open() function has checked the file size again after opening
+        open_file = await response._open("")
+        assert open_file.size == 2
+        open_file.fobj.close()
 
 
 async def test_sendfile_fallback_respects_count_boundary() -> None:
