@@ -853,6 +853,7 @@ class HttpPayloadParser:
         elif length is not None:
             self._type = ParseState.PARSE_LENGTH
             self._length = length
+            self._length_expected = length
             if self._length == 0:
                 real_payload.feed_eof()
                 self.done = True
@@ -874,8 +875,10 @@ class HttpPayloadParser:
             self.done = True
             self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
+            received = self._length_expected - self._length
             raise ContentLengthError(
-                "Not enough data to satisfy content length header."
+                f"Not enough data to satisfy content length header "
+                f"(received {received} of {self._length_expected} bytes)."
             )
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(

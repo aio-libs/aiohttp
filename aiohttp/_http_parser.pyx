@@ -327,6 +327,7 @@ cdef class HttpParser:
         bint    _paused
         bint    _eof_pending
         object  _payload
+        unsigned long long _content_length_expected
         bint    _payload_error
         object  _payload_exception
         object  _last_error
@@ -365,6 +366,7 @@ cdef class HttpParser:
         cparser.llhttp_init(self._cparser, mode, self._csettings)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
+        self._content_length_expected = 0
 
         self.protocol = protocol
         self._loop = loop
@@ -520,6 +522,7 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
+        self._content_length_expected = self._cparser.content_length
         if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
 
@@ -563,8 +566,10 @@ cdef class HttpParser:
                 raise TransferEncodingError(
                     "Not enough data to satisfy transfer length header.")
             elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
+                received = self._content_length_expected - self._cparser.content_length
                 raise ContentLengthError(
-                    "Not enough data to satisfy content length header.")
+                    f"Not enough data to satisfy content length header "
+                    f"(received {received} of {self._content_length_expected} bytes).")
             elif cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
