@@ -1,8 +1,8 @@
 import asyncio
 import io
+import tempfile
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
-import tempfile
 from unittest import mock
 
 from aiohttp import hdrs
