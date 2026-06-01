@@ -731,8 +731,28 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                self._parser.feed_data(self._message_tail)
+                try:
+                    messages, upgraded, tail = self._parser.feed_data(
+                        self._message_tail
+                    )
+                except HttpProcessingError as exc:
+                    messages = [
+                        (
+                            _ErrInfo(status=400, exc=exc, message=exc.message),
+                            EMPTY_PAYLOAD,
+                        )
+                    ]
+                    upgraded = False
+                    tail = b""
                 self._message_tail = b""
+                for msg, payload in messages or ():
+                    self._request_count += 1
+                    self._messages.append((msg, payload))
+                if upgraded and tail:
+                    self._message_tail = tail
+                waiter = self._waiter
+                if self._messages and waiter is not None and not waiter.done():
+                    waiter.set_result(None)
         try:
             prepare_meth = resp.prepare
         except AttributeError:

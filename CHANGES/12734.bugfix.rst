@@ -1,0 +1,1 @@
+Fixed pipelined requests being silently dropped and connections hanging when a WebSocket upgrade fails in the handler -- by :user:`sapirbaruch`.
