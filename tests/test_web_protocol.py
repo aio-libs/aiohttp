@@ -84,8 +84,11 @@ async def test_finish_response_replays_message_tail_into_messages(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
-    """finish_response must replay _message_tail so the next pipelined
-    request is queued in _messages and the waiter is signalled."""
+    """Replay _message_tail into _messages and signal the waiter.
+
+    finish_response must replay _message_tail so the next pipelined
+    request is queued in _messages and the waiter is signalled.
+    """
     handler = _make_handler(event_loop)
 
     raw_msg = mock.create_autospec(RawRequestMessage, instance=True)
@@ -121,9 +124,12 @@ async def test_finish_response_handles_parse_error_in_message_tail(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
-    """If feed_data raises HttpProcessingError while replaying the tail,
+    """Queue _ErrInfo(400) on HttpProcessingError during tail replay.
+
+    If feed_data raises HttpProcessingError while replaying the tail,
     finish_response must queue a 400 _ErrInfo instead of propagating the
-    exception, and still signal the waiter."""
+    exception, and still signal the waiter.
+    """
     handler = _make_handler(event_loop)
 
     parse_error = HttpProcessingError(code=400, message="Bad request")
@@ -152,3 +158,34 @@ async def test_finish_response_handles_parse_error_in_message_tail(
     assert handler._message_tail == b""
     # Waiter must be resolved.
     assert waiter.done()
+
+
+async def test_finish_response_stores_upgraded_tail(
+    event_loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """Re-upgraded tail bytes are preserved in _message_tail.
+
+    When feed_data signals another upgrade (upgraded=True) together with
+    leftover bytes, finish_response must keep those bytes in _message_tail
+    for the next protocol handler to consume.
+    """
+    handler = _make_handler(event_loop)
+
+    raw_msg = mock.create_autospec(RawRequestMessage, instance=True)
+    payload = mock.create_autospec(StreamReader, instance=True)
+    leftover = b"leftover"
+
+    parser = mock.Mock()
+    parser.set_upgraded = mock.Mock()
+    parser.feed_data = mock.Mock(
+        return_value=([(raw_msg, payload)], True, leftover)
+    )
+    handler._parser = parser
+    handler._upgraded = True
+    handler._message_tail = b"GET /ws HTTP/1.1\r\n\r\n"
+
+    await handler.finish_response(_make_mock_request(), _make_mock_resp(), 0.0)
+
+    # Leftover bytes from a re-upgrade must be stored for the next handler.
+    assert handler._message_tail == leftover
