@@ -407,8 +407,16 @@ class FileResponse(BaseIOResponse):
                 # Forbid special files like sockets, pipes, devices, etc.
                 raise PermissionError()
 
+            fobj = file_path.open("rb")
+            with suppress(OSError):
+                # fstat() may not be available on all platforms
+                # Once we open the file, we want the fstat() to ensure
+                # the file has not changed between the first stat()
+                # and the open().
+                st = os.stat(fobj.fileno())
+
             return _ResponseOpenFile(
-                fobj=file_path.open("rb"),
+                fobj=fobj,
                 size=st.st_size,
                 guessed_content_type=content_type,
                 etag=f"{st.st_mtime_ns:x}-{st.st_size:x}",
