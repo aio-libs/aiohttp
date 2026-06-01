@@ -64,7 +64,7 @@ def _make_handler(event_loop: asyncio.AbstractEventLoop) -> RequestHandler:  # t
         request_factory=mock.Mock(),
         instance=True,
     )
-    return RequestHandler(manager, loop=event_loop)
+    return RequestHandler(manager, loop=event_loop, access_log=None)
 
 
 def _make_mock_request() -> mock.Mock:
@@ -104,7 +104,7 @@ async def test_finish_response_replays_message_tail_into_messages(
     request = _make_mock_request()
     resp = _make_mock_resp()
 
-    await handler.finish_response(request, resp, None)
+    await handler.finish_response(request, resp, 0.0)
 
     # The parser must have been called with the tail bytes.
     parser.feed_data.assert_called_once_with(b"GET /next HTTP/1.1\r\n\r\n")
@@ -140,7 +140,7 @@ async def test_finish_response_handles_parse_error_in_message_tail(
     request = _make_mock_request()
     resp = _make_mock_resp()
 
-    await handler.finish_response(request, resp, None)
+    await handler.finish_response(request, resp, 0.0)
 
     # A single error message must be queued.
     assert len(handler._messages) == 1
