@@ -735,10 +735,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     messages, upgraded, tail = self._parser.feed_data(
                         self._message_tail
                     )
-                except HttpProcessingError as exc:
+                except HttpProcessingError as parse_exc:
                     messages = [
                         (
-                            _ErrInfo(status=400, exc=exc, message=exc.message),
+                            _ErrInfo(status=400, exc=parse_exc, message=parse_exc.message),
                             EMPTY_PAYLOAD,
                         )
                     ]
