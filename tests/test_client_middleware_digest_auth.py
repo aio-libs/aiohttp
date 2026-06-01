@@ -1,16 +1,21 @@
 """Test digest authentication middleware for aiohttp client."""
 
 import io
+import re
+import time
+from collections.abc import Generator
 from hashlib import md5, sha1
-from typing import Generator, Literal, Union
+from typing import Literal
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 from yarl import URL
 
 from aiohttp import ClientSession, hdrs
 from aiohttp.client_exceptions import ClientError
 from aiohttp.client_middleware_digest_auth import (
+    _HEADER_PAIRS_PATTERN,
     DigestAuthChallenge,
     DigestAuthMiddleware,
     DigestFunctions,
@@ -20,7 +25,6 @@ from aiohttp.client_middleware_digest_auth import (
 )
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.payload import BytesIOPayload
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.web import Application, Request, Response
 
 
@@ -110,6 +114,13 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "test", "nonce": "abc", "qop": "auth"},
         ),
+        # Valid digest with empty realm (RFC 7616 Section 3.3 allows this)
+        (
+            401,
+            {"www-authenticate": 'Digest realm="", nonce="abc", qop="auth"'},
+            True,
+            {"realm": "", "nonce": "abc", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
@@ -179,6 +190,47 @@ async def test_encode_digest_with_md5(
 
 
 @pytest.mark.parametrize(
+    ("url", "expected_uri"),
+    [
+        (
+            URL("http://example.com/axis-cgi/io/port.cgi?action=9:\\"),
+            "/axis-cgi/io/port.cgi?action=9:%5C",
+        ),
+        (
+            URL("http://example.com/path with space/file"),
+            "/path%20with%20space/file",
+        ),
+        (
+            URL("http://example.com/p?q=a&b=1+2"),
+            "/p?q=a&b=1+2",
+        ),
+        (
+            URL.build(
+                scheme="http",
+                host="example.com",
+                path="/p",
+                query={"x": "[]"},
+            ),
+            "/p?x=%5B%5D",
+        ),
+    ],
+    ids=["backslash-and-colon", "space-in-path", "ampersand-and-plus", "brackets"],
+)
+async def test_encode_uri_uses_wire_encoded_request_target(
+    auth_mw_with_challenge: DigestAuthMiddleware,
+    url: URL,
+    expected_uri: str,
+) -> None:
+    """The digest uri/A2 must use the encoded request-target sent on the wire.
+
+    Servers compute the digest signature against the encoded request-target
+    they actually receive, so the client must sign the same encoded form.
+    """
+    header = await auth_mw_with_challenge._encode("GET", url, b"")
+    assert f'uri="{expected_uri}"' in header
+
+
+@pytest.mark.parametrize(
     "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
 )
 async def test_encode_digest_with_sess_algorithms(
@@ -209,6 +261,48 @@ async def test_encode_unsupported_algorithm(
 
     with pytest.raises(ClientError, match="Unsupported hash algorithm"):
         await digest_auth_mw._encode("GET", URL("http://example.com/resource"), b"")
+
+
+@pytest.mark.parametrize("algorithm", ["MD5", "MD5-SESS", "SHA-256"])
+async def test_encode_algorithm_case_preservation_uppercase(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that uppercase algorithm case is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+
+
+@pytest.mark.parametrize("algorithm", ["md5", "MD5-sess", "sha-256"])
+async def test_encode_algorithm_case_preservation_lowercase(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    """Test that lowercase/mixed-case algorithm is preserved in the response header."""
+    # Create a challenge with the specific algorithm case
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    # The algorithm in the response should match the exact case from the challenge
+    assert f"algorithm={algorithm}" in header
+    # Also verify it's not the uppercase version
+    assert f"algorithm={algorithm.upper()}" not in header
 
 
 async def test_invalid_qop_rejected(
@@ -280,7 +374,7 @@ def compute_expected_digest(
 async def test_digest_response_exact_match(
     qop: str,
     algorithm: str,
-    body: Union[Literal[b""], BytesIOPayload],
+    body: Literal[b""] | BytesIOPayload,
     body_str: str,
     mock_sha1_digest: mock.MagicMock,
 ) -> None:
@@ -1231,3 +1325,73 @@ def test_in_protection_space_multiple_spaces(
         digest_auth_mw._in_protection_space(URL("http://example.com/secure")) is False
     )
     assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is False
+
+
+async def test_case_sensitive_algorithm_server(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Test authentication with a server that requires exact algorithm case matching.
+
+    This simulates servers like Prusa printers that expect the algorithm
+    to be returned with the exact same case as sent in the challenge.
+    """
+    digest_auth_mw = DigestAuthMiddleware("testuser", "testpass")
+    request_count = 0
+    auth_algorithms: list[str] = []
+
+    async def handler(request: Request) -> Response:
+        nonlocal request_count
+        request_count += 1
+
+        if not (auth_header := request.headers.get(hdrs.AUTHORIZATION)):
+            # Send challenge with lowercase-sess algorithm (like Prusa)
+            challenge = 'Digest realm="Administrator", nonce="test123", qop="auth", algorithm="MD5-sess", opaque="xyz123"'
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+
+        # Extract algorithm from auth response
+        algo_match = re.search(r"algorithm=([^,\s]+)", auth_header)
+        assert algo_match is not None
+        auth_algorithms.append(algo_match.group(1))
+
+        # Case-sensitive server: only accept exact case match
+        assert "algorithm=MD5-sess" in auth_header
+        return Response(text="Success")
+
+    app = Application()
+    app.router.add_get("/api/test", handler)
+    server = await aiohttp_server(app)
+
+    async with (
+        ClientSession(middlewares=(digest_auth_mw,)) as session,
+        session.get(server.make_url("/api/test")) as resp,
+    ):
+        assert resp.status == 200
+        text = await resp.text()
+        assert text == "Success"
+
+    # Verify the middleware preserved the exact algorithm case
+    assert request_count == 2  # Initial 401 + successful retry
+    assert len(auth_algorithms) == 1
+    assert auth_algorithms[0] == "MD5-sess"  # Not "MD5-SESS"
+
+
+def test_regex_performance() -> None:
+    """Test that the regex pattern doesn't suffer from ReDoS issues."""
+    REGEX_TIME_THRESHOLD_SECONDS = 0.08
+    value = "0" * 54773 + "\\0=a"
+
+    start = time.perf_counter()
+    matches = _HEADER_PAIRS_PATTERN.findall(value)
+    elapsed = time.perf_counter() - start
+
+    # If this is taking more time, there's probably a performance/ReDoS issue.
+    assert elapsed < REGEX_TIME_THRESHOLD_SECONDS, (
+        f"Regex took {elapsed * 1000:.1f}ms, "
+        f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
+    )
+    # This example shouldn't produce a match either.
+    assert not matches

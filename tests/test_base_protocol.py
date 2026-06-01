@@ -5,17 +5,18 @@ from unittest import mock
 import pytest
 
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.http_parser import HttpParser
 
 
 async def test_loop() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     asyncio.set_event_loop(None)
     pr = BaseProtocol(loop)
     assert pr._loop is loop
 
 
 async def test_pause_writing() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop)
     assert not pr._paused
     assert pr.writing_paused is False
@@ -25,34 +26,29 @@ async def test_pause_writing() -> None:
 
 
 async def test_pause_reading_no_transport() -> None:
-    loop = asyncio.get_event_loop()
-    pr = BaseProtocol(loop)
-    assert not pr._reading_paused
+    loop = asyncio.get_running_loop()
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    pr = BaseProtocol(loop, parser=parser)
     pr.pause_reading()
-    assert not pr._reading_paused
+    parser.pause_reading.assert_called_once()
 
 
 async def test_pause_reading_stub_transport() -> None:
-    loop = asyncio.get_event_loop()
-    pr = BaseProtocol(loop)
+    loop = asyncio.get_running_loop()
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    pr = BaseProtocol(loop, parser=parser)
     tr = asyncio.Transport()
     pr.transport = tr
     assert not pr._reading_paused
     pr.pause_reading()
     assert pr._reading_paused
-
-
-async def test_resume_reading_no_transport() -> None:
-    loop = asyncio.get_event_loop()
-    pr = BaseProtocol(loop)
-    pr._reading_paused = True
-    pr.resume_reading()
-    assert pr._reading_paused
+    parser.pause_reading.assert_called_once()  # type: ignore[unreachable]
 
 
 async def test_resume_reading_stub_transport() -> None:
-    loop = asyncio.get_event_loop()
-    pr = BaseProtocol(loop)
+    loop = asyncio.get_running_loop()
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    pr = BaseProtocol(loop, parser=parser)
     tr = asyncio.Transport()
     pr.transport = tr
     pr._reading_paused = True
@@ -61,7 +57,7 @@ async def test_resume_reading_stub_transport() -> None:
 
 
 async def test_resume_writing_no_waiters() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     pr.pause_writing()
     assert pr._paused
@@ -70,7 +66,7 @@ async def test_resume_writing_no_waiters() -> None:
 
 
 async def test_resume_writing_waiter_done() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     waiter = mock.Mock(done=mock.Mock(return_value=True))
     pr._drain_waiter = waiter
@@ -81,7 +77,7 @@ async def test_resume_writing_waiter_done() -> None:
 
 
 async def test_connection_made() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     assert pr.transport is None
@@ -90,7 +86,7 @@ async def test_connection_made() -> None:
 
 
 async def test_connection_lost_not_paused() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -101,7 +97,7 @@ async def test_connection_lost_not_paused() -> None:
 
 
 async def test_connection_lost_paused_without_waiter() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -113,7 +109,7 @@ async def test_connection_lost_paused_without_waiter() -> None:
 
 
 async def test_connection_lost_waiter_done() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     pr._paused = True
     waiter = mock.Mock(done=mock.Mock(return_value=True))
@@ -124,7 +120,7 @@ async def test_connection_lost_waiter_done() -> None:
 
 
 async def test_drain_lost() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -134,7 +130,7 @@ async def test_drain_lost() -> None:
 
 
 async def test_drain_not_paused() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -144,7 +140,7 @@ async def test_drain_not_paused() -> None:
 
 
 async def test_resume_drain_waited() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -160,7 +156,7 @@ async def test_resume_drain_waited() -> None:
 
 
 async def test_lost_drain_waited_ok() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -176,7 +172,7 @@ async def test_lost_drain_waited_ok() -> None:
 
 
 async def test_lost_drain_waited_exception() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -195,7 +191,7 @@ async def test_lost_drain_waited_exception() -> None:
 
 
 async def test_lost_drain_cancelled() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -219,7 +215,7 @@ async def test_lost_drain_cancelled() -> None:
 
 
 async def test_resume_drain_cancelled() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
@@ -243,7 +239,7 @@ async def test_resume_drain_cancelled() -> None:
 
 
 async def test_parallel_drain_race_condition() -> None:
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)

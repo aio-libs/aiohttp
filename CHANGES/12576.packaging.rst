@@ -1,0 +1,4 @@
+Parallelized the Cython extension compilation by defaulting
+``build_ext.parallel`` to ``os.cpu_count()``, so each module's
+``gcc`` invocation now runs concurrently instead of one at a time
+-- by :user:`bdraco`.

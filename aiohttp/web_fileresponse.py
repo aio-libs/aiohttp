@@ -4,25 +4,17 @@ import os
 import pathlib
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Awaitable
 from contextlib import suppress
 from dataclasses import dataclass
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
-from typing import (
-    TYPE_CHECKING,
-    Awaitable,
-    BinaryIO,
-    Callable,
-    Final,
-    Optional,
-    Set,
-    Tuple,
-)
+from typing import TYPE_CHECKING, BinaryIO, Callable, Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import ETAG_ANY, ETag, must_be_empty_body
+from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -40,7 +32,7 @@ if TYPE_CHECKING:
     from .web_request import BaseRequest
 
 
-_T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
+_T_OnChunkSent = Callable[[bytes], Awaitable[None]] | None
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
@@ -73,7 +65,7 @@ for content_type, extension in ADDITIONAL_CONTENT_TYPES.items():
     CONTENT_TYPES.add_type(content_type, extension)
 
 
-_CLOSE_FUTURES: Set[asyncio.Future[None]] = set()
+_CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 
 @dataclass
@@ -81,9 +73,9 @@ class _ResponseOpenFile:
     fobj: BinaryIO
     size: int
     guessed_content_type: str
-    etag: Optional[str]
-    last_modified: Optional[float]
-    encoding: Optional[str]
+    etag: str | None
+    last_modified: float | None
+    encoding: str | None
 
 
 class BaseIOResponse(StreamResponse, ABC):
@@ -91,10 +83,10 @@ class BaseIOResponse(StreamResponse, ABC):
 
     def __init__(
         self,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         status: int = 200,
-        reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
+        reason: str | None = None,
+        headers: LooseHeaders | None = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
         self._chunk_size = chunk_size
@@ -116,13 +108,13 @@ class BaseIOResponse(StreamResponse, ABC):
         # controlled by the constructor's chunk_size argument.
 
         chunk_size = self._chunk_size
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         chunk = await loop.run_in_executor(
-            None, self._seek_and_read, fobj, offset, chunk_size
+            None, self._seek_and_read, fobj, offset, min(chunk_size, count)
         )
         while chunk:
             await writer.write(chunk)
-            count = count - chunk_size
+            count = count - len(chunk)
             if count <= 0:
                 break
             chunk = await loop.run_in_executor(None, fobj.read, min(chunk_size, count))
@@ -141,7 +133,8 @@ class BaseIOResponse(StreamResponse, ABC):
 
         loop = request._loop
         transport = request.transport
-        assert transport is not None
+        if transport is None:
+            raise ConnectionResetError("Connection lost")
 
         try:
             await loop.sendfile(transport, fobj, offset, count)
@@ -152,7 +145,7 @@ class BaseIOResponse(StreamResponse, ABC):
         return writer
 
     @staticmethod
-    def _etag_match(etag_value: str, etags: Tuple[ETag, ...], *, weak: bool) -> bool:
+    def _etag_match(etag_value: str, etags: tuple[ETag, ...], *, weak: bool) -> bool:
         if len(etags) == 1 and etags[0].value == ETAG_ANY:
             return True
         return any(
@@ -162,9 +155,9 @@ class BaseIOResponse(StreamResponse, ABC):
     async def _not_modified(
         self,
         request: "BaseRequest",
-        etag: Optional[str],
-        last_modified: Optional[float],
-    ) -> Optional[AbstractStreamWriter]:
+        etag: str | None,
+        last_modified: float | None,
+    ) -> AbstractStreamWriter | None:
         self.set_status(HTTPNotModified.status_code)
         self._length_check = False
         if etag is not None:
@@ -177,12 +170,12 @@ class BaseIOResponse(StreamResponse, ABC):
 
     async def _precondition_failed(
         self, request: "BaseRequest"
-    ) -> Optional[AbstractStreamWriter]:
+    ) -> AbstractStreamWriter | None:
         self.set_status(HTTPPreconditionFailed.status_code)
         self.content_length = 0
         return await super().prepare(request)
 
-    async def prepare(self, request: "BaseRequest") -> Optional[AbstractStreamWriter]:
+    async def prepare(self, request: "BaseRequest") -> AbstractStreamWriter | None:
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
@@ -254,10 +247,10 @@ class BaseIOResponse(StreamResponse, ABC):
         self,
         request: "BaseRequest",
         open_file: _ResponseOpenFile,
-    ) -> Optional[AbstractStreamWriter]:
+    ) -> AbstractStreamWriter | None:
         status = self._status
         count: int = open_file.size
-        start: Optional[int] = None
+        start: int | None = None
 
         if (
             (ifrange := request.if_range) is None
@@ -274,7 +267,7 @@ class BaseIOResponse(StreamResponse, ABC):
             try:
                 rng = request.http_range
                 start = rng.start
-                end: Optional[int] = rng.stop
+                end: int | None = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
@@ -350,8 +343,8 @@ class BaseIOResponse(StreamResponse, ABC):
         if status == HTTPPartialContent.status_code:
             real_start = start
             assert real_start is not None
-            self._headers[hdrs.CONTENT_RANGE] = "bytes {}-{}/{}".format(
-                real_start, real_start + count - 1, open_file.size
+            self._headers[hdrs.CONTENT_RANGE] = (
+                f"bytes {real_start}-{real_start + count - 1}/{open_file.size}"
             )
 
         # If we are sending 0 bytes calling sendfile() will throw a ValueError
@@ -374,15 +367,15 @@ class FileResponse(BaseIOResponse):
         path: PathLike,
         chunk_size: int = 256 * 1024,
         status: int = 200,
-        reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
+        reason: str | None = None,
+        headers: LooseHeaders | None = None,
     ) -> None:
         self._path = pathlib.Path(path)
         super().__init__(status=status, reason=reason, headers=headers)
 
     def _get_file_path_stat_encoding(
         self, accept_encoding: str
-    ) -> Tuple[Optional[pathlib.Path], os.stat_result, Optional[str]]:
+    ) -> tuple[pathlib.Path | None, os.stat_result, str | None]:
         file_path = self._path
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
             if file_encoding not in accept_encoding:
@@ -435,20 +428,20 @@ class IOResponse(BaseIOResponse):
     """A response object using any binary IO object"""
 
     _fobj: BinaryIO
-    _etag: Optional[str]
-    _last_modified: Optional[float]
+    _etag: str | None
+    _last_modified: float | None
     _close_after_response: bool
 
     def __init__(
         self,
         fobj: BinaryIO,
-        etag: Optional[str] = None,
-        last_modified: Optional[float] = None,
+        etag: str | None = None,
+        last_modified: float | None = None,
         close_after_response: bool = True,
         chunk_size: int = 256 * 1024,
         status: int = 200,
-        reason: Optional[str] = None,
-        headers: Optional[LooseHeaders] = None,
+        reason: str | None = None,
+        headers: LooseHeaders | None = None,
     ) -> None:
         self._fobj = fobj
         self._etag = etag

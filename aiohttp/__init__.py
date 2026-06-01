@@ -1,6 +1,6 @@
 __version__ = "4.0.0a2.dev0"
 
-from typing import TYPE_CHECKING, Tuple
+from typing import TYPE_CHECKING
 
 from . import hdrs
 from .client import (
@@ -53,7 +53,7 @@ from .compression_utils import set_zlib_backend
 from .connector import AddrInfoType, SocketFactoryType
 from .cookiejar import CookieJar, DummyCookieJar
 from .formdata import FormData
-from .helpers import BasicAuth, ChainMapProxy, ETag
+from .helpers import ChainMapProxy, ETag, encode_basic_auth
 from .http import (
     HttpVersion,
     HttpVersion10,
@@ -113,7 +113,7 @@ if TYPE_CHECKING:
     # At runtime these are lazy-loaded at the bottom of the file.
     from .worker import GunicornUVLoopWebWorker, GunicornWebWorker
 
-__all__: Tuple[str, ...] = (
+__all__: tuple[str, ...] = (
     "hdrs",
     # client
     "AddrInfoType",
@@ -168,10 +168,10 @@ __all__: Tuple[str, ...] = (
     # formdata
     "FormData",
     # helpers
-    "BasicAuth",
     "ChainMapProxy",
     "DigestAuthMiddleware",
     "ETag",
+    "encode_basic_auth",
     "set_zlib_backend",
     # http
     "HttpVersion",
@@ -237,7 +237,7 @@ __all__: Tuple[str, ...] = (
 )
 
 
-def __dir__() -> Tuple[str, ...]:
+def __dir__() -> tuple[str, ...]:
     return __all__ + ("__doc__",)
 
 

@@ -1,0 +1,2 @@
+The warnings emitted when using ``str`` keys in ``web.Response``/``web.Request``
+have been removed to avoid any performance concerns when frequently using these -- by :user:`Dreamsorcerer`.

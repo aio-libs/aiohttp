@@ -2,7 +2,6 @@
 
 import asyncio
 import base64
-import binascii
 import contextlib
 import dataclasses
 import datetime
@@ -17,9 +16,11 @@ import sys
 import time
 import warnings
 import weakref
-from collections import namedtuple
+from collections.abc import Callable, Iterable, Iterator, Mapping
 from contextlib import suppress
+from email.message import EmailMessage
 from email.parser import HeaderParser
+from email.policy import HTTP
 from email.utils import parsedate
 from http.cookies import SimpleCookie
 from math import ceil
@@ -28,18 +29,9 @@ from types import MappingProxyType, TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Callable,
     ContextManager,
-    Dict,
     Generic,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
     Protocol,
-    Tuple,
-    Type,
     TypeVar,
     Union,
     final,
@@ -49,7 +41,7 @@ from typing import (
 from urllib.parse import quote
 from urllib.request import getproxies, proxy_bypass
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, MultiMapping
+from multidict import CIMultiDict, MultiDict, MultiDictProxy
 from propcache.api import under_cached_property as reify
 from yarl import URL
 
@@ -64,18 +56,49 @@ else:
 
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
-elif sys.version_info < (3, 10):
-    frozen_dataclass_decorator = functools.partial(dataclasses.dataclass, frozen=True)
 else:
     frozen_dataclass_decorator = functools.partial(
         dataclasses.dataclass, frozen=True, slots=True
     )
 
-__all__ = ("BasicAuth", "ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
+__all__ = ("ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 
-PY_310 = sys.version_info >= (3, 10)
-
+# This is the default size/limit for several operations.
+# Matches the max size we receive from sockets:
+# https://github.com/python/cpython/blob/1857a40807daeae3a1bf5efb682de9c9ae6df845/Lib/asyncio/selector_events.py#L766
+DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 COOKIE_MAX_LENGTH = 4096
+_QUOTED_PAIR_SUB = re.compile(r"\\(.)")
+_QUOTED_STRING = r'"(?:[^"\\]|\\.)*"'
+_ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
+# Matches one element in a comma-separated header list.
+# Group 1: content of a top-level quoted-string (quotes stripped).
+# Group 2: an unquoted element (may contain parameter quoted-strings / comments).
+_LIST_ELEMENT_RE = re.compile(
+    rf"""
+    [ \t]*
+    (?:
+      "( (?:[^"\\]|\\.)* )"  # group 1: top-level quoted-string
+      | (  # group 2: unquoted element
+          (?:
+            (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
+            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+            | [^,]  # any non-comma character
+          )+?
+        )
+    )
+    [ \t]* (?:,|\Z)
+    """,
+    re.VERBOSE,
+)
+# Finds parameter quoted-strings and comments inside an unquoted element for unescaping.
+_PROTECTED_RE = re.compile(
+    rf"""
+    (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted-string
+    | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+    """,
+    re.VERBOSE,
+)
 
 _T = TypeVar("_T")
 _S = TypeVar("_S")
@@ -124,82 +147,35 @@ SEPARATORS = {
 TOKEN = CHAR ^ CTL ^ SEPARATORS
 
 
-json_re = re.compile(r"(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
+json_re = re.compile(r"^(?:application/|[\w.-]+/[\w.+-]+?\+)json$", re.IGNORECASE)
 
 
-class BasicAuth(namedtuple("BasicAuth", ["login", "password", "encoding"])):
-    """Http basic authentication helper."""
+def encode_basic_auth(login: str, password: str = "", encoding: str = "utf-8") -> str:
+    """Encode HTTP Basic Authentication credentials as an Authorization header value.
 
-    def __new__(
-        cls, login: str, password: str = "", encoding: str = "latin1"
-    ) -> "BasicAuth":
-        if login is None:
-            raise ValueError("None is not allowed as login value")
-
-        if password is None:
-            raise ValueError("None is not allowed as password value")
-
-        if ":" in login:
-            raise ValueError('A ":" is not allowed in login (RFC 1945#section-11.1)')
-
-        return super().__new__(cls, login, password, encoding)
-
-    @classmethod
-    def decode(cls, auth_header: str, encoding: str = "latin1") -> "BasicAuth":
-        """Create a BasicAuth object from an Authorization HTTP header."""
-        try:
-            auth_type, encoded_credentials = auth_header.split(" ", 1)
-        except ValueError:
-            raise ValueError("Could not parse authorization header.")
-
-        if auth_type.lower() != "basic":
-            raise ValueError("Unknown authorization method %s" % auth_type)
-
-        try:
-            decoded = base64.b64decode(
-                encoded_credentials.encode("ascii"), validate=True
-            ).decode(encoding)
-        except binascii.Error:
-            raise ValueError("Invalid base64 encoding.")
-
-        try:
-            # RFC 2617 HTTP Authentication
-            # https://www.ietf.org/rfc/rfc2617.txt
-            # the colon must be present, but the username and password may be
-            # otherwise blank.
-            username, password = decoded.split(":", 1)
-        except ValueError:
-            raise ValueError("Invalid credentials.")
-
-        return cls(username, password, encoding=encoding)
-
-    @classmethod
-    def from_url(cls, url: URL, *, encoding: str = "latin1") -> Optional["BasicAuth"]:
-        """Create BasicAuth from url."""
-        if not isinstance(url, URL):
-            raise TypeError("url should be yarl.URL instance")
-        # Check raw_user and raw_password first as yarl is likely
-        # to already have these values parsed from the netloc in the cache.
-        if url.raw_user is None and url.raw_password is None:
-            return None
-        return cls(url.user or "", url.password or "", encoding=encoding)
-
-    def encode(self) -> str:
-        """Encode credentials."""
-        creds = (f"{self.login}:{self.password}").encode(self.encoding)
-        return "Basic %s" % base64.b64encode(creds).decode(self.encoding)
+    Returns a string of the form ``"Basic <base64>"`` suitable for use as the
+    value of the ``Authorization`` (or ``Proxy-Authorization``) header.
+    """
+    if ":" in login:
+        raise ValueError('A ":" is not allowed in login (RFC 7617#section-2)')
+    creds = f"{login}:{password}".encode(encoding)
+    return "Basic " + base64.b64encode(creds).decode(encoding)
 
 
-def strip_auth_from_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
-    """Remove user and password from URL if present and return BasicAuth object."""
+def strip_auth_from_url(url: URL) -> tuple[URL, str | None]:
+    """Strip user/password from a URL and return the Authorization header value.
+
+    Returns a tuple of ``(url_without_credentials, authorization_header_value)``.
+    The header value is ``None`` if no credentials were present.
+    """
     # Check raw_user and raw_password first as yarl is likely
     # to already have these values parsed from the netloc in the cache.
     if url.raw_user is None and url.raw_password is None:
         return url, None
-    return url.with_user(None), BasicAuth(url.user or "", url.password or "")
+    return url.with_user(None), encode_basic_auth(url.user or "", url.password or "")
 
 
-def netrc_from_env() -> Optional[netrc.netrc]:
+def netrc_from_env() -> netrc.netrc | None:
     """Load netrc from file.
 
     Attempt to load it from the path specified by the env-var
@@ -247,12 +223,11 @@ def netrc_from_env() -> Optional[netrc.netrc]:
 @frozen_dataclass_decorator
 class ProxyInfo:
     proxy: URL
-    proxy_auth: Optional[BasicAuth]
+    proxy_auth: str | None
 
 
-def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAuth:
-    """
-    Return :py:class:`~aiohttp.BasicAuth` credentials for ``host`` from ``netrc_obj``.
+def _auth_header_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> str:
+    """Return a ``Proxy-Authorization`` header value for ``host`` from netrc.
 
     :raises LookupError: if ``netrc_obj`` is :py:data:`None` or if no
             entry is found for the ``host``.
@@ -276,10 +251,10 @@ def basicauth_from_netrc(netrc_obj: Optional[netrc.netrc], host: str) -> BasicAu
     if password is None:
         password = ""  # type: ignore[unreachable]
 
-    return BasicAuth(username, password)
+    return encode_basic_auth(username, password)
 
 
-def proxies_from_env() -> Dict[str, ProxyInfo]:
+def proxies_from_env() -> dict[str, ProxyInfo]:
     proxy_urls = {
         k: URL(v)
         for k, v in getproxies().items()
@@ -298,14 +273,14 @@ def proxies_from_env() -> Dict[str, ProxyInfo]:
         if netrc_obj and auth is None:
             if proxy.host is not None:
                 try:
-                    auth = basicauth_from_netrc(netrc_obj, proxy.host)
+                    auth = _auth_header_from_netrc(netrc_obj, proxy.host)
                 except LookupError:
                     auth = None
         ret[proto] = ProxyInfo(proxy, auth)
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> Tuple[URL, Optional[BasicAuth]]:
+def get_env_proxy_for_url(url: URL) -> tuple[URL, str | None]:
     """Get a permitted proxy for the given URL from the env."""
     if url.host is not None and proxy_bypass(url.host):
         raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
@@ -367,21 +342,47 @@ def parse_mimetype(mimetype: str) -> MimeType:
     )
 
 
+class EnsureOctetStream(EmailMessage):
+    def __init__(self) -> None:
+        super().__init__()
+        # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
+        self.set_default_type("application/octet-stream")
+
+    def get_content_type(self) -> str:
+        """Re-implementation from Message
+
+        Returns application/octet-stream in place of plain/text when
+        value is wrong.
+
+        The way this class is used guarantees that content-type will
+        be present so simplify the checks wrt to the base implementation.
+        """
+        value = self.get("content-type", "").lower()
+
+        # Based on the implementation of _splitparam in the standard library
+        ctype, _, _ = value.partition(";")
+        ctype = ctype.strip()
+        if ctype.count("/") != 1:
+            return self.get_default_type()
+        return ctype
+
+
 @functools.lru_cache(maxsize=56)
-def parse_content_type(raw: str) -> Tuple[str, MappingProxyType[str, str]]:
+def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     """Parse Content-Type header.
 
     Returns a tuple of the parsed content type and a
-    MappingProxyType of parameters.
+    MappingProxyType of parameters. The default returned value
+    is `application/octet-stream`
     """
-    msg = HeaderParser().parsestr(f"Content-Type: {raw}")
+    msg = HeaderParser(EnsureOctetStream, policy=HTTP).parsestr(f"Content-Type: {raw}")
     content_type = msg.get_content_type()
     params = msg.get_params(())
     content_dict = dict(params[1:])  # First element is content type again
     return content_type, MappingProxyType(content_dict)
 
 
-def guess_filename(obj: Any, default: Optional[str] = None) -> Optional[str]:
+def guess_filename(obj: Any, default: str | None = None) -> str | None:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":
         return Path(name).name
@@ -409,7 +410,7 @@ def content_disposition_header(
     disptype: str,
     quote_fields: bool = True,
     _charset: str = "utf-8",
-    params: Optional[Dict[str, str]] = None,
+    params: dict[str, str] | None = None,
 ) -> str:
     """Sets ``Content-Disposition`` header for MIME.
 
@@ -471,7 +472,7 @@ def is_expected_content_type(
     return expected_content_type in response_content_type
 
 
-def is_ip_address(host: Optional[str]) -> bool:
+def is_ip_address(host: str | None) -> bool:
     """Check if host looks like an IP Address.
 
     This check is only meant as a heuristic to ensure that
@@ -484,7 +485,7 @@ def is_ip_address(host: Optional[str]) -> bool:
     return ":" in host or host.replace(".", "").isdigit()
 
 
-_cached_current_datetime: Optional[int] = None
+_cached_current_datetime: int | None = None
 _cached_formatted_datetime = ""
 
 
@@ -528,7 +529,7 @@ def rfc822_formatted_time() -> str:
     return _cached_formatted_datetime
 
 
-def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
+def _weakref_handle(info: "tuple[weakref.ref[object], str]") -> None:
     ref, name = info
     ob = ref()
     if ob is not None:
@@ -539,10 +540,10 @@ def _weakref_handle(info: "Tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: Optional[float],
+    timeout: float | None,
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
-) -> Optional[asyncio.TimerHandle]:
+) -> asyncio.TimerHandle | None:
     if timeout is not None and timeout > 0:
         when = loop.time() + timeout
         if timeout >= timeout_ceil_threshold:
@@ -554,10 +555,10 @@ def weakref_handle(
 
 def call_later(
     cb: Callable[[], Any],
-    timeout: Optional[float],
+    timeout: float | None,
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
-) -> Optional[asyncio.TimerHandle]:
+) -> asyncio.TimerHandle | None:
     if timeout is None or timeout <= 0:
         return None
     now = loop.time()
@@ -585,14 +586,14 @@ class TimeoutHandle:
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        timeout: Optional[float],
+        timeout: float | None,
         ceil_threshold: float = 5,
     ) -> None:
         self._timeout = timeout
         self._loop = loop
         self._ceil_threshold = ceil_threshold
-        self._callbacks: List[
-            Tuple[Callable[..., None], Tuple[Any, ...], Dict[str, Any]]
+        self._callbacks: list[
+            tuple[Callable[..., None], tuple[Any, ...], dict[str, Any]]
         ] = []
 
     def register(
@@ -603,7 +604,7 @@ class TimeoutHandle:
     def close(self) -> None:
         self._callbacks.clear()
 
-    def start(self) -> Optional[asyncio.TimerHandle]:
+    def start(self) -> asyncio.TimerHandle | None:
         timeout = self._timeout
         if timeout is not None and timeout > 0:
             when = self._loop.time() + timeout
@@ -646,9 +647,9 @@ class TimerNoop(BaseTimerContext):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
     ) -> None:
         return
 
@@ -660,7 +661,7 @@ class TimerContext(BaseTimerContext):
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._tasks: List[asyncio.Task[Any]] = []
+        self._tasks: list[asyncio.Task[Any]] = []
         self._cancelled = False
         self._cancelling = 0
 
@@ -688,11 +689,11 @@ class TimerContext(BaseTimerContext):
 
     def __exit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_val: Optional[BaseException],
-        exc_tb: Optional[TracebackType],
-    ) -> Optional[bool]:
-        enter_task: Optional[asyncio.Task[Any]] = None
+        exc_type: type[BaseException] | None,
+        exc_val: BaseException | None,
+        exc_tb: TracebackType | None,
+    ) -> bool | None:
+        enter_task: asyncio.Task[Any] | None = None
         if self._tasks:
             enter_task = self._tasks.pop()
 
@@ -719,7 +720,7 @@ class TimerContext(BaseTimerContext):
 
 
 def ceil_timeout(
-    delay: Optional[float], ceil_threshold: float = 5
+    delay: float | None, ceil_threshold: float = 5
 ) -> async_timeout.Timeout:
     if delay is None or delay <= 0:
         return async_timeout.timeout(None)
@@ -732,15 +733,59 @@ def ceil_timeout(
     return async_timeout.timeout_at(when)
 
 
+class HeadersDictProxy(Mapping[str, str]):
+    def __init__(self, md: CIMultiDict[str]):
+        self._md = md
+
+    def getall(self, key: str) -> tuple[str, ...]:
+        val = self.get(key, "")
+        unescape = _QUOTED_PAIR_SUB.sub
+        values = []
+        for m in _LIST_ELEMENT_RE.finditer(val):
+            qs = m.group(1)
+            if qs is not None:
+                values.append(unescape(r"\1", qs))
+            else:
+                raw = m.group(2).strip()
+                if raw:
+                    values.append(
+                        _PROTECTED_RE.sub(lambda p: unescape(r"\1", p.group()), raw)
+                    )
+        return tuple(values)
+
+    def __eq__(self, other: object) -> bool:
+        return self._md.__eq__(other)
+
+    def __getitem__(self, key: str) -> str:
+        return ", ".join(self._md.getall(key))
+
+    def __iter__(self) -> Iterator[str]:
+        # We need to deduplicate keys from MultiDict
+        # But, we also need to retain ordering
+        seen = set()
+        for k in self._md.__iter__():
+            if k in seen:
+                continue
+            seen.add(k)
+            yield k
+
+    def __len__(self) -> int:
+        return len(set(self._md.keys()))
+
+    def __repr__(self) -> str:
+        body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
+        return f"<{self.__class__.__name__}({body})>"
+
+
 class HeadersMixin:
     """Mixin for handling headers."""
 
-    _headers: MultiMapping[str]
-    _content_type: Optional[str] = None
-    _content_dict: Optional[Dict[str, str]] = None
-    _stored_content_type: Union[str, None, _SENTINEL] = sentinel
+    _headers: Mapping[str, str]
+    _content_type: str | None = None
+    _content_dict: dict[str, str] | None = None
+    _stored_content_type: str | None | _SENTINEL = sentinel
 
-    def _parse_content_type(self, raw: Optional[str]) -> None:
+    def _parse_content_type(self, raw: str | None) -> None:
         self._stored_content_type = raw
         if raw is None:
             # default value according to RFC 2616
@@ -762,7 +807,7 @@ class HeadersMixin:
         return self._content_type
 
     @property
-    def charset(self) -> Optional[str]:
+    def charset(self) -> str | None:
         """The value of charset part for Content-Type HTTP header."""
         raw = self._headers.get(hdrs.CONTENT_TYPE)
         if self._stored_content_type != raw:
@@ -771,7 +816,7 @@ class HeadersMixin:
         return self._content_dict.get("charset")
 
     @property
-    def content_length(self) -> Optional[int]:
+    def content_length(self) -> int | None:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
         return None if content_length is None else int(content_length)
@@ -788,14 +833,14 @@ _EXC_SENTINEL = BaseException()
 class ErrorableProtocol(Protocol):
     def set_exception(
         self,
-        exc: Union[Type[BaseException], BaseException],
+        exc: type[BaseException] | BaseException,
         exc_cause: BaseException = ...,
     ) -> None: ...
 
 
 def set_exception(
     fut: Union["asyncio.Future[_T]", ErrorableProtocol],
-    exc: Union[Type[BaseException], BaseException],
+    exc: type[BaseException] | BaseException,
     exc_cause: BaseException = _EXC_SENTINEL,
 ) -> None:
     """Set future exception.
@@ -817,18 +862,21 @@ def set_exception(
 
 
 @functools.total_ordering
-class AppKey(Generic[_T]):
-    """Keys for static typing support in Application."""
+class BaseKey(Generic[_T]):
+    """Base for concrete context storage key classes.
+
+    Each storage is provided with its own sub-class for the sake of some additional type safety.
+    """
 
     __slots__ = ("_name", "_t", "__orig_class__")
 
     # This may be set by Python when instantiating with a generic type. We need to
     # support this, in order to support types that are not concrete classes,
     # like Iterable, which can't be passed as the second parameter to __init__.
-    __orig_class__: Type[object]
+    __orig_class__: type[object]
 
     # TODO(PY314): Change Type to TypeForm (this should resolve unreachable below).
-    def __init__(self, name: str, t: Optional[Type[_T]] = None):
+    def __init__(self, name: str, t: type[_T] | None = None):
         # Prefix with module name to help deduplicate key names.
         frame = inspect.currentframe()
         while frame:
@@ -844,9 +892,9 @@ class AppKey(Generic[_T]):
         self._t = t
 
     def __lt__(self, other: object) -> bool:
-        if isinstance(other, AppKey):
+        if isinstance(other, BaseKey):
             return self._name < other._name
-        return True  # Order AppKey above other types.
+        return True  # Order BaseKey above other types.
 
     def __repr__(self) -> str:
         t = self._t
@@ -864,20 +912,31 @@ class AppKey(Generic[_T]):
                 t_repr = f"{t.__module__}.{t.__qualname__}"
         else:
             t_repr = repr(t)  # type: ignore[unreachable]
-        return f"<AppKey({self._name}, type={t_repr})>"
+        return f"<{self.__class__.__name__}({self._name}, type={t_repr})>"
+
+
+class AppKey(BaseKey[_T]):
+    """Keys for static typing support in Application."""
+
+
+class RequestKey(BaseKey[_T]):
+    """Keys for static typing support in Request."""
+
+
+class ResponseKey(BaseKey[_T]):
+    """Keys for static typing support in Response."""
 
 
 @final
-class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
+class ChainMapProxy(Mapping[str | AppKey[Any], Any]):
     __slots__ = ("_maps",)
 
-    def __init__(self, maps: Iterable[Mapping[Union[str, AppKey[Any]], Any]]) -> None:
+    def __init__(self, maps: Iterable[Mapping[str | AppKey[Any], Any]]) -> None:
         self._maps = tuple(maps)
 
     def __init_subclass__(cls) -> None:
         raise TypeError(
-            "Inheritance class {} from ChainMapProxy "
-            "is forbidden".format(cls.__name__)
+            f"Inheritance class {cls.__name__} from ChainMapProxy is forbidden"
         )
 
     @overload  # type: ignore[override]
@@ -886,7 +945,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
     @overload
     def __getitem__(self, key: str) -> Any: ...
 
-    def __getitem__(self, key: Union[str, AppKey[_T]]) -> Any:
+    def __getitem__(self, key: str | AppKey[_T]) -> Any:
         for mapping in self._maps:
             try:
                 return mapping[key]
@@ -895,15 +954,15 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         raise KeyError(key)
 
     @overload  # type: ignore[override]
-    def get(self, key: AppKey[_T], default: _S) -> Union[_T, _S]: ...
+    def get(self, key: AppKey[_T], default: _S) -> _T | _S: ...
 
     @overload
-    def get(self, key: AppKey[_T], default: None = ...) -> Optional[_T]: ...
+    def get(self, key: AppKey[_T], default: None = ...) -> _T | None: ...
 
     @overload
     def get(self, key: str, default: Any = ...) -> Any: ...
 
-    def get(self, key: Union[str, AppKey[_T]], default: Any = None) -> Any:
+    def get(self, key: str | AppKey[_T], default: Any = None) -> Any:
         try:
             return self[key]
         except KeyError:
@@ -913,8 +972,8 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
         # reuses stored hash values if possible
         return len(set().union(*self._maps))
 
-    def __iter__(self) -> Iterator[Union[str, AppKey[Any]]]:
-        d: Dict[Union[str, AppKey[Any]], Any] = {}
+    def __iter__(self) -> Iterator[str | AppKey[Any]]:
+        d: dict[str | AppKey[Any], Any] = {}
         for mapping in reversed(self._maps):
             # reuses stored hash values if possible
             d.update(mapping)
@@ -934,7 +993,7 @@ class ChainMapProxy(Mapping[Union[str, AppKey[Any]], Any]):
 class CookieMixin:
     """Mixin for handling cookies."""
 
-    _cookies: Optional[SimpleCookie] = None
+    _cookies: SimpleCookie | None = None
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -947,14 +1006,14 @@ class CookieMixin:
         name: str,
         value: str,
         *,
-        expires: Optional[str] = None,
-        domain: Optional[str] = None,
-        max_age: Optional[Union[int, str]] = None,
+        expires: str | None = None,
+        domain: str | None = None,
+        max_age: int | str | None = None,
         path: str = "/",
-        secure: Optional[bool] = None,
-        httponly: Optional[bool] = None,
-        samesite: Optional[str] = None,
-        partitioned: Optional[bool] = None,
+        secure: bool | None = None,
+        httponly: bool | None = None,
+        samesite: str | None = None,
+        partitioned: bool | None = None,
     ) -> None:
         """Set or update response cookie.
 
@@ -1005,11 +1064,11 @@ class CookieMixin:
         self,
         name: str,
         *,
-        domain: Optional[str] = None,
+        domain: str | None = None,
         path: str = "/",
-        secure: Optional[bool] = None,
-        httponly: Optional[bool] = None,
-        samesite: Optional[str] = None,
+        secure: bool | None = None,
+        httponly: bool | None = None,
+        samesite: str | None = None,
     ) -> None:
         """Delete cookie.
 
@@ -1060,7 +1119,7 @@ def validate_etag_value(value: str) -> None:
         )
 
 
-def parse_http_date(date_str: Optional[str]) -> Optional[datetime.datetime]:
+def parse_http_date(date_str: str | None) -> datetime.datetime | None:
     """Process a date string, return a datetime object"""
     if date_str is not None:
         timetuple = parsedate(date_str)

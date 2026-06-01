@@ -15,6 +15,7 @@ Alec Hanefeld
 Alejandro Gómez
 Aleksandr Danshyn
 Aleksey Kutepov
+Alex Grönholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -56,6 +57,7 @@ Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Ashutosh Kumar Singh
 Austin Scola
 Bai Haoran
 Ben Bader
@@ -68,6 +70,7 @@ Bob Haddleton
 Boris Feld
 Borys Vorona
 Boyi Chen
+Br1an67
 Brett Cannon
 Brett Higgins
 Brian Bouterse
@@ -120,6 +123,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+Earle Lowe
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
@@ -146,10 +150,13 @@ Gabriel Tremblay
 Gang Ji
 Gary Leung
 Gary Wilson Jr.
+Gene Hoffman
 Gennady Andreyev
 Georges Dubus
 Greg Holt
 Gregory Haynes
+Grigoriy Soldatov
+Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
 Günther Jena
@@ -177,6 +184,7 @@ Ivan Lakovic
 Ivan Larin
 J. Nick Koston
 Jacob Champion
+Jacob Henner
 Jaesung Lee
 Jake Davis
 Jakob Ackermann
@@ -209,6 +217,7 @@ Jordan Borean
 Josep Cugat
 Josh Junon
 Joshu Coats
+Josu Moreno
 Julia Tsemusheva
 Julien Duponchelle
 Jungkook Park
@@ -223,6 +232,7 @@ Kilian Guillaume
 Kimmo Parviainen-Jalanko
 Kirill Klenov
 Kirill Malovitsa
+Kirill Potapenko
 Konstantin Shutkin
 Konstantin Valetov
 Krzysztof Blazewicz
@@ -247,6 +257,7 @@ Marco Paolini
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
+Mark Larah
 Marko Kohtala
 Martijn Pieters
 Martin Melka
@@ -268,6 +279,7 @@ Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
 Mikhail Nacharov
+Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
 Morgan Delahaye-Prat
@@ -275,6 +287,7 @@ Moss Collum
 Mun Gwan-gyeong
 Navid Sheikhol
 Nicolas Braem
+Night Cityblade
 Nikolay Kim
 Nikolay Novik
 Nikolay Tiunov
@@ -282,10 +295,13 @@ Nándor Mátravölgyi
 Oisin Aylward
 Olaf Conradi
 Oleg Höfling
+Omkar Kabde
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
 Parag Jain
+Parman Mohammadalizadeh
+Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
@@ -302,6 +318,7 @@ Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
+Puneet Dixit
 Qiao Han
 Rafael Viotti
 Rahul Nahata
@@ -310,12 +327,15 @@ Raúl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
+Rodrigo Nogueira
 Roman Markeloff
 Roman Podoliaka
 Roman Postnov
 Rong Zhang
+Rouven Bauer
 Samir Akarioh
 Samuel Colvin
+Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
@@ -327,9 +347,11 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
+Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks
@@ -352,6 +374,7 @@ Thomas Forbes
 Thomas Grainger
 Tim Menninger
 Tolga Tezel
+Tom Whittock
 Tomasz Trebski
 Toshiaki Tanaka
 Trevor Gamblin
@@ -378,6 +401,7 @@ Vladimir Kamarzin
 Vladimir Kozlovski
 Vladimir Rutsky
 Vladimir Shulyak
+Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
@@ -403,6 +427,7 @@ Yegor Roganov
 Yifei Kong
 Young-Ho Cha
 Yuriy Shatrov
+Yury Novikov
 Yury Pliner
 Yury Selivanov
 Yusuke Tsutsumi
