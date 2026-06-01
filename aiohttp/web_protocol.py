@@ -738,7 +738,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 except HttpProcessingError as parse_exc:
                     messages = [
                         (
-                            _ErrInfo(status=400, exc=parse_exc, message=parse_exc.message),
+                            _ErrInfo(
+                                status=400, exc=parse_exc, message=parse_exc.message
+                            ),
                             EMPTY_PAYLOAD,
                         )
                     ]
