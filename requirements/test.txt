@@ -157,6 +157,7 @@ trustme==1.2.1 ; platform_machine != "i686"
 typing-extensions==4.15.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
+    #   aiohttp
     #   aiosignal
     #   cryptography
     #   exceptiongroup

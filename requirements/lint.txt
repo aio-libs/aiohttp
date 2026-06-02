@@ -146,6 +146,7 @@ trustme==1.2.1
     # via -r requirements/lint.in
 typing-extensions==4.15.0
     # via
+    #   aiohttp
     #   aiosignal
     #   cryptography
     #   exceptiongroup
