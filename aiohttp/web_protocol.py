@@ -453,7 +453,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 tail = b""
 
             for msg, payload in messages:
-                self._request_count += 1
                 self._messages.append((msg, payload))
 
             waiter = self._waiter
