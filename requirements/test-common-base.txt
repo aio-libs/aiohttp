@@ -14,7 +14,7 @@ freezegun==1.5.5
     # via -r requirements/test-common-base.in
 iniconfig==2.3.0
     # via pytest
-packaging==26.0
+packaging==26.2
     # via pytest
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
