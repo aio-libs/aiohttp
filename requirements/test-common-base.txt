@@ -24,7 +24,7 @@ pluggy==1.6.0
     #   pytest-cov
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pygments==2.19.2
+pygments==2.20.0
     # via pytest
 pytest==9.0.3
     # via
