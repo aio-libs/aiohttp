@@ -1005,10 +1005,15 @@ class TCPConnector(BaseConnector):
                          - If ssl_shutdown_timeout=0: connections are aborted
                          - If ssl_shutdown_timeout>0: graceful shutdown is performed
         """
-        if self._resolver_owner:
-            await self._resolver.close()
+        # Mark the connector as closed (and cancel any tracked resolve tasks in
+        # _close_immediately) BEFORE tearing down the owned resolver. Otherwise
+        # an in-flight non-cached resolve suspended inside a trace callback would
+        # wake up after self._resolver was nullified and crash with
+        # AttributeError instead of seeing the closed connector (see #12497).
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
         await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
+        if self._resolver_owner:
+            await self._resolver.close()
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -1061,6 +1066,14 @@ class TCPConnector(BaseConnector):
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
+
+            # If the connector was closed while a trace callback was suspended,
+            # the owned resolver may already have been torn down. Surface the
+            # closed state as ClientConnectionError instead of letting the
+            # resolver crash with AttributeError on its nullified backend
+            # (see #12497).
+            if self._closed:
+                raise ClientConnectionError("Connector is closed.")
 
             res = await self._resolver.resolve(host, port, family=self._family)
 

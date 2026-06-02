@@ -1,0 +1,8 @@
+Fixed ``AttributeError: 'NoneType' object has no attribute 'getaddrinfo'`` when
+``TCPConnector.close()`` ran concurrently with an in-flight non-cached resolve
+suspended inside a trace callback (e.g. ``on_dns_resolvehost_start``). The
+owned resolver was torn down before the connector was marked closed, leaving
+the resuming resolve to call a nullified backend. The connector is now marked
+closed before the resolver is torn down, and the non-cached resolve path
+raises ``ClientConnectionError("Connector is closed.")`` instead --
+by :user:`jbbqqf`.

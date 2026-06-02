@@ -2844,6 +2844,56 @@ async def test_close_cancels_resolve_host(make_client_request: _RequestMaker) ->
             await t
 
 
+async def test_close_during_non_cached_resolve_raises_client_error(
+    make_client_request: _RequestMaker,
+) -> None:
+    """Regression test for #12497.
+
+    When ``use_dns_cache=False`` the resolve call is not tracked in
+    ``_resolve_host_tasks``, so a request suspended inside a trace callback
+    right before the resolver call could previously resume after the owned
+    resolver had been torn down and crash with ``AttributeError`` on the
+    nullified backend. The teardown must instead surface a
+    ``ClientConnectionError("Connector is closed.")`` to the caller, matching
+    the cached-path behavior.
+    """
+    trace_yielded = asyncio.Event()
+
+    async def yielding_on_dns_start(
+        session: object, ctx: object, params: object
+    ) -> None:
+        # Yield so close() can run while the in-flight resolve is suspended
+        # right between the trace callback and the resolver call.
+        trace_yielded.set()
+        await asyncio.sleep(0)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_dns_resolvehost_start.append(yielding_on_dns_start)
+    trace_config.freeze()
+    trace_obj = Trace(
+        mock.Mock(),
+        trace_config,
+        trace_config.trace_config_ctx(),
+    )
+
+    conn = aiohttp.TCPConnector(use_dns_cache=False)
+    req = make_client_request(
+        "GET",
+        URL("http://example.com:80"),
+        loop=asyncio.get_running_loop(),
+        response_class=mock.Mock(),
+    )
+    task = asyncio.create_task(conn.connect(req, [trace_obj], ClientTimeout()))
+    # Let the request reach the trace-callback yield.
+    await trace_yielded.wait()
+
+    # Close while the resolve is suspended in the trace callback.
+    await conn.close()
+
+    with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+        await task
+
+
 async def test_multiple_dns_resolution_requests_success(
     make_client_request: _RequestMaker,
 ) -> None:
