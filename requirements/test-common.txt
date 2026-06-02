@@ -42,7 +42,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.17
+idna==3.18
     # via
     #   trustme
     #   yarl
