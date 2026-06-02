@@ -32,7 +32,7 @@ Features
 
 - Added :func:`~aiohttp.encode_basic_auth` for encoding HTTP Basic
   Authentication credentials. Replaces the now-deprecated
-  :class:`~aiohttp.BasicAuth` -- by :user:`Dreamsorcerer`.
+  ``aiohttp.BasicAuth`` -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
@@ -300,7 +300,7 @@ Bug fixes
 Deprecations (removal in next major release)
 --------------------------------------------
 
-- Deprecated :class:`~aiohttp.BasicAuth` and the ``auth`` / ``proxy_auth``
+- Deprecated ``aiohttp.BasicAuth`` and the ``auth`` / ``proxy_auth``
   parameters. They will be removed in aiohttp 4.0. Use the new
   :func:`~aiohttp.encode_basic_auth` helper together with
   ``headers={"Authorization": ...}`` (or
