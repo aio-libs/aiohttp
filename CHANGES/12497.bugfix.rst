@@ -1,3 +1,1 @@
-Fixed a race condition in :py:class:`~aiohttp.TCPConnector` where closing the connector while a DNS resolution was in-flight could raise :py:exc:`AttributeError` instead of :py:exc:`~aiohttp.ClientConnectionError`.
-
-The fix ensures that ``TCPConnector.close`` marks the connector as closed before shutting down the resolver, and adds a guard in ``TCPConnector._resolve_host`` to raise :py:exc:`~aiohttp.ClientConnectionError` when the connector has already been closed.
+Fixed a race condition in :py:class:`~aiohttp.TCPConnector` where closing the connector while a DNS resolution was in-flight could raise :py:exc:`AttributeError` instead of :py:exc:`~aiohttp.ClientConnectionError` -- by :user:`goingforstudying-ctrl`.
