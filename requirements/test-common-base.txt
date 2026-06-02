@@ -14,7 +14,7 @@ freezegun==1.5.5
     # via -r requirements/test-common-base.in
 iniconfig==2.3.0
     # via pytest
-packaging==26.0
+packaging==26.2
     # via pytest
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
@@ -24,15 +24,15 @@ pluggy==1.6.0
     #   pytest-cov
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pygments==2.19.2
+pygments==2.20.0
     # via pytest
-pytest==9.0.2
+pytest==9.0.3
     # via
     #   -r requirements/test-common-base.in
     #   pytest-cov
     #   pytest-mock
     #   pytest-timeout
-pytest-cov==7.0.0
+pytest-cov==7.1.0
     # via -r requirements/test-common-base.in
 pytest-mock==3.15.1
     # via -r requirements/test-common-base.in
@@ -44,7 +44,7 @@ setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
-tomli==2.4.0
+tomli==2.4.1
     # via
     #   coverage
     #   pytest
