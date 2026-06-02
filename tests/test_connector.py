@@ -4525,3 +4525,49 @@ async def test_connect_tunnel_connection_release(
 
     # Clean up to avoid resource warning
     conn.close()
+
+
+async def test_tcp_connector_close_race_condition() -> None:
+    """Test closing TCPConnector while DNS resolution is in-flight."""
+    loop = asyncio.get_running_loop()
+    resolve_started = loop.create_future()
+    close_started = loop.create_future()
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self, host: str, port: int = 0, family: int = socket.AF_INET
+        ) -> list[ResolveResult]:
+            resolve_started.set_result(None)
+            await close_started
+            return [
+                {
+                    "hostname": host,
+                    "host": host,
+                    "port": port,
+                    "family": family,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            assert False
+
+    connector = TCPConnector(use_dns_cache=False, resolver=FakeResolver())
+
+    async def resolve_host() -> None:
+        # The in-flight resolve should complete normally since close()
+        # happens after the resolver returns
+        result = await connector._resolve_host("localhost", 80)
+        assert len(result) == 1
+
+    async def close_connector() -> None:
+        await resolve_started
+        close_started.set_result(None)
+        await connector.close()
+
+    await asyncio.gather(resolve_host(), close_connector())
+
+    # After close, new resolves should raise ClientConnectionError
+    with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+        await connector._resolve_host("localhost", 80)
