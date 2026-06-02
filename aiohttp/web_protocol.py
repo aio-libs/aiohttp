@@ -452,7 +452,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 upgraded = False
                 tail = b""
 
-            for msg, payload in messages or ():
+            for msg, payload in messages:
                 self._request_count += 1
                 self._messages.append((msg, payload))
 
@@ -733,7 +733,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if self._message_tail:
                 messages, upgraded, tail = self._parser.feed_data(self._message_tail)
                 self._message_tail = b""
-                for msg, payload in messages or ():
+                for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
                 if messages:
