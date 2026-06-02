@@ -1063,10 +1063,10 @@ class TCPConnector(BaseConnector):
                          - If ssl_shutdown_timeout=0: connections are aborted
                          - If ssl_shutdown_timeout>0: graceful shutdown is performed
         """
-        if self._resolver_owner:
-            await self._resolver.close()
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
         await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
+        if self._resolver_owner:
+            await self._resolver.close()
 
     @property
     def family(self) -> int:
@@ -1108,6 +1108,9 @@ class TCPConnector(BaseConnector):
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
+
+            if self._closed:
+                raise ClientConnectionError("Connector is closed")
 
             res = await self._resolver.resolve(host, port, family=self._family)
 
