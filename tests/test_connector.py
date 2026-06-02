@@ -4731,7 +4731,7 @@ async def test_tcp_connector_close_race_condition() -> None:
 
     async def resolve_host() -> None:
         with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
-            await connector._resolve_host("127.0.0.1", 80)
+            await connector._resolve_host("localhost", 80)
 
     async def close_connector() -> None:
         await resolve_started
