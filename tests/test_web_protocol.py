@@ -53,8 +53,7 @@ def test_data_received_calls_data_received_cb(
     dummy_reader[1].feed_data.assert_called_once_with(b"x")
 
 
-def test_finish_response_replays_message_tail(
-    event_loop: asyncio.AbstractEventLoop,
+async def test_finish_response_replays_message_tail(
     dummy_manager: Server[BaseRequest],
 ) -> None:
     """Replay pipelined requests after a failed websocket upgrade.
@@ -63,6 +62,7 @@ def test_finish_response_replays_message_tail(
     HTTP request, finish_response must parse the tail and queue the message
     so the connection does not hang forever.
     """
+    event_loop = asyncio.get_running_loop()
     handler = RequestHandler(dummy_manager, loop=event_loop)
 
     # Build a mock parser whose feed_data returns a synthetic message
@@ -83,10 +83,7 @@ def test_finish_response_replays_message_tail(
     response.prepare = mock.AsyncMock()
     response.write_eof = mock.AsyncMock()
 
-    async def _run() -> None:
-        await handler.finish_response(request, response, None)
-
-    event_loop.run_until_complete(_run())
+    await handler.finish_response(request, response, None)
 
     # The tail should have been fed to the parser
     mock_parser.feed_data.assert_called_once_with(
