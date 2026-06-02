@@ -53,12 +53,11 @@ jobs:
   lint:
     permissions:
       contents: read # to fetch code (actions/checkout)
+      pull-requests: read  # to read PR metadata (verify change fragments step)
 
     name: Linter
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    permissions:
-      pull-requests: read
     steps:
     - name: Checkout
       uses: actions/checkout@v6
