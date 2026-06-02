@@ -57,6 +57,8 @@ jobs:
     name: Linter
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      pull-requests: read
     steps:
     - name: Checkout
       uses: actions/checkout@v6
@@ -97,6 +99,30 @@ jobs:
         # can be scanned by slotscheck.
         pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
+    - name: Verify CHANGES fragment references PR
+      if: github.event_name == 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_BODY: ${{ github.event.pull_request.body }}
+      run: |
+        set -euo pipefail
+        added=$(
+          gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | select(.status=="added") | .filename' \
+          | grep '^CHANGES/' || true
+        )
+        failed=0
+        for f in $added; do
+          num=$(basename "$f" | cut -d. -f1)
+          [[ "$num" =~ ^[0-9]+$ ]] || continue
+          if [[ "$num" == "$PR_NUMBER" ]]; then continue; fi
+          if grep -qE "(^|[^0-9])#${num}([^0-9]|$)" <<<"$PR_BODY"; then continue; fi
+          echo "::error file=$f::Change fragment ($num) must reference PR #$PR_NUMBER or an issue this PR fixes"
+          failed=1
+        done
+        exit $failed
     - name: Install spell checker
       run: |
         pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
