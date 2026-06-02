@@ -4701,8 +4701,9 @@ async def test_connect_tunnel_connection_release() -> None:
 
 
 async def test_tcp_connector_close_race_condition() -> None:
-    """Test that closing a TCPConnector while DNS resolution is in-flight raises
-    ClientConnectionError instead of AttributeError (race condition #12497)."""
+    """Test that closing a TCPConnector while DNS resolution is in-flight
+    completes gracefully, and subsequent resolves raise ClientConnectionError
+    instead of AttributeError (race condition #12497)."""
     loop = asyncio.get_running_loop()
     resolve_started = loop.create_future()
     close_started = loop.create_future()
@@ -4730,8 +4731,10 @@ async def test_tcp_connector_close_race_condition() -> None:
     connector = TCPConnector(use_dns_cache=False, resolver=FakeResolver())
 
     async def resolve_host() -> None:
-        with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
-            await connector._resolve_host("localhost", 80)
+        # The in-flight resolve should complete normally since close()
+        # happens after the resolver returns
+        result = await connector._resolve_host("localhost", 80)
+        assert len(result) == 1
 
     async def close_connector() -> None:
         await resolve_started
@@ -4739,3 +4742,7 @@ async def test_tcp_connector_close_race_condition() -> None:
         await connector.close()
 
     await asyncio.gather(resolve_host(), close_connector())
+
+    # After close, new resolves should raise ClientConnectionError
+    with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+        await connector._resolve_host("localhost", 80)
