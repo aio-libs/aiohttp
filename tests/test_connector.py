@@ -4726,7 +4726,7 @@ async def test_tcp_connector_close_race_condition() -> None:
             ]
 
         async def close(self) -> None:
-            pass
+            assert False
 
     connector = TCPConnector(use_dns_cache=False, resolver=FakeResolver())
 
