@@ -32,7 +32,7 @@ cffi==2.0.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
-click==8.4.0
+click==8.4.1
     # via wait-for-it
 coverage==7.14.1
     # via pytest-cov
