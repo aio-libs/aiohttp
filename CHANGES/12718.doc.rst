@@ -1,0 +1,2 @@
+Removed the obsolete ``response_factory`` parameter from the
+``UrlDispatcher.add_static()`` documentation.

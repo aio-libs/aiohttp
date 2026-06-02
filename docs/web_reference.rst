@@ -1880,7 +1880,6 @@ Application and Router
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
-                          response_factory=StreamResponse, \
                           show_index=False, \
                           break_symlink_sandbox=False, \
                           append_version=False)
