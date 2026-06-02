@@ -57,9 +57,12 @@ def test_finish_response_replays_message_tail(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
-    """When a websocket upgrade fails and _message_tail contains a pipelined
+    """Replay pipelined requests after a failed websocket upgrade.
+
+    When a websocket upgrade fails and _message_tail contains a pipelined
     HTTP request, finish_response must parse the tail and queue the message
-    so the connection does not hang forever."""
+    so the connection does not hang forever.
+    """
     handler = RequestHandler(dummy_manager, loop=event_loop)
 
     # Build a mock parser whose feed_data returns a synthetic message
