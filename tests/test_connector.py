@@ -4698,3 +4698,44 @@ async def test_connect_tunnel_connection_release() -> None:
 
     # Clean up to avoid resource warning
     conn.close()
+
+
+async def test_tcp_connector_close_race_condition() -> None:
+    """Test that closing a TCPConnector while DNS resolution is in-flight raises
+    ClientConnectionError instead of AttributeError (race condition #12497)."""
+    loop = asyncio.get_running_loop()
+    resolve_started = loop.create_future()
+    close_started = loop.create_future()
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self, host: str, port: int = 0, family: int = socket.AF_INET
+        ) -> list[ResolveResult]:
+            resolve_started.set_result(None)
+            await close_started
+            return [
+                {
+                    "hostname": host,
+                    "host": host,
+                    "port": port,
+                    "family": family,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            pass
+
+    connector = TCPConnector(use_dns_cache=False, resolver=FakeResolver())
+
+    async def resolve_host() -> None:
+        with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
+            await connector._resolve_host("127.0.0.1", 80)
+
+    async def close_connector() -> None:
+        await resolve_started
+        close_started.set_result(None)
+        await connector.close()
+
+    await asyncio.gather(resolve_host(), close_connector())
