@@ -731,8 +731,15 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                self._parser.feed_data(self._message_tail)
+                messages, upgraded, tail = self._parser.feed_data(self._message_tail)
                 self._message_tail = b""
+                for msg, payload in messages or ():
+                    self._request_count += 1
+                    self._messages.append((msg, payload))
+                if messages:
+                    waiter = self._waiter
+                    if waiter is not None and not waiter.done():
+                        waiter.set_result(None)
         try:
             prepare_meth = resp.prepare
         except AttributeError:
