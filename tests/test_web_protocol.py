@@ -97,3 +97,31 @@ async def test_finish_response_replays_message_tail(
     assert handler._message_tail == b""
     assert handler._upgraded is False
     assert mock_parser.set_upgraded.called
+
+
+async def test_finish_response_replays_empty_message_tail(
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """No messages queued when parser returns empty list from tail."""
+    event_loop = asyncio.get_running_loop()
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+
+    mock_parser = mock.create_autospec(HttpRequestParser, spec_set=True, instance=True)
+    mock_parser.feed_data.return_value = [], False, b""
+    handler._parser = mock_parser
+    handler._messages = deque()
+    handler._message_tail = b"\r\n"
+    handler._waiter = event_loop.create_future()
+
+    request = mock.create_autospec(BaseRequest, spec_set=True, instance=True)
+    response = mock.Mock()
+    response.prepare = mock.AsyncMock()
+    response.write_eof = mock.AsyncMock()
+
+    await handler.finish_response(request, response, None)
+
+    mock_parser.feed_data.assert_called_once_with(b"\r\n")
+    assert len(handler._messages) == 0
+    assert not handler._waiter.done()
+    assert handler._message_tail == b""
+    assert handler._upgraded is False
