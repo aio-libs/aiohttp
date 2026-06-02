@@ -154,7 +154,7 @@ packaging==26.2
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip==26.1.1
+pip==26.1.2
     # via pip-tools
 pip-tools==7.5.3
     # via -r requirements/dev.in
