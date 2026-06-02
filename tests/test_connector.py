@@ -4701,9 +4701,7 @@ async def test_connect_tunnel_connection_release() -> None:
 
 
 async def test_tcp_connector_close_race_condition() -> None:
-    """Test that closing a TCPConnector while DNS resolution is in-flight
-    completes gracefully, and subsequent resolves raise ClientConnectionError
-    instead of AttributeError (race condition #12497)."""
+    """Test closing TCPConnector while DNS resolution is in-flight."""
     loop = asyncio.get_running_loop()
     resolve_started = loop.create_future()
     close_started = loop.create_future()
