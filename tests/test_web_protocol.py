@@ -86,7 +86,9 @@ def test_finish_response_replays_message_tail(
     event_loop.run_until_complete(_run())
 
     # The tail should have been fed to the parser
-    mock_parser.feed_data.assert_called_once_with(b"GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    mock_parser.feed_data.assert_called_once_with(
+        b"GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    )
     # The parsed message must be queued
     assert len(handler._messages) == 1
     assert handler._messages[0] == (mock_msg, mock_payload)
