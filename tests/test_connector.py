@@ -24,6 +24,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import client, connector as connector_module, hdrs, web
+from aiohttp.abc import AbstractResolver
 from aiohttp.client import ClientRequest, ClientTimeout
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
