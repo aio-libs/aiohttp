@@ -1,1 +1,0 @@
-Removed archived and deprecated repositories from third party list -- by :user:`Polandia94`.

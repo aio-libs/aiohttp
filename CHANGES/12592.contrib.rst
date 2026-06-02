@@ -1,6 +1,0 @@
-Fixed a flakey ``test_tcp_connector_fingerprint_ok`` by aborting
-the SSL shutdown on the test's TCP connector before returning.
-The graceful TLS close was occasionally outliving the test event
-loop on one of the CI jobs, and the teardown ``gc.collect()``
-then surfaced the still-open transport as a
-``PytestUnraisableExceptionWarning`` -- by :user:`bdraco`.

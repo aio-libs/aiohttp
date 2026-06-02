@@ -1,1 +1,0 @@
-Fixed the C parser failing to reject a response with a body when none was expected -- by :user:`Dreamsorcerer`.

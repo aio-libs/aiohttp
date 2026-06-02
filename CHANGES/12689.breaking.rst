@@ -1,7 +1,0 @@
-Tightened outbound header serialization to reject all ASCII control
-characters forbidden by :rfc:`9110#section-5.5` and :rfc:`9112#section-4`
-(``0x00``\-``0x08``, ``0x0A``\-``0x1F``, ``0x7F``) in status lines,
-header field-names, and field-values. Previously only CR, LF and NUL were
-rejected. HTAB (``0x09``) remains permitted in field values. Applications
-that placed bare control characters in outbound headers will now raise
-:exc:`ValueError` instead of emitting non-RFC-compliant bytes -- by :user:`rodrigobnogueira`.

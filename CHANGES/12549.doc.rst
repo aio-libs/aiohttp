@@ -1,1 +1,0 @@
-Added the :doc:`threat_model` to the Sphinx documentation -- by :user:`omkar-334`.

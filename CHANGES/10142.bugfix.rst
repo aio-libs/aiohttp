@@ -1,1 +1,0 @@
-Improved the parser error message shown when TLS handshake bytes are received on an HTTP port -- by :user:`puneetdixit200`.
