@@ -30,6 +30,103 @@ async def test_websocket_can_prepare(aiohttp_client: AiohttpClient) -> None:
     assert resp.status == 426
 
 
+async def test_pipelined_request_after_failed_websocket_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Pipelined HTTP request runs after a declined websocket upgrade.
+
+    The parser flips into upgraded mode when it sees the ``Upgrade``
+    header and buffers any trailing bytes in ``_message_tail``. If the
+    handler declines the upgrade, ``finish_response()`` must replay the
+    tail through the parser so the pipelined request is dispatched
+    instead of stalling until the keep-alive timeout fires.
+    """
+
+    async def upgrade_handler(request: web.Request) -> NoReturn:
+        raise web.HTTPUpgradeRequired()
+
+    async def second_handler(request: web.Request) -> web.Response:
+        return web.Response(text="second-ok")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", upgrade_handler)
+    app.router.add_route("GET", "/second", second_handler)
+    server = await aiohttp_server(app)
+
+    # Need to use a raw writer in order to send the pipelined request.
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET / HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n"
+            b"\r\n"
+            b"GET /second HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"\r\n"
+        )
+        await writer.drain()
+
+        # Without the fix the second request is dropped and this read hangs
+        data = await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=5)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+    assert b"426" in data
+
+
+async def test_partial_pipelined_request_after_failed_websocket_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Partial pipelined bytes are preserved across finish_response.
+
+    Only part of the second request rides along with the upgrade, so
+    feed_data() in finish_response() returns no messages and the parser
+    keeps the partial bytes in its internal buffer. When the remainder
+    arrives via data_received() the request is completed and dispatched.
+    """
+
+    async def upgrade_handler(request: web.Request) -> NoReturn:
+        raise web.HTTPUpgradeRequired()
+
+    async def second_handler(request: web.Request) -> web.Response:
+        return web.Response(text="second-ok")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", upgrade_handler)
+    app.router.add_route("GET", "/second", second_handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET / HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n"
+            b"\r\n"
+            b"GET /second HTT"  # truncated mid-request
+        )
+        await writer.drain()
+
+        first = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert b"426" in first
+
+        writer.write(b"P/1.1\r\nHost: localhost\r\n\r\n")
+        await writer.drain()
+
+        await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=5)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
 async def test_handshake_connection_header_substring_not_a_token(
     aiohttp_client: AiohttpClient,
 ) -> None:
