@@ -323,12 +323,19 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # parse http messages
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
-        except Exception as underlying_exc:
+        except BaseException as underlying_exc:
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already
-                # closed in this case
+                # closed in this case.
+                # Close the transport so the half-read/desynchronized
+                # connection is not returned to the keep-alive pool.
                 self.transport.close()
+            # For non-Exception BaseException (e.g. CancelledError,
+            # SystemExit, KeyboardInterrupt), do not swallow: propagate
+            # after closing the transport so callers see the interrupt.
+            if not isinstance(underlying_exc, Exception):
+                raise
             # should_close is True after the call
             if isinstance(underlying_exc, HttpProcessingError):
                 exc = HttpProcessingError(
