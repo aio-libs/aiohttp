@@ -111,14 +111,14 @@ async def test_partial_pipelined_request_after_failed_websocket_upgrade(
             b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
             b"Sec-WebSocket-Version: 13\r\n"
             b"\r\n"
-            b"GET /sec"  # truncated mid-request
+            b"GET /second HTT"  # truncated mid-request
         )
         await writer.drain()
 
         first = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
         assert b"426" in first
 
-        writer.write(b"ond HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        writer.write(b"P/1.1\r\nHost: localhost\r\n\r\n")
         await writer.drain()
 
         await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=5)
