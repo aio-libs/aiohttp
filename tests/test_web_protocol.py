@@ -128,3 +128,37 @@ async def test_finish_response_replays_empty_message_tail(
     assert not handler._waiter.done()
     assert handler._message_tail == b"GET /second HTT"
     assert handler._upgraded is False
+
+
+async def test_finish_response_replays_message_tail_waiter_none(
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """Messages queued even when waiter is None (no pending request)."""
+    event_loop = asyncio.get_running_loop()
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+
+    mock_parser = mock.create_autospec(HttpRequestParser, spec_set=True, instance=True)
+    mock_msg = mock.create_autospec(RawRequestMessage, spec_set=True, instance=True)
+    mock_payload = mock.create_autospec(StreamReader, spec_set=True, instance=True)
+    mock_parser.feed_data.return_value = [(mock_msg, mock_payload)], False, b""
+    handler._parser = mock_parser
+    handler._messages = deque()
+    handler._message_tail = b"GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n"
+
+    # No waiter set (None) – code must not crash
+    handler._waiter = None
+
+    request = mock.create_autospec(BaseRequest, spec_set=True, instance=True)
+    response = mock.Mock()
+    response.prepare = mock.AsyncMock()
+    response.write_eof = mock.AsyncMock()
+
+    await handler.finish_response(request, response, None)
+
+    mock_parser.feed_data.assert_called_once_with(
+        b"GET /second HTTP/1.1\r\nHost: localhost\r\n\r\n"
+    )
+    assert len(handler._messages) == 1
+    assert handler._messages[0] == (mock_msg, mock_payload)
+    assert handler._message_tail == b""
+    assert handler._upgraded is False
