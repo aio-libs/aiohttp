@@ -137,7 +137,7 @@ async def test_partial_pipelined_request_after_failed_websocket_upgrade(
         first = await asyncio.wait_for(read_until_first_headers(), timeout=5)
         assert b"426" in first
 
-        writer.write(b"ond HTTP/1.1\r\n" b"Host: localhost\r\n" b"\r\n")
+        writer.write(b"ond HTTP/1.1\r\nHost: localhost\r\n" b"\r\n")
         await writer.drain()
 
         async def read_until_second() -> bytes:
