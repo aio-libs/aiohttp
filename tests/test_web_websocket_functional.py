@@ -70,23 +70,13 @@ async def test_pipelined_request_after_failed_websocket_upgrade(
         )
         await writer.drain()
 
-        async def read_until_second() -> bytes:
-            data = b""
-            while b"second-ok" not in data:
-                chunk = await reader.read(4096)
-                if not chunk:
-                    break
-                data += chunk
-            return data
-
         # Without the fix the second request is dropped and this read hangs
-        data = await asyncio.wait_for(read_until_second(), timeout=5)
+        data = await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=5)
     finally:
         writer.close()
         await writer.wait_closed()
 
     assert b"426" in data
-    assert b"second-ok" in data
 
 
 async def test_partial_pipelined_request_after_failed_websocket_upgrade(
@@ -125,32 +115,13 @@ async def test_partial_pipelined_request_after_failed_websocket_upgrade(
         )
         await writer.drain()
 
-        async def read_until_first_headers() -> bytes:
-            data = b""
-            while b"\r\n\r\n" not in data:
-                chunk = await reader.read(4096)
-                if not chunk:
-                    break
-                data += chunk
-            return data
-
-        first = await asyncio.wait_for(read_until_first_headers(), timeout=5)
+        first = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
         assert b"426" in first
 
-        writer.write(b"ond HTTP/1.1\r\nHost: localhost\r\n" b"\r\n")
+        writer.write(b"ond HTTP/1.1\r\nHost: localhost\r\n\r\n")
         await writer.drain()
 
-        async def read_until_second() -> bytes:
-            data = b""
-            while b"second-ok" not in data:
-                chunk = await reader.read(4096)
-                if not chunk:
-                    break
-                data += chunk
-            return data
-
-        rest = await asyncio.wait_for(read_until_second(), timeout=5)
-        assert b"second-ok" in rest
+        await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=5)
     finally:
         writer.close()
         await writer.wait_closed()
