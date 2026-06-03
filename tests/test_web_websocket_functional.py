@@ -13,7 +13,7 @@ import pytest
 import aiohttp
 from aiohttp import hdrs, web
 from aiohttp.http import WSCloseCode, WSMsgType
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 
 
 async def test_websocket_can_prepare(loop, aiohttp_client) -> None:
