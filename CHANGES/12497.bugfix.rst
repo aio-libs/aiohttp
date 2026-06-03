@@ -1,0 +1,1 @@
+Fixed a race condition in :py:class:`~aiohttp.TCPConnector` where closing the connector while a DNS resolution was in-flight could raise :py:exc:`AttributeError` instead of :py:exc:`~aiohttp.ClientConnectionError` -- by :user:`goingforstudying-ctrl`.
