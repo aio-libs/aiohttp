@@ -452,7 +452,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 upgraded = False
                 tail = b""
 
-            for msg, payload in messages or ():
+            for msg, payload in messages:
                 self._request_count += 1
                 self._messages.append((msg, payload))
 
@@ -731,8 +731,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                self._parser.feed_data(self._message_tail)
-                self._message_tail = b""
+                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
+                self._message_tail = tail
+                for msg, payload in messages:
+                    self._request_count += 1
+                    self._messages.append((msg, payload))
+                # This shouldn't be possible. If a future refactor results in this
+                # failing, then the code may need to be updated to set the waiter.
+                assert self._waiter is None
         try:
             prepare_meth = resp.prepare
         except AttributeError:
