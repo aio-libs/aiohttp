@@ -604,8 +604,9 @@ boundary at which user-supplied strings can become wire bytes.
 | 4.9 | `Content-Transfer-Encoding` (base64 / quoted-printable) | T / D | A peer sets `Content-Transfer-Encoding: base64` (or `quoted-printable`) and submits malformed encoded data — the decoder raises mid-stream and the partially-decoded part is surfaced to the handler with an exception. | Low |
 | 4.10 | `Content-Encoding` (gzip/deflate within a part) | D | A peer submits a multipart part with `Content-Encoding: gzip` (or `deflate`) carrying a zip-bomb payload — a small compressed body that expands to a vastly larger decoded body, driving memory exhaustion in the receiving handler. | Low |
 | 4.11 | `MultipartWriter` boundary collision | T | If a part body contains a byte sequence matching the boundary string, the writer emits it as-is — a receiver parsing the multipart will see a fake part break early. Negligible against the default `uuid.uuid4().hex` boundary, but real if user code supplies a short or predictable one. | Low |
-| 4.12 | `FormData.add_field` argument injection | T | When user code opts into `FormData(quote_fields=False)`, attacker-controlled `name` or `filename` reach the outbound `Content-Disposition` value with only `\` / `"` escaped — CR/LF/NUL pass through, enabling injection of extra disposition parameters or a fake-part break-out. With the default `quote_fields=True` the values are percent-encoded and safe. `add_field` itself only validates `content_type` (Feb 2026 fix). | Low–Med |
-| 4.13 | `Request.post()` temp-file lifetime | I / D | Uploaded files are streamed to `tempfile.TemporaryFile()` and lifetime is bound to the `FileField` object. If user code drops the field reference without reading or closing, garbage collection eventually closes the temp file. | Low |
+| 4.12 | `FormData.add_field` argument injection | T | When user code opts into `FormData(quote_fields=False)`, attacker-controlled `name` or `filename` reach the outbound `Content-Disposition` value with only `\` / `"` escaped. CR/LF/NUL would let an attacker inject extra disposition parameters or a fake-part break-out; `add_field` now rejects these bytes in `name`, `filename`, and `content_type` so the opt-out path is also defended. | Low–Med |
+| 4.13 | Per-part header injection via `headers=` | T | Caller-supplied headers passed via `MultipartWriter.append(headers=...)` or `Payload(headers=...)` reach the wire through `Payload._binary_headers`, which serialises `f"{k}: {v}\r\n"` without CR/LF/NUL validation. An attacker-influenced header value can inject extra part headers or break out into a fake part. Distinct from 4.12, which only covers the `name` / `filename` parameters of `add_field`. | Medium |
+| 4.14 | `Request.post()` temp-file lifetime | I / D | Uploaded files are streamed to `tempfile.TemporaryFile()` and lifetime is bound to the `FileField` object. If user code drops the field reference without reading or closing, garbage collection eventually closes the temp file. | Low |
 
 **Mitigations.**
 
@@ -622,8 +623,9 @@ boundary at which user-supplied strings can become wire bytes.
 | 4.9 | CTE decoding | `BodyPartReader._decode_content_transfer` dispatches to `base64.b64decode` / `binascii.a2b_qp` / pass-through for `binary`/`8bit`/`7bit`, and raises `RuntimeError` on any other token. Both decoders raise on malformed input; decoded output is still subject to the per-part `client_max_size` cap. For base64, `BodyPartReader.read_chunk` extends each chunk read until its base64-significant character count is a multiple of 4, so mid-quartet splits cannot silently corrupt the decoded output. | None. |
 | 4.10 | Content-Encoding decompression | Per-chunk `max_decompress_size`, per-part `client_max_size` cap. | Inherits the [§5.5](#55-compression-codecs) caveat about backend `max_length` honouring. |
 | 4.11 | Outbound boundary collision | UUID4-hex default; HMAC-grade entropy means collision with random body bytes is statistically negligible. | **User**: callers supplying their own boundary must use a random, sufficiently long value. |
-| 4.12 | `FormData` argument injection | `content_type` rejects `\r` / `\n` at `add_field` (`formdata.py:FormData.add_field`, dab9e879b, Feb 2026). `name` / `filename` are percent-encoded by `content_disposition_header` (`helpers.py:content_disposition_header`) when `quote_fields=True` (default). | **Extend the CR/LF/NUL check to `name` and `filename` at `add_field` so the `quote_fields=False` opt-out path is also defended.** **User**: do not pass `quote_fields=False` when any of `name` / `filename` is attacker-influenced. |
-| 4.13 | Temp-file lifetime | `tempfile.TemporaryFile()` is unlinked at creation on POSIX; closing the FD (whether explicit or via GC) reclaims the disk. | **User**: explicitly close `FileField`s you don't intend to consume to release the temp file promptly under high load. |
+| 4.12 | `FormData` argument injection | `add_field` runs `name`, `filename`, and `content_type` through `_safe_header` (`http_writer.py:_safe_header`), rejecting `\r` / `\n` / `\x00`. `name` / `filename` are additionally percent-encoded by `content_disposition_header` (`helpers.py:content_disposition_header`) when `quote_fields=True` (default), so the `add_field` check is what closes the `quote_fields=False` opt-out path. | None. |
+| 4.13 | Per-part header injection | `Payload._binary_headers` (`payload.py:_binary_headers`) now applies `_safe_header` to every name and value, raising `ValueError` if CR / LF / NUL is present before any byte reaches the wire. Covers all paths that mutate the headers dict (constructor, direct assignment, `set_content_disposition`). | None. |
+| 4.14 | Temp-file lifetime | `tempfile.TemporaryFile()` is unlinked at creation on POSIX; closing the FD (whether explicit or via GC) reclaims the disk. | **User**: explicitly close `FileField`s you don't intend to consume to release the temp file promptly under high load. |
 
 **Past advisories / hardening (recap).**
 
@@ -646,6 +648,18 @@ boundary at which user-supplied strings can become wire bytes.
 - **GHSA-3wq7-rqq7-wx6j (CVE-2026-34517)** (3.13.4) — `Request.post()` enforces
   `client_max_size` during iteration rather than after buffering,
   plugging a memory-blow-up on large form fields.
+- **GHSA-m6qw-4cw2-hm4m (CVE-2026-50269)** (3.14.0) —
+  `Payload._binary_headers` now rejects CR / LF / NUL in any per-part
+  header name or value via `_safe_header`, closing the outbound
+  multipart header-injection path through `MultipartWriter.append(headers=...)`
+  and `Payload(headers=...)` that the main HTTP writer's `_safe_header`
+  check did not cover (threat 4.13).
+- **PR #12721** (3.14.0) — companion to GHSA-m6qw-4cw2-hm4m:
+  `FormData.add_field` now rejects CR / LF / NUL in `name` and
+  `filename` (in addition to the previous `content_type` check), so the
+  `quote_fields=False` opt-out path can no longer be used to inject
+  extra `Content-Disposition` parameters or a fake-part break-out
+  (threat 4.12).
 
 These are all currently in place; this section assumes no regression.
 
@@ -656,5 +670,3 @@ These are all currently in place; this section assumes no regression.
 2. Should aiohttp expose an opt-in `safe_filename()` helper, or improve
    filename docstrings, to nudge applications away from path-traversal
    pitfalls (threat 4.6)?
-3. Should `FormData.add_field` extend its CR/LF rejection to `name` and
-   `filename` symmetrically with `content_type` (threat 4.12)?
