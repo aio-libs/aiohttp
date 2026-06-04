@@ -171,9 +171,6 @@ async def test_unexpected_exception_during_data_received() -> None:
 
 
 async def test_base_exception_during_data_received_closes_transport() -> None:
-    """A BaseException (e.g. CancelledError) raised by the parser must close
-    the transport so the half-read connection is not returned to the pool.
-    """
     loop = asyncio.get_running_loop()
     proto = ResponseHandler(loop=loop)
 
@@ -192,8 +189,7 @@ async def test_base_exception_during_data_received_closes_transport() -> None:
         proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
         transport.close.reset_mock()
 
-        with mock.patch.object(
-            proto._parser, "feed_data", side_effect=asyncio.CancelledError
+        with mock.patch.object(proto._parser, "feed_data", side_effect=asyncio.CancelledError
         ):
             with pytest.raises(asyncio.CancelledError):
                 proto.data_received(b"more")
