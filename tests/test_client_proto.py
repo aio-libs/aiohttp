@@ -183,7 +183,9 @@ async def test_base_exception_during_data_received_closes_transport() -> None:
     with mock.patch(
         "aiohttp.client_proto.HttpResponseParser", PatchableHttpResponseParser
     ):
-        transport = mock.Mock()
+        transport = mock.create_autospec(
+            asyncio.Transport, spec_set=True, instance=True
+        )
         proto.connection_made(transport)
         proto.set_response_params(read_until_eof=True)
         # Prime the parser so feed_data has been called once with valid data.
