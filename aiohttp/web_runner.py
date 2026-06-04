@@ -298,6 +298,18 @@ class BaseRunner(ABC, Generic[_Request]):
 
         self._server = await self._make_server()
 
+    async def serve_forever(self) -> None:
+        """Start the server and run until stopped.
+
+        Calls :meth:`setup` to start the server, then waits
+        indefinitely until the runner is stopped.
+        """
+        await self.setup()
+        try:
+            await asyncio.Event().wait()
+        finally:
+            await self.cleanup()
+
     @abstractmethod
     async def shutdown(self) -> None:
         """Call any shutdown hooks to help server close gracefully."""
