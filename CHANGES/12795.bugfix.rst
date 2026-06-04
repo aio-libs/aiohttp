@@ -1,8 +1,1 @@
-Fixed connection pool poisoning where a pooled keep-alive connection
-interrupted by a ``BaseException`` (such as :exc:`asyncio.CancelledError`)
-during HTTP response parsing was not closed and could be reused for a
-later request in a half-read state, surfacing as an immediate
-:exc:`~aiohttp.SocketTimeoutError` (regression introduced in 3.14.0
-when ``except BaseException`` in
-``ResponseHandler.data_received`` was narrowed to ``except Exception``)
--- by :user:`aiolibsbot`.
+Fixed ``CancelledError`` not closing a connection -- by :user:`aiolibsbot`.
