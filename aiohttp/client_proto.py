@@ -327,13 +327,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already
-                # closed in this case.
-                # Close the transport so the half-read/desynchronized
-                # connection is not returned to the keep-alive pool.
+                # closed in this case
                 self.transport.close()
-            # For non-Exception BaseException (e.g. CancelledError,
-            # SystemExit, KeyboardInterrupt), do not swallow: propagate
-            # after closing the transport so callers see the interrupt.
             if not isinstance(underlying_exc, Exception):
                 raise
             # should_close is True after the call
