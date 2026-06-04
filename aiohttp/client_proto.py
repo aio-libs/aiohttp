@@ -147,7 +147,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
-            except Exception as underlying_exc:
+            except BaseException as underlying_exc:
                 if self._payload is not None:
                     client_payload_exc_msg = (
                         f"Response payload is not completed: {underlying_exc !r}"
@@ -323,7 +323,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # parse http messages
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
-        except Exception as underlying_exc:
+        except BaseException as underlying_exc:
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already
