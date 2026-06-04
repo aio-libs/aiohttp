@@ -6,6 +6,7 @@ from unittest import mock
 import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
+
 >>>>>>> 24cb57bb8 (Close transport on BaseException in ResponseHandler.data_received (#12798))
 from yarl import URL
 
