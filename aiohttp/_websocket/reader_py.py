@@ -213,12 +213,6 @@ class WebSocketReader:
                 if opcode != OP_CODE_CONTINUATION:
                     self._opcode = opcode
                 self._partial += payload
-                if self._max_msg_size and len(self._partial) >= self._max_msg_size:
-                    raise WebSocketError(
-                        WSCloseCode.MESSAGE_TOO_BIG,
-                        f"Message size {len(self._partial)} "
-                        f"exceeds limit {self._max_msg_size}",
-                    )
                 return
 
             has_partial = bool(self._partial)
@@ -240,13 +234,6 @@ class WebSocketReader:
                 self._partial.clear()
             else:
                 assembled_payload = payload
-
-            if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
-                raise WebSocketError(
-                    WSCloseCode.MESSAGE_TOO_BIG,
-                    f"Message size {len(assembled_payload)} "
-                    f"exceeds limit {self._max_msg_size}",
-                )
 
             # Decompress process must to be done after all packets
             # received.
