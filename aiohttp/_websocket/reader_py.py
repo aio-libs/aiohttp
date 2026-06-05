@@ -24,7 +24,7 @@ from .models import (
     WSMsgType,
 )
 
-ALLOWED_CLOSE_CODES: Final[set[int]] = {int(i) for i in WSCloseCode}
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
@@ -154,18 +154,18 @@ class WebSocketReader:
         self._partial = bytearray()
         self._state = READ_HEADER
 
-        self._opcode: int = OP_CODE_NOT_SET
+        self._opcode = OP_CODE_NOT_SET
         self._frame_fin = False
-        self._frame_opcode: int = OP_CODE_NOT_SET
-        self._payload_fragments: list[bytes] = []
+        self._frame_opcode = OP_CODE_NOT_SET
+        self._payload_fragments = []
         self._frame_payload_len = 0
 
-        self._tail: bytes = b""
+        self._tail = b""
         self._has_mask = False
-        self._frame_mask: bytes | None = None
+        self._frame_mask = None
         self._payload_bytes_to_read = 0
         self._payload_len_flag = 0
-        self._compressed: int = COMPRESSED_NOT_SET
+        self._compressed = COMPRESSED_NOT_SET
         self._decompressobj: ZLibDecompressor | None = None
         self._compress = compress
 
@@ -347,7 +347,7 @@ class WebSocketReader:
         if self._tail:
             data, self._tail = self._tail + data, b""
 
-        start_pos: int = 0
+        start_pos = 0
         data_len = len(data)
         data_cstr = data
 
