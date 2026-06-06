@@ -7,7 +7,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import suppress
 from re import match as match_regex
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING, TypedDict, Any
 from unittest import mock
 from uuid import uuid4
 
@@ -27,7 +27,14 @@ if TYPE_CHECKING:
 else:
     proxy = pytest.importorskip("proxy")
 
-ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
+aiofastnet: Any
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+AIOHTTP_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
 
 
 class _ResponseArgs(TypedDict):
@@ -130,7 +137,7 @@ async def web_server_endpoint_url(
 
 
 @pytest.mark.skipif(
-    not ASYNCIO_SUPPORTS_TLS_IN_TLS,
+    not AIOHTTP_SUPPORTS_TLS_IN_TLS,
     reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
@@ -163,7 +170,7 @@ async def test_secure_https_proxy_absolute_path(
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.skipif(
-    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
+    AIOHTTP_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
 )
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
 # Filter out the warning from

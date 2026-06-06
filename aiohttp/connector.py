@@ -1321,7 +1321,7 @@ class TCPConnector(BaseConnector):
             underlying_transport,
             "_start_tls_compatible",
             False,
-        )
+        ) or aiofastnet is not None
 
         if asyncio_supports_tls_in_tls:
             return
