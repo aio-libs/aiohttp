@@ -7,7 +7,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import suppress
 from re import match as match_regex
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 
@@ -26,15 +26,6 @@ if TYPE_CHECKING:
     import proxy
 else:
     proxy = pytest.importorskip("proxy")
-
-aiofastnet: Any
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
-
-
-AIOHTTP_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
 
 
 class _ResponseArgs(TypedDict):
@@ -71,6 +62,15 @@ else:
             async with client.request(method, url, **kwargs) as resp:
                 return resp
 
+
+aiofastnet: Any
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
+
+AIOHTTP_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
 
 @pytest.fixture
 def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
