@@ -105,10 +105,12 @@ if TYPE_CHECKING:
 
 
 async def create_connection(
-    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any,
+    loop: asyncio.AbstractEventLoop,
+    *args: Any,
+    **kwargs: Any,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
-        return await aiofastnet.create_connection(loop, *args, **kwargs) # type: ignore[no-any-return]
+        return await aiofastnet.create_connection(loop, *args, **kwargs)  # type: ignore[no-any-return]
     else:
         return await loop.create_connection(*args, **kwargs)
 
@@ -117,7 +119,7 @@ async def start_tls(
     loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> asyncio.BaseTransport | None:
     if aiofastnet is not None:
-        return await aiofastnet.start_tls(loop, *args, **kwargs) # type: ignore[no-any-return]
+        return await aiofastnet.start_tls(loop, *args, **kwargs)  # type: ignore[no-any-return]
     else:
         return await loop.start_tls(*args, **kwargs)
 

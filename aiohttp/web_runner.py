@@ -33,7 +33,7 @@ async def create_server(
     loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> asyncio.Server:
     if aiofastnet is not None:
-        return await aiofastnet.create_server(loop, *args, **kwargs) # type: ignore[no-any-return]
+        return await aiofastnet.create_server(loop, *args, **kwargs)  # type: ignore[no-any-return]
     else:
         return await loop.create_server(*args, **kwargs)
 

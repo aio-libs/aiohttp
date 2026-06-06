@@ -8,8 +8,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import web
-from aiohttp import web_runner as web_runner_module
+from aiohttp import web, web_runner as web_runner_module
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import REUSE_ADDRESS
 from aiohttp.web_log import AccessLogger

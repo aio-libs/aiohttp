@@ -42,11 +42,9 @@ if TYPE_CHECKING:
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
-async def sendfile(
-    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
-) -> int:
+async def sendfile(loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any) -> int:
     if aiofastnet is not None:
-        return await aiofastnet.sendfile(loop, *args, **kwargs) # type: ignore[no-any-return]
+        return await aiofastnet.sendfile(loop, *args, **kwargs)  # type: ignore[no-any-return]
     else:
         return await loop.sendfile(*args, **kwargs)
 
