@@ -1,2 +1,2 @@
-Parameterized some codspeed benchmark on connection type (SSL + TCP).
+Parameterized some codspeed benchmarks on connection type (SSL + TCP).
 Previously, benchmarks only ran for TCP connection type. -- by :user:`tarasko`.
