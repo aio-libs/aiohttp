@@ -771,6 +771,31 @@ async def test_receive_timeout_deprecation(aiohttp_client: AiohttpClient) -> Non
     await resp.close()
 
 
+@pytest.mark.parametrize("use_request_timeout", [False, True])
+async def test_ws_connect_request_timeout(
+    aiohttp_server: AiohttpServer, use_request_timeout: bool
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        await asyncio.sleep(1)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+
+    timeout = aiohttp.ClientTimeout(total=0.05)
+    ws_timeout = ClientWSTimeout(ws_close=1.0)
+    request_timeout = timeout if use_request_timeout else None
+    session_timeout = aiohttp.ClientTimeout(total=30) if use_request_timeout else timeout
+    async with aiohttp.ClientSession(timeout=session_timeout) as client:
+        with pytest.raises(asyncio.TimeoutError):
+            await client.ws_connect(
+                server.make_url("/"),
+                request_timeout=request_timeout,
+                timeout=ws_timeout,
+            )
+
+
 async def test_custom_receive_timeout(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()

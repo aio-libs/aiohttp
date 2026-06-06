@@ -697,6 +697,7 @@ The client session supports the context manager protocol for self closing.
    .. method:: ws_connect(url, *, method='GET', \
                             protocols=(), \
                             timeout=sentinel,\
+                            request_timeout=None,\
                             autoclose=True,\
                             autoping=True,\
                             heartbeat=None,\
@@ -724,6 +725,13 @@ The client session supports the context manager protocol for self closing.
                       `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
                       (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
+
+      :param request_timeout: a :class:`ClientTimeout` timeout for the HTTP
+                              request used to establish the websocket
+                              connection. If ``None``, the session timeout
+                              is used.
+
+         .. versionadded:: 3.13
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False

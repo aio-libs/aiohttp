@@ -1,0 +1,3 @@
+Added a ``request_timeout`` parameter to :meth:`aiohttp.ClientSession.ws_connect`
+for controlling the HTTP request timeout used while establishing WebSocket
+handshakes -- by :user:`marko1olo`.

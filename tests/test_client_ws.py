@@ -10,6 +10,7 @@ import pytest
 import aiohttp
 from aiohttp import (
     ClientConnectionResetError,
+    ClientTimeout,
     ClientWSTimeout,
     ServerDisconnectedError,
     client,
@@ -74,6 +75,40 @@ async def test_ws_connect_read_timeout_is_reset_to_inf(
     assert res.protocol == "chat"
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
     assert resp.connection.protocol.read_timeout is None
+
+
+async def test_ws_connect_passes_request_timeout_to_request(
+    ws_key: str, key_data: bytes
+) -> None:
+    session_timeout = ClientTimeout(total=10.0)
+    request_timeout = ClientTimeout(total=1.0, connect=0.5)
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
+    }
+    resp.connection.protocol.read_timeout = None
+    with (
+        mock.patch("aiohttp.client.os") as m_os,
+        mock.patch("aiohttp.client.ClientSession.request") as m_req,
+    ):
+        m_os.urandom.return_value = key_data
+        m_req.return_value = asyncio.get_running_loop().create_future()
+        m_req.return_value.set_result(resp)
+
+        async with aiohttp.ClientSession(timeout=session_timeout) as session:
+            res = await session.ws_connect(
+                "http://test.org",
+                protocols=("t1", "t2", "chat"),
+                request_timeout=request_timeout,
+            )
+
+    assert isinstance(res, client.ClientWebSocketResponse)
+    assert res.protocol == "chat"
+    assert m_req.call_args[1]["timeout"] is request_timeout
 
 
 async def test_ws_connect_read_timeout_stays_inf(ws_key: str, key_data: bytes) -> None:
