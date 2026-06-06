@@ -1,7 +1,9 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
+import ssl
 from collections.abc import Awaitable, Callable, Iterator
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any
 
 import pytest
@@ -34,10 +36,12 @@ def aiohttp_client_sync(
         server_kwargs: dict[str, Any] | None = None,
         **kwargs: Any,
     ) -> TestClient[web.Request, web.Application]:
-        server_kwargs = server_kwargs or {}
+        server_kwargs = dict(server_kwargs or {})
+        server_ssl_context = server_kwargs.pop("ssl", None)
         server = TestServer(__param, **server_kwargs)
         client = aiohttp_client_cls(server, **kwargs)
 
+        await server.start_server(ssl=server_ssl_context)
         await client.start_server()
         clients.append(client)
         return client
@@ -48,10 +52,31 @@ def aiohttp_client_sync(
         event_loop.run_until_complete(clients.pop().close())
 
 
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: dict[str, Any]
+    c_kwargs: dict[str, Any]
+
+
+@pytest.fixture(params=["tcp", "ssl"], ids=["tcp", "ssl"])
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})
+
+
 def test_one_thousand_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket text messages."""
     message_count = 1000
@@ -68,8 +93,8 @@ def test_one_thousand_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client_sync(app)
-        resp = await client.ws_connect("/")
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
+        resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
@@ -84,6 +109,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
     msg_size: int,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
@@ -102,8 +128,8 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client_sync(app)
-        resp = await client.ws_connect("/")
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
+        resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
@@ -117,6 +143,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark round trip of 100 large WebSocket text messages."""
     message_count = 100
@@ -134,8 +161,8 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client_sync(app)
-        resp = await client.ws_connect("/")
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
+        resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
