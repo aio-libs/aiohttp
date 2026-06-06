@@ -493,9 +493,7 @@ def test_one_hundred_json_post_requests(
     async def run_client_benchmark() -> None:
         client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(message_count):
-            await client.post(
-                "/", json={"key": "value"}, **conn_type.c_kwargs
-            )
+            await client.post("/", json={"key": "value"}, **conn_type.c_kwargs)
         await client.close()
 
     @benchmark
