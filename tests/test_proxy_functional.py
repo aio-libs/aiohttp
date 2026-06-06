@@ -7,7 +7,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import suppress
 from re import match as match_regex
-from typing import TYPE_CHECKING, TypedDict, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 from unittest import mock
 from uuid import uuid4
 
@@ -46,6 +46,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
     ) -> ClientResponse: ...
 
 else:
+
     async def get_request(
         method: str = "GET",
         *,
