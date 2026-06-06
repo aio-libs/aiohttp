@@ -282,6 +282,21 @@ part of the ``speedups`` extra.
 
 To enable KTLS, you have to do and check the following:
 
+* Verify that ``aiofastnet`` is installed and can be imported.
+
+  Currently, ``aiofastnet`` works only with CPython distributions that are
+  dynamically linked against OpenSSL. This is generally true for system Python
+  installations, Conda distributions, ``pyenv``, and
+  ``actions/setup-python`` in GitHub Actions, but not for Python installations
+  managed by ``uv``.
+
+  .. code-block:: python
+
+      try:
+          import aiofastnet
+      except ImportError:
+          aiofastnet = None
+
 * Make sure the Linux ``tls`` kernel module is loaded::
 
     sudo modprobe tls
