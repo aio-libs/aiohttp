@@ -69,7 +69,7 @@ except ImportError:
     aiofastnet = None
 
 
-AIOHTTP_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
+ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
 
 
 @pytest.fixture
@@ -137,7 +137,7 @@ async def web_server_endpoint_url(
 
 
 @pytest.mark.skipif(
-    not AIOHTTP_SUPPORTS_TLS_IN_TLS,
+    not ASYNCIO_SUPPORTS_TLS_IN_TLS,
     reason="asyncio on this python does not support TLS in TLS",
 )
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
@@ -170,7 +170,7 @@ async def test_secure_https_proxy_absolute_path(
 
 @pytest.mark.parametrize("web_server_endpoint_type", ("https",))
 @pytest.mark.skipif(
-    AIOHTTP_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
+    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
 )
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
 # Filter out the warning from
