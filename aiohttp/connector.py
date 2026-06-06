@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import importlib
 import random
 import socket
 import sys
