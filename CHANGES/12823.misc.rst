@@ -1,0 +1,2 @@
+Parameterize some codspeed benchmark on connection type (SSL + TCP).
+Current benchmarks only run for TCP connection type. -- by :user:`tarasko`.
