@@ -731,7 +731,7 @@ The client session supports the context manager protocol for self closing.
                               connection. If ``None``, the session timeout
                               is used.
 
-         .. versionadded:: 3.13
+         .. versionadded:: 3.14
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False

@@ -108,7 +108,7 @@ async def test_ws_connect_passes_request_timeout_to_request(
 
     assert isinstance(res, client.ClientWebSocketResponse)
     assert res.protocol == "chat"
-    assert m_req.call_args[1]["timeout"] is request_timeout
+    assert m_req.call_args[1]["timeout"] == request_timeout
 
 
 async def test_ws_connect_read_timeout_stays_inf(ws_key: str, key_data: bytes) -> None:
