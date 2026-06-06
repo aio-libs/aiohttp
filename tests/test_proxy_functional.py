@@ -72,6 +72,7 @@ except ImportError:
 
 AIOHTTP_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
 
+
 @pytest.fixture
 def secure_proxy_url(tls_certificate_pem_path: str) -> Iterator[URL]:
     """Return the URL of an instance of a running secure proxy.
