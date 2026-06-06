@@ -786,7 +786,9 @@ async def test_ws_connect_request_timeout(
     timeout = aiohttp.ClientTimeout(total=0.05)
     ws_timeout = ClientWSTimeout(ws_close=1.0)
     request_timeout = timeout if use_request_timeout else None
-    session_timeout = aiohttp.ClientTimeout(total=30) if use_request_timeout else timeout
+    session_timeout = (
+        aiohttp.ClientTimeout(total=30) if use_request_timeout else timeout
+    )
     async with aiohttp.ClientSession(timeout=session_timeout) as client:
         with pytest.raises(asyncio.TimeoutError):
             await client.ws_connect(
