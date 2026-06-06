@@ -76,7 +76,6 @@ def test_one_thousand_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
-    conn_type: ConnectionType,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket text messages."""
     message_count = 1000
@@ -93,8 +92,8 @@ def test_one_thousand_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
-        resp = await client.ws_connect("/", **conn_type.c_kwargs)
+        client = await aiohttp_client_sync(app)
+        resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
@@ -143,7 +142,6 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
-    conn_type: ConnectionType,
 ) -> None:
     """Benchmark round trip of 100 large WebSocket text messages."""
     message_count = 100
@@ -161,8 +159,8 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
-        resp = await client.ws_connect("/", **conn_type.c_kwargs)
+        client = await aiohttp_client_sync(app)
+        resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
