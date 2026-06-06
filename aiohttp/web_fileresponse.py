@@ -11,13 +11,6 @@ from stat import S_ISREG
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional
 
-aiofastnet: Any
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
-
-
 from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
@@ -36,6 +29,12 @@ __all__ = ("FileResponse",)
 
 if TYPE_CHECKING:
     from .web_request import BaseRequest
+
+aiofastnet: Any
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]

@@ -18,13 +18,6 @@ import aiohappyeyeballs
 from aiohappyeyeballs import AddrInfoType, SocketFactoryType
 from multidict import CIMultiDict
 
-aiofastnet: Any
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None
-
-
 from . import hdrs, helpers
 from .abc import AbstractResolver, ResolveResult
 from .client_exceptions import (
@@ -57,6 +50,13 @@ from .helpers import (
 )
 from .log import client_logger
 from .resolver import DefaultResolver
+
+aiofastnet: Any
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
+
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
