@@ -775,9 +775,9 @@ async def test_receive_timeout_deprecation(aiohttp_client: AiohttpClient) -> Non
 async def test_ws_connect_request_timeout(
     aiohttp_server: AiohttpServer, use_request_timeout: bool
 ) -> None:
-    async def handler(request: web.Request) -> web.Response:
-        await asyncio.sleep(1)
-        return web.Response()
+    async def handler(request: web.Request) -> web.StreamResponse:
+        while True:
+            await asyncio.Event().wait()
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
