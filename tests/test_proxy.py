@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import hdrs
+from aiohttp import connector as connector_module, hdrs
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import (
     ClientRequest,
@@ -70,7 +70,7 @@ async def test_connect(  # type: ignore[misc]
             }
         )
         with mock.patch.object(
-            event_loop,
+            connector_module,
             "create_connection",
             autospec=True,
             return_value=(proto.transport, proto),
@@ -131,7 +131,7 @@ async def test_proxy_headers(  # type: ignore[misc]
             }
         )
         with mock.patch.object(
-            event_loop,
+            connector_module,
             "create_connection",
             autospec=True,
             return_value=(proto.transport, proto),
@@ -204,7 +204,7 @@ async def test_proxy_connection_error(  # type: ignore[misc]
     }
     with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         with mock.patch.object(
-            connector._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             side_effect=OSError("dont take it serious"),
@@ -274,13 +274,13 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -360,13 +360,13 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -482,14 +482,14 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
                 return_value=fingerprint_mock,
             ),
             mock.patch.object(  # Called on connection to http://proxy.example.com
-                event_loop,
+                connector_module,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
                 return_value=(mock.Mock(), mock.Mock()),
             ),
             mock.patch.object(  # Called on connection to https://www.python.org
-                event_loop,
+                connector_module,
                 "start_tls",
                 autospec=True,
                 spec_set=True,
@@ -561,13 +561,13 @@ async def test_https_connect(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -647,14 +647,14 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
                 tr, proto = mock.Mock(), mock.Mock()
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     # Called on connection to https://www.python.org
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         side_effect=ssl.CertificateError,
@@ -728,14 +728,14 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
                 tr, proto = mock.Mock(), mock.Mock()
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     # Called on connection to https://www.python.org
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         side_effect=ssl.SSLError,
@@ -811,7 +811,7 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
                 tr.get_extra_info.return_value = None
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
@@ -891,7 +891,7 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
                 tr.get_extra_info.return_value = None
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
@@ -940,7 +940,7 @@ async def test_request_port(  # type: ignore[misc]
         tr.get_extra_info.return_value = None
         # Called on connection to http://proxy.example.com
         with mock.patch.object(
-            event_loop, "create_connection", autospec=True, return_value=(tr, proto)
+            connector_module, "create_connection", autospec=True, return_value=(tr, proto)
         ):
             req = make_client_request(
                 "GET",
@@ -1008,13 +1008,13 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -1031,6 +1031,7 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
 
                         # ssl_shutdown_timeout=0 is not passed to start_tls
                         tls_m.assert_called_with(
+                            event_loop,
                             mock.ANY,
                             mock.ANY,
                             _SSL_CONTEXT_VERIFIED,
@@ -1103,13 +1104,13 @@ async def test_https_auth(  # type: ignore[misc]
             ) as host_m:
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),

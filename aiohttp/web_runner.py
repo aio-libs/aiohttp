@@ -1,10 +1,17 @@
 import asyncio
+import importlib
 import signal
 import socket
 from abc import ABC, abstractmethod
 from typing import Any, Generic, TypeVar
 
 from yarl import URL
+
+aiofastnet: Any
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
@@ -20,6 +27,16 @@ try:
     from ssl import SSLContext
 except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
+
+
+async def create_server(
+    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+) -> asyncio.Server:
+    if aiofastnet is not None:
+        return await aiofastnet.create_server(loop, *args, **kwargs) # type: ignore[no-any-return]
+    else:
+        return await loop.create_server(*args, **kwargs)
+
 
 __all__ = (
     "BaseSite",
@@ -130,7 +147,8 @@ class TCPSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        self._server = await create_server(
+            loop,
             server,
             self._host,
             self._port,
@@ -244,8 +262,8 @@ class SockSite(BaseSite):
         loop = asyncio.get_running_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
-            server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+        self._server = await create_server(
+            loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
 
 

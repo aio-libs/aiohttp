@@ -14,6 +14,7 @@ from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import web
+from aiohttp import web_fileresponse as web_fileresponse_module
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
@@ -74,14 +75,13 @@ async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
         ret = web.FileResponse(path, chunk_size=chunk_size)
-        rloop = asyncio.get_running_loop()
-        is_patched = rloop.sendfile is sendfile_mock
+        is_patched = web_fileresponse_module.sendfile is sendfile_mock
         assert is_patched if request.param == "no_sendfile" else not is_patched
         return ret
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            asyncio.get_running_loop(),
+            web_fileresponse_module,
             "sendfile",
             autospec=True,
             spec_set=True,
