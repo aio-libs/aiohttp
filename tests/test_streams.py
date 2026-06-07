@@ -1723,3 +1723,31 @@ async def test_stream_reader_small_limit_resumes_reading(
 
     protocol.resume_reading.assert_called()
     assert protocol._reading_paused is False
+
+
+async def test_readany_does_not_drain_reentrant_refill(
+    protocol: mock.Mock,
+) -> None:
+    """A single readany() must not reassemble data fed re-entrantly.
+
+    Draining below the low water mark resumes reading, which can synchronously
+    refill the buffer (e.g. decompressing another chunk). Joining that refill in
+    one call would reassemble an unbounded body.
+    """
+    loop = asyncio.get_running_loop()
+    stream = streams.StreamReader(protocol, limit=4, loop=loop)
+
+    refills = [b"second", b"third"]
+
+    def resume_reading() -> None:
+        if refills:
+            stream.feed_data(refills.pop(0))
+
+    protocol.resume_reading.side_effect = resume_reading
+
+    stream.feed_data(b"first")
+
+    # Popping "first" refills "second", but this readany() returns only "first".
+    assert await stream.readany() == b"first"
+    assert await stream.readany() == b"second"
+    assert await stream.readany() == b"third"
