@@ -1321,6 +1321,55 @@ async def test_answers_cross_origin_within_domain_protection_space(
     assert other_auth_headers[0].startswith("Digest")
 
 
+async def test_does_not_answer_cross_origin_challenge_without_redirect(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Origin scoping applies to any cross-origin request, not just redirects.
+
+    After authenticating against the anchor origin, a direct request to a
+    different origin that issues its own challenge must not be answered with a
+    digest response computed from the configured credentials.
+    """
+    other_auth_headers: list[str | None] = []
+
+    async def other_handler(request: Request) -> Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        other_auth_headers.append(auth_header)
+        if auth_header is None:
+            return Response(
+                status=401,
+                headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="x"'},
+            )
+        return Response(text="other")
+
+    other_app = Application()
+    other_app.router.add_get("/", other_handler)
+    other_server = await aiohttp_server(other_app)
+
+    async def anchor_handler(request: Request) -> Response:
+        if request.headers.get(hdrs.AUTHORIZATION) is None:
+            return Response(
+                status=401,
+                headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="anchor", nonce="n1"'},
+            )
+        return Response(text="anchor")
+
+    anchor_app = Application()
+    anchor_app.router.add_get("/", anchor_handler)
+    anchor_server = await aiohttp_server(anchor_app)
+
+    digest_auth = DigestAuthMiddleware("user", "pass")
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        async with session.get(anchor_server.make_url("/")) as response:
+            assert response.status == 200
+        async with session.get(other_server.make_url("/")) as response:
+            assert response.status == 401
+
+    # The other origin only ever saw the unauthenticated request; the
+    # middleware never answered its challenge.
+    assert other_auth_headers == [None]
+
+
 @pytest.mark.parametrize(
     ("status", "headers", "expected"),
     [

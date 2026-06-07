@@ -162,6 +162,15 @@ class DigestAuthMiddleware:
     - Includes replay attack protection with client nonce count tracking
     - Supports preemptive authentication per RFC 7616 Section 3.6
 
+    Origin scoping:
+    The credentials are scoped to the origin of the first request the
+    middleware handles. A request to a different origin is passed through
+    untouched, so it never receives a digest response computed from those
+    credentials, unless that origin falls within a protection space the
+    anchor origin advertised through the RFC 7616 ``domain`` directive. Make
+    the first request through the middleware against the intended origin, as
+    the anchor is pinned to it and not reset for the life of the instance.
+
     Standards compliance:
     - RFC 7616: HTTP Digest Access Authentication (primary reference)
     - RFC 2617: HTTP Authentication (deprecated by RFC 7616)
