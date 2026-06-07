@@ -2401,6 +2401,35 @@ class TestParsePayload:
         assert out.is_eof()
         assert b"x" == b"".join(out._buffer)
 
+    async def test_chunked_chunk_size_line_at_limit(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A chunk-size line of exactly max_line_size bytes is accepted (>, not >=)."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        # "1;" + 30 * "a" is exactly 32 bytes before the CRLF.
+        size_line = b"1;" + b"a" * 30
+        assert len(size_line) == 32
+        p.feed_data(size_line + b"\r\nx\r\n0\r\n\r\n")
+        assert out.is_eof()
+        assert b"x" == b"".join(out._buffer)
+
+    async def test_chunked_chunk_size_line_one_over_limit(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A chunk-size line one byte over max_line_size is rejected."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        # "1;" + 31 * "a" is 33 bytes before the CRLF.
+        size_line = b"1;" + b"a" * 31
+        assert len(size_line) == 33
+        with pytest.raises(http_exceptions.LineTooLong):
+            p.feed_data(size_line + b"\r\nx\r\n0\r\n\r\n")
+
     async def test_parse_chunked_payload_size_data_mismatch(
         self, protocol: BaseProtocol
     ) -> None:

@@ -937,6 +937,8 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
                     if pos >= 0:
+                        # Only chunk-size lines reach here; trailers enforce
+                        # _max_field_size separately in PARSE_TRAILERS below.
                         if pos > self._max_line_size:
                             raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
                         i = chunk.find(CHUNK_EXT, 0, pos)
