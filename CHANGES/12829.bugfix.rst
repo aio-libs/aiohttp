@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.ClientSession` with ``trust_env=True`` carrying a proxy's ``Proxy-Authorization`` header across a redirect; the environment proxy and its credentials are now re-resolved for each request, so a redirect that selects a different proxy no longer reuses the previous proxy's authentication -- by :user:`bdraco`.

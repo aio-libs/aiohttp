@@ -549,10 +549,11 @@ class ClientSession:
         if proxy is None:
             proxy = self._default_proxy
 
+        resolved_proxy_headers: CIMultiDict[str] | None
         if proxy is None:
-            proxy_headers = None
+            resolved_proxy_headers = None
         else:
-            proxy_headers = self._prepare_headers(proxy_headers)
+            resolved_proxy_headers = self._prepare_headers(proxy_headers)
             try:
                 proxy = URL(proxy)
             except ValueError as e:
@@ -654,16 +655,17 @@ class ClientSession:
                     if proxy is not None:
                         proxy_ = URL(proxy)
                     elif self._trust_env:
+                        # Re-resolve per iteration; drop stale env-proxy auth so
+                        # a redirect that switches proxies can't leak credentials.
+                        resolved_proxy_headers = None
                         with suppress(LookupError):
                             proxy_, env_proxy_auth = await asyncio.to_thread(
                                 get_env_proxy_for_url, url
                             )
-                            if env_proxy_auth is not None and (
-                                proxy_headers is None
-                                or hdrs.PROXY_AUTHORIZATION not in proxy_headers
-                            ):
-                                proxy_headers = proxy_headers or CIMultiDict()
-                                proxy_headers[hdrs.PROXY_AUTHORIZATION] = env_proxy_auth
+                            if env_proxy_auth is not None:
+                                resolved_proxy_headers = CIMultiDict(
+                                    {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
+                                )
 
                     req = self._request_class(
                         method,
@@ -684,7 +686,7 @@ class ClientSession:
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
-                        proxy_headers=proxy_headers,
+                        proxy_headers=resolved_proxy_headers,
                         traces=traces,
                         trust_env=self.trust_env,
                     )

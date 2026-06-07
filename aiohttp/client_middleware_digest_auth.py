@@ -162,6 +162,15 @@ class DigestAuthMiddleware:
     - Includes replay attack protection with client nonce count tracking
     - Supports preemptive authentication per RFC 7616 Section 3.6
 
+    Origin scoping:
+    The credentials are scoped to the origin of the first request the
+    middleware handles. A request to a different origin is passed through
+    untouched, so it never receives a digest response computed from those
+    credentials, unless that origin falls within a protection space the
+    anchor origin advertised through the RFC 7616 ``domain`` directive. Make
+    the first request through the middleware against the intended origin, as
+    the anchor is pinned to it and not reset for the life of the instance.
+
     Standards compliance:
     - RFC 7616: HTTP Digest Access Authentication (primary reference)
     - RFC 2617: HTTP Authentication (deprecated by RFC 7616)
@@ -198,6 +207,8 @@ class DigestAuthMiddleware:
         self._preemptive: bool = preemptive
         # Set of URLs defining the protection space
         self._protection_space: list[str] = []
+        # Origin the credentials are scoped to; set on the first request.
+        self._origin: URL | None = None
 
     async def _encode(self, method: str, url: URL, body: Payload | Literal[b""]) -> str:
         """
@@ -447,6 +458,16 @@ class DigestAuthMiddleware:
         self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Run the digest auth middleware."""
+        # Credentials are scoped to the first request's origin. Other origins
+        # pass through untouched unless a challenge from the anchor origin
+        # advertised them via RFC 7616 domain; mirrors aiohttp stripping
+        # Authorization on cross-origin redirects.
+        origin = request.url.origin()
+        if self._origin is None:
+            self._origin = origin
+        elif origin != self._origin and not self._in_protection_space(request.url):
+            return await handler(request)
+
         response = None
         for retry_count in range(2):
             # Apply authorization header if:

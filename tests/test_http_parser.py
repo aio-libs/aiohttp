@@ -1729,6 +1729,17 @@ def test_http_request_max_status_line_under_limit(parser: HttpRequestParser) -> 
     assert msg.url == URL("/path" + path.decode())
 
 
+def test_http_request_max_status_line_fragmented(
+    parser: HttpRequestParser,
+) -> None:
+    # Split an overlong request target across reads so that each callback
+    # fragment is under the limit but the accumulated target is not.
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(b"GET /" + b"a" * 8000)
+        parser.feed_data(b"a" * 8000 + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 def test_http_response_parser_utf8(response: HttpResponseParser) -> None:
     text = "HTTP/1.1 200 Ok\r\nx-test:тест\r\n\r\n".encode()
 
@@ -1808,6 +1819,17 @@ def test_http_response_parser_status_line_under_limit(
     assert msg.version == (1, 1)
     assert msg.code == 200
     assert msg.reason == reason.decode()
+
+
+def test_http_response_parser_status_line_too_long_fragmented(
+    response: HttpResponseParser,
+) -> None:
+    # Split an overlong reason phrase across reads so that each callback
+    # fragment is under the limit but the accumulated reason is not.
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        response.feed_data(b"HTTP/1.1 200 " + b"a" * 8000)
+        response.feed_data(b"a" * 8000 + b"\r\n\r\n")
 
 
 def test_http_response_parser_bad_version(response: HttpResponseParser) -> None:
