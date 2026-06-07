@@ -1322,7 +1322,7 @@ async def test_tcp_connector_rejects_non_canonical_ipv4_alias() -> None:
 
     conn = aiohttp.TCPConnector(resolver=_RecordingResolver())
     for alias in ("2130706433", "017700000001", "127.1"):
-        with pytest.raises(InvalidUrlClientError):
+        with pytest.raises(InvalidUrlClientError, match="canonical IPv4"):
             await conn._resolve_host(alias, 8080)
 
     # Resolver is never consulted, and a canonical IP still short-circuits it.
