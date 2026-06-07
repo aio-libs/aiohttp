@@ -1735,9 +1735,9 @@ async def test_unread_compressed_body_drain_is_bounded(
 
     async def record_readany(self: StreamReader) -> bytes:
         data = await readany(self)
-        if data:
-            drain_reads.append(len(data))
-            drained.set()
+        assert data
+        drain_reads.append(len(data))
+        drained.set()
         return data
 
     monkeypatch.setattr(StreamReader, "readany", record_readany)
