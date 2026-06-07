@@ -1212,14 +1212,13 @@ async def test_does_not_answer_cross_origin_redirect_challenge(
     async def target_handler(request: Request) -> Response:
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
         target_auth_headers.append(auth_header)
-        if auth_header is None:
-            return Response(
-                status=401,
-                headers={
-                    hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="cross-origin"'
-                },
-            )
-        return Response()
+        assert auth_header is None
+        return Response(
+            status=401,
+            headers={
+                hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="cross-origin"'
+            },
+        )
 
     target_app = Application()
     target_app.router.add_get("/", target_handler)
@@ -1335,12 +1334,11 @@ async def test_does_not_answer_cross_origin_challenge_without_redirect(
     async def other_handler(request: Request) -> Response:
         auth_header = request.headers.get(hdrs.AUTHORIZATION)
         other_auth_headers.append(auth_header)
-        if auth_header is None:
-            return Response(
-                status=401,
-                headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="x"'},
-            )
-        return Response(text="other")
+        assert auth_header is None
+        return Response(
+            status=401,
+            headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="x"'},
+        )
 
     other_app = Application()
     other_app.router.add_get("/", other_handler)
