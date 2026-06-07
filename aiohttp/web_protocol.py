@@ -736,9 +736,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
-                # This shouldn't be possible. If a future refactor results in this
-                # failing, then the code may need to be updated to set the waiter.
-                assert self._waiter is None
+                # Wake the start() loop if it's waiting on new messages.
+                # This can happen when a pipelined request follows a failed
+                # WebSocket upgrade (GH-12734).
+                waiter = self._waiter
+                if messages and waiter is not None and not waiter.done():
+                    waiter.set_result(None)
         try:
             prepare_meth = resp.prepare
         except AttributeError:
