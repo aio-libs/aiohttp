@@ -244,6 +244,7 @@ class ConnectionKey(NamedTuple):
     proxy: URL | None
     proxy_auth: BasicAuth | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
+    server_hostname: str | None = None
 
 
 def _is_expected_content_type(
@@ -982,6 +983,7 @@ class ClientRequest:
                 self.proxy,
                 self.proxy_auth,
                 h,
+                self.server_hostname,
             ),
         )
 
