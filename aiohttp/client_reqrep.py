@@ -180,6 +180,7 @@ class ConnectionKey(NamedTuple):
     ssl: SSLContext | bool | Fingerprint
     proxy: URL | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
+    server_hostname: str | None = None
 
 
 class ClientResponse(HeadersMixin):
@@ -818,6 +819,7 @@ class ClientRequestBase:
                 self._ssl,
                 None,
                 None,
+                self.server_hostname,
             ),
         )
 
@@ -1055,6 +1057,7 @@ class ClientRequest(ClientRequestBase):
                 self._ssl,
                 self.proxy,
                 h,
+                self.server_hostname,
             ),
         )
 

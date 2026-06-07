@@ -722,6 +722,37 @@ async def test_ssl_client(
     assert txt == "Test message"
 
 
+async def test_server_hostname_override_not_reused(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A pooled TLS connection must not be reused for a different server_hostname."""
+    trustme = pytest.importorskip("trustme")
+
+    ca = trustme.CA()
+    cert = ca.issue_cert("first.example")
+    server_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+    cert.configure_cert(server_ctx)
+    client_ctx = ssl.create_default_context(purpose=ssl.Purpose.SERVER_AUTH)
+    ca.configure_trust(client_ctx)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app, ssl=server_ctx)
+    url = server.make_url("/")
+
+    connector = aiohttp.TCPConnector(ssl=client_ctx, limit=1, limit_per_host=1)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        async with session.get(url, server_hostname="first.example") as resp:
+            assert resp.status == 200
+            await resp.read()
+
+        with pytest.raises(aiohttp.ClientConnectorCertificateError):
+            await session.get(url, server_hostname="second.example")
+
+
 @pytest.mark.skipif(
     sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
 )

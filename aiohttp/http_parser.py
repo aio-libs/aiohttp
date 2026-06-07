@@ -266,6 +266,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         response_with_body: bool = True,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
+        max_msg_queue_size: int = 0,
     ) -> None:
         self.protocol = protocol
         self.loop = loop
@@ -288,6 +289,9 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_field_size, self.lax)
+        # Stop emitting messages once this many are queued unconsumed (0 = off).
+        self._max_msg_queue_size = max_msg_queue_size
+        self._msg_in_flight = 0
 
     @abc.abstractmethod
     def parse_message(self, lines: list[bytes]) -> _MsgT: ...
@@ -298,6 +302,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def pause_reading(self) -> None:
         assert self._payload_parser is not None
         self._payload_parser.pause_reading()
+
+    def message_consumed(self) -> None:
+        """Protocol drained a queued message; free a slot for parsing."""
+        if self._msg_in_flight > 0:
+            self._msg_in_flight -= 1
 
     def feed_eof(self) -> _MsgT | None:
         if self._payload_parser is not None:
@@ -340,6 +349,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
+                if (
+                    self._max_msg_queue_size
+                    and self._msg_in_flight >= self._max_msg_queue_size
+                ):
+                    # Queue full: buffer the rest and stop. Safe pause point;
+                    # any preceding body is consumed before the next request
+                    # line. Resumes via feed_data(b"") when the queue drains.
+                    self._tail = data[start_pos:]
+                    break
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
                 if pos == start_pos and not self._lines:
@@ -484,6 +502,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
+                        if self._max_msg_queue_size:
+                            self._msg_in_flight += 1
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
@@ -937,6 +957,10 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
                     if pos >= 0:
+                        # Only chunk-size lines reach here; trailers enforce
+                        # _max_field_size separately in PARSE_TRAILERS below.
+                        if pos > self._max_line_size:
+                            raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
                         i = chunk.find(CHUNK_EXT, 0, pos)
                         if i >= 0:
                             size_b = chunk[:i]  # strip chunk-extensions

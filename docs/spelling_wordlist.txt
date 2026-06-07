@@ -252,6 +252,7 @@ peername
 performant
 pickleable
 ping
+pipelined
 pipelining
 pluggable
 plugin
