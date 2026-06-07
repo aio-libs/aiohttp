@@ -1,6 +1,7 @@
 import datetime
 import heapq
 import itertools
+import json
 import logging
 import os
 import stat
@@ -1683,15 +1684,21 @@ def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
 
 
 def test_save_load_json_drops_expired_cookie(tmp_path: Path) -> None:
-    """Verify a cookie already past its deadline is purged on load."""
+    """Verify a cookie whose persisted deadline is in the past is dropped on load."""
     file_path = tmp_path / "expired.json"
     url = URL("https://example.com/")
 
+    # Save a future-expiring cookie, then rewrite its persisted deadline to the
+    # past so the cookie survives save() and the drop happens on the load path.
     jar_save = CookieJar()
     jar_save.update_cookies_from_headers(
-        ["sid=x; Expires=Tue, 1 Jan 1980 12:00:00 GMT; Domain=example.com"], url
+        ["sid=x; Expires=Tue, 1 Jan 2999 12:00:00 GMT; Domain=example.com"], url
     )
     jar_save.save(file_path=file_path)
+    data = json.loads(file_path.read_text())
+    _, cookies = next(iter(data.items()))
+    cookies["sid"]["expires_timestamp"] = 0.0
+    file_path.write_text(json.dumps(data))
 
     jar_load = CookieJar()
     jar_load.load(file_path=file_path)
@@ -1717,6 +1724,38 @@ def test_save_load_json_preserves_expires_deadline(tmp_path: Path) -> None:
 
     assert dict(jar_load._expirations) == expirations
     assert "sid" in jar_load.filter_cookies(url)
+
+
+def test_load_json_old_format_without_new_keys(tmp_path: Path) -> None:
+    """Verify a file written by an older version (no host_only/expires_timestamp) loads."""
+    file_path = tmp_path / "old.json"
+    # Old schema: no host_only, no expires_timestamp; relative max-age morsel attr.
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|/": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "x",
+                        "coded_value": "x",
+                        "domain": "example.com",
+                        "max-age": "3600",
+                    }
+                }
+            }
+        )
+    )
+    url = URL("https://example.com/")
+
+    jar_load = CookieJar()
+    # No exception when the new keys are absent.
+    jar_load.load(file_path=file_path)
+
+    # A host-only cookie saved without Domain by an older version had no domain
+    # field, so it now loads as a domain cookie (the documented migration loss).
+    assert "sid" in jar_load.filter_cookies(url)
+    # max-age is rescheduled from load time rather than an absolute deadline.
+    assert any(key[2] == "sid" for key in jar_load._expirations)
 
 
 def test_json_format_is_safe(tmp_path: Path) -> None:

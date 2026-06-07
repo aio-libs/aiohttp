@@ -174,6 +174,9 @@ class CookieJar(AbstractCookieJar):
     def load(self, file_path: PathLike) -> None:
         """Load cookies from a JSON file.
 
+        Replaces the current jar contents; loaded cookies pass through the
+        same acceptance rules as :meth:`update_cookies`.
+
         :param file_path: Path to file from where cookies will be
             imported, :class:`str` or :class:`pathlib.Path` instance.
         """
