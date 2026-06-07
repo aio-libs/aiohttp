@@ -37,6 +37,9 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
 
+# Not persisted; the absolute deadline is saved instead.
+_RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
+
 
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
@@ -133,21 +136,28 @@ class CookieJar(AbstractCookieJar):
             :class:`str` or :class:`pathlib.Path` instance.
         """
         file_path = pathlib.Path(file_path)
-        data: dict[str, dict[str, dict[str, str | bool]]] = {}
+        data: dict[str, dict[str, dict[str, str | bool | float]]] = {}
         for (domain, path), cookie in self._cookies.items():
             key = f"{domain}|{path}"
             data[key] = {}
             for name, morsel in cookie.items():
-                morsel_data: dict[str, str | bool] = {
+                morsel_data: dict[str, str | bool | float] = {
                     "key": morsel.key,
                     "value": morsel.value,
                     "coded_value": morsel.coded_value,
                 }
-                # Save all morsel attributes that have values
+                # Skip relative expiry; the absolute deadline is saved below.
                 for attr in morsel._reserved:  # type: ignore[attr-defined]
+                    if attr in _RELATIVE_EXPIRY_ATTRS:
+                        continue
                     attr_val = morsel[attr]
                     if attr_val:
                         morsel_data[attr] = attr_val
+                # Persist or it reloads as a domain cookie and leaks to subdomains.
+                if (domain, name) in self._host_only_cookies:
+                    morsel_data["host_only"] = True
+                if (exp := self._expirations.get((domain, path, name))) is not None:
+                    morsel_data["expires_timestamp"] = exp
                 data[key][name] = morsel_data
 
         # Cookie persistence may include authentication/session tokens.
@@ -170,28 +180,24 @@ class CookieJar(AbstractCookieJar):
         file_path = pathlib.Path(file_path)
         with file_path.open(mode="r", encoding="utf-8") as f:
             data = json.load(f)
-        self._cookies = self._load_json_data(data)
+        self._load_json_data(data)
 
     def _load_json_data(
-        self, data: dict[str, dict[str, dict[str, str | bool]]]
-    ) -> defaultdict[tuple[str, str], SimpleCookie]:
-        """Load cookies from parsed JSON data."""
-        cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(SimpleCookie)
+        self, data: dict[str, dict[str, dict[str, str | bool | float]]]
+    ) -> None:
+        """Replace contents, routing cookies through update_cookies()."""
+        self.clear()
         for compound_key, cookie_data in data.items():
             domain, path = compound_key.split("|", 1)
-            key = (domain, path)
             for name, morsel_data in cookie_data.items():
                 morsel: Morsel[str] = Morsel()
-                morsel_key = morsel_data["key"]
-                morsel_value = morsel_data["value"]
-                morsel_coded_value = morsel_data["coded_value"]
                 # Use __setstate__ to bypass validation, same pattern
                 # used in _build_morsel and _cookie_helpers.
                 morsel.__setstate__(  # type: ignore[attr-defined]
                     {
-                        "key": morsel_key,
-                        "value": morsel_value,
-                        "coded_value": morsel_coded_value,
+                        "key": morsel_data["key"],
+                        "value": morsel_data["value"],
+                        "coded_value": morsel_data["coded_value"],
                     }
                 )
                 # Restore morsel attributes
@@ -202,8 +208,17 @@ class CookieJar(AbstractCookieJar):
                         "coded_value",
                     ):
                         morsel[attr] = morsel_data[attr]
-                cookies[key][name] = morsel
-        return cookies
+                # Drop the domain so update_cookies() re-marks it host-only.
+                if morsel_data.get("host_only"):
+                    morsel["domain"] = ""
+                response_url = (
+                    URL.build(scheme="https", host=domain) if domain else URL()
+                )
+                self.update_cookies({name: morsel}, response_url)
+                # Restore the absolute deadline; update_cookies() schedules none.
+                if (exp := morsel_data.get("expires_timestamp")) is not None:
+                    self._expire_cookie(float(exp), domain, path, name)
+        self._do_expiration()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
