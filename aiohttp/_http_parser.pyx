@@ -781,7 +781,7 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             status = pyparser._buf + at[:length]
             raise LineTooLong(status[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
@@ -796,7 +796,7 @@ cdef int cb_on_status(cparser.llhttp_t* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             reason = pyparser._buf + at[:length]
             raise LineTooLong(reason[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
