@@ -733,7 +733,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if self._message_tail:
                 messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
                 self._message_tail = tail
-                for msg, payload in messages:
+                for msg, payload in messages or ():
                     self._request_count += 1
                     self._messages.append((msg, payload))
                 # Wake the start() loop if it's waiting on new messages.
