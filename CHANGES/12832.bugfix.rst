@@ -1,0 +1,1 @@
+Fixed the pure-Python HTTP parser not enforcing ``max_line_size`` on a chunk-size line when the whole line arrived in a single read; the limit was only applied to chunk-size metadata split across reads. The complete-line case is now checked too, matching the split-line behavior -- by :user:`bdraco`.
