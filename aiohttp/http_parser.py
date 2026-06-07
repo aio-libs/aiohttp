@@ -938,9 +938,7 @@ class HttpPayloadParser:
                     pos = chunk.find(SEP)
                     if pos >= 0:
                         if pos > self._max_line_size:
-                            raise LineTooLong(
-                                chunk[:pos][:100] + b"...", self._max_line_size
-                            )
+                            raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
                         i = chunk.find(CHUNK_EXT, 0, pos)
                         if i >= 0:
                             size_b = chunk[:i]  # strip chunk-extensions
