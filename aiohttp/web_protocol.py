@@ -662,7 +662,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             # Free a parser slot; resume reading once drained to low water so
             # pipelining keeps flowing while this request is handled.
-            if self._parser is not None:
+            # no branch: _parser is only None after connection_lost, whose path
+            # exits this loop, so the None case is not reachably exercisable.
+            if self._parser is not None:  # pragma: no branch
                 self._parser.message_consumed()
             if (
                 self._msg_queue_paused
