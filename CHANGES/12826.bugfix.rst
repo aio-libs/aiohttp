@@ -1,0 +1,1 @@
+Fixed the C HTTP parser not enforcing ``max_line_size`` on a request target or response reason phrase that is split across multiple reads; each fragment was checked on its own, so an accumulated line could exceed the limit without raising :exc:`~aiohttp.http_exceptions.LineTooLong`. The accumulated length is now checked, matching the pure-Python parser -- by :user:`bdraco`.
