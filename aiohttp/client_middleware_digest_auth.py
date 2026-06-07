@@ -198,6 +198,8 @@ class DigestAuthMiddleware:
         self._preemptive: bool = preemptive
         # Set of URLs defining the protection space
         self._protection_space: list[str] = []
+        # Origin the credentials are scoped to; set on the first request.
+        self._origin: URL | None = None
 
     async def _encode(self, method: str, url: URL, body: Payload | Literal[b""]) -> str:
         """
@@ -447,6 +449,16 @@ class DigestAuthMiddleware:
         self, request: ClientRequest, handler: ClientHandlerType
     ) -> ClientResponse:
         """Run the digest auth middleware."""
+        # Credentials are scoped to the first request's origin. Other origins
+        # pass through untouched unless a challenge from the anchor origin
+        # advertised them via RFC 7616 domain; mirrors aiohttp stripping
+        # Authorization on cross-origin redirects.
+        origin = request.url.origin()
+        if self._origin is None:
+            self._origin = origin
+        elif origin != self._origin and not self._in_protection_space(request.url):
+            return await handler(request)
+
         response = None
         for retry_count in range(2):
             # Apply authorization header if:
