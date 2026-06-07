@@ -5,6 +5,7 @@ import aiohttp
 
 
 async def fetch(session: aiohttp.ClientSession) -> None:
+    """Asynchronously fetch JSON data from httpbin.org and print status and content."""
     print("Query http://httpbin.org/get")
     async with session.get("http://httpbin.org/get") as resp:
         print(resp.status)
