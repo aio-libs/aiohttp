@@ -112,3 +112,33 @@ def test_resume_reading_stays_paused_for_msg_queue(
     handler.resume_reading()
 
     transport.resume_reading.assert_not_called()
+
+
+def test_pause_msg_queue_reading_ignores_unsupported_transport(
+    event_loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """A transport without flow control raising on pause is ignored."""
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+    # Bare asyncio.Transport.pause_reading() raises NotImplementedError.
+    handler.transport = asyncio.Transport()
+
+    handler._pause_msg_queue_reading()
+
+    assert handler._msg_queue_paused is True
+
+
+def test_resume_msg_queue_reading_ignores_unsupported_transport(
+    event_loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """A transport without flow control raising on resume is ignored."""
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+    # Bare asyncio.Transport.resume_reading() raises NotImplementedError.
+    handler.transport = asyncio.Transport()
+    handler._upgraded = True  # skip the reparse branch
+    handler._msg_queue_paused = True
+
+    handler._resume_msg_queue_reading()
+
+    assert handler._msg_queue_paused is False
