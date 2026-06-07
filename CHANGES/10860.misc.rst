@@ -1,0 +1,3 @@
+Excluded ``.hash`` directories from distribution packages (sdist and wheel).
+
+``.hash`` directories are Cython build artifacts that are not needed by end users.
