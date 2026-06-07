@@ -1315,11 +1315,10 @@ async def test_tcp_connector_rejects_non_canonical_ipv4_alias() -> None:
             port: int = 0,
             family: socket.AddressFamily = socket.AF_INET,
         ) -> list[ResolveResult]:
-            calls.append(host)
-            return []
+            assert False
 
         async def close(self) -> None:
-            pass
+            """Close the resolver."""
 
     conn = aiohttp.TCPConnector(resolver=_RecordingResolver())
     for alias in ("2130706433", "017700000001", "127.1"):
