@@ -1,1 +1,0 @@
-Fixed :meth:`aiohttp.web.Response.write_eof` skipping ``Payload.close()`` when the body write was interrupted by an error or cancellation, for example when a client disconnects mid-response; the payload close hook now runs in a ``finally`` so a :class:`~aiohttp.payload.Payload` body always releases its resources -- by :user:`bdraco`.
