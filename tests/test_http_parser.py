@@ -213,6 +213,18 @@ def test_max_msg_queue_size_zero_is_unbounded(
     assert len(messages) == 50
 
 
+def test_message_consumed_underflow_is_ignored(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+    # No message is in flight; consuming must not underflow the counter.
+    parser.message_consumed()
+    messages, _upgraded, _tail = parser.feed_data(_PIPELINED_GET * 4)
+    assert len(messages) == 4
+
+
 def test_parse_headers(parser: HttpRequestParser) -> None:
     text = b"""GET /test HTTP/1.1\r
 Host: a\r

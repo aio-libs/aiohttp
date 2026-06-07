@@ -1744,8 +1744,10 @@ async def test_http1_pipelined_requests_are_count_limited(
         await asyncio.sleep(0.5)
         return web.Response(text="slow")
 
-    async def fast_handler(request: web.Request) -> web.Response:
-        return web.Response(text="fast")
+    async def fast_handler(request: web.Request) -> NoReturn:
+        # The pipelined requests are only counted, never handled: the test
+        # closes the connection while the slow handler still holds the loop.
+        assert False
 
     app = web.Application()
     app.router.add_get("/slow", slow_handler)
@@ -1773,6 +1775,73 @@ async def test_http1_pipelined_requests_are_count_limited(
             await writer.wait_closed()
 
     assert 0 < max_queued <= MAX_MSG_QUEUE_SIZE
+
+
+async def test_http1_pipelined_queue_resumes_after_drain(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A paused pipeline queue resumes reading once handlers drain it.
+
+    Once enough requests are pipelined behind a busy handler to fill the queue,
+    reading is paused; as the handlers drain the queue past the low-water mark
+    reading must resume so the remaining buffered requests are still served.
+    """
+    # Several times the limit so the queue refills and re-pauses while draining.
+    pipelined_requests = MAX_MSG_QUEUE_SIZE * 3
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+    resumed = asyncio.Event()
+    handled: list[str] = []
+    all_handled = asyncio.Event()
+
+    resume = RequestHandler._resume_msg_queue_reading
+
+    def observe_resume(self: RequestHandler[web.Request]) -> None:
+        resume(self)
+        resumed.set()
+
+    monkeypatch.setattr(RequestHandler, "_resume_msg_queue_reading", observe_resume)
+
+    async def handler(request: web.Request) -> web.Response:
+        if request.path == "/first":
+            first_started.set()
+            await release_first.wait()
+        handled.append(request.path)
+        if len(handled) == pipelined_requests + 1:
+            all_handled.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    def raw_get(path: str) -> bytes:
+        return (
+            f"GET {path} HTTP/1.1\r\nHost: localhost\r\n"
+            "Connection: keep-alive\r\n\r\n"
+        ).encode("ascii")
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(raw_get("/first"))
+        await writer.drain()
+        await asyncio.wait_for(first_started.wait(), 1)
+
+        writer.write(b"".join(raw_get(f"/r{i}") for i in range(pipelined_requests)))
+        await writer.drain()
+
+        # Let the busy handler finish so the queue drains and reading resumes.
+        release_first.set()
+        await asyncio.wait_for(resumed.wait(), 5)
+        # Every pipelined request is still served only if reading resumed.
+        await asyncio.wait_for(all_handled.wait(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert len(handled) == pipelined_requests + 1
 
 
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
