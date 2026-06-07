@@ -10,6 +10,112 @@
 
 .. towncrier release notes start
 
+4.0.0a2.dev0 (2026-06-07)
+=========================
+
+Bug fixes
+---------
+
+- Fixed a race condition in :py:class:`~aiohttp.TCPConnector` where closing the connector while a DNS resolution was in-flight could raise :py:exc:`AttributeError` instead of :py:exc:`~aiohttp.ClientConnectionError` -- by :user:`goingforstudying-ctrl`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12497`.
+  
+  
+  
+- Fixed ``CancelledError`` not closing a connection -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12795`.
+  
+  
+  
+- Tightened up some websocket parser checks -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12817`.
+  
+  
+  
+- Fixed :class:`~aiohttp.CookieJar` dropping the host-only flag of cookies when persisted with :meth:`~aiohttp.CookieJar.save` and reloaded with :meth:`~aiohttp.CookieJar.load`, so a cookie set without a ``Domain`` attribute is again scoped to the exact host that set it after a reload; the absolute expiration deadline is now persisted as well, so a reloaded cookie keeps its original lifetime instead of being rescheduled from the load time. :meth:`~aiohttp.CookieJar.load` now replaces the jar contents rather than merging onto prior state, and loaded cookies pass through the same acceptance rules as :meth:`~aiohttp.CookieJar.update_cookies`, so a cookie for an IP-address host is dropped when loaded into a jar created without ``unsafe=True`` -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12824`.
+  
+  
+  
+- Scoped :class:`~aiohttp.DigestAuthMiddleware` credentials to the origin of the first request it handles, so a redirect to a different origin no longer triggers a digest response computed from the configured credentials; a challenge from another origin is only answered when that origin falls within a protection space advertised by the anchor origin through the RFC 7616 ``domain`` directive -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12825`.
+  
+  
+  
+- Fixed the C HTTP parser not enforcing ``max_line_size`` on a request target or response reason phrase that is split across multiple reads; each fragment was checked on its own, so an accumulated line could exceed the limit without raising ``LineTooLong``. The accumulated length is now checked, matching the pure-Python parser -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12826`.
+  
+  
+  
+- Changed :class:`~aiohttp.TCPConnector` to reject legacy non-canonical numeric IPv4 host forms such as ``2130706433``, ``017700000001`` and ``127.1`` with :exc:`~aiohttp.InvalidUrlClientError`; only canonical dotted-quad IPv4 literals are now treated as IP address literals, while every other host is sent through the configured resolver -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12827`.
+  
+  
+  
+- Fixed :meth:`~aiohttp.StreamReader.readany` and :meth:`~aiohttp.StreamReader.read_nowait` joining data fed back into the buffer during the call (when draining below the low water mark resumes reading) into a single unbounded :class:`bytes`; a call now returns only the chunks that were buffered when it started, keeping the drain of an unread auto-decompressed request body bounded by the read buffer -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12828`.
+  
+  
+  
+- Bounded the number of parsed-but-unhandled pipelined HTTP/1 requests buffered per connection on the server; once the queue reaches an internal limit the parser stops emitting and the transport is paused, resuming as the request handler drains the queue, so a client keeping one handler busy can no longer accumulate an unbounded backlog of pipelined requests -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12830`.
+  
+  
+  
+- Fixed :meth:`aiohttp.web.Response.write_eof` skipping ``Payload.close()`` when the body write was interrupted by an error or cancellation, for example when a client disconnects mid-response; the payload close hook now runs in a ``finally`` so a :class:`~aiohttp.payload.Payload` body always releases its resources -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12831`.
+  
+  
+  
+- Fixed the pure-Python HTTP parser not enforcing ``max_line_size`` on a chunk-size line when the whole line arrived in a single read; the limit was only applied to chunk-size metadata split across reads. The complete-line case is now checked too, matching the split-line behavior -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12832`.
+  
+  
+  
+- Included the per-request ``server_hostname`` override in the :class:`~aiohttp.TCPConnector` connection pool key, so a pooled TLS connection is no longer reused for a request that sets ``server_hostname`` to a different value -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12835`.
+  
+  
+  
+
+----
+
+
 3.14.0 (2026-06-01)
 ===================
 
