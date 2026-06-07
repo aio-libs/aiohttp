@@ -560,14 +560,21 @@ class StreamReader:
         """Read not more than n bytes, or whole buffer if n == -1"""
         self._timer.assert_timeout()
 
-        chunks = []
+        if n == -1:
+            # Drain only chunks present now; _read_nowait_chunk() can
+            # re-entrantly resume_reading() and refill the buffer.
+            count = len(self._buffer)
+            if count == 1:
+                return self._read_nowait_chunk(-1)
+            return b"".join([self._read_nowait_chunk(-1) for _ in range(count)])
+
+        chunks: list[bytes] = []
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
-            if n != -1:
-                n -= len(chunk)
-                if n == 0:
-                    break
+            n -= len(chunk)
+            if n == 0:
+                break
 
         return b"".join(chunks) if chunks else b""
 
