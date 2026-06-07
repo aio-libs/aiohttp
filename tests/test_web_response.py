@@ -1296,7 +1296,7 @@ class _ClosingPayload(Payload):
         await super().close()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        raise NotImplementedError
+        assert False
 
 
 async def test_write_eof_closes_payload_on_success() -> None:
