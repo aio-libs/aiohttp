@@ -512,15 +512,15 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.transport.pause_reading()
 
     def _resume_msg_queue_reading(self) -> None:
-        self._msg_queue_paused = False
-        # Reparse buffered pipelined requests; may refill and pause again.
         if not self._upgraded:
+            # Reparse buffered pipelined requests while still marked paused so
+            # a refill past the limit does not re-pause an already-paused
+            # transport; only resume below once it stayed under the limit.
             self.data_received(b"")
-        if (
-            not self._msg_queue_paused
-            and not self._reading_paused
-            and self.transport is not None
-        ):
+            if len(self._messages) >= self._max_msg_queue_size:
+                return
+        self._msg_queue_paused = False
+        if not self._reading_paused and self.transport is not None:
             with suppress(*PAUSE_RESUME_READING_ERRORS):
                 self.transport.resume_reading()
 
@@ -654,7 +654,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so
-            # pipelining keeps flowing while this request is handled.
+            # pipelining keeps flowing while this request is handled. The guard
+            # keeps the opt-out (max_msg_queue_size=0) a no-op for subclasses.
             if self._max_msg_queue_size:
                 if self._parser is not None:
                     self._parser.message_consumed()
