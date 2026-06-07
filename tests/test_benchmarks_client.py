@@ -4,7 +4,7 @@ import asyncio
 import ssl
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
@@ -46,13 +46,17 @@ def aiohttp_client_sync(
         event_loop.run_until_complete(clients.pop().close())
 
 
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
 @dataclass(frozen=True)
 class ConnectionType:
-    s_kwargs: dict[str, Any]
-    c_kwargs: dict[str, Any]
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
 
 
-@pytest.fixture(params=["tcp", "ssl"], ids=["tcp", "ssl"])
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
 def conn_type(
     request: pytest.FixtureRequest,
     ssl_ctx: ssl.SSLContext,
