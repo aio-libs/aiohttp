@@ -507,8 +507,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     def _pause_msg_queue_reading(self) -> None:
         self._msg_queue_paused = True
         if self.transport is not None:
-            with suppress(*PAUSE_RESUME_READING_ERRORS):
+            try:
                 self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def _resume_msg_queue_reading(self) -> None:
         if not self._upgraded:
@@ -520,8 +524,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 return
         self._msg_queue_paused = False
         if not self._reading_paused and self.transport is not None:
-            with suppress(*PAUSE_RESUME_READING_ERRORS):
+            try:
                 self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def keep_alive(self, val: bool) -> None:
         """Set keep-alive connection mode.

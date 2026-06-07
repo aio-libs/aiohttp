@@ -1,5 +1,4 @@
 import asyncio
-from contextlib import suppress
 from typing import TYPE_CHECKING, Any, cast
 
 from .client_exceptions import ClientConnectionResetError
@@ -11,6 +10,9 @@ if TYPE_CHECKING:
 
 # Raised by transport.pause_reading()/resume_reading() when the transport
 # does not support flow control; safe to ignore.
+# NOTE: Catch these with a plain try/except/pass, never contextlib.suppress():
+# pause/resume run on the hot read path and suppress() is ~6x slower than
+# try/except here (it builds a context manager and unpacks this tuple per call).
 PAUSE_RESUME_READING_ERRORS = (AttributeError, NotImplementedError, RuntimeError)
 
 
@@ -68,8 +70,12 @@ class BaseProtocol(asyncio.Protocol):
             assert self._parser is not None
             self._parser.pause_reading()
         if self.transport is not None:
-            with suppress(*PAUSE_RESUME_READING_ERRORS):
+            try:
                 self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def _reading_paused_for_msg_queue(self) -> bool:
         """Keep the transport paused for protocol-specific reasons (overridden)."""
@@ -89,8 +95,12 @@ class BaseProtocol(asyncio.Protocol):
             and not self._reading_paused_for_msg_queue()
             and self.transport is not None
         ):
-            with suppress(*PAUSE_RESUME_READING_ERRORS):
+            try:
                 self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
             self._reading_paused = False
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
