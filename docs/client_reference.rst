@@ -2447,6 +2447,16 @@ Utilities
    The server may still respond with a 401 status and ``stale=true`` if the nonce
    has expired, in which case the middleware will automatically retry with the new nonce.
 
+   **Origin scoping**
+
+   The credentials are scoped to the origin of the first request the middleware
+   handles. A request to a different origin is passed through untouched, so it
+   never receives a digest response computed from those credentials, unless that
+   origin falls within a protection space the anchor origin advertised through
+   the RFC 7616 ``domain`` directive. Make the first request through the
+   middleware against the intended origin, as the anchor is pinned to it and not
+   reset for the life of the instance.
+
    To disable preemptive authentication and require a 401 challenge for every request,
    set ``preemptive=False``::
 
@@ -2472,6 +2482,10 @@ Utilities
    .. versionadded:: 3.12
    .. versionchanged:: 3.12.8
       Added ``preemptive`` parameter to enable/disable preemptive authentication.
+   .. versionchanged:: 3.14.1
+      Credentials are scoped to the origin of the first request the middleware
+      handles; other origins are passed through untouched unless covered by an
+      RFC 7616 ``domain`` directive from the anchor origin.
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
