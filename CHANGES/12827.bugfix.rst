@@ -1,1 +1,0 @@
-Changed :class:`~aiohttp.TCPConnector` to reject legacy non-canonical numeric IPv4 host forms such as ``2130706433``, ``017700000001`` and ``127.1`` with :exc:`~aiohttp.InvalidUrlClientError`; only canonical dotted-quad IPv4 literals are now treated as IP address literals, while every other host is sent through the configured resolver -- by :user:`bdraco`.
