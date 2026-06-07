@@ -1774,7 +1774,8 @@ async def test_http1_pipelined_requests_are_count_limited(
         with suppress(ConnectionResetError, BrokenPipeError):
             await writer.wait_closed()
 
-    assert 0 < max_queued <= MAX_MSG_QUEUE_SIZE
+    # Tight lower bound also catches over-aggressive pausing (e.g. clamping to 1).
+    assert MAX_MSG_QUEUE_SIZE // 2 < max_queued <= MAX_MSG_QUEUE_SIZE
 
 
 async def test_http1_pipelined_queue_resumes_after_drain(

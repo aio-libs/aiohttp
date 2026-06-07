@@ -218,6 +218,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # Low-water mark: resume reading once the queue drains to half the limit
         # so we refill in batches instead of churning pause/resume per request.
         self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
+        # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
+        # if BaseProtocol ever triggers a resume during init.
+        self._msg_queue_paused = False
         parser = HttpRequestParser(
             self,
             loop,
@@ -255,7 +258,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._lingering_time = float(lingering_time)
 
         self._messages: deque[_MsgType] = deque()
-        self._msg_queue_paused = False
         self._message_tail = b""
         self._data_received_cb: Callable[[], None] | None = None
 

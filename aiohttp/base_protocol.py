@@ -1,4 +1,5 @@
 import asyncio
+from contextlib import suppress
 from typing import TYPE_CHECKING, Any, cast
 
 from .client_exceptions import ClientConnectionResetError
@@ -67,10 +68,8 @@ class BaseProtocol(asyncio.Protocol):
             assert self._parser is not None
             self._parser.pause_reading()
         if self.transport is not None:
-            try:
+            with suppress(*PAUSE_RESUME_READING_ERRORS):
                 self.transport.pause_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                pass
 
     def _reading_paused_for_msg_queue(self) -> bool:
         """Keep the transport paused for protocol-specific reasons (overridden)."""
@@ -90,10 +89,8 @@ class BaseProtocol(asyncio.Protocol):
             and not self._reading_paused_for_msg_queue()
             and self.transport is not None
         ):
-            try:
+            with suppress(*PAUSE_RESUME_READING_ERRORS):
                 self.transport.resume_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                pass
             self._reading_paused = False
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
