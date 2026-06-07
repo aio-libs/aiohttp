@@ -85,9 +85,7 @@ async def test_failed_upgrade_replays_pipelined_request(
     # Simulate that the parser previously detected an upgrade and stashed
     # the remaining bytes (the pipelined request) in _message_tail.
     pipelined_request = (
-        b"GET /after-upgrade HTTP/1.1\r\n"
-        b"Host: example.com\r\n"
-        b"\r\n"
+        b"GET /after-upgrade HTTP/1.1\r\n" b"Host: example.com\r\n" b"\r\n"
     )
     handler._message_tail = pipelined_request
     handler._upgraded = True
@@ -112,20 +110,20 @@ async def test_failed_upgrade_replays_pipelined_request(
 
     # --- Assertions ---
     # The stashed tail should be fully consumed.
-    assert handler._message_tail == b"", (
-        f"Tail not consumed after replay: {handler._message_tail!r}"
-    )
+    assert (
+        handler._message_tail == b""
+    ), f"Tail not consumed after replay: {handler._message_tail!r}"
 
     # The pipelined request should appear as a new message.
-    assert len(handler._messages) == 1, (
-        f"Expected 1 message from pipelined data, got {len(handler._messages)}"
-    )
+    assert (
+        len(handler._messages) == 1
+    ), f"Expected 1 message from pipelined data, got {len(handler._messages)}"
 
     # The start() loop's waiter must be resolved so the server can
     # process the pipelined request.  Without this, the connection hangs.
-    assert handler._waiter.done(), (
-        "Waiter was not woken; start() would hang indefinitely"
-    )
+    assert (
+        handler._waiter.done()
+    ), "Waiter was not woken; start() would hang indefinitely"
 
     # Verify the message is the correct HTTP request.
     msg, _payload = handler._messages[0]
@@ -163,9 +161,9 @@ async def test_failed_upgrade_empty_tail_noop(
     assert not handler._message_tail
 
     # The waiter should remain unresolved.
-    assert not handler._waiter.done(), (
-        "Waiter should not be woken when there's no pipelined data"
-    )
+    assert (
+        not handler._waiter.done()
+    ), "Waiter should not be woken when there's no pipelined data"
     assert len(handler._messages) == 0
 
 
