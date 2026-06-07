@@ -1,3 +1,4 @@
-Excluded ``.hash`` directories from distribution packages (sdist and wheel).
+Excluded ``.hash`` directories from distribution packages (sdist and wheel)
 
-``.hash`` directories are Cython build artifacts that are not needed by end users.
+``.hash`` directories are Cython build artifacts not needed by end users.
+-- by :user:`cmw-creator`.
