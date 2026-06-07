@@ -549,7 +549,7 @@ class StreamReader:
             count = len(self._buffer)
             if count == 1:
                 return self._read_nowait_chunk(-1)
-            return b"".join(self._read_nowait_chunk(-1) for _ in range(count))
+            return b"".join([self._read_nowait_chunk(-1) for _ in range(count)])
 
         chunks: list[bytes] = []
         while self._buffer:
