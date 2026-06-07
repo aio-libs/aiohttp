@@ -4,7 +4,9 @@ import json
 import pathlib
 import socket
 import sys
+import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from contextlib import suppress
 from typing import NoReturn
 from unittest import mock
 
@@ -27,7 +29,8 @@ from aiohttp import (
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
-from aiohttp.helpers import HeadersDictProxy
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.streams import StreamReader
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import RequestHandler
 
@@ -1712,6 +1715,65 @@ async def test_response_prepared_with_clone(aiohttp_client: AiohttpClient) -> No
     assert 200 == resp.status
 
     resp.release()
+
+
+@pytest.mark.parametrize("decompressed_size", [4 * 1024 * 1024, 32 * 1024 * 1024])
+async def test_unread_compressed_body_drain_is_bounded(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+    decompressed_size: int,
+) -> None:
+    """Draining an unread compressed body stays bounded by the read buffer.
+
+    A handler that rejects before reading still drains the payload during
+    lingering close; a small compressed body must not force a large transient
+    allocation (a deflate-bomb style DoS).
+    """
+    drain_reads: list[int] = []
+    drained = asyncio.Event()
+    readany = StreamReader.readany
+
+    async def record_readany(self: StreamReader) -> bytes:
+        data = await readany(self)
+        if data:
+            drain_reads.append(len(data))
+            drained.set()
+        return data
+
+    monkeypatch.setattr(StreamReader, "readany", record_readany)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=401)
+
+    app = web.Application(client_max_size=1024)
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    body = zlib.compress(b"a" * decompressed_size)
+    assert len(body) < decompressed_size
+    head = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"Content-Length: %d\r\n"
+        b"Connection: keep-alive\r\n\r\n"
+    ) % len(body)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(head + body)
+        await writer.drain()
+        status_line = await asyncio.wait_for(reader.readline(), 5)
+        assert status_line.startswith(b"HTTP/1.1 401 ")
+        await asyncio.wait_for(drained.wait(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    # Bounded by the buffer, not the decompressed size.
+    assert max(drain_reads) <= 3 * DEFAULT_CHUNK_SIZE
+    assert max(drain_reads) < decompressed_size
 
 
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
