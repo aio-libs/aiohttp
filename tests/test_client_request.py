@@ -1614,6 +1614,22 @@ async def test_connection_key_without_proxy() -> None:
     await req.close()
 
 
+async def test_connection_key_includes_server_hostname(
+    make_request: _RequestMaker,
+) -> None:
+    """A server_hostname override must be part of the connection reuse key."""
+    url = URL("https://127.0.0.1:8443/")
+    none_req = make_request("GET", url)
+    first = make_request("GET", url, server_hostname="first.example")
+    first_again = make_request("GET", url, server_hostname="first.example")
+    second = make_request("GET", url, server_hostname="second.example")
+
+    assert first.connection_key.server_hostname == "first.example"
+    assert first.connection_key != none_req.connection_key
+    assert first.connection_key != second.connection_key
+    assert first.connection_key == first_again.connection_key
+
+
 def test_request_info_back_compat() -> None:
     """Test RequestInfo can be created without real_url."""
     url = URL("http://example.com")
