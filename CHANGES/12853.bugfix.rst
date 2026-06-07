@@ -1,0 +1,3 @@
+Fixed a hung client connection when a pipelined HTTP request followed a failed WebSocket upgrade -- by :user:`goingforstudying-ctrl`.
+
+The bug occurred because after the pipelined bytes were replayed through the HTTP parser, the resulting message was added to ``self._messages`` but the ``start()`` loop's waiter was never woken. The fix ensures the waiter is set when messages are produced in this edge case.
