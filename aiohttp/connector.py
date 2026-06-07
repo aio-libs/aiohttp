@@ -27,6 +27,7 @@ from .client_exceptions import (
     ClientConnectorSSLError,
     ClientHttpProxyError,
     ClientProxyConnectionError,
+    InvalidUrlClientError,
     ServerFingerprintMismatch,
     UnixClientConnectorError,
     cert_errors,
@@ -37,6 +38,7 @@ from .client_reqrep import ClientRequest, Fingerprint, _merge_ssl_params
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
+    is_canonical_ipv4_address,
     is_ip_address,
     noop,
     sentinel,
@@ -1092,6 +1094,11 @@ class TCPConnector(BaseConnector):
     ) -> list[ResolveResult]:
         """Resolve host and return list of addresses."""
         if is_ip_address(host):
+            # Reject legacy numeric IPv4 forms (e.g. 2130706433, 127.1) that
+            # socket would map onto an address, slipping past a connector-level
+            # policy that only sees the raw host.
+            if ":" not in host and not is_canonical_ipv4_address(host):
+                raise InvalidUrlClientError(host, "is not a canonical IPv4 address")
             return [
                 {
                     "hostname": host,
