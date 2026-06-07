@@ -480,8 +480,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # Queue full: pause the transport (the parser already stopped
             # emitting). start() resumes as it drains the queue.
             if (
-                self._max_msg_queue_size
-                and not self._msg_queue_paused
+                not self._msg_queue_paused
                 and len(self._messages) >= self._max_msg_queue_size
             ):
                 self._pause_msg_queue_reading()
@@ -654,16 +653,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so
-            # pipelining keeps flowing while this request is handled. The guard
-            # keeps the opt-out (max_msg_queue_size=0) a no-op for subclasses.
-            if self._max_msg_queue_size:
-                if self._parser is not None:
-                    self._parser.message_consumed()
-                if (
-                    self._msg_queue_paused
-                    and len(self._messages) <= self._msg_queue_resume_size
-                ):
-                    self._resume_msg_queue_reading()
+            # pipelining keeps flowing while this request is handled.
+            if self._parser is not None:
+                self._parser.message_consumed()
+            if (
+                self._msg_queue_paused
+                and len(self._messages) <= self._msg_queue_resume_size
+            ):
+                self._resume_msg_queue_reading()
 
             # time is only fetched if logging is enabled as otherwise
             # its thrown away and never used.
