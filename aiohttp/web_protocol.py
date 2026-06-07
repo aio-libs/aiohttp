@@ -16,7 +16,7 @@ import yarl
 from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractStreamWriter
-from .base_protocol import BaseProtocol
+from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
 from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout
 from .http import (
     HttpProcessingError,
@@ -36,6 +36,11 @@ from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
+
+# Max parsed-but-unhandled pipelined requests buffered per connection before
+# reading is paused. Bounds memory a client can pin by keeping one handler busy
+# and pipelining behind it; reading resumes as the queue drains.
+MAX_MSG_QUEUE_SIZE = 32
 
 if TYPE_CHECKING:
     import ssl
@@ -146,6 +151,9 @@ class RequestHandler(BaseProtocol):
         "_keepalive_timeout",
         "_lingering_time",
         "_messages",
+        "_max_msg_queue_size",
+        "_msg_queue_resume_size",
+        "_msg_queue_paused",
         "_message_tail",
         "_handler_waiter",
         "_waiter",
@@ -186,6 +194,13 @@ class RequestHandler(BaseProtocol):
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
+        self._max_msg_queue_size = MAX_MSG_QUEUE_SIZE
+        # Low-water mark: resume reading once the queue drains to half the limit
+        # so we refill in batches instead of churning pause/resume per request.
+        self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
+        # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
+        # if BaseProtocol ever triggers a resume during init.
+        self._msg_queue_paused = False
         parser = HttpRequestParser(
             self,
             loop,
@@ -195,6 +210,7 @@ class RequestHandler(BaseProtocol):
             max_headers=max_headers,
             payload_exception=RequestPayloadError,
             auto_decompress=auto_decompress,
+            max_msg_queue_size=MAX_MSG_QUEUE_SIZE,
         )
         super().__init__(loop, parser)
 
@@ -431,6 +447,14 @@ class RequestHandler(BaseProtocol):
                 # don't set result twice
                 waiter.set_result(None)
 
+            # Queue full: pause the transport (the parser already stopped
+            # emitting). start() resumes as it drains the queue.
+            if (
+                not self._msg_queue_paused
+                and len(self._messages) >= self._max_msg_queue_size
+            ):
+                self._pause_msg_queue_reading()
+
             self._upgraded = upgraded
             if upgraded and tail:
                 self._message_tail = tail
@@ -446,6 +470,36 @@ class RequestHandler(BaseProtocol):
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self.close()
+
+    def _reading_paused_for_msg_queue(self) -> bool:
+        return self._msg_queue_paused
+
+    def _pause_msg_queue_reading(self) -> None:
+        self._msg_queue_paused = True
+        if self.transport is not None:
+            try:
+                self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
+
+    def _resume_msg_queue_reading(self) -> None:
+        if not self._upgraded:
+            # Reparse buffered pipelined requests while still marked paused so
+            # a refill past the limit does not re-pause an already-paused
+            # transport; only resume below once it stayed under the limit.
+            self.data_received(b"")
+            if len(self._messages) >= self._max_msg_queue_size:
+                return
+        self._msg_queue_paused = False
+        if not self._reading_paused and self.transport is not None:
+            try:
+                self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def keep_alive(self, val: bool) -> None:
         """Set keep-alive connection mode.
@@ -578,6 +632,18 @@ class RequestHandler(BaseProtocol):
                     self._waiter = None
 
             message, payload = self._messages.popleft()
+
+            # Free a parser slot; resume reading once drained to low water so
+            # pipelining keeps flowing while this request is handled.
+            # no branch: _parser is only None after connection_lost, whose path
+            # exits this loop, so the None case is not reachably exercisable.
+            if self._parser is not None:  # pragma: no branch
+                self._parser.message_consumed()
+            if (
+                self._msg_queue_paused
+                and len(self._messages) <= self._msg_queue_resume_size
+            ):
+                self._resume_msg_queue_reading()
 
             # time is only fetched if logging is enabled as otherwise
             # its thrown away and never used.
