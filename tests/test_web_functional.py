@@ -1730,7 +1730,7 @@ async def test_http1_pipelined_requests_are_count_limited(
     max_queued = 0
     data_received = RequestHandler.data_received
 
-    def observe_data_received(self: RequestHandler, data: bytes) -> None:
+    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
         nonlocal max_queued
         data_received(self, data)
         if self._request_in_progress and self._messages:
