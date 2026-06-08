@@ -65,6 +65,13 @@ class ClientResponseError(ClientError):
     headers: Response headers.
     """
 
+    request_info: RequestInfo
+    status: int
+    message: str
+    headers: Mapping[str, str] | None
+    history: tuple[ClientResponse, ...]
+    args: tuple[RequestInfo, tuple[ClientResponse, ...]]
+
     def __init__(
         self,
         request_info: RequestInfo,
@@ -137,6 +144,8 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         a connection can not be established.
     """
+
+    args: tuple[ConnectionKey, OSError]
 
     def __init__(self, connection_key: ConnectionKey, os_error: OSError) -> None:
         self._conn_key = connection_key
@@ -215,6 +224,9 @@ class ServerConnectionError(ClientConnectionError):
 class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
+    args: tuple[RawResponseMessage | str]
+    message: RawResponseMessage | str
+
     def __init__(self, message: RawResponseMessage | str | None = None) -> None:
         if message is None:
             message = "Server disconnected"
@@ -237,6 +249,12 @@ class SocketTimeoutError(ServerTimeoutError):
 
 class ServerFingerprintMismatch(ServerConnectionError):
     """SSL certificate does not match expected fingerprint."""
+
+    expected: bytes
+    got: bytes
+    host: str
+    port: int
+    args: tuple[bytes, bytes, str, int]
 
     def __init__(self, expected: bytes, got: bytes, host: str, port: int) -> None:
         self.expected = expected
@@ -342,6 +360,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     """Response certificate error."""
 
     _conn_key: ConnectionKey
+    args: tuple[ConnectionKey, Exception]
 
     def __init__(
         # TODO: If we require ssl in future, this can become ssl.CertificateError
