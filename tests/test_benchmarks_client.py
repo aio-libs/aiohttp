@@ -1,21 +1,73 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any
+import ssl
+from collections.abc import Awaitable, Callable, Iterator
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from yarl import URL
 
 from aiohttp import hdrs, request, web
-from aiohttp.test_utils import TestServer
+from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Iterator[
+    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
+]:
+    clients = []
+
+    async def go(
+        app: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+    ) -> TestClient[web.Request, web.Application]:
+        server = TestServer(app)
+        client = TestClient(server)
+        await server.start_server(**(server_kwargs or {}))
+        await client.start_server()
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
+
+
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
+
+
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
 @pytest.fixture
@@ -45,8 +97,9 @@ def aiohttp_server_sync(
 
 def test_one_hundred_simple_get_requests(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark 100 simple GET requests."""
     message_count = 100
@@ -58,9 +111,9 @@ def test_one_hundred_simple_get_requests(
     app.router.add_route("GET", "/", handler)
 
     async def run_client_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(message_count):
-            await client.get("/")
+            await client.get("/", **conn_type.c_kwargs)
         await client.close()
 
     @benchmark
@@ -70,7 +123,7 @@ def test_one_hundred_simple_get_requests(
 
 def test_one_hundred_simple_get_requests_alternating_clients(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Benchmark 100 simple GET requests with alternating clients."""
@@ -83,8 +136,8 @@ def test_one_hundred_simple_get_requests_alternating_clients(
     app.router.add_route("GET", "/", handler)
 
     async def run_client_benchmark() -> None:
-        client1 = await aiohttp_client(app)
-        client2 = await aiohttp_client(app)
+        client1 = await aiohttp_client_sync(app)
+        client2 = await aiohttp_client_sync(app)
         for i in range(message_count):
             if i % 2 == 0:
                 await client1.get("/")
@@ -154,8 +207,9 @@ def test_one_hundred_simple_get_requests_multiple_methods_route(
 
 def test_one_hundred_get_requests_with_1024_chunked_payload(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark 100 GET requests with a small payload of 1024 bytes."""
     message_count = 100
@@ -170,9 +224,9 @@ def test_one_hundred_get_requests_with_1024_chunked_payload(
     app.router.add_route("GET", "/", handler)
 
     async def run_client_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(message_count):
-            resp = await client.get("/")
+            resp = await client.get("/", **conn_type.c_kwargs)
             await resp.read()
         await client.close()
 
@@ -212,8 +266,9 @@ def test_one_hundred_get_requests_with_30000_chunked_payload(
 
 def test_one_hundred_get_requests_with_1mb_chunked_payload(
     event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark 100 GET requests with a 1 MiB chunked payload using read."""
     message_count = 100
@@ -228,9 +283,9 @@ def test_one_hundred_get_requests_with_1mb_chunked_payload(
     app.router.add_route("GET", "/", handler)
 
     async def run_client_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(message_count):
-            resp = await client.get("/")
+            resp = await client.get("/", **conn_type.c_kwargs)
             await resp.read()
         await client.close()
 
