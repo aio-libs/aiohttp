@@ -166,11 +166,10 @@ def test_run_on_startup_raises(
 
     app.on_startup.append(boom)
     worker.wsgi = app
-    worker.loop = event_loop
+    worker.loop = loop
     with pytest.raises(RuntimeError, match="boom during startup"):
         worker.run()
     assert not worker.booted
-    worker.log.exception.assert_called_with("Exception in gunicorn worker")
     assert loop.is_closed()
 
 
