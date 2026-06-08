@@ -1,1 +1,0 @@
-Remove stale ``response_factory`` parameter from ``add_static`` documentation. The parameter was removed from the implementation in PR 2290 but the docs were not updated accordingly.
