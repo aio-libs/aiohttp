@@ -1,4 +1,3 @@
-﻿- Contributors -
 ----------------
 A. Jesse Jiryu Davis
 Abdur Rehman Ali
@@ -316,7 +315,6 @@ Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Phebe Polk
-
 Phillip
 Pierre-Louis Peeters
 Pieter van Beek
@@ -439,5 +437,6 @@ Zainab Lawal
 Zeal Wierslee
 Zlatan SiÄanica
 Åukasz Setla
-ÐœÐ°Ñ€Ðº ÐšÐ¾Ñ€ÐµÐ½Ð±ÐµÑ€Ð³
 Ð¡ÐµÐ¼Ñ‘Ð½ ÐœÐ°Ñ€ÑŒÑÑÐ¸Ð½
+ÐœÐ°Ñ€Ðº ÐšÐ¾Ñ€ÐµÐ½Ð±ÐµÑ€Ð³
+﻿- Contributors -
