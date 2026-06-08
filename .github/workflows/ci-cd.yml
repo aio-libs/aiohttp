@@ -665,7 +665,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v3.4.1
+      uses: pypa/cibuildwheel@v4.0.0
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing
