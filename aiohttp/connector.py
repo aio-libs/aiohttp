@@ -53,7 +53,6 @@ from .helpers import (
 from .log import client_logger
 from .resolver import DefaultResolver
 
-aiofastnet: Any
 try:
     import aiofastnet
 except ImportError:
@@ -111,7 +110,7 @@ async def create_connection(
     **kwargs: Any,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
-        return await aiofastnet.create_connection(loop, *args, **kwargs)  # type: ignore[no-any-return]
+        return await aiofastnet.create_connection(loop, *args, **kwargs)
     else:
         return await loop.create_connection(*args, **kwargs)
 
@@ -120,7 +119,7 @@ async def start_tls(
     loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
 ) -> asyncio.BaseTransport | None:
     if aiofastnet is not None:
-        return await aiofastnet.start_tls(loop, *args, **kwargs)  # type: ignore[no-any-return]
+        return await aiofastnet.start_tls(loop, *args, **kwargs)
     else:
         return await loop.start_tls(*args, **kwargs)
 

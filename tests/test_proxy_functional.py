@@ -63,7 +63,6 @@ else:
                 return resp
 
 
-aiofastnet: Any
 try:
     import aiofastnet
 except ImportError:

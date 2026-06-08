@@ -30,7 +30,6 @@ __all__ = ("FileResponse",)
 if TYPE_CHECKING:
     from .web_request import BaseRequest
 
-aiofastnet: Any
 try:
     import aiofastnet
 except ImportError:
@@ -42,7 +41,7 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 async def sendfile(loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any) -> int:
     if aiofastnet is not None:
-        return await aiofastnet.sendfile(loop, *args, **kwargs)  # type: ignore[no-any-return]
+        return await aiofastnet.sendfile(loop, *args, **kwargs)
     else:
         return await loop.sendfile(*args, **kwargs)
 
