@@ -1,6 +1,7 @@
 import asyncio
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -167,6 +168,34 @@ async def test_unexpected_exception_during_data_received() -> None:
             proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd")
 
     assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_base_exception_during_data_received_closes_transport() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+
+    class PatchableHttpResponseParser(http.HttpResponseParser):
+        """Subclass of HttpResponseParser to make it patchable."""
+
+    with mock.patch(
+        "aiohttp.client_proto.HttpResponseParser", PatchableHttpResponseParser
+    ):
+        transport = mock.create_autospec(
+            asyncio.Transport, spec_set=True, instance=True
+        )
+        proto.connection_made(transport)
+        proto.set_response_params(read_until_eof=True)
+        # Prime the parser so feed_data has been called once with valid data.
+        proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
+        transport.close.reset_mock()
+
+        with mock.patch.object(
+            proto._parser, "feed_data", side_effect=asyncio.CancelledError
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                proto.data_received(b"more")
+
+        assert transport.close.called
 
 
 async def test_client_protocol_readuntil_eof() -> None:

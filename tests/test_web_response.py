@@ -1,3 +1,4 @@
+import asyncio
 import collections.abc
 import datetime
 import gzip
@@ -19,7 +20,7 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import ETag, HeadersDictProxy
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
-from aiohttp.payload import BytesPayload, StringPayload
+from aiohttp.payload import BytesPayload, Payload, StringPayload
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import LooseHeaders
 
@@ -1272,6 +1273,76 @@ async def test_consecutive_write_eof() -> None:
     await resp.write_eof()
     await resp.write_eof()
     writer.write_eof.assert_called_once_with(data)
+
+
+class _ClosingPayload(Payload):
+    """Payload test double that records whether close() ran."""
+
+    def __init__(self) -> None:
+        super().__init__(None)
+        self.close_called = False
+        self.started = asyncio.Event()
+        self.release = asyncio.Event()
+        self.fail = False
+
+    async def write(self, writer: AbstractStreamWriter) -> None:
+        self.started.set()
+        if self.fail:
+            raise ConnectionResetError("client gone")
+        await self.release.wait()
+
+    async def close(self) -> None:
+        self.close_called = True
+        await super().close()
+
+    def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+        assert False
+
+
+async def test_write_eof_closes_payload_on_success() -> None:
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", writer=writer)
+    payload = _ClosingPayload()
+    payload.release.set()
+    resp = web.Response(body=payload)
+
+    await resp.prepare(req)
+    await resp.write_eof()
+
+    assert payload.close_called
+    assert writer.write_eof.called
+
+
+async def test_write_eof_closes_payload_on_write_error() -> None:
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", writer=writer)
+    payload = _ClosingPayload()
+    payload.fail = True
+    resp = web.Response(body=payload)
+
+    await resp.prepare(req)
+    with pytest.raises(ConnectionResetError):
+        await resp.write_eof()
+
+    assert payload.close_called
+    assert not writer.write_eof.called
+
+
+async def test_write_eof_closes_payload_on_cancel() -> None:
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
+    req = make_request("GET", "/", writer=writer)
+    payload = _ClosingPayload()
+    resp = web.Response(body=payload)
+
+    await resp.prepare(req)
+    task = asyncio.ensure_future(resp.write_eof())
+    await payload.started.wait()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert payload.close_called
+    assert not writer.write_eof.called
 
 
 def test_set_text_with_content_type() -> None:

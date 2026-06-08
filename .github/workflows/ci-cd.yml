@@ -215,7 +215,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v8.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -320,7 +320,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v8.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -336,15 +336,29 @@ jobs:
     - name: Cythonize
       run: |
         make cythonize
+    - name: Enable KVM group perms for Android emulator
+      if: ${{ matrix.config.platform == 'android' }}
+      # This is normally done by cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
+      # in the test step, we also disable that automatic setup. So we need to do it manually here.
+      run: |
+        echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+        sudo udevadm control --reload-rules
+        sudo udevadm trigger --name-match=kvm
+    - name: Install cibuildwheel
+      run: uv pip install cibuildwheel==3.4.1
     - name: Build wheels and test
-      uses: pypa/cibuildwheel@v3.4.1
+      # cibuildwheel normally uses grouping in its outputs for its build/test steps. But the loading time when
+      # expanding large groups in GitHub Actions is very high. So by unsetting GITHUB_ACTIONS, cibuildwheel does
+      # not know that it is running in a GitHub Action and thus does not use groups.
+      run: env -u GITHUB_ACTIONS cibuildwheel
       env:
         CIBW_BUILD: ${{ matrix.pyver }}-*
         CIBW_PLATFORM: ${{ matrix.config.platform }}
         CIBW_ARCHS: ${{ matrix.config.archs }}
         CIBW_TEST_REQUIRES: -r requirements/test-mobile.txt
         CIBW_TEST_SOURCES: setup.cfg README.rst tests
-        CIBW_TEST_COMMAND: python -m pytest
+        # Currently only Android supports colored output. See https://github.com/python/cpython/issues/150932 for iOS.
+        CIBW_TEST_COMMAND: python -m pytest ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
 
   autobahn:
     permissions:
@@ -370,7 +384,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v8.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true

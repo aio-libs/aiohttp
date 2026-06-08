@@ -633,6 +633,74 @@ def test_compressed_msg_too_large(out: WebSocketDataQueue) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+@pytest.mark.parametrize("fin", (0x80, 0x00), ids=("fin", "non-fin"))
+def test_msg_too_large_at_header(out: WebSocketDataQueue, fin: int) -> None:
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False)
+
+    # Header alone: TEXT, 64-bit length, declares 1 MiB of payload.
+    header = PACK_LEN3(fin | WSMsgType.TEXT, 127, 1024 * 1024)
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 1048576 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_msg_too_large_across_fragments(out: WebSocketDataQueue) -> None:
+    # Individual fragments fit under max_msg_size but accumulate past it.
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False)
+
+    first = build_frame(b"a" * 100, WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(first)
+    middle = build_frame(b"b" * 100, WSMsgType.CONTINUATION, is_fin=False)
+    parser._feed_data(middle)
+
+    # Third 100-byte fragment would push the accumulated total to 300.
+    last = build_frame(b"c" * 100, WSMsgType.CONTINUATION, is_fin=False)
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 300 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(last)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_msg_too_large_text_after_non_fin_text(out: WebSocketDataQueue) -> None:
+    # Protocol-violating sequence: a fresh TEXT arrives while a fragmented
+    # message is still open.
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False)
+
+    first = build_frame(b"a" * 200, WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(first)
+
+    # Second TEXT header alone announces 100 bytes; 100 + 200 partial = 300.
+    second_header = PACK_LEN1(WSMsgType.TEXT, 100)
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 300 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(second_header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+@pytest.mark.parametrize(
+    "opcode",
+    (0x3, 0x4, 0x5, 0x6, 0x7, 0xB, 0xC, 0xD, 0xE, 0xF),
+    ids=lambda v: f"0x{v:x}",
+)
+def test_reserved_opcode_rejected_at_header(
+    out: WebSocketDataQueue, opcode: int
+) -> None:
+    # RFC 6455 reserves opcodes 0x3-0x7 (non-control) and 0xB-0xF (control).
+    parser = WebSocketReader(out, max_msg_size=256, compress=False)
+
+    header = PACK_LEN3(0x80 | opcode, 127, 1024 * 1024)
+    with pytest.raises(WebSocketError, match=rf"^Unexpected opcode={opcode}$") as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 class TestWebSocketError:
     def test_ctor(self) -> None:
         err = WebSocketError(WSCloseCode.PROTOCOL_ERROR, "Something invalid")

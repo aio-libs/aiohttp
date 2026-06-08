@@ -8,6 +8,13 @@ from .tcp_helpers import tcp_nodelay
 if TYPE_CHECKING:
     from .http_parser import HttpParser
 
+# Raised by transport.pause_reading()/resume_reading() when the transport
+# does not support flow control; safe to ignore.
+# NOTE: Catch these with a plain try/except/pass, never contextlib.suppress():
+# pause/resume run on the hot read path and suppress() is ~6x slower than
+# try/except here (it builds a context manager and unpacks this tuple per call).
+PAUSE_RESUME_READING_ERRORS = (AttributeError, NotImplementedError, RuntimeError)
+
 
 class BaseProtocol(asyncio.Protocol):
     __slots__ = (
@@ -65,8 +72,14 @@ class BaseProtocol(asyncio.Protocol):
         if self.transport is not None:
             try:
                 self.transport.pause_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
+
+    def _reading_paused_for_msg_queue(self) -> bool:
+        """Keep the transport paused for protocol-specific reasons (overridden)."""
+        return False
 
     def resume_reading(self, resume_parser: bool = True) -> None:
         self._reading_paused = False
@@ -77,10 +90,16 @@ class BaseProtocol(asyncio.Protocol):
 
         # Reading may have been paused again in the above call if there was a lot of
         # compressed data still pending.
-        if not self._reading_paused and self.transport is not None:
+        if (
+            not self._reading_paused
+            and not self._reading_paused_for_msg_queue()
+            and self.transport is not None
+        ):
             try:
                 self.transport.resume_reading()
-            except (AttributeError, NotImplementedError, RuntimeError):
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
             self._reading_paused = False
 

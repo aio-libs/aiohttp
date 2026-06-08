@@ -153,6 +153,78 @@ def test_c_parser_loaded() -> None:
     assert "RawResponseMessageC" in dir(aiohttp.http_parser)
 
 
+_PIPELINED_GET = b"GET / HTTP/1.1\r\nHost: a\r\n\r\n"
+
+
+def _build_request_parser(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    loop: asyncio.AbstractEventLoop,
+    max_msg_queue_size: int,
+) -> HttpRequestParser:
+    return request_cls(
+        protocol,
+        loop,
+        DEFAULT_CHUNK_SIZE,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+        max_msg_queue_size=max_msg_queue_size,
+    )
+
+
+def test_max_msg_queue_size_caps_emitted_messages(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+    messages, upgraded, _tail = parser.feed_data(_PIPELINED_GET * 10)
+    assert len(messages) == 4
+    assert not upgraded
+
+
+def test_max_msg_queue_size_resumes_after_consume(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    limit = 4
+    total = 10
+    parser = _build_request_parser(request_cls, protocol, event_loop, limit)
+    messages, _upgraded, _tail = parser.feed_data(_PIPELINED_GET * total)
+    seen = 0
+    while messages:
+        assert len(messages) <= limit
+        seen += len(messages)
+        for _msg, _payload in messages:
+            parser.message_consumed()
+        messages, _upgraded, _tail = parser.feed_data(b"")
+    assert seen == total
+
+
+def test_max_msg_queue_size_zero_is_unbounded(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    parser = _build_request_parser(request_cls, protocol, event_loop, 0)
+    messages, _upgraded, _tail = parser.feed_data(_PIPELINED_GET * 50)
+    assert len(messages) == 50
+
+
+def test_message_consumed_underflow_is_ignored(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+    # No message is in flight; consuming must not underflow the counter.
+    parser.message_consumed()
+    messages, _upgraded, _tail = parser.feed_data(_PIPELINED_GET * 4)
+    assert len(messages) == 4
+
+
 def test_parse_headers(parser: HttpRequestParser) -> None:
     text = b"""GET /test HTTP/1.1\r
 Host: a\r
@@ -1657,6 +1729,17 @@ def test_http_request_max_status_line_under_limit(parser: HttpRequestParser) -> 
     assert msg.url == URL("/path" + path.decode())
 
 
+def test_http_request_max_status_line_fragmented(
+    parser: HttpRequestParser,
+) -> None:
+    # Split an overlong request target across reads so that each callback
+    # fragment is under the limit but the accumulated target is not.
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(b"GET /" + b"a" * 8000)
+        parser.feed_data(b"a" * 8000 + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 def test_http_response_parser_utf8(response: HttpResponseParser) -> None:
     text = "HTTP/1.1 200 Ok\r\nx-test:тест\r\n\r\n".encode()
 
@@ -1736,6 +1819,17 @@ def test_http_response_parser_status_line_under_limit(
     assert msg.version == (1, 1)
     assert msg.code == 200
     assert msg.reason == reason.decode()
+
+
+def test_http_response_parser_status_line_too_long_fragmented(
+    response: HttpResponseParser,
+) -> None:
+    # Split an overlong reason phrase across reads so that each callback
+    # fragment is under the limit but the accumulated reason is not.
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        response.feed_data(b"HTTP/1.1 200 " + b"a" * 8000)
+        response.feed_data(b"a" * 8000 + b"\r\n\r\n")
 
 
 def test_http_response_parser_bad_version(response: HttpResponseParser) -> None:
@@ -2376,6 +2470,59 @@ class TestParsePayload:
         with pytest.raises(http_exceptions.TransferEncodingError):
             p.feed_data(b"blah\r\n")
         assert isinstance(out.exception(), http_exceptions.TransferEncodingError)
+
+    async def test_chunked_chunk_size_line_too_long(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A complete oversized chunk-size line is rejected with LineTooLong."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        size_line = b"1;" + b"a" * 4096 + b"\r\n"
+        with pytest.raises(http_exceptions.LineTooLong):
+            p.feed_data(size_line)
+
+    async def test_chunked_chunk_size_line_within_limit(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A small chunk-size line still parses when max_line_size is low."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        p.feed_data(b"1\r\nx\r\n0\r\n\r\n")
+        assert out.is_eof()
+        assert b"x" == b"".join(out._buffer)
+
+    async def test_chunked_chunk_size_line_at_limit(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A chunk-size line of exactly max_line_size bytes is accepted (>, not >=)."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        # "1;" + 30 * "a" is exactly 32 bytes before the CRLF.
+        size_line = b"1;" + b"a" * 30
+        assert len(size_line) == 32
+        p.feed_data(size_line + b"\r\nx\r\n0\r\n\r\n")
+        assert out.is_eof()
+        assert b"x" == b"".join(out._buffer)
+
+    async def test_chunked_chunk_size_line_one_over_limit(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A chunk-size line one byte over max_line_size is rejected."""
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        p = HttpPayloadParser(
+            out, chunked=True, headers_parser=HeadersParser(), max_line_size=32
+        )
+        # "1;" + 31 * "a" is 33 bytes before the CRLF.
+        size_line = b"1;" + b"a" * 31
+        assert len(size_line) == 33
+        with pytest.raises(http_exceptions.LineTooLong):
+            p.feed_data(size_line + b"\r\nx\r\n0\r\n\r\n")
 
     async def test_parse_chunked_payload_size_data_mismatch(
         self, protocol: BaseProtocol
