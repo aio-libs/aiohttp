@@ -335,5 +335,5 @@ zlib-ng==1.0.0
     #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
-aiohttp==3.14.0
+aiohttp==3.14.1
     # via pytest-aiohttp
