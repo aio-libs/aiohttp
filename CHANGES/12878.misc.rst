@@ -1,0 +1,2 @@
+Added type annotations to the exception classes in the ``aiohttp.client_exceptions`` to
+increase type coverage -- by :user:`jorenham`.
