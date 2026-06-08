@@ -143,9 +143,33 @@ def test_run_not_app(
     worker.loop = loop
     worker.wsgi = "not-app"
     worker.alive = False
-    with pytest.raises(SystemExit):
+    with pytest.raises(RuntimeError, match="wsgi app should be"):
         worker.run()
-    worker.log.exception.assert_called_with("Exception in gunicorn worker")
+    assert not worker.booted
+    assert loop.is_closed()
+
+
+def test_run_on_startup_raises(
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
+) -> None:
+    worker.log = mock.Mock()
+    worker.cfg = mock.Mock()
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.is_ssl = False
+    worker.cfg.graceful_timeout = 100
+    worker.sockets = []
+
+    app = web.Application()
+
+    async def boom(app: web.Application) -> None:
+        raise RuntimeError("boom during startup")
+
+    app.on_startup.append(boom)
+    worker.wsgi = app
+    worker.loop = event_loop
+    with pytest.raises(RuntimeError, match="boom during startup"):
+        worker.run()
+    assert not worker.booted
     assert loop.is_closed()
 
 
