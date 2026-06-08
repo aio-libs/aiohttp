@@ -164,9 +164,7 @@ async def test_finish_response_re_feeding_parser_tail_wakes_waiter(
     # ``HttpParser.feed_data`` returns (messages, upgraded, tail).
     parser.feed_data.return_value = ([(new_msg, new_payload)], False, b"")
     handler._parser = parser
-    handler._message_tail = (
-        b"GET /pipelined HTTP/1.1\r\nHost: example.com\r\n\r\n"
-    )
+    handler._message_tail = b"GET /pipelined HTTP/1.1\r\nHost: example.com\r\n\r\n"
 
     # ``start()`` parks here waiting for the next message.
     waiter: asyncio.Future[None] = event_loop.create_future()
