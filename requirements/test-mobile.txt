@@ -89,7 +89,7 @@ pytest==9.0.3
     #   pytest-cov
     #   pytest-mock
     #   pytest-timeout
-pytest-aiohttp==1.1.0
+pytest-aiohttp==1.1.1
     # via -r requirements/test-common-base.in
 pytest-asyncio==1.4.0
     # via pytest-aiohttp
