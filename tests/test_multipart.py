@@ -273,6 +273,13 @@ class TestPartReader:
             assert b"" == result
             assert obj.at_eof()
 
+    @pytest.mark.parametrize("value", ["-1", "+5", "1_0", " 5", "0x5", "５"])
+    async def test_rejects_malformed_content_length(self, value: str) -> None:
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": value}))
+        with Stream(b"Hello, world!\r\n--:--") as stream:
+            with pytest.raises(ValueError, match="Content-Length"):
+                aiohttp.BodyPartReader(BOUNDARY, h, stream)
+
     async def test_read_chunk_properly_counts_read_bytes(self) -> None:
         expected = b"." * 10
         tail = b"%s--:--" % newline
