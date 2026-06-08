@@ -132,7 +132,7 @@ def test_resume_msg_queue_reading_ignores_unsupported_transport(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
-    """A transport without flow control raising on resume is ignored."""
+    """Resume clears the pause but does not touch a missing transport."""
     handler = RequestHandler(dummy_manager, loop=event_loop)
     # Bare asyncio.Transport.resume_reading() raises NotImplementedError.
     handler.transport = asyncio.Transport()
@@ -142,3 +142,52 @@ def test_resume_msg_queue_reading_ignores_unsupported_transport(
     handler._resume_msg_queue_reading()
 
     assert handler._msg_queue_paused is False
+
+
+async def test_finish_response_re_feeding_parser_tail_wakes_waiter(
+    event_loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+) -> None:
+    """Re-feeding the parser tail in ``finish_response`` (the path taken when
+    an HTTP upgrade such as WebSocket is rejected with 4xx) must queue the
+    decoded messages and wake the ``start()`` loop's waiter, so a request that
+    was pipelined after the failed upgrade is not silently dropped.
+
+    Regression test for issue #12734.
+    """
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+
+    # Parser returns one new message and consumes the whole tail.
+    new_msg = mock.Mock()
+    new_payload = mock.Mock()
+    parser = mock.Mock()
+    # ``HttpParser.feed_data`` returns (messages, upgraded, tail).
+    parser.feed_data.return_value = ([(new_msg, new_payload)], False, b"")
+    handler._parser = parser
+    handler._message_tail = (
+        b"GET /pipelined HTTP/1.1\r\nHost: example.com\r\n\r\n"
+    )
+
+    # ``start()`` parks here waiting for the next message.
+    waiter: asyncio.Future[None] = event_loop.create_future()
+    handler._waiter = waiter
+    assert not waiter.done()
+
+    # Drive the real ``finish_response`` code path. ``request._finish`` and
+    # ``resp.prepare``/``resp.write_eof`` are no-ops, but the parser-tail
+    # re-feed runs in between, and that's what we want to exercise.
+    request = mock.Mock()
+    request._finish = mock.Mock()
+    resp = mock.Mock()
+    resp.prepare = mock.AsyncMock()
+    resp.write_eof = mock.AsyncMock()
+    # ``finish_response`` returns ``(resp, disconnected)``.
+    result_resp, disconnected = await handler.finish_response(request, resp, None)
+    assert result_resp is resp
+    assert disconnected is False
+
+    # The pipelined message must be queued and the waiter must be woken.
+    assert list(handler._messages) == [(new_msg, new_payload)]
+    assert handler._message_tail == b""
+    assert waiter.done()
+    assert waiter.result() is None
