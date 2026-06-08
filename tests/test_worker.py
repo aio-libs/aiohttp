@@ -146,11 +146,11 @@ def test_run_not_app(
     with pytest.raises(RuntimeError, match="wsgi app should be"):
         worker.run()
     assert not worker.booted
-    assert event_loop.is_closed()
+    assert loop.is_closed()
 
 
 def test_run_on_startup_raises(
-    worker: base_worker.GunicornWebWorker, event_loop: asyncio.AbstractEventLoop
+    worker: base_worker.GunicornWebWorker, loop: asyncio.AbstractEventLoop
 ) -> None:
     worker.log = mock.Mock()
     worker.cfg = mock.Mock()
