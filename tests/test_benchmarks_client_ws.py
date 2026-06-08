@@ -1,19 +1,79 @@
 """codspeed benchmarks for websocket client."""
 
 import asyncio
-from typing import TYPE_CHECKING
+import ssl
+from collections.abc import Awaitable, Callable, Iterator
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
 from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
+) -> Iterator[
+    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
+]:
+    # TODO: Remove this fixture when async benchmarks are working.
+    clients = []
+
+    async def go(
+        __param: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[web.Request, web.Application]:
+        server_kwargs = dict(server_kwargs or {})
+        server_ssl_context = server_kwargs.pop("ssl", None)
+        server = TestServer(__param, **server_kwargs)
+        client = aiohttp_client_cls(server, **kwargs)
+
+        await server.start_server(ssl=server_ssl_context)
+        await client.start_server()
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
+
+
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
+
+
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
 def test_one_thousand_round_trip_websocket_text_messages(
@@ -52,6 +112,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
     msg_size: int,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
@@ -70,8 +131,8 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
-        resp = await client.ws_connect("/")
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
+        resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
         await resp.close()
