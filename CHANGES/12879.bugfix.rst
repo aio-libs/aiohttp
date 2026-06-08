@@ -1,1 +1,1 @@
-Fixed ``GunicornWebWorker`` endlessly respawning when app fails during startup -- by :user:`Dreamsorcerer`.
+Fixed ``GunicornWebWorker`` endlessly reloading when app fails during startup -- by :user:`Dreamsorcerer`.
