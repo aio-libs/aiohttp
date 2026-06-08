@@ -273,7 +273,7 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./coverage.xml
         flags: >-
@@ -287,7 +287,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./junit.xml
         report_type: test_results
@@ -424,14 +424,14 @@ jobs:
       run: |
         python -m coverage xml
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./coverage.xml
         flags: Autobahn
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./junit.xml
         report_type: test_results
@@ -529,7 +529,7 @@ jobs:
       run: |
         python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./cython-coverage.xml
         disable_search: true
@@ -554,7 +554,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Trigger codecov notification
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
