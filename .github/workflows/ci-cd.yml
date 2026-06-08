@@ -338,7 +338,7 @@ jobs:
         make cythonize
     - name: Enable KVM group perms for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
-      # This is normally done be cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
+      # This is normally done by cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
       # in the test step, we also disable that automatic setup. So we need to do it manually here.
       run: |
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
