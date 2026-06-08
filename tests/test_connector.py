@@ -32,6 +32,7 @@ from aiohttp import (
     web,
 )
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.client_exceptions import InvalidUrlClientError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequestArgs, ConnectionKey
 from aiohttp.connector import (
@@ -1300,6 +1301,35 @@ async def test_tcp_connector_resolve_host() -> None:
             else:
                 assert rec["host"] == "::1"
 
+    await conn.close()
+
+
+async def test_tcp_connector_rejects_non_canonical_ipv4_alias() -> None:
+    """Legacy numeric IPv4 aliases must not bypass the configured resolver."""
+    calls: list[str] = []
+
+    class _RecordingResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            assert False
+
+        async def close(self) -> None:
+            """Close the resolver."""
+
+    conn = aiohttp.TCPConnector(resolver=_RecordingResolver())
+    for alias in ("2130706433", "017700000001", "127.1"):
+        with pytest.raises(InvalidUrlClientError, match="canonical IPv4"):
+            await conn._resolve_host(alias, 8080)
+
+    # Resolver is never consulted, and a canonical IP still short-circuits it.
+    assert calls == []
+    res = await conn._resolve_host("127.0.0.1", 8080)
+    assert res[0]["host"] == "127.0.0.1"
+    assert calls == []
     await conn.close()
 
 

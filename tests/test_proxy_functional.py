@@ -12,6 +12,7 @@ from unittest import mock
 from uuid import uuid4
 
 import pytest
+from multidict import CIMultiDict
 from pytest_aiohttp import AiohttpRawServer, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -913,6 +914,58 @@ async def test_proxy_from_env_http_without_auth_from_wrong_netrc(
     assert proxy.request.host == "aiohttp.io"
     assert proxy.request.path_qs == "/path"
     assert "Proxy-Authorization" not in proxy.request.headers
+
+
+async def test_proxy_from_env_auth_scoped_to_redirect_selected_proxy(
+    aiohttp_raw_server: AiohttpRawServer,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: pathlib.Path,
+) -> None:
+    # Redirect from an authenticated http_proxy to an HTTPS target served by a
+    # separate https_proxy must not leak the first proxy's Proxy-Authorization
+    # onto the second proxy's CONNECT request.
+    auth_header = aiohttp.encode_basic_auth("user", "pass")
+    http_proxy_requests: list[CIMultiDict[str]] = []
+    https_proxy_requests: list[CIMultiDict[str]] = []
+
+    async def http_proxy_handler(request: web.Request) -> web.Response:
+        http_proxy_requests.append(CIMultiDict(request.headers))
+        return web.Response(
+            status=302, headers={"Location": "https://attacker.example/secret"}
+        )
+
+    async def https_proxy_handler(request: web.Request) -> web.Response:
+        https_proxy_requests.append(CIMultiDict(request.headers))
+        return web.Response(status=502)
+
+    http_proxy = await aiohttp_raw_server(http_proxy_handler)
+    https_proxy = await aiohttp_raw_server(https_proxy_handler)
+
+    for name in (
+        "http_proxy",
+        "https_proxy",
+        "all_proxy",
+        "no_proxy",
+        "HTTP_PROXY",
+        "HTTPS_PROXY",
+        "ALL_PROXY",
+        "NO_PROXY",
+    ):
+        monkeypatch.delenv(name, raising=False)
+    netrc_file = tmp_path / "empty_netrc"
+    netrc_file.write_text("")
+    http_proxy_url = http_proxy.make_url("/").with_user("user").with_password("pass")
+    monkeypatch.setenv("http_proxy", str(http_proxy_url))
+    monkeypatch.setenv("https_proxy", str(https_proxy.make_url("/")))
+    monkeypatch.setenv("NETRC", str(netrc_file))
+
+    with pytest.raises(aiohttp.ClientHttpProxyError):
+        await get_request(url="http://victim.example/redirect", trust_env=True)
+
+    assert len(http_proxy_requests) == 1
+    assert http_proxy_requests[0]["Proxy-Authorization"] == auth_header
+    assert len(https_proxy_requests) == 1
+    assert "Proxy-Authorization" not in https_proxy_requests[0]
 
 
 @pytest.mark.xfail

@@ -1198,6 +1198,176 @@ async def test_preemptive_auth_without_domain_uses_origin(
     )  # Second request - preemptive auth (entire origin)
 
 
+async def test_does_not_answer_cross_origin_redirect_challenge(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A cross-origin redirect target must not receive a digest response.
+
+    aiohttp strips the Authorization header on cross-origin redirects; the
+    digest middleware must not re-add one for the redirect target, otherwise
+    the configured credentials leak to an origin the caller never targeted.
+    """
+    target_auth_headers: list[str | None] = []
+
+    async def target_handler(request: Request) -> Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        target_auth_headers.append(auth_header)
+        assert auth_header is None
+        return Response(
+            status=401,
+            headers={
+                hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="cross-origin"'
+            },
+        )
+
+    target_app = Application()
+    target_app.router.add_get("/", target_handler)
+    target_server = await aiohttp_server(target_app)
+
+    async def source_handler(request: Request) -> Response:
+        return Response(
+            status=302, headers={hdrs.LOCATION: str(target_server.make_url("/"))}
+        )
+
+    source_app = Application()
+    source_app.router.add_get("/", source_handler)
+    source_server = await aiohttp_server(source_app)
+
+    digest_auth = DigestAuthMiddleware("victim", "secret")
+    async with (
+        ClientSession(middlewares=(digest_auth,)) as session,
+        session.get(source_server.make_url("/")) as response,
+    ):
+        await response.text()
+
+    assert target_auth_headers == [None]
+
+
+async def test_answers_same_origin_redirect_challenge(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A same-origin redirect that issues a challenge must still authenticate."""
+    auth_headers: list[str | None] = []
+
+    async def handler(request: Request) -> Response:
+        if request.path == "/start":
+            return Response(status=302, headers={hdrs.LOCATION: "/protected"})
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        auth_headers.append(auth_header)
+        if auth_header is None:
+            return Response(
+                status=401,
+                headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="good", nonce="abc"'},
+            )
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/start", handler)
+    app.router.add_get("/protected", handler)
+    server = await aiohttp_server(app)
+
+    digest_auth = DigestAuthMiddleware("user", "pass")
+    async with (
+        ClientSession(middlewares=(digest_auth,)) as session,
+        session.get(server.make_url("/start")) as response,
+    ):
+        assert response.status == 200
+        assert await response.text() == "OK"
+
+    assert auth_headers[0] is None
+    assert auth_headers[1] is not None
+    assert auth_headers[1].startswith("Digest")
+
+
+async def test_answers_cross_origin_within_domain_protection_space(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A different origin advertised via the ``domain`` directive is honored.
+
+    RFC 7616 allows a challenge to define a protection space spanning other
+    servers through the ``domain`` directive. The anchor origin vouches for
+    those URIs, so preemptive auth to them is expected.
+    """
+    other_auth_headers: list[str | None] = []
+
+    async def other_handler(request: Request) -> Response:
+        other_auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+        return Response(text="other")
+
+    other_app = Application()
+    other_app.router.add_get("/", other_handler)
+    other_server = await aiohttp_server(other_app)
+    other_origin = str(other_server.make_url("/").origin())
+
+    async def anchor_handler(request: Request) -> Response:
+        if request.headers.get(hdrs.AUTHORIZATION) is None:
+            challenge = f'Digest realm="anchor", nonce="n1", domain="{other_origin}/"'
+            return Response(status=401, headers={hdrs.WWW_AUTHENTICATE: challenge})
+        return Response(text="anchor")
+
+    anchor_app = Application()
+    anchor_app.router.add_get("/", anchor_handler)
+    anchor_server = await aiohttp_server(anchor_app)
+
+    digest_auth = DigestAuthMiddleware("user", "pass")
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        async with session.get(anchor_server.make_url("/")) as response:
+            assert response.status == 200
+        async with session.get(other_server.make_url("/")) as response:
+            assert response.status == 200
+
+    assert other_auth_headers[0] is not None
+    assert other_auth_headers[0].startswith("Digest")
+
+
+async def test_does_not_answer_cross_origin_challenge_without_redirect(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Origin scoping applies to any cross-origin request, not just redirects.
+
+    After authenticating against the anchor origin, a direct request to a
+    different origin that issues its own challenge must not be answered with a
+    digest response computed from the configured credentials.
+    """
+    other_auth_headers: list[str | None] = []
+
+    async def other_handler(request: Request) -> Response:
+        auth_header = request.headers.get(hdrs.AUTHORIZATION)
+        other_auth_headers.append(auth_header)
+        assert auth_header is None
+        return Response(
+            status=401,
+            headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="evil", nonce="x"'},
+        )
+
+    other_app = Application()
+    other_app.router.add_get("/", other_handler)
+    other_server = await aiohttp_server(other_app)
+
+    async def anchor_handler(request: Request) -> Response:
+        if request.headers.get(hdrs.AUTHORIZATION) is None:
+            return Response(
+                status=401,
+                headers={hdrs.WWW_AUTHENTICATE: 'Digest realm="anchor", nonce="n1"'},
+            )
+        return Response(text="anchor")
+
+    anchor_app = Application()
+    anchor_app.router.add_get("/", anchor_handler)
+    anchor_server = await aiohttp_server(anchor_app)
+
+    digest_auth = DigestAuthMiddleware("user", "pass")
+    async with ClientSession(middlewares=(digest_auth,)) as session:
+        async with session.get(anchor_server.make_url("/")) as response:
+            assert response.status == 200
+        async with session.get(other_server.make_url("/")) as response:
+            assert response.status == 401
+
+    # The other origin only ever saw the unauthenticated request; the
+    # middleware never answered its challenge.
+    assert other_auth_headers == [None]
+
+
 @pytest.mark.parametrize(
     ("status", "headers", "expected"),
     [

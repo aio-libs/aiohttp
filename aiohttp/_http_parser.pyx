@@ -325,6 +325,8 @@ cdef class HttpParser:
         list    _messages
         bint    _more_data_available
         bint    _paused
+        Py_ssize_t _msg_in_flight
+        Py_ssize_t _max_msg_queue_size
         bint    _eof_pending
         object  _payload
         unsigned long long _content_length_expected
@@ -361,6 +363,7 @@ cdef class HttpParser:
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
         bint auto_decompress=True,
+        Py_ssize_t max_msg_queue_size=0,
     ):
         cparser.llhttp_settings_init(self._csettings)
         cparser.llhttp_init(self._cparser, mode, self._csettings)
@@ -375,6 +378,8 @@ cdef class HttpParser:
         self._buf = bytearray()
         self._more_data_available = False
         self._paused = False
+        self._msg_in_flight = 0
+        self._max_msg_queue_size = max_msg_queue_size
         self._eof_pending = False
         self._payload = None
         self._payload_error = 0
@@ -558,6 +563,11 @@ cdef class HttpParser:
         assert self._payload is not None
         self._paused = True
 
+    def message_consumed(self):
+        # Protocol drained a queued message; free a slot for parsing.
+        if self._msg_in_flight > 0:
+            self._msg_in_flight -= 1
+
     def feed_eof(self):
         cdef bytes desc
 
@@ -680,12 +690,12 @@ cdef class HttpRequestParser(HttpParser):
         size_t max_line_size=8190, size_t max_headers=128,
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
-        bint auto_decompress=True,
+        bint auto_decompress=True, Py_ssize_t max_msg_queue_size=0,
     ):
         self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
-                   auto_decompress)
+                   auto_decompress, max_msg_queue_size)
 
     cdef object _on_status_complete(self):
         cdef int idx1, idx2
@@ -781,7 +791,7 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             status = pyparser._buf + at[:length]
             raise LineTooLong(status[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
@@ -796,7 +806,7 @@ cdef int cb_on_status(cparser.llhttp_t* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             reason = pyparser._buf + at[:length]
             raise LineTooLong(reason[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
@@ -894,6 +904,12 @@ cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
+        if pyparser._max_msg_queue_size:
+            pyparser._msg_in_flight += 1
+            if pyparser._msg_in_flight >= pyparser._max_msg_queue_size:
+                # Queue full: pause llhttp between messages. feed_data() buffers
+                # the remainder as tail; resumes once the queue drains.
+                return cparser.HPE_PAUSED
         return 0
 
 
