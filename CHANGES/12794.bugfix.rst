@@ -1,0 +1,4 @@
+Rejected multipart body parts whose ``Content-Length`` header is not a
+plain sequence of digits (e.g. ``+5``, ``-1``, ``1_0``), matching the
+strictness of the main request parser per :rfc:`9110#section-8.6`
+-- by :user:`dxbjavid`.
