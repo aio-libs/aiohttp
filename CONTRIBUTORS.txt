@@ -1,4 +1,4 @@
-- Contributors -
+﻿- Contributors -
 ----------------
 A. Jesse Jiryu Davis
 Abdur Rehman Ali
@@ -7,15 +7,15 @@ Adam Cooper
 Adam Horacek
 Adam Mills
 Adrian Krupa
-Adrián Chaves
+AdriÃ¡n Chaves
 Ahmed Tahri
 Alan Bogarin
 Alan Tse
 Alec Hanefeld
-Alejandro Gómez
+Alejandro GÃ³mez
 Aleksandr Danshyn
 Aleksey Kutepov
-Alex Grönholm
+Alex GrÃ¶nholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -93,14 +93,14 @@ Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
 Cong Xu
-Damien Nadé
+Damien NadÃ©
 Dan King
 Dan Xu
-Daniel García
+Daniel GarcÃ­a
 Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
-Daniele Trifirò
+Daniele TrifirÃ²
 Danny Song
 David Bibb
 David Dzhalaev
@@ -140,7 +140,7 @@ Eugene Tolmachev
 Evan Kepner
 Evert Lammerts
 Felix Yan
-Fernanda Guimarães
+Fernanda GuimarÃ£es
 FichteFoll
 Florian Scheffler
 Franek Magiera
@@ -160,7 +160,7 @@ Grigoriy Soldatov
 Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
-Günther Jena
+GÃ¼nther Jena
 Hans Adema
 Harmon Y.
 Harry Liu
@@ -208,7 +208,7 @@ Joel Watts
 John Feusi
 John Parton
 Jon Nabozny
-Jonas Krüger Svensson
+Jonas KrÃ¼ger Svensson
 Jonas Obrist
 Jonathan Ballet
 Jonathan Wright
@@ -239,17 +239,17 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
-Lars P. Søndergaard
+Lars P. SÃ¸ndergaard
 Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
-Loïc Lajeanne
+LoÃ¯c Lajeanne
 Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
-Lénárd Szolnoki
+LÃ©nÃ¡rd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
@@ -264,8 +264,8 @@ Martijn Pieters
 Martin Melka
 Martin Richard
 Martin Sucha
-Mathias Fröjdman
-Mathieu Dugré
+Mathias FrÃ¶jdman
+Mathieu DugrÃ©
 Matt VanEseltine
 Matthew Go
 Matthias Marquardt
@@ -275,7 +275,7 @@ Matvey Tingaev
 Meet Mangukiya
 Meshya
 Michael Ihnatenko
-Michał Górny
+MichaÅ‚ GÃ³rny
 Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
@@ -292,10 +292,10 @@ Night Cityblade
 Nikolay Kim
 Nikolay Novik
 Nikolay Tiunov
-Nándor Mátravölgyi
+NÃ¡ndor MÃ¡travÃ¶lgyi
 Oisin Aylward
 Olaf Conradi
-Oleg Höfling
+Oleg HÃ¶fling
 Omkar Kabde
 Pahaz Blinov
 Panagiotis Kolokotronis
@@ -306,17 +306,18 @@ Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
-Paulius Šileikis
+Paulius Å ileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
 Pavel Sapezhko
-Pavol Vargovčík
+Pavol VargovÄÃ­k
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
 Phebe Polk
-Philipp A.
+
+Phillip
 Pierre-Louis Peeters
 Pieter van Beek
 Puneet Dixit
@@ -324,7 +325,7 @@ Qiao Han
 Rafael Viotti
 Rahul Nahata
 Raphael Bialon
-Raúl Cumplido
+RaÃºl Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
@@ -340,7 +341,7 @@ Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
-Sebastian Hüther
+Sebastian HÃ¼ther
 Sebastien Geffroy
 SeongSoo Cho
 Sergey Ninua
@@ -392,7 +393,7 @@ Victor Kovtun
 Victor Makarov
 Vikas Kawadia
 Viktor Danyliuk
-Ville Skyttä
+Ville SkyttÃ¤
 Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
@@ -406,7 +407,7 @@ Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
-Vojtěch Boček
+VojtÄ›ch BoÄek
 W. Trevor King
 Wei Lin
 Weiwei Wang
@@ -422,7 +423,7 @@ Xi Rui
 Xiang Li
 Yang Zhou
 Yannick Koechlin
-Yannick Péroux
+Yannick PÃ©roux
 Ye Cao
 Yegor Roganov
 Yifei Kong
@@ -436,7 +437,7 @@ Yuval Ofir
 Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
-Zlatan Sičanica
-Łukasz Setla
-Марк Коренберг
-Семён Марьясин
+Zlatan SiÄanica
+Åukasz Setla
+ÐœÐ°Ñ€Ðº ÐšÐ¾Ñ€ÐµÐ½Ð±ÐµÑ€Ð³
+Ð¡ÐµÐ¼Ñ‘Ð½ ÐœÐ°Ñ€ÑŒÑÑÐ¸Ð½

@@ -1,0 +1,2 @@
+Fixed a bug where a pipelined request after a failed HTTP upgrade (e.g. websocket handshake rejection) caused the connection to hang for ~1 hour until the keepalive timeout closed it. The tail of pipelined bytes was re-fed to the parser in ``finish_response`` but the resulting messages were not appended to the request queue and the start() loop's waiter was not woken, leaving the connection stuck.
+-- by :user:`phillza`.
