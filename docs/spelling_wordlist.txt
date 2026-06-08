@@ -78,6 +78,7 @@ cmd
 codecov
 codebase
 codec
+codspeed
 Codings
 committer
 committers
