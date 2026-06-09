@@ -308,8 +308,8 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._responses: list[ClientResponse] = []
         self._websockets: list[ClientWebSocketResponse[bool]] = []
 
-    async def start_server(self) -> None:
-        await self._server.start_server(loop=self._loop)
+    async def start_server(self, **server_kwargs: Any) -> None:
+        await self._server.start_server(loop=self._loop, **server_kwargs)
 
     @property
     def host(self) -> str:
