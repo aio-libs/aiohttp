@@ -7,7 +7,7 @@ import pytest
 
 from aiohttp import web
 from aiohttp._websocket.helpers import MSG_SIZE
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient, ConnectionType
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -52,6 +52,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
     msg_size: int,
 ) -> None:
     """Benchmark round trip of 1000 WebSocket binary messages."""
@@ -70,8 +71,8 @@ def test_one_thousand_round_trip_websocket_binary_messages(
     app.router.add_route("GET", "/", handler)
 
     async def run_websocket_benchmark() -> None:
-        client = await aiohttp_client(app)
-        resp = await client.ws_connect("/")
+        client = await aiohttp_client(app, server_kwargs=conn_type.s_kwargs)
+        resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
         await resp.close()

@@ -1,9 +1,11 @@
 import asyncio
 import contextlib
 import inspect
+import ssl
 import warnings
 from collections.abc import Awaitable, Callable, Iterator
-from typing import Any, Protocol, overload
+from dataclasses import dataclass
+from typing import Any, Protocol, TypedDict, overload
 
 import pytest
 
@@ -407,8 +409,8 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         else:
             assert not args, "args should be empty"
 
+        server_kwargs = server_kwargs or {}
         if isinstance(__param, Application):
-            server_kwargs = server_kwargs or {}
             server = TestServer(__param, loop=loop, **server_kwargs)
             client = TestClient(server, loop=loop, **kwargs)
         elif isinstance(__param, BaseTestServer):
@@ -416,7 +418,7 @@ def aiohttp_client(loop: asyncio.AbstractEventLoop) -> Iterator[AiohttpClient]:
         else:
             raise ValueError("Unknown argument type: %r" % type(__param))
 
-        await client.start_server()
+        await client.start_server(**server_kwargs)
         clients.append(client)
         return client
 
@@ -437,3 +439,27 @@ def test_client(aiohttp_client):  # type: ignore[no-untyped-def]  # pragma: no c
         stacklevel=2,
     )
     return aiohttp_client
+
+
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
+
+
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})

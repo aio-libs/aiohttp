@@ -8,7 +8,7 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp import ClientResponse, web
-from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.pytest_plugin import AiohttpClient, ConnectionType
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -21,6 +21,7 @@ def test_simple_web_file_response(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse."""
     response_count = 100
@@ -33,9 +34,9 @@ def test_simple_web_file_response(
     app.router.add_route("GET", "/", handler)
 
     async def run_file_response_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(response_count):
-            await client.get("/")
+            await client.get("/", **conn_type.c_kwargs)
         await client.close()
 
     @benchmark
@@ -47,6 +48,7 @@ def test_simple_web_file_sendfile_fallback_response(
     loop: asyncio.AbstractEventLoop,
     aiohttp_client: AiohttpClient,
     benchmark: BenchmarkFixture,
+    conn_type: ConnectionType,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse without sendfile."""
     response_count = 100
@@ -62,9 +64,9 @@ def test_simple_web_file_sendfile_fallback_response(
     app.router.add_route("GET", "/", handler)
 
     async def run_file_response_benchmark() -> None:
-        client = await aiohttp_client(app)
+        client = await aiohttp_client(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(response_count):
-            await client.get("/")
+            await client.get("/", **conn_type.c_kwargs)
         await client.close()
 
     @benchmark
