@@ -17,8 +17,8 @@ jobs:
     name: Fuzzing (${{ matrix.sanitizer }})
     runs-on: ubuntu-latest
     permissions:
-      contents: read
-      issues: write
+      contents: read  # For build_fuzzers to check out the code
+      issues: write  # To create a new issue in the last step
     strategy:
       fail-fast: false
       matrix:
