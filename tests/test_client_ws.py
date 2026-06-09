@@ -30,6 +30,7 @@ async def test_ws_connect(ws_key: str, key_data: bytes) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
         hdrs.SEC_WEBSOCKET_PROTOCOL: "chat",
     }
+    resp._upgraded = True
     resp.connection.protocol.read_timeout = None
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
@@ -255,6 +256,8 @@ async def test_ws_connect_err_upgrade(ws_key: str, key_data: bytes) -> None:
 
 
 async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
+    # The parser did not see a Connection: upgrade token (resp._upgraded is
+    # False), so the handshake must be rejected.
     resp = mock.Mock()
     resp.status = 101
     resp.headers = {
@@ -262,6 +265,7 @@ async def test_ws_connect_err_conn(ws_key: str, key_data: bytes) -> None:
         hdrs.CONNECTION: "close",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
+    resp._upgraded = False
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
