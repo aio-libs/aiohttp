@@ -60,14 +60,20 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         super().init_process()
 
     def run(self) -> None:
-        self._task = self.loop.create_task(self._run())
+        # base.Worker.init_process() sets self.booted = True before
+        # invoking run(), but for the aiohttp worker the real boot work
+        # (factory call, runner setup, binding sockets) happens here.
+        # Reset until _run() reaches the serve loop so that the arbiter
+        # can tell a startup failure from a normal worker exit and
+        # halt instead of endlessly respawning workers.
+        self.booted = False
 
-        try:  # ignore all finalization problems
+        self._task = self.loop.create_task(self._run())
+        try:
             self.loop.run_until_complete(self._task)
-        except Exception:
-            self.log.exception("Exception in gunicorn worker")
-        self.loop.run_until_complete(self.loop.shutdown_asyncgens())
-        self.loop.close()
+        finally:
+            self.loop.run_until_complete(self.loop.shutdown_asyncgens())
+            self.loop.close()
 
         sys.exit(self.exit_code)
 
@@ -117,6 +123,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 ssl_context=ctx,
             )
             await site.start()
+
+        # Sockets are bound; tell the arbiter the worker is ready to
+        # accept requests. Any failure before this point propagates out
+        # of run() with self.booted=False so the arbiter exits with
+        # WORKER_BOOT_ERROR instead of treating this as a clean exit.
+        self.booted = True
 
         # If our parent changed then we shut down.
         pid = os.getpid()
