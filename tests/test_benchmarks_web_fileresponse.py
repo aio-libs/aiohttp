@@ -2,9 +2,7 @@
 
 import asyncio
 import pathlib
-import ssl
-from dataclasses import dataclass
-from typing import TYPE_CHECKING, TypedDict
+from typing import TYPE_CHECKING
 
 import pytest
 from multidict import CIMultiDict
