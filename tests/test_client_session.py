@@ -794,6 +794,41 @@ async def test_client_session_timeout_default_args(loop: Any) -> None:
     await session1.close()
 
 
+def test_client_timeout_default_total() -> None:
+    assert client.ClientTimeout().total == 5 * 60
+
+
+def test_client_timeout_default_total_raised_by_sock_read() -> None:
+    # A sock_read larger than the default total should raise total to match,
+    # so the more specific timeout isn't silently capped.
+    timeout = client.ClientTimeout(sock_read=600)
+    assert timeout.total == 600
+    assert timeout.sock_read == 600
+
+
+def test_client_timeout_default_total_preserved_when_others_lower() -> None:
+    timeout = client.ClientTimeout(sock_read=30)
+    assert timeout.total == 5 * 60
+    assert timeout.sock_read == 30
+
+
+def test_client_timeout_default_total_uses_max_of_others() -> None:
+    timeout = client.ClientTimeout(connect=10, sock_connect=700, sock_read=400)
+    assert timeout.total == 700
+
+
+def test_client_timeout_explicit_total_raised_by_other() -> None:
+    # Even when total is set explicitly, it is raised to cover a larger
+    # per-stage timeout so the latter isn't silently capped.
+    timeout = client.ClientTimeout(total=10, sock_read=600)
+    assert timeout.total == 600
+
+
+def test_client_timeout_explicit_total_none_respected() -> None:
+    timeout = client.ClientTimeout(total=None, sock_read=600)
+    assert timeout.total is None
+
+
 async def test_client_session_timeout_argument() -> None:
     session = ClientSession(timeout=500)
     assert session.timeout == 500

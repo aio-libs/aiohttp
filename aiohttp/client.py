@@ -153,6 +153,23 @@ class ClientTimeout:
     # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
     # to overwrite the defaults
 
+    def __post_init__(self) -> None:
+        # Ensure total is never lower than a more specific timeout, otherwise
+        # the latter would be silently capped by total and rendered useless.
+        # total=None means the user explicitly disabled the total timeout.
+        if self.total is None:
+            return
+        object.__setattr__(
+            self,
+            "total",
+            max(
+                self.total,
+                self.connect or 0,
+                self.sock_read or 0,
+                self.sock_connect or 0,
+            ),
+        )
+
 
 _RetType = TypeVar("_RetType")
 
