@@ -69,7 +69,7 @@ coverage==7.14.1
     #   pytest-cov
 cryptography==48.0.0
     # via trustme
-distlib==0.4.1
+distlib==0.4.2
     # via virtualenv
 docutils==0.21.2
     # via
