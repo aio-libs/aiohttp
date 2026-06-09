@@ -1,0 +1,45 @@
+name: CIFuzz
+
+on:
+  push:
+    branches:
+      - 'master'
+      - '[0-9].[0-9]+'  # matches to backport branches, e.g. 3.6
+  pull_request:
+    branches:
+      - 'master'
+      - '[0-9].[0-9]+'
+
+permissions: {}
+
+jobs:
+  Fuzzing:
+    name: Fuzzing (${{ matrix.sanitizer }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address, undefined]
+    steps:
+      - name: Build Fuzzers
+        id: build
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@58d079c5c8f917ffe98ab03fdb1e8533ad34e2aa
+        with:
+          oss-fuzz-project-name: 'aiohttp'
+          language: python
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Run Fuzzers
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@58d079c5c8f917ffe98ab03fdb1e8533ad34e2aa
+        with:
+          oss-fuzz-project-name: 'aiohttp'
+          language: python
+          fuzz-seconds: 600
+          sanitizer: ${{ matrix.sanitizer }}
+      - name: Upload Crash
+        uses: actions/upload-artifact@v4
+        if: failure() && steps.build.outcome == 'success'
+        with:
+          name: ${{ matrix.sanitizer }}-artifacts
+          path: ./out/artifacts
