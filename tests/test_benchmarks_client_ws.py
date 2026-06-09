@@ -22,7 +22,7 @@ else:
 
 @pytest.fixture
 def aiohttp_client_sync(
-    event_loop: asyncio.AbstractEventLoop,
+    loop: asyncio.AbstractEventLoop,
     aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
 ) -> Iterator[
     Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
@@ -49,7 +49,7 @@ def aiohttp_client_sync(
     yield go
 
     while clients:
-        event_loop.run_until_complete(clients.pop().close())
+        loop.run_until_complete(clients.pop().close())
 
 
 class _ConnArgs(TypedDict, total=False):
@@ -110,7 +110,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
 @pytest.mark.parametrize("msg_size", [6, MSG_SIZE * 4], ids=["small", "large"])
 def test_one_thousand_round_trip_websocket_binary_messages(
     loop: asyncio.AbstractEventLoop,
-    aiohttp_client: AiohttpClient,
+    aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
     msg_size: int,
