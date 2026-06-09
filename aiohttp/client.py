@@ -258,7 +258,7 @@ class ClientTimeout:
             ),
         )
 
-        if self.total is not None and self.total == 0:
+        if self.total == 0:
             raise ValueError(
                 "total timeout must be a positive number or None to disable, "
                 "got 0. Using 0 to disable timeouts is no longer supported, "
