@@ -265,6 +265,7 @@ class ClientTimeout:
                 "use None instead."
             )
 
+
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
