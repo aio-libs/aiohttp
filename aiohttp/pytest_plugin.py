@@ -5,7 +5,7 @@ import ssl
 import warnings
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
-from typing import Any, Protocol, overload, TypedDict
+from typing import Any, Protocol, TypedDict, overload
 
 import pytest
 
