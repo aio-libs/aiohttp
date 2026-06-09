@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      issues: write
     strategy:
       fail-fast: false
       matrix:
@@ -43,3 +44,32 @@ jobs:
         with:
           name: ${{ matrix.sanitizer }}-artifacts
           path: ./out/artifacts
+      - name: Open issue on post-merge crash
+        if: >-
+          failure()
+          && steps.build.outcome == 'success'
+          && github.event_name == 'push'
+        uses: actions/github-script@v9
+        env:
+          SANITIZER: ${{ matrix.sanitizer }}
+        with:
+          script: |
+            const branch = context.ref.replace('refs/heads/', '');
+            const shortSha = context.sha.substring(0, 7);
+            const sanitizer = process.env.SANITIZER;
+            const runUrl =
+              `${context.serverUrl}/${context.repo.owner}` +
+              `/${context.repo.repo}/actions/runs/${context.runId}`;
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `CIFuzz: ${sanitizer} crash on ${branch} @ ${shortSha}`,
+              body: [
+                `CIFuzz found a crash on \`${branch}\` at ${context.sha}.`,
+                ``,
+                `- Sanitizer: \`${sanitizer}\``,
+                `- Run: ${runUrl}`,
+                `- Download \`${sanitizer}-artifacts\` from the run page for the reproducer.`,
+              ].join('\n'),
+              type: 'Bug',
+            });
