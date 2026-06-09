@@ -1122,10 +1122,6 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            # The parser already tokenizes the Connection header per
-            # RFC 9110 §7.6.1 and records the "upgrade" token in resp._upgraded,
-            # so a response like "Connection: upgrade, keep-alive" is accepted.
-            # This mirrors the server-side check in web_ws.
             if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
