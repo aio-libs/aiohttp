@@ -25,13 +25,13 @@ jobs:
     steps:
       - name: Build Fuzzers
         id: build
-        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@58d079c5c8f917ffe98ab03fdb1e8533ad34e2aa
+        uses: google/oss-fuzz/infra/cifuzz/actions/build_fuzzers@master
         with:
           oss-fuzz-project-name: 'aiohttp'
           language: python
           sanitizer: ${{ matrix.sanitizer }}
       - name: Run Fuzzers
-        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@58d079c5c8f917ffe98ab03fdb1e8533ad34e2aa
+        uses: google/oss-fuzz/infra/cifuzz/actions/run_fuzzers@master
         with:
           oss-fuzz-project-name: 'aiohttp'
           language: python
