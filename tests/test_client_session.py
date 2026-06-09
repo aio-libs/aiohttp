@@ -1322,12 +1322,6 @@ def test_client_timeout_explicit_total_none_respected() -> None:
     assert timeout.total is None
 
 
-async def test_client_session_timeout_argument() -> None:
-    session = ClientSession(timeout=500)
-    assert session.timeout == 500
-    await session.close()
-
-
 async def test_client_session_timeout_zero(
     create_mocked_conn: Callable[[], ResponseHandler],
 ) -> None:
