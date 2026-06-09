@@ -24,7 +24,7 @@ except ImportError:  # pragma: no cover
 try:
     import aiofastnet
 except ImportError:
-    aiofastnet = None
+    aiofastnet = None  # type: ignore[assignment]
 
 
 async def create_server(

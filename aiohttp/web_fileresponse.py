@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 try:
     import aiofastnet
 except ImportError:
-    aiofastnet = None
+    aiofastnet = None  # type: ignore[assignment]
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]

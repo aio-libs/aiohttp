@@ -56,7 +56,7 @@ from .resolver import DefaultResolver
 try:
     import aiofastnet
 except ImportError:
-    aiofastnet = None
+    aiofastnet = None  # type: ignore[assignment]
 
 
 if sys.version_info >= (3, 12):

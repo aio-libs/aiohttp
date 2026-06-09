@@ -66,7 +66,7 @@ else:
 try:
     import aiofastnet
 except ImportError:
-    aiofastnet = None
+    aiofastnet = None  # type: ignore[assignment]
 
 
 ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
