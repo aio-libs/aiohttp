@@ -490,9 +490,6 @@ class ClientResponse(HeadersMixin):
         # headers
         self._headers = message.headers
         self._raw_headers = message.raw_headers
-
-        # The parser tokenizes the Connection header (RFC 9110 §7.6.1); keep its
-        # upgrade decision so the WebSocket handshake can reuse it.
         self._upgraded = message.upgrade
 
         # payload
