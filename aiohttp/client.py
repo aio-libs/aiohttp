@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
