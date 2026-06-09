@@ -1,0 +1,2 @@
+-r base.in
+-r test-common.in

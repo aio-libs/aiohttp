@@ -1,1 +1,0 @@
-Remove the dependency on `which(1)` program in favor of the shell built-in `command -v` whose presence is guaranteed by POSIX.

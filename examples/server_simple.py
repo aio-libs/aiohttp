@@ -13,11 +13,11 @@ async def wshandle(request: web.Request) -> web.StreamResponse:
     await ws.prepare(request)
 
     async for msg in ws:
-        if msg.type == web.WSMsgType.TEXT:
+        if msg.type is web.WSMsgType.TEXT:
             await ws.send_str(f"Hello, {msg.data}")
-        elif msg.type == web.WSMsgType.BINARY:
+        elif msg.type is web.WSMsgType.BINARY:
             await ws.send_bytes(msg.data)
-        elif msg.type == web.WSMsgType.CLOSE:
+        elif msg.type is web.WSMsgType.CLOSE:
             break
 
     return ws

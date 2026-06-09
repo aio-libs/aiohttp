@@ -1,0 +1,3 @@
+-r doc.in
+
+sphinxcontrib-spelling; platform_system!="Windows"  # We only use it in GitHub Actions CI/CD

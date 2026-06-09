@@ -555,10 +555,10 @@ class TestParseContentDisposition:
 
     def test_attfncontenc(self) -> None:
         disptype, params = parse_content_disposition(
-            "attachment; filename*0*=UTF-8" 'foo-%c3%a4; filename*1=".html"'
+            "attachment; filename*0*=UTF-8" + 'foo-%c3%a4; filename*1=".html"'
         )
         assert "attachment" == disptype
-        assert {"filename*0*": "UTF-8" "foo-%c3%a4", "filename*1": ".html"} == params
+        assert {"filename*0*": "UTF-8foo-%c3%a4", "filename*1": ".html"} == params
 
     def test_attfncontlz(self) -> None:
         disptype, params = parse_content_disposition(
@@ -590,14 +590,14 @@ class TestParseContentDisposition:
 
     def test_attfnboth(self) -> None:
         disptype, params = parse_content_disposition(
-            'attachment; filename="foo-ae.html";' " filename*=UTF-8''foo-%c3%a4.html"
+            'attachment; filename="foo-ae.html";' + " filename*=UTF-8''foo-%c3%a4.html"
         )
         assert "attachment" == disptype
         assert {"filename": "foo-ae.html", "filename*": "foo-ä.html"} == params
 
     def test_attfnboth2(self) -> None:
         disptype, params = parse_content_disposition(
-            "attachment; filename*=UTF-8''foo-%c3%a4.html;" ' filename="foo-ae.html"'
+            "attachment; filename*=UTF-8''foo-%c3%a4.html;" + ' filename="foo-ae.html"'
         )
         assert "attachment" == disptype
         assert {"filename": "foo-ae.html", "filename*": "foo-ä.html"} == params

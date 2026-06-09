@@ -40,26 +40,17 @@
 
       https://pypi.org/project/Brotli/
 
+   brotlicffi
+
+      An alternative implementation of :term:`Brotli` built using the CFFI
+      library. This implementation supports PyPy correctly.
+
+      https://pypi.org/project/brotlicffi/
+
    callable
 
       Any object that can be called. Use :func:`callable` to check
       that.
-
-   charset-normalizer
-
-       The Real First Universal Charset Detector.
-       Open, modern and actively maintained alternative to Chardet.
-
-       https://pypi.org/project/charset-normalizer/
-
-   cchardet
-
-       cChardet is high speed universal character encoding detector -
-       binding to charsetdetect.
-
-       https://pypi.python.org/pypi/cchardet/
-
-       .. include:: _snippets/cchardet-unmaintained-admonition.rst
 
    gunicorn
 
@@ -159,6 +150,17 @@
 
 Environment Variables
 =====================
+
+.. envvar:: AIOHTTP_NO_EXTENSIONS
+
+   If set to a non-empty value while building from source, aiohttp will be built without speedups
+   written as C extensions. This option is primarily useful for debugging.
+
+.. envvar:: AIOHTTP_USE_SYSTEM_DEPS
+
+   If set to a non-empty value while building from source, aiohttp will be built against
+   the system installation of llhttp rather than the vendored library. This option is primarily
+   meant to be used by downstream redistributors.
 
 .. envvar:: NETRC
 

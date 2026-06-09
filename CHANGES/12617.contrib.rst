@@ -1,0 +1,9 @@
+Restructured the root :file:`CLAUDE.md` to import contributor
+context from a shared ``aio-libs`` layer
+(``~/.claude/aio-libs/context.md``), a project-specific layer
+(``~/.claude/aio-libs/aiohttp/context.md``), the in-tree
+:file:`AGENTS.md`, and an optional per-checkout
+:file:`CLAUDE.local.md` override (added to :file:`.gitignore`),
+so shared ``aio-libs`` guidance can live outside the repository
+while project rules continue to load automatically in Claude
+Code -- by :user:`aiolibsbot`.

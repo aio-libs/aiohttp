@@ -1,0 +1,3 @@
+Removed legacy pickle loading from :py:meth:`~aiohttp.CookieJar.load`.
+:py:meth:`~aiohttp.CookieJar.load` now exclusively uses JSON format
+-- by :user:`YuvalElbar6`.

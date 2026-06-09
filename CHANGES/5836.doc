@@ -1,1 +1,0 @@
-Fix the `ClientResponse.release`'s type in the doc. Change from `comethod` to `method`.

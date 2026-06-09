@@ -10,6 +10,7 @@ The page contains all information about aiohttp Server API:
 
 .. toctree::
    :name: server
+   :maxdepth: 3
 
    Tutorial <https://demos.aiohttp.org>
    Quickstart <web_quickstart>

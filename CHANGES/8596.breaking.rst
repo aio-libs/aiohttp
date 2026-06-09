@@ -1,0 +1,1 @@
+Removed old async compatibility from ``ClientResponse.release()`` -- by :user:`Dreamsorcerer`.

@@ -1,25 +1,27 @@
 import asyncio
 import collections
+import sys
 import warnings
-from typing import Awaitable, Callable, Generic, List, Optional, Tuple, TypeVar
-
-from typing_extensions import Final
+from collections.abc import Awaitable, Callable
+from typing import Final, Generic, TypeVar
 
 from .base_protocol import BaseProtocol
-from .helpers import BaseTimerContext, set_exception, set_result
+from .helpers import (
+    _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
+    BaseTimerContext,
+    TimerNoop,
+    set_exception,
+    set_result,
+)
+from .http_exceptions import LineTooLong
 from .log import internal_logger
-
-try:  # pragma: no cover
-    from typing import Deque
-except ImportError:
-    from typing_extensions import Deque
 
 __all__ = (
     "EMPTY_PAYLOAD",
     "EofStream",
     "StreamReader",
     "DataQueue",
-    "FlowControlDataQueue",
 )
 
 _T = TypeVar("_T")
@@ -30,6 +32,9 @@ class EofStream(Exception):
 
 
 class AsyncStreamIterator(Generic[_T]):
+
+    __slots__ = ("read_func",)
+
     def __init__(self, read_func: Callable[[], Awaitable[_T]]) -> None:
         self.read_func = read_func
 
@@ -47,43 +52,23 @@ class AsyncStreamIterator(Generic[_T]):
 
 
 class ChunkTupleAsyncStreamIterator:
+
+    __slots__ = ("_stream",)
+
     def __init__(self, stream: "StreamReader") -> None:
         self._stream = stream
 
     def __aiter__(self) -> "ChunkTupleAsyncStreamIterator":
         return self
 
-    async def __anext__(self) -> Tuple[bytes, bool]:
+    async def __anext__(self) -> tuple[bytes, bool]:
         rv = await self._stream.readchunk()
         if rv == (b"", False):
             raise StopAsyncIteration
         return rv
 
 
-class AsyncStreamReaderMixin:
-    def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
-
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(
-            lambda: self.read(n)  # type: ignore[attr-defined,no-any-return]
-        )
-
-    def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Yield all available data as soon as it is received."""
-        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
-
-    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Yield chunks of data as they are received by the server.
-
-        The yielded objects are tuples
-        of (bytes, bool) as returned by the StreamReader.readchunk method.
-        """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
-
-
-class StreamReader(AsyncStreamReaderMixin):
+class StreamReader:
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
@@ -97,33 +82,60 @@ class StreamReader(AsyncStreamReaderMixin):
 
     """
 
-    total_bytes = 0
+    __slots__ = (
+        "_protocol",
+        "_low_water",
+        "_high_water",
+        "_low_water_chunks",
+        "_high_water_chunks",
+        "_loop",
+        "_size",
+        "_cursor",
+        "_http_chunk_splits",
+        "_buffer",
+        "_buffer_offset",
+        "_eof",
+        "_waiter",
+        "_eof_waiter",
+        "_exception",
+        "_timer",
+        "_eof_callbacks",
+        "_eof_counter",
+        "total_bytes",
+        "total_compressed_bytes",
+    )
 
     def __init__(
         self,
         protocol: BaseProtocol,
         limit: int,
         *,
-        timer: Optional[BaseTimerContext] = None,
+        timer: BaseTimerContext | None = None,
         loop: asyncio.AbstractEventLoop,
     ) -> None:
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
-        if loop is None:
-            loop = asyncio.get_event_loop()
+        # Use max(4, ...) because there's always at least 1 chunk split remaining
+        # (the current position), so we need low_water >= 2 to allow resume.
+        # limit // 16 gets us a reasonable value of 16k with default 256KiB limit.
+        self._high_water_chunks = max(4, limit // 16)
+        self._low_water_chunks = self._high_water_chunks // 2
         self._loop = loop
         self._size = 0
         self._cursor = 0
-        self._http_chunk_splits: Optional[List[int]] = None
-        self._buffer: Deque[bytes] = collections.deque()
+        self._http_chunk_splits: collections.deque[int] | None = None
+        self._buffer: collections.deque[bytes] = collections.deque()
         self._buffer_offset = 0
         self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._eof_waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
-        self._timer = timer
-        self._eof_callbacks: List[Callable[[], None]] = []
+        self._waiter: asyncio.Future[None] | None = None
+        self._eof_waiter: asyncio.Future[None] | None = None
+        self._exception: type[BaseException] | BaseException | None = None
+        self._timer = TimerNoop() if timer is None else timer
+        self._eof_callbacks: list[Callable[[], None]] = []
+        self._eof_counter = 0
+        self.total_bytes = 0
+        self.total_compressed_bytes: int | None = None
 
     def __repr__(self) -> str:
         info = [self.__class__.__name__]
@@ -131,7 +143,7 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2**16:  # default limit
+        if self._low_water != DEFAULT_CHUNK_SIZE:
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
@@ -139,25 +151,55 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
-    def get_read_buffer_limits(self) -> Tuple[int, int]:
+    def __aiter__(self) -> AsyncStreamIterator[bytes]:
+        return AsyncStreamIterator(self.readline)
+
+    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n."""
+        self.set_read_chunk_size(n)
+        return AsyncStreamIterator(lambda: self.read(n))
+
+    def iter_any(self) -> AsyncStreamIterator[bytes]:
+        """Yield all available data as soon as it is received."""
+        return AsyncStreamIterator(self.readany)
+
+    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
+        """Yield chunks of data as they are received by the server.
+
+        The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """
+        return ChunkTupleAsyncStreamIterator(self)
+
+    def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
 
-    def exception(self) -> Optional[BaseException]:
+    def set_read_chunk_size(self, n: int) -> None:
+        """Raise buffer limits to match the consumer's chunk size."""
+        if n > self._low_water:
+            self._low_water = n
+            self._high_water = n * 2
+
+    def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: type[BaseException] | BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._exception = exc
         self._eof_callbacks.clear()
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
         waiter = self._eof_waiter
         if waiter is not None:
             self._eof_waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -180,6 +222,9 @@ class StreamReader(AsyncStreamReaderMixin):
         if waiter is not None:
             self._eof_waiter = None
             set_result(waiter, None)
+
+        # At EOF the parser is done, there won't be unprocessed data.
+        self._protocol.resume_reading(resume_parser=False)
 
         for cb in self._eof_callbacks:
             try:
@@ -208,6 +253,12 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._eof_waiter = None
 
+    @property
+    def total_raw_bytes(self) -> int:
+        if self.total_compressed_bytes is None:
+            return self.total_bytes
+        return self.total_compressed_bytes
+
     def unread_data(self, data: bytes) -> None:
         """rollback reading some data from stream, inserting it to buffer head."""
         warnings.warn(
@@ -227,32 +278,33 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    # TODO: size is ignored, remove the param later
-    def feed_data(self, data: bytes, size: int = 0) -> None:
+    def feed_data(self, data: bytes) -> bool:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
-            return
+            return False
 
-        self._size += len(data)
+        data_len = len(data)
+        self._size += data_len
         self._buffer.append(data)
-        self.total_bytes += len(data)
+        self.total_bytes += data_len
 
         waiter = self._waiter
         if waiter is not None:
             self._waiter = None
             set_result(waiter, None)
 
-        if self._size > self._high_water and not self._protocol._reading_paused:
+        if self._size > self._high_water:
             self._protocol.pause_reading()
+        return False
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
             if self.total_bytes:
                 raise RuntimeError(
-                    "Called begin_http_chunk_receiving when" "some data was already fed"
+                    "Called begin_http_chunk_receiving when some data was already fed"
                 )
-            self._http_chunk_splits = []
+            self._http_chunk_splits = collections.deque()
 
     def end_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
@@ -278,6 +330,12 @@ class StreamReader(AsyncStreamReaderMixin):
 
         self._http_chunk_splits.append(self.total_bytes)
 
+        # If we get too many small chunks before self._high_water is reached, then any
+        # .read() call becomes computationally expensive, and could block the event loop
+        # for too long, hence an additional self._high_water_chunks here.
+        if len(self._http_chunk_splits) > self._high_water_chunks:
+            self._protocol.pause_reading()
+
         # wake up readchunk when end of http chunk received
         waiter = self._waiter
         if waiter is not None:
@@ -285,6 +343,9 @@ class StreamReader(AsyncStreamReaderMixin):
             set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
+        if not self._protocol.connected:
+            raise RuntimeError("Connection closed.")
+
         # StreamReader uses a future to link the protocol feed_data() method
         # to a read coroutine. Running two read coroutines at the same time
         # would have an unexpected behaviour. It would not possible to know
@@ -297,18 +358,17 @@ class StreamReader(AsyncStreamReaderMixin):
 
         waiter = self._waiter = self._loop.create_future()
         try:
-            if self._timer:
-                with self._timer:
-                    await waiter
-            else:
+            with self._timer:
                 await waiter
         finally:
             self._waiter = None
 
-    async def readline(self) -> bytes:
-        return await self.readuntil()
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
+        return await self.readuntil(max_size=max_line_length)
 
-    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+    async def readuntil(
+        self, separator: bytes = b"\n", *, max_size: int | None = None
+    ) -> bytes:
         seplen = len(separator)
         if seplen == 0:
             raise ValueError("Separator should be at least one-byte string")
@@ -319,6 +379,7 @@ class StreamReader(AsyncStreamReaderMixin):
         chunk = b""
         chunk_size = 0
         not_enough = True
+        max_size = max_size or self._high_water
 
         while not_enough:
             while self._buffer and not_enough:
@@ -333,8 +394,8 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if chunk_size > self._high_water:
-                    raise ValueError("Chunk too big")
+                if chunk_size > max_size:
+                    raise LineTooLong(chunk[:100] + b"...", max_size)
 
             if self._eof:
                 break
@@ -352,10 +413,8 @@ class StreamReader(AsyncStreamReaderMixin):
             return b""
 
         if n < 0:
-            # This used to just loop creating a new waiter hoping to
-            # collect everything in self._buffer, but that would
-            # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.readany() until EOF.
+            # Reading everything — remove decompression chunk limit.
+            self.set_read_chunk_size(sys.maxsize)
             blocks = []
             while True:
                 block = await self.readany()
@@ -364,6 +423,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 blocks.append(block)
             return b"".join(blocks)
 
+        self.set_read_chunk_size(n)
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data
@@ -384,7 +444,7 @@ class StreamReader(AsyncStreamReaderMixin):
 
         return self._read_nowait(-1)
 
-    async def readchunk(self) -> Tuple[bytes, bool]:
+    async def readchunk(self) -> tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk).
 
         When chunked transfer
@@ -397,7 +457,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 raise self._exception
 
             while self._http_chunk_splits:
-                pos = self._http_chunk_splits.pop(0)
+                pos = self._http_chunk_splits.popleft()
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
@@ -422,7 +482,7 @@ class StreamReader(AsyncStreamReaderMixin):
         if self._exception is not None:
             raise self._exception
 
-        blocks: List[bytes] = []
+        blocks: list[bytes] = []
         while n > 0:
             block = await self.read(n)
             if not block:
@@ -463,44 +523,64 @@ class StreamReader(AsyncStreamReaderMixin):
         else:
             data = self._buffer.popleft()
 
-        self._size -= len(data)
-        self._cursor += len(data)
+        data_len = len(data)
+        self._size -= data_len
+        self._cursor += data_len
 
         chunk_splits = self._http_chunk_splits
         # Prevent memory leak: drop useless chunk splits
         while chunk_splits and chunk_splits[0] < self._cursor:
-            chunk_splits.pop(0)
+            chunk_splits.popleft()
 
-        if self._size < self._low_water and self._protocol._reading_paused:
+        if self._size < self._low_water and (
+            self._http_chunk_splits is None
+            or len(self._http_chunk_splits) < self._low_water_chunks
+        ):
             self._protocol.resume_reading()
         return data
 
     def _read_nowait(self, n: int) -> bytes:
         """Read not more than n bytes, or whole buffer if n == -1"""
-        chunks = []
+        self._timer.assert_timeout()
 
+        if n == -1:
+            # Drain only chunks present now; _read_nowait_chunk() can
+            # re-entrantly resume_reading() and refill the buffer.
+            count = len(self._buffer)
+            if count == 1:
+                return self._read_nowait_chunk(-1)
+            return b"".join([self._read_nowait_chunk(-1) for _ in range(count)])
+
+        chunks: list[bytes] = []
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
-            if n != -1:
-                n -= len(chunk)
-                if n == 0:
-                    break
+            n -= len(chunk)
+            if n == 0:
+                break
 
         return b"".join(chunks) if chunks else b""
 
 
 class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
+
+    __slots__ = ("_read_eof_chunk",)
+
     def __init__(self) -> None:
-        pass
+        self._read_eof_chunk = False
+        self.total_bytes = 0
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> BaseException | None:
         return None
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: type[BaseException] | BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         pass
 
     def on_eof(self, callback: Callable[[], None]) -> None:
@@ -521,10 +601,13 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes, n: int = 0) -> None:
-        pass
+    def feed_data(self, data: bytes) -> bool:
+        return False
 
-    async def readline(self) -> bytes:
+    def set_read_chunk_size(self, n: int) -> None:
+        return
+
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return b""
 
     async def read(self, n: int = -1) -> bytes:
@@ -535,7 +618,11 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def readany(self) -> bytes:
         return b""
 
-    async def readchunk(self) -> Tuple[bytes, bool]:
+    async def readchunk(self) -> tuple[bytes, bool]:
+        if not self._read_eof_chunk:
+            self._read_eof_chunk = True
+            return (b"", False)
+
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:
@@ -554,10 +641,9 @@ class DataQueue(Generic[_T]):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._eof = False
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._exception: Optional[BaseException] = None
-        self._size = 0
-        self._buffer: Deque[Tuple[_T, int]] = collections.deque()
+        self._waiter: asyncio.Future[None] | None = None
+        self._exception: type[BaseException] | BaseException | None = None
+        self._buffer: collections.deque[_T] = collections.deque()
 
     def __len__(self) -> int:
         return len(self._buffer)
@@ -568,32 +654,29 @@ class DataQueue(Generic[_T]):
     def at_eof(self) -> bool:
         return self._eof and not self._buffer
 
-    def exception(self) -> Optional[BaseException]:
+    def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
 
-    def set_exception(self, exc: BaseException) -> None:
+    def set_exception(
+        self,
+        exc: type[BaseException] | BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
         self._eof = True
         self._exception = exc
-
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
-            set_exception(waiter, exc)
+            set_exception(waiter, exc, exc_cause)
 
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        self._size += size
-        self._buffer.append((data, size))
-
-        waiter = self._waiter
-        if waiter is not None:
+    def feed_data(self, data: _T) -> None:
+        self._buffer.append(data)
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
     def feed_eof(self) -> None:
         self._eof = True
-
-        waiter = self._waiter
-        if waiter is not None:
+        if (waiter := self._waiter) is not None:
             self._waiter = None
             set_result(waiter, None)
 
@@ -606,44 +689,11 @@ class DataQueue(Generic[_T]):
             except (asyncio.CancelledError, asyncio.TimeoutError):
                 self._waiter = None
                 raise
-
         if self._buffer:
-            data, size = self._buffer.popleft()
-            self._size -= size
-            return data
-        else:
-            if self._exception is not None:
-                raise self._exception
-            else:
-                raise EofStream
+            return self._buffer.popleft()
+        if self._exception is not None:
+            raise self._exception
+        raise EofStream
 
     def __aiter__(self) -> AsyncStreamIterator[_T]:
         return AsyncStreamIterator(self.read)
-
-
-class FlowControlDataQueue(DataQueue[_T]):
-    """FlowControlDataQueue resumes and pauses an underlying stream.
-
-    It is a destination for parsed data.
-    """
-
-    def __init__(
-        self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
-    ) -> None:
-        super().__init__(loop=loop)
-
-        self._protocol = protocol
-        self._limit = limit * 2
-
-    def feed_data(self, data: _T, size: int = 0) -> None:
-        super().feed_data(data, size)
-
-        if self._size > self._limit and not self._protocol._reading_paused:
-            self._protocol.pause_reading()
-
-    async def read(self) -> _T:
-        try:
-            return await super().read()
-        finally:
-            if self._size < self._limit and self._protocol._reading_paused:
-                self._protocol.resume_reading()
