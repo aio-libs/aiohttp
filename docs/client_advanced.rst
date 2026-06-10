@@ -641,14 +641,50 @@ If you need to skip both ssl related errors
   except aiohttp.ClientSSLError as e:
       assert isinstance(e, ssl.CertificateError)
 
+Example: Use truststore for system trust stores
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, *aiohttp* relies on :func:`ssl.create_default_context`, which uses
+OpenSSL's bundled certificate paths. On macOS and Windows this set does not
+include certificates that the user, an administrator, or an MDM solution has
+installed into the operating system's native trust store (the macOS Keychain or
+the Windows certificate stores). As a result, requests can fail with
+``CERTIFICATE_VERIFY_FAILED`` in environments where ``curl`` and the system
+browsers succeed -- a common situation behind enterprise TLS-intercepting
+proxies that rely on a locally-installed root CA.
+
+The `truststore <https://truststore.readthedocs.io/>`_ library provides an
+``SSLContext`` that delegates verification to the OS-native APIs. Install the
+optional dependency and opt in per connector::
+
+  pip install aiohttp[truststore]
+
+Then pass ``use_truststore=True`` when constructing the connector::
+
+  conn = aiohttp.TCPConnector(use_truststore=True)
+  async with aiohttp.ClientSession(connector=conn) as sess:
+      ...
+
+The default behaviour is unchanged -- without ``use_truststore=True`` the
+verified context is the stdlib :func:`ssl.create_default_context`, built once
+at import time. Opting in trades that one-shot import-time cost for per-handshake
+file I/O on the event loop (truststore's context re-probes trust paths inside
+``wrap_socket``), so leave the flag off unless OS-managed roots are required.
+
+An explicit :class:`ssl.SSLContext` passed via ``ssl=`` always wins over
+``use_truststore=True``. The flag is rejected with ``ssl=False`` because
+truststore is only meaningful for verified TLS.
+
 Example: Use certifi
 ^^^^^^^^^^^^^^^^^^^^
 
-By default, Python uses the system CA certificates. In rare cases, these may not be
-installed or Python is unable to find them, resulting in a error like
-`ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate`
+In environments where the OpenSSL default certificate paths are missing or
+unreadable, requests can fail with::
 
-One way to work around this problem is to use the `certifi` package::
+  ssl.SSLCertVerificationError: [SSL: CERTIFICATE_VERIFY_FAILED] certificate verify failed: unable to get local issuer certificate
+
+One way to work around this problem is to bundle a known-good certificate
+authority list via the `certifi` package::
 
   ssl_context = ssl.create_default_context(cafile=certifi.where())
   async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:

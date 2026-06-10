@@ -12,6 +12,7 @@ al
 alives
 api
 api’s
+APIs
 app
 app’s
 apps
@@ -158,6 +159,7 @@ httpretty
 https
 hostname
 impl
+importable
 incapsulates
 Indices
 infos
@@ -184,6 +186,7 @@ keepalive
 keepalived
 keepalives
 keepaliving
+Keychain
 kib
 KiB
 kwarg
@@ -199,8 +202,10 @@ lookup
 lookups
 lossless
 lowercased
+macOS
 Mako
 manylinux
+MDM
 metadata
 MiB
 microservice
@@ -236,6 +241,7 @@ normalizer
 nowait
 OAuth
 Online
+OpenSSL
 optimizations
 orjson
 os
@@ -329,6 +335,7 @@ ssl
 SSLContext
 startup
 stateful
+stdlib
 storages
 subapplication
 subclassed
@@ -362,6 +369,7 @@ toolbar
 toplevel
 towncrier
 tp
+truststore
 tuples
 UI
 un

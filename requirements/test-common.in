@@ -8,4 +8,5 @@ pytest-xdist
 pytest_codspeed
 python-on-whales
 trustme; platform_machine != "i686" # no 32-bit wheels
+truststore; implementation_name == "cpython"
 zlib_ng

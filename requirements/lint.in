@@ -13,6 +13,7 @@ pytest_codspeed
 python-on-whales
 slotscheck
 trustme
+truststore; implementation_name == "cpython"
 uvloop; platform_system != "Windows"
 valkey
 zlib_ng
