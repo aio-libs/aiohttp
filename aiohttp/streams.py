@@ -586,6 +586,13 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         self._read_eof_chunk = False
         self.total_bytes = 0
 
+    # Shadow the inherited slot with a read-only property so the EMPTY_PAYLOAD
+    # singleton can't be polluted with a per-response hook that would leak
+    # across requests. EmptyStreamReader never delivers a chunk anyway.
+    @property
+    def _on_chunk_received(self) -> None:
+        return None
+
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__
 

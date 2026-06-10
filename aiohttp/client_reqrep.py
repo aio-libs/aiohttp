@@ -496,8 +496,6 @@ class ClientResponse(HeadersMixin):
         # payload
         self.content = payload
 
-        # Setting a per-response hook on the singleton would leak
-        # across requests, and its read methods never deliver a chunk anyway.
         if self._traces and payload is not EMPTY_PAYLOAD:
             traces = self._traces
             method = self.method
