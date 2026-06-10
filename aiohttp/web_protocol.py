@@ -612,11 +612,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
-            if not isinstance(message, _ErrInfo):
-                request_handler = self._request_handler
-            else:
+            err_info = None
+            if isinstance(message, _ErrInfo):
                 # make request_factory work
-                request_handler = self._make_error_handler(message)
+                err_info = message
                 message = ERROR
 
             # Important don't hold a reference to the current task
@@ -629,6 +628,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 writer,
                 self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
             )
+            if err_info is not None and getattr(request, "_match_info", None) is None:
+                request_handler: _RequestHandler[_Request] = cast(
+                    _RequestHandler[_Request], self._make_error_handler(err_info)
+                )
+            else:
+                request_handler = self._request_handler
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)

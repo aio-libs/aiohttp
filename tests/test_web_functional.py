@@ -2227,6 +2227,42 @@ async def test_signal_on_error_handler(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
+async def test_signal_on_parser_error_handler(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def middleware(
+        request: web.Request,
+        handler: Handler,
+    ) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPBadRequest as exc:
+            exc.headers["X-Middleware"] = "val"
+            raise
+
+    async def on_prepare(request: web.Request, response: web.StreamResponse) -> None:
+        response.headers["X-Custom"] = "val"
+        response.headers.pop("Server", None)
+
+    app = web.Application(middlewares=[middleware])
+    app.on_response_prepare.append(on_prepare)
+
+    server = await aiohttp_server(app)
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(b"GE T / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        await writer.drain()
+        response = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+    assert b"400 Bad Request" in response
+    assert b"X-Middleware: val" in response
+    assert b"X-Custom: val" in response
+    assert b"\r\nServer:" not in response
+
+
 @pytest.mark.skipif(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",

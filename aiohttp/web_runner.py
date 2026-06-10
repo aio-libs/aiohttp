@@ -11,10 +11,12 @@ from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .typedefs import PathLike
 from .web_app import Application
+from .web_exceptions import HTTPBadRequest
 from .web_log import AccessLogger
-from .web_protocol import RequestHandler
+from .web_protocol import ERROR, RequestHandler
 from .web_request import BaseRequest, Request
 from .web_server import Server
+from .web_urldispatcher import MatchInfoError
 
 try:
     from ssl import SSLContext
@@ -439,7 +441,7 @@ class AppRunner(BaseRunner[Request]):
         _cls: type[Request] = Request,
     ) -> Request:
         loop = asyncio.get_running_loop()
-        return _cls(
+        request = _cls(
             message,
             payload,
             protocol,
@@ -448,6 +450,12 @@ class AppRunner(BaseRunner[Request]):
             loop,
             client_max_size=self.app._client_max_size,
         )
+        if message is ERROR:
+            match_info = MatchInfoError(HTTPBadRequest())
+            match_info.add_app(self._app)
+            match_info.freeze()
+            request._match_info = match_info
+        return request
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()

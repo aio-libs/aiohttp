@@ -364,11 +364,13 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        match_info = await self._router.resolve(request)
-        match_info.add_app(self)
-        match_info.freeze()
+        match_info = request._match_info
+        if match_info is None:
+            match_info = await self._router.resolve(request)
+            match_info.add_app(self)
+            match_info.freeze()
 
-        request._match_info = match_info
+            request._match_info = match_info
 
         if request.headers.get(hdrs.EXPECT):
             resp = await match_info.expect_handler(request)

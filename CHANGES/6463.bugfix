@@ -1,0 +1,1 @@
+Allowed application-level ``on_response_prepare`` callbacks to run for parser-error responses so applications can adjust response headers such as ``Server`` consistently.
