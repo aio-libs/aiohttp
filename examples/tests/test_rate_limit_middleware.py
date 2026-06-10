@@ -9,10 +9,10 @@ import asyncio
 import time
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 from rate_limit_middleware import RateLimitMiddleware, TokenBucket
 
 from aiohttp import web
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 async def _ok_handler(request: web.Request) -> web.Response:
