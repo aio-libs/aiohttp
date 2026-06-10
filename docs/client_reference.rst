@@ -40,7 +40,7 @@ The client session supports the context manager protocol for self closing.
 .. class:: ClientSession(base_url=None, *, \
                          connector=None, cookies=None, \
                          headers=None, skip_auto_headers=None, \
-                         auth=None, json_serialize=json.dumps, \
+                         json_serialize=json.dumps, \
                          request_class=ClientRequest, \
                          response_class=ClientResponse, \
                          ws_response_class=ClientWebSocketResponse, \
@@ -109,14 +109,6 @@ The client session supports the context manager protocol for self closing.
       be skipped.
 
       Iterable of :class:`str` or :class:`~multidict.istr` (optional)
-
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional). It will be included
-                                  with any request. However, if the
-                                  ``_base_url`` parameter is set, the request
-                                  URL's origin must match the base URL's origin;
-                                  otherwise, the default auth will not be
-                                  included.
 
    :param collections.abc.Callable json_serialize: Json *serializer* callable.
 
@@ -340,14 +332,6 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 3.7
 
-   .. attribute:: auth
-
-      An object that represents HTTP Basic Authorization.
-
-      :class:`~aiohttp.BasicAuth` (optional)
-
-      .. versionadded:: 3.7
-
    .. attribute:: json_serialize
 
       Json serializer callable.
@@ -400,11 +384,11 @@ The client session supports the context manager protocol for self closing.
 
    .. method:: request(method, url, *, params=None, data=None, json=None,\
                          cookies=None, headers=None, skip_auto_headers=None, \
-                         auth=None, allow_redirects=True,\
+                         allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
                          read_until_eof=True, \
-                         proxy=None, proxy_auth=None,\
+                         proxy=None,\
                          timeout=sentinel, ssl=True, \
                          server_hostname=None, \
                          proxy_headers=None, \
@@ -473,9 +457,6 @@ The client session supports the context manager protocol for self closing.
          Iterable of :class:`str` or :class:`~multidict.istr`
          (optional)
 
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
-
       :param bool allow_redirects: Whether to process redirects or not.
          When ``True``, redirects are followed (up to ``max_redirects`` times)
          and logged into :attr:`ClientResponse.history` and ``trace_configs``.
@@ -514,9 +495,6 @@ The client session supports the context manager protocol for self closing.
                                   ``True`` by default (optional).
 
       :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
 
       :param int timeout: override the session's timeout.
 
@@ -719,14 +697,13 @@ The client session supports the context manager protocol for self closing.
    .. method:: ws_connect(url, *, method='GET', \
                             protocols=(), \
                             timeout=sentinel,\
-                            auth=None,\
                             autoclose=True,\
                             autoping=True,\
                             heartbeat=None,\
                             origin=None, \
                             params=None, \
                             headers=None, \
-                            proxy=None, proxy_auth=None, ssl=True, \
+                            proxy=None, ssl=True, \
                             verify_ssl=None, fingerprint=None, \
                             ssl_context=None, proxy_headers=None, \
                             compress=0, max_msg_size=4194304, \
@@ -747,9 +724,6 @@ The client session supports the context manager protocol for self closing.
                       `ClientWSTimeout(ws_receive=None, ws_close=10.0)` is used
                       (``10.0`` seconds for the websocket to close).
                       ``None`` means no timeout will be used.
-
-      :param aiohttp.BasicAuth auth: an object that represents HTTP
-                                     Basic Authorization (optional)
 
       :param bool autoclose: Automatically close websocket connection on close
                              message from server. If *autoclose* is False
@@ -787,9 +761,6 @@ The client session supports the context manager protocol for self closing.
                            the request (optional)
 
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-      :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                           Basic Authorization (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used),
@@ -897,11 +868,11 @@ certification chaining.
 
 .. function:: request(method, url, *, params=None, data=None, \
                         json=None,\
-                        cookies=None, headers=None, skip_auto_headers=None, auth=None, \
+                        cookies=None, headers=None, skip_auto_headers=None, \
                         allow_redirects=True, max_redirects=10, \
                         compress=False, chunked=None, expect100=False, raise_for_status=None, \
                         read_until_eof=True, \
-                        proxy=None, proxy_auth=None, \
+                        proxy=None, \
                         timeout=sentinel, ssl=True, \
                         server_hostname=None, \
                         proxy_headers=None, \
@@ -964,9 +935,6 @@ certification chaining.
       Iterable of :class:`str` or :class:`~multidict.istr`
       (optional)
 
-   :param aiohttp.BasicAuth auth: an object that represents HTTP Basic
-                                  Authorization (optional)
-
    :param bool allow_redirects: Whether to process redirects or not.
       When ``True``, redirects are followed (up to ``max_redirects`` times)
       and logged into :attr:`ClientResponse.history` and ``trace_configs``.
@@ -978,10 +946,13 @@ certification chaining.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
-   :param bool compress: Set to ``True`` if request has to be compressed
-                         with deflate encoding. If `compress` can not be combined
-                         with a *Content-Encoding* and *Content-Length* headers.
-                         ``None`` by default (optional).
+   :param compress: Set to ``True`` to compress the request body with
+                    ``deflate`` encoding, or pass ``"deflate"`` or ``"gzip"``
+                    explicitly to choose the content encoding. ``False`` by
+                    default.
+
+                    This parameter cannot be combined with
+                    *Content-Encoding* or *Content-Length* headers.
 
    :param int chunked: Enables chunked transfer encoding.
       It is up to the developer
@@ -1007,9 +978,6 @@ certification chaining.
                                ``True`` by default (optional).
 
    :param proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
-
-   :param aiohttp.BasicAuth proxy_auth: an object that represents proxy HTTP
-                                        Basic Authorization (optional)
 
    :param timeout: a :class:`ClientTimeout` settings structure, 300 seconds (5min)
         total timeout, 30 seconds socket connect timeout by default.
@@ -1569,6 +1537,30 @@ Response object
       of link params and url at key `url` as :class:`~yarl.URL` instance.
 
       .. versionadded:: 3.2
+
+   .. attribute:: output_size
+
+      Number of bytes sent for this request.
+
+      Pair with :attr:`upload_complete` to display upload progress::
+
+          async with session.post(url, data=mpwriter) as resp:
+              while not resp.upload_complete.done():
+                  print(f"uploaded {resp.output_size} bytes")
+                  await asyncio.sleep(0.5)
+              print(f"upload complete: {resp.output_size} bytes")
+
+      .. versionadded:: 3.14
+
+   .. attribute:: upload_complete
+
+      An :class:`asyncio.Future` set when the request body has been fully sent.
+
+      Use ``await resp.upload_complete`` to block until the upload finishes, or
+      ``resp.upload_complete.done()`` to poll from a progress-sampling loop
+      (see :attr:`output_size`).
+
+      .. versionadded:: 3.14
 
    .. attribute:: content_type
 
@@ -2323,45 +2315,20 @@ Utilities
 
 
 
-.. class:: BasicAuth(login, password='', encoding='latin1')
-   :canonical: aiohttp.helpers.BasicAuth
+.. function:: encode_basic_auth(login, password='', encoding='utf-8')
 
-   HTTP basic authentication helper.
+   Encode HTTP Basic Authentication credentials as a value suitable for the
+   ``Authorization`` (or ``Proxy-Authorization``) header::
+
+       headers = {"Authorization": encode_basic_auth("user", "pass")}
 
    :param str login: login
-   :param str password: password
-   :param str encoding: encoding (``'latin1'`` by default)
+   :param str password: password (``''`` by default)
+   :param str encoding: encoding (``'utf-8'`` by default)
+   :return: a string of the form ``"Basic <base64-encoded credentials>"``
+   :rtype: str
 
-
-   Should be used for specifying authorization data in client API,
-   e.g. *auth* parameter for :meth:`ClientSession.request() <aiohttp.ClientSession.request>`.
-
-
-   .. classmethod:: decode(auth_header, encoding='latin1')
-
-      Decode HTTP basic authentication credentials.
-
-      :param str auth_header:  The ``Authorization`` header to decode.
-      :param str encoding: (optional) encoding ('latin1' by default)
-
-      :return:  decoded authentication data, :class:`BasicAuth`.
-
-   .. classmethod:: from_url(url)
-
-      Constructed credentials info from url's *user* and *password*
-      parts.
-
-      :return: credentials data, :class:`BasicAuth` or ``None`` is
-                credentials are not provided.
-
-      .. versionadded:: 2.3
-
-   .. method:: encode()
-
-      Encode credentials into string suitable for ``Authorization``
-      header etc.
-
-      :return: encoded authentication data, :class:`str`.
+   .. versionadded:: 3.14
 
 
 .. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
@@ -2397,6 +2364,16 @@ Utilities
    The server may still respond with a 401 status and ``stale=true`` if the nonce
    has expired, in which case the middleware will automatically retry with the new nonce.
 
+   **Origin scoping**
+
+   The credentials are scoped to the origin of the first request the middleware
+   handles. A request to a different origin is passed through untouched, so it
+   never receives a digest response computed from those credentials, unless that
+   origin falls within a protection space the anchor origin advertised through
+   the RFC 7616 ``domain`` directive. Make the first request through the
+   middleware against the intended origin, as the anchor is pinned to it and not
+   reset for the life of the instance.
+
    To disable preemptive authentication and require a 401 challenge for every request,
    set ``preemptive=False``::
 
@@ -2422,6 +2399,10 @@ Utilities
    .. versionadded:: 3.12
    .. versionchanged:: 3.12.8
       Added ``preemptive`` parameter to enable/disable preemptive authentication.
+   .. versionchanged:: 3.14.1
+      Credentials are scoped to the origin of the first request the middleware
+      handles; other origins are passed through untouched unless covered by an
+      RFC 7616 ``domain`` directive from the anchor origin.
 
 
 .. class:: CookieJar(*, unsafe=False, quote_cookie=True, treat_as_secure_origin = [])
@@ -2498,25 +2479,12 @@ Utilities
       Write a JSON representation of cookies into the file
       at provided path.
 
-      .. versionchanged:: 3.14
-
-         Previously used pickle format. Now uses JSON for safe
-         serialization.
-
       :param file_path: Path to file where cookies will be serialized,
           :class:`str` or :class:`pathlib.Path` instance.
 
    .. method:: load(file_path)
 
-      Load cookies from the file at provided path. Tries JSON format
-      first, then falls back to legacy pickle format (using a restricted
-      unpickler that only allows cookie-related types) for backward
-      compatibility with existing cookie files.
-
-      .. versionchanged:: 3.14
-
-         Now loads JSON format by default. Falls back to restricted
-         pickle for files saved by older versions.
+      Load cookies from a JSON file at the provided path.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.
@@ -2536,6 +2504,21 @@ Utilities
       :param str domain: domain for which cookies must be deleted from the jar.
 
       .. versionadded:: 4.0
+
+   .. attribute:: cookies
+
+      A read-only view of the jar's cookies as a
+      :class:`~types.MappingProxyType` mapping ``(domain, path)`` tuples
+      to :class:`~http.cookies.SimpleCookie` instances.
+
+      .. versionadded:: 3.14
+
+   .. attribute:: host_only_cookies
+
+      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
+      cookies are host-only (not sent to subdomains).
+
+      .. versionadded:: 3.14
 
 
 .. class:: DummyCookieJar(*, loop=None)

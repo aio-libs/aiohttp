@@ -73,10 +73,6 @@ class ContentLengthError(PayloadEncodingError):
     """Not enough data to satisfy content length header."""
 
 
-class DecompressSizeError(PayloadEncodingError):
-    """Decompressed size exceeds the configured limit."""
-
-
 class LineTooLong(BadHttpMessage):
     def __init__(self, line: bytes, limit: int) -> None:
         super().__init__(f"Got more than {limit} bytes when reading: {line!r}.")
@@ -102,6 +98,8 @@ class BadHttpMethod(BadStatusLine):
     """Invalid HTTP method in status line."""
 
     def __init__(self, line: str = "", error: str | None = None) -> None:
+        if error is None and line.startswith("\x16\x03"):
+            error = "Received HTTPS traffic on an HTTP port"
         super().__init__(line, error or f"Bad HTTP method in status line {line!r}")
 
 

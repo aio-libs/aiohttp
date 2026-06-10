@@ -14,9 +14,13 @@ omit = [
 ]
 
 [report]
+partial_also = [
+  'if not TYPE_CHECKING',
+]
 exclude_also = [
   'if TYPE_CHECKING',
   'assert False',
   ': \.\.\.(\s*#.*)?$',
   '^ +\.\.\.$',
+  'pytest.fail\('
 ]

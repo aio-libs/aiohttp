@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import sys
 import warnings
 from collections.abc import Awaitable, Callable
 from typing import Final, Generic, TypeVar
@@ -7,11 +8,13 @@ from typing import Final, Generic, TypeVar
 from .base_protocol import BaseProtocol
 from .helpers import (
     _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     BaseTimerContext,
     TimerNoop,
     set_exception,
     set_result,
 )
+from .http_exceptions import LineTooLong
 from .log import internal_logger
 
 __all__ = (
@@ -65,31 +68,7 @@ class ChunkTupleAsyncStreamIterator:
         return rv
 
 
-class AsyncStreamReaderMixin:
-
-    __slots__ = ()
-
-    def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)  # type: ignore[attr-defined]
-
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
-        """Returns an asynchronous iterator that yields chunks of size n."""
-        return AsyncStreamIterator(lambda: self.read(n))  # type: ignore[attr-defined]
-
-    def iter_any(self) -> AsyncStreamIterator[bytes]:
-        """Yield all available data as soon as it is received."""
-        return AsyncStreamIterator(self.readany)  # type: ignore[attr-defined]
-
-    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
-        """Yield chunks of data as they are received by the server.
-
-        The yielded objects are tuples
-        of (bytes, bool) as returned by the StreamReader.readchunk method.
-        """
-        return ChunkTupleAsyncStreamIterator(self)  # type: ignore[arg-type]
-
-
-class StreamReader(AsyncStreamReaderMixin):
+class StreamReader:
     """An enhancement of asyncio.StreamReader.
 
     Supports asynchronous iteration by line, chunk or as available::
@@ -137,11 +116,11 @@ class StreamReader(AsyncStreamReaderMixin):
         self._protocol = protocol
         self._low_water = limit
         self._high_water = limit * 2
-        # Ensure high_water_chunks >= 3 so it's always > low_water_chunks.
-        self._high_water_chunks = max(3, limit // 4)
-        # Use max(2, ...) because there's always at least 1 chunk split remaining
+        # Use max(4, ...) because there's always at least 1 chunk split remaining
         # (the current position), so we need low_water >= 2 to allow resume.
-        self._low_water_chunks = max(2, self._high_water_chunks // 2)
+        # limit // 16 gets us a reasonable value of 16k with default 256KiB limit.
+        self._high_water_chunks = max(4, limit // 16)
+        self._low_water_chunks = self._high_water_chunks // 2
         self._loop = loop
         self._size = 0
         self._cursor = 0
@@ -164,7 +143,7 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("%d bytes" % self._size)
         if self._eof:
             info.append("eof")
-        if self._low_water != 2**16:  # default limit
+        if self._low_water != DEFAULT_CHUNK_SIZE:
             info.append("low=%d high=%d" % (self._low_water, self._high_water))
         if self._waiter:
             info.append("w=%r" % self._waiter)
@@ -172,8 +151,34 @@ class StreamReader(AsyncStreamReaderMixin):
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
+    def __aiter__(self) -> AsyncStreamIterator[bytes]:
+        return AsyncStreamIterator(self.readline)
+
+    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
+        """Returns an asynchronous iterator that yields chunks of size n."""
+        self.set_read_chunk_size(n)
+        return AsyncStreamIterator(lambda: self.read(n))
+
+    def iter_any(self) -> AsyncStreamIterator[bytes]:
+        """Yield all available data as soon as it is received."""
+        return AsyncStreamIterator(self.readany)
+
+    def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
+        """Yield chunks of data as they are received by the server.
+
+        The yielded objects are tuples
+        of (bytes, bool) as returned by the StreamReader.readchunk method.
+        """
+        return ChunkTupleAsyncStreamIterator(self)
+
     def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
+
+    def set_read_chunk_size(self, n: int) -> None:
+        """Raise buffer limits to match the consumer's chunk size."""
+        if n > self._low_water:
+            self._low_water = n
+            self._high_water = n * 2
 
     def exception(self) -> type[BaseException] | BaseException | None:
         return self._exception
@@ -218,8 +223,8 @@ class StreamReader(AsyncStreamReaderMixin):
             self._eof_waiter = None
             set_result(waiter, None)
 
-        if self._protocol._reading_paused:
-            self._protocol.resume_reading()
+        # At EOF the parser is done, there won't be unprocessed data.
+        self._protocol.resume_reading(resume_parser=False)
 
         for cb in self._eof_callbacks:
             try:
@@ -273,11 +278,11 @@ class StreamReader(AsyncStreamReaderMixin):
         self._buffer.appendleft(data)
         self._eof_counter = 0
 
-    def feed_data(self, data: bytes) -> None:
+    def feed_data(self, data: bytes) -> bool:
         assert not self._eof, "feed_data after feed_eof"
 
         if not data:
-            return
+            return False
 
         data_len = len(data)
         self._size += data_len
@@ -289,8 +294,9 @@ class StreamReader(AsyncStreamReaderMixin):
             self._waiter = None
             set_result(waiter, None)
 
-        if self._size > self._high_water and not self._protocol._reading_paused:
+        if self._size > self._high_water:
             self._protocol.pause_reading()
+        return False
 
     def begin_http_chunk_receiving(self) -> None:
         if self._http_chunk_splits is None:
@@ -327,10 +333,7 @@ class StreamReader(AsyncStreamReaderMixin):
         # If we get too many small chunks before self._high_water is reached, then any
         # .read() call becomes computationally expensive, and could block the event loop
         # for too long, hence an additional self._high_water_chunks here.
-        if (
-            len(self._http_chunk_splits) > self._high_water_chunks
-            and not self._protocol._reading_paused
-        ):
+        if len(self._http_chunk_splits) > self._high_water_chunks:
             self._protocol.pause_reading()
 
         # wake up readchunk when end of http chunk received
@@ -360,10 +363,12 @@ class StreamReader(AsyncStreamReaderMixin):
         finally:
             self._waiter = None
 
-    async def readline(self) -> bytes:
-        return await self.readuntil()
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
+        return await self.readuntil(max_size=max_line_length)
 
-    async def readuntil(self, separator: bytes = b"\n") -> bytes:
+    async def readuntil(
+        self, separator: bytes = b"\n", *, max_size: int | None = None
+    ) -> bytes:
         seplen = len(separator)
         if seplen == 0:
             raise ValueError("Separator should be at least one-byte string")
@@ -374,6 +379,7 @@ class StreamReader(AsyncStreamReaderMixin):
         chunk = b""
         chunk_size = 0
         not_enough = True
+        max_size = max_size or self._high_water
 
         while not_enough:
             while self._buffer and not_enough:
@@ -388,8 +394,8 @@ class StreamReader(AsyncStreamReaderMixin):
                 if ichar:
                     not_enough = False
 
-                if chunk_size > self._high_water:
-                    raise ValueError("Chunk too big")
+                if chunk_size > max_size:
+                    raise LineTooLong(chunk[:100] + b"...", max_size)
 
             if self._eof:
                 break
@@ -407,10 +413,8 @@ class StreamReader(AsyncStreamReaderMixin):
             return b""
 
         if n < 0:
-            # This used to just loop creating a new waiter hoping to
-            # collect everything in self._buffer, but that would
-            # deadlock if the subprocess sends more than self.limit
-            # bytes.  So just call self.readany() until EOF.
+            # Reading everything — remove decompression chunk limit.
+            self.set_read_chunk_size(sys.maxsize)
             blocks = []
             while True:
                 block = await self.readany()
@@ -419,6 +423,7 @@ class StreamReader(AsyncStreamReaderMixin):
                 blocks.append(block)
             return b"".join(blocks)
 
+        self.set_read_chunk_size(n)
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
         # without feeding any data
@@ -527,13 +532,9 @@ class StreamReader(AsyncStreamReaderMixin):
         while chunk_splits and chunk_splits[0] < self._cursor:
             chunk_splits.popleft()
 
-        if (
-            self._protocol._reading_paused
-            and self._size < self._low_water
-            and (
-                self._http_chunk_splits is None
-                or len(self._http_chunk_splits) < self._low_water_chunks
-            )
+        if self._size < self._low_water and (
+            self._http_chunk_splits is None
+            or len(self._http_chunk_splits) < self._low_water_chunks
         ):
             self._protocol.resume_reading()
         return data
@@ -542,14 +543,21 @@ class StreamReader(AsyncStreamReaderMixin):
         """Read not more than n bytes, or whole buffer if n == -1"""
         self._timer.assert_timeout()
 
-        chunks = []
+        if n == -1:
+            # Drain only chunks present now; _read_nowait_chunk() can
+            # re-entrantly resume_reading() and refill the buffer.
+            count = len(self._buffer)
+            if count == 1:
+                return self._read_nowait_chunk(-1)
+            return b"".join([self._read_nowait_chunk(-1) for _ in range(count)])
+
+        chunks: list[bytes] = []
         while self._buffer:
             chunk = self._read_nowait_chunk(n)
             chunks.append(chunk)
-            if n != -1:
-                n -= len(chunk)
-                if n == 0:
-                    break
+            n -= len(chunk)
+            if n == 0:
+                break
 
         return b"".join(chunks) if chunks else b""
 
@@ -593,10 +601,13 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     async def wait_eof(self) -> None:
         return
 
-    def feed_data(self, data: bytes) -> None:
-        pass
+    def feed_data(self, data: bytes) -> bool:
+        return False
 
-    async def readline(self) -> bytes:
+    def set_read_chunk_size(self, n: int) -> None:
+        return
+
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return b""
 
     async def read(self, n: int = -1) -> bytes:

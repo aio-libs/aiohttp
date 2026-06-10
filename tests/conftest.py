@@ -14,9 +14,12 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 from uuid import uuid4
+
+if TYPE_CHECKING:
+    import trustme
 
 import pytest
 from multidict import CIMultiDict
@@ -29,24 +32,13 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp import payload
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.test_utils import get_unused_port_socket, loop_context
-
-try:
-    import trustme
-
-    # Check if the CA is available in runtime, MacOS on Py3.10 fails somehow
-    trustme.CA()
-
-    TRUSTME: bool = True
-except ImportError:
-    TRUSTME = False
+from aiohttp.test_utils import REUSE_ADDRESS
 
 
 def pytest_configure(config: pytest.Config) -> None:
@@ -75,7 +67,9 @@ else:
     from typing import Any as Unpack
 
 
-pytest_plugins = ("aiohttp.pytest_plugin", "pytester")
+# We require pytest-aiohttp to avoid confusing debugging if it's not installed.
+pytest_plugins = ("pytest_aiohttp.plugin", "pytester")
+
 
 IS_HPUX = sys.platform.startswith("hp-ux")
 IS_LINUX = sys.platform.startswith("linux")
@@ -96,9 +90,7 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
             yield
             return
         node = node.parent
-    with blockbuster_ctx(
-        "aiohttp", excluded_modules=["aiohttp.pytest_plugin", "aiohttp.test_utils"]
-    ) as bb:
+    with blockbuster_ctx("aiohttp") as bb:
         for func in [
             "os.getcwd",
             "os.readlink",
@@ -122,8 +114,8 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
-    if not TRUSTME:
-        pytest.xfail("trustme is not supported")
+    if not TYPE_CHECKING:
+        trustme = pytest.importorskip("trustme")
     return trustme.CA()
 
 
@@ -181,16 +173,32 @@ def pipe_name() -> str:
 
 
 @pytest.fixture
-def create_mocked_conn(
-    loop: asyncio.AbstractEventLoop,
-) -> Iterator[Callable[[], ResponseHandler]]:
+async def create_mocked_conn() -> AsyncIterator[Callable[[], ResponseHandler]]:
     def _proto_factory() -> Any:
         proto = mock.create_autospec(ResponseHandler, instance=True)
-        proto.closed = loop.create_future()
+        proto.closed = asyncio.get_running_loop().create_future()
         proto.closed.set_result(None)
         return proto
 
     yield _proto_factory
+
+
+@pytest.fixture
+async def loop_debug_mode() -> AsyncIterator[None]:
+    """Enable asyncio debug mode for the duration of the test.
+
+    Disables debug before teardown so PyPy 3.11's recursive
+    ``Task.__repr__``, triggered by the asyncio slow-callback
+    logger during connector close, does not surface a spurious
+    ``RuntimeWarning: coroutine ... was never awaited`` while
+    the ``aiohttp_client`` fixture finalizes.
+    """
+    loop = asyncio.get_running_loop()
+    loop.set_debug(True)
+    try:
+        yield
+    finally:
+        loop.set_debug(False)
 
 
 @pytest.fixture
@@ -213,8 +221,6 @@ def unix_sockname(
     # Ref: https://unix.stackexchange.com/a/367012/27133
 
     sock_file_name = "unix.sock"
-    unique_prefix = f"{uuid4()!s}-"
-    unique_prefix_len = len(unique_prefix.encode())
 
     root_tmp_dir = Path("/tmp").resolve()
     os_tmp_dir = Path(os.getenv("TMPDIR", "/tmp")).resolve()
@@ -249,7 +255,7 @@ def unix_sockname(
     unique_paths = [p for n, p in enumerate(paths) if p not in paths[:n]]
     paths_num = len(unique_paths)
 
-    for num, tmp_dir_path in enumerate(paths, 1):
+    for num, tmp_dir_path in enumerate(paths, 1):  # pragma: no branch
         with make_tmp_dir(tmp_dir_path) as tmps:
             tmpd = Path(tmps).resolve()
             sock_path = str(tmpd / sock_file_name)
@@ -261,37 +267,35 @@ def unix_sockname(
                 assert_sock_fits(sock_path)
 
             if sock_path_len <= max_sock_len:
-                if max_sock_len - sock_path_len >= unique_prefix_len:
-                    # If we're lucky to have extra space in the path,
-                    # let's also make it more unique
-                    sock_path = str(tmpd / "".join((unique_prefix, sock_file_name)))
-                    # Double-checking it:
-                    assert_sock_fits(sock_path)
                 yield sock_path
                 return
 
 
 @pytest.fixture
-async def event_loop(loop: asyncio.AbstractEventLoop) -> asyncio.AbstractEventLoop:
-    return asyncio.get_running_loop()
+def event_loop() -> Iterator[asyncio.AbstractEventLoop]:
+    loop = asyncio.new_event_loop()
+    try:
+        yield loop
+    finally:
+        loop.close()
 
 
-@pytest.fixture
-def selector_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    factory = asyncio.SelectorEventLoop
-    with loop_context(factory) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+def pytest_asyncio_loop_factories(
+    config: pytest.Config, item: pytest.Item
+) -> dict[str, Callable[[], asyncio.AbstractEventLoop]]:
+    marker = item.get_closest_marker("asyncio")
+    requested = marker.kwargs.get("loop_factories", ()) if marker else ()
 
+    factories = {"default": asyncio.new_event_loop}
 
-@pytest.fixture
-def uvloop_loop() -> Iterator[asyncio.AbstractEventLoop]:
-    if uvloop is None:
-        pytest.skip("uvloop is not installed")
-    factory = uvloop.new_event_loop
-    with loop_context(factory) as _loop:
-        asyncio.set_event_loop(_loop)
-        yield _loop
+    if "selector" in requested:
+        factories["selector"] = asyncio.SelectorEventLoop
+    if "proactor" in requested and platform.system() == "Windows":
+        factories["proactor"] = asyncio.ProactorEventLoop  # type: ignore[attr-defined]
+    if "uvloop" in requested and uvloop is not None:
+        factories["uvloop"] = uvloop.new_event_loop
+
+    return factories
 
 
 @pytest.fixture
@@ -406,11 +410,8 @@ def unused_port_socket() -> Iterator[socket.socket]:
     race condition between checking if the port is in use and
     binding to it later in the test.
     """
-    s = get_unused_port_socket("127.0.0.1")
-    try:
+    with socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS) as s:
         yield s
-    finally:
-        s.close()
 
 
 @pytest.fixture(params=["zlib", "zlib_ng.zlib_ng", "isal.isal_zlib"])
@@ -425,23 +426,10 @@ def parametrize_zlib_backend(
     set_zlib_backend(original_backend)
 
 
-@pytest.fixture()
-async def cleanup_payload_pending_file_closes(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[None]:
-    """Ensure all pending file close operations complete during test teardown."""
-    yield
-    if payload._CLOSE_FUTURES:
-        # Only wait for futures from the current loop
-        loop_futures = [f for f in payload._CLOSE_FUTURES if f.get_loop() is loop]
-        if loop_futures:
-            await asyncio.gather(*loop_futures, return_exceptions=True)
-
-
 @pytest.fixture
-async def make_client_request(
-    loop: asyncio.AbstractEventLoop,
-) -> AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]:
+async def make_client_request() -> (
+    AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
+):
     """Fixture to help creating test ClientRequest objects with defaults."""
     requests: list[ClientRequest] = []
     sessions: list[ClientSession] = []
@@ -452,20 +440,18 @@ async def make_client_request(
         session = ClientSession()
         sessions.append(session)
         default_args: ClientRequestArgs = {
-            "loop": loop,
+            "loop": asyncio.get_running_loop(),
             "params": {},
             "headers": CIMultiDict[str](),
             "skip_auto_headers": None,
             "data": None,
             "cookies": BaseCookie[str](),
-            "auth": None,
             "version": HttpVersion11,
             "compress": False,
             "chunked": None,
             "expect100": False,
             "response_class": ClientResponse,
             "proxy": None,
-            "proxy_auth": None,
             "timer": TimerNoop(),
             "session": session,
             "ssl": True,

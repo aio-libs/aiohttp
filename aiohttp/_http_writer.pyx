@@ -111,9 +111,11 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
         out_str = str(s)
 
     for ch in out_str:
-        if ch == 0x0D or ch == 0x0A:
+        # https://www.rfc-editor.org/info/rfc9110/#section-5.5-5
+        # https://www.rfc-editor.org/info/rfc9112/#section-4-3
+        if (ch < 0x20 and ch != 0x09) or ch == 0x7F:
             raise ValueError(
-                "Newline or carriage return detected in headers. "
+                "Forbidden control character detected in headers. "
                 "Potential header injection attack."
             )
         if _write_utf8(writer, ch) < 0:
@@ -131,7 +133,7 @@ def _serialize_headers(str status_line, headers):
     _init_writer(&writer, buf)
 
     try:
-        if _write_str(&writer, status_line) < 0:
+        if _write_str_raise_on_nlcr(&writer, status_line) < 0:
             raise
         if _write_byte(&writer, b'\r') < 0:
             raise

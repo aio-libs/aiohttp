@@ -11,14 +11,10 @@ from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter
-from .compression_utils import (
-    DEFAULT_MAX_DECOMPRESS_SIZE,
-    ZLibCompressor,
-    ZLibDecompressor,
-)
+from .compression_utils import ZLibCompressor, ZLibDecompressor
 from .hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
@@ -26,8 +22,16 @@ from .hdrs import (
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
-from .helpers import CHAR, TOKEN, parse_mimetype, reify
+from .helpers import (
+    CHAR,
+    DEFAULT_CHUNK_SIZE,
+    TOKEN,
+    HeadersDictProxy,
+    parse_mimetype,
+    reify,
+)
 from .http import HeadersParser
+from .http_exceptions import BadHttpMessage
 from .log import internal_logger
 from .payload import (
     JsonPayload,
@@ -261,12 +265,14 @@ class BodyPartReader:
     def __init__(
         self,
         boundary: bytes,
-        headers: "CIMultiDictProxy[str]",
+        headers: HeadersDictProxy,
         content: StreamReader,
         *,
         subtype: str = "mixed",
         default_charset: str | None = None,
-        max_decompress_size: int = DEFAULT_MAX_DECOMPRESS_SIZE,
+        max_decompress_size: int = DEFAULT_CHUNK_SIZE,
+        client_max_size: int = sys.maxsize,
+        max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
         self.headers = headers
         self._boundary = boundary
@@ -277,6 +283,11 @@ class BodyPartReader:
         self._is_form_data = subtype == "form-data"
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         length = None if self._is_form_data else self.headers.get(CONTENT_LENGTH, None)
+        if length is not None and not (length.isascii() and length.isdigit()):
+            # Reject sign prefixes, underscores, whitespace and non-ASCII
+            # digits that int() would otherwise accept.
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.6
+            raise ValueError(f"invalid Content-Length: {length!r}")
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread: deque[bytes] = deque()
@@ -284,6 +295,8 @@ class BodyPartReader:
         self._content_eof = 0
         self._cache: dict[str, Any] = {}
         self._max_decompress_size = max_decompress_size
+        self._client_max_size = client_max_size
+        self._max_size_error_cls = max_size_error_cls
 
     def __aiter__(self) -> Self:
         return self
@@ -312,11 +325,15 @@ class BodyPartReader:
         data = bytearray()
         while not self._at_eof:
             data.extend(await self.read_chunk(self.chunk_size))
+            if len(data) > self._client_max_size:
+                raise self._max_size_error_cls(self._client_max_size)
         # https://github.com/python/mypy/issues/17537
         if decode:  # type: ignore[unreachable]
             decoded_data = bytearray()
             async for d in self.decode_iter(data):
                 decoded_data.extend(d)
+                if len(decoded_data) > self._client_max_size:
+                    raise self._max_size_error_cls(self._client_max_size)
             return decoded_data
         return data
 
@@ -558,6 +575,8 @@ class BodyPartReader:
                 suppress_deflate_header=True,
             )
             yield await d.decompress(data, max_length=self._max_decompress_size)
+            while d.data_available:
+                yield await d.decompress(b"", max_length=self._max_decompress_size)
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -630,7 +649,7 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
-        while chunk := await field.read_chunk(size=2**18):
+        while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
             async for d in field.decode_iter(chunk):
                 await writer.write(d)
 
@@ -646,7 +665,16 @@ class MultipartReader:
     #: Body part reader class for non multipart/* content types.
     part_reader_cls = BodyPartReader
 
-    def __init__(self, headers: Mapping[str, str], content: StreamReader) -> None:
+    def __init__(
+        self,
+        headers: Mapping[str, str],
+        content: StreamReader,
+        *,
+        client_max_size: int = sys.maxsize,
+        max_field_size: int = 8190,
+        max_headers: int = 128,
+        max_size_error_cls: type[Exception] = ValueError,
+    ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
         if "boundary" not in self._mimetype.parameters:
@@ -656,9 +684,13 @@ class MultipartReader:
 
         self.headers = headers
         self._boundary = ("--" + self._get_boundary()).encode()
+        self._client_max_size = client_max_size
         self._content = content
         self._default_charset: str | None = None
         self._last_part: MultipartReader | BodyPartReader | None = None
+        self._max_field_size = max_field_size
+        self._max_headers = max_headers
+        self._max_size_error_cls = max_size_error_cls
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -745,7 +777,7 @@ class MultipartReader:
 
     def _get_part_reader(
         self,
-        headers: "CIMultiDictProxy[str]",
+        headers: HeadersDictProxy,
     ) -> Union["MultipartReader", BodyPartReader]:
         """Dispatches the response by the `Content-Type` header.
 
@@ -758,8 +790,22 @@ class MultipartReader:
 
         if mimetype.type == "multipart":
             if self.multipart_reader_cls is None:
-                return type(self)(headers, self._content)
-            return self.multipart_reader_cls(headers, self._content)
+                return type(self)(
+                    headers,
+                    self._content,
+                    client_max_size=self._client_max_size,
+                    max_field_size=self._max_field_size,
+                    max_headers=self._max_headers,
+                    max_size_error_cls=self._max_size_error_cls,
+                )
+            return self.multipart_reader_cls(
+                headers,
+                self._content,
+                client_max_size=self._client_max_size,
+                max_field_size=self._max_field_size,
+                max_headers=self._max_headers,
+                max_size_error_cls=self._max_size_error_cls,
+            )
         else:
             return self.part_reader_cls(
                 self._boundary,
@@ -767,6 +813,8 @@ class MultipartReader:
                 self._content,
                 subtype=self._mimetype.subtype,
                 default_charset=self._default_charset,
+                client_max_size=self._client_max_size,
+                max_size_error_cls=self._max_size_error_cls,
             )
 
     def _get_boundary(self) -> str:
@@ -816,16 +864,18 @@ class MultipartReader:
         else:
             raise ValueError(f"Invalid boundary {chunk!r}, expected {self._boundary!r}")
 
-    async def _read_headers(self) -> "CIMultiDictProxy[str]":
+    async def _read_headers(self) -> HeadersDictProxy:
         lines = []
         while True:
-            chunk = await self._content.readline()
+            chunk = await self._content.readline(max_line_length=self._max_field_size)
             chunk = chunk.rstrip(b"\r\n")
             lines.append(chunk)
             if not chunk:
                 break
-        parser = HeadersParser()
-        headers, raw_headers = parser.parse_headers(lines)
+            if len(lines) > self._max_headers:
+                raise BadHttpMessage("Too many headers received")
+        parser = HeadersParser(max_field_size=self._max_field_size)
+        headers, _ = parser.parse_headers(lines)
         return headers
 
     async def _maybe_release_last_part(self) -> None:

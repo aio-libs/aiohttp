@@ -1,4 +1,6 @@
+aarch
 abc
+ABI
 addons
 aiodns
 aioes
@@ -39,7 +41,6 @@ Backporting
 backports
 BaseEventLoop
 basename
-BasicAuth
 behaviour
 BodyPartReader
 boolean
@@ -68,12 +69,15 @@ charset
 charsetdetect
 chunked
 chunking
+cibuildwheel
 CIMultiDict
 ClientSession
 cls
 cmd
+codecov
 codebase
 codec
+codspeed
 Codings
 committer
 committers
@@ -96,6 +100,7 @@ Cython
 Cythonize
 cythonized
 de
+decompressor
 deduplicate
 defs
 Dependabot
@@ -107,6 +112,7 @@ Dev
 dict
 Dict
 Discord
+dists
 django
 Django
 dns
@@ -141,6 +147,7 @@ github
 google
 gunicorn
 gunicorn’s
+gzip
 gzipped
 hackish
 highlevel
@@ -156,6 +163,7 @@ Indices
 infos
 initializer
 inline
+inlined
 intaking
 io
 IoT
@@ -237,12 +245,14 @@ Paolini
 param
 params
 parsers
+patchback
 pathlib
 payloads
 peername
 performant
 pickleable
 ping
+pipelined
 pipelining
 pluggable
 plugin
@@ -261,6 +271,8 @@ py
 pydantic
 pyenv
 pyflakes
+pypa
+PyPI
 pyright
 pytest
 Pytest
@@ -305,6 +317,7 @@ sa
 Satisfiable
 scalability
 schemas
+seekable
 sendfile
 serializable
 serializer

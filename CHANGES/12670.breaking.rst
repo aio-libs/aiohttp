@@ -1,0 +1,1 @@
+Renamed ``follow_symlinks`` to ``break_symlink_sandbox`` to make the security implication explicit -- by :user:`Dreamsorcerer`.

@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -37,9 +37,10 @@ from .formdata import FormData
 from .helpers import (
     _SENTINEL,
     BaseTimerContext,
-    BasicAuth,
+    HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
+    encode_basic_auth,
     frozen_dataclass_decorator,
     is_expected_content_type,
     parse_mimetype,
@@ -78,6 +79,7 @@ if TYPE_CHECKING:
 
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
+_DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -177,8 +179,8 @@ class ConnectionKey(NamedTuple):
     is_ssl: bool
     ssl: SSLContext | bool | Fingerprint
     proxy: URL | None
-    proxy_auth: BasicAuth | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
+    server_hostname: str | None = None
 
 
 class ClientResponse(HeadersMixin):
@@ -192,9 +194,10 @@ class ClientResponse(HeadersMixin):
 
     content: StreamReader = None  # type: ignore[assignment] # Payload stream
     _body: bytes | None = None
-    _headers: CIMultiDictProxy[str] = None  # type: ignore[assignment]
+    _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
+    _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
     _cookies: SimpleCookie | None = None
@@ -211,6 +214,9 @@ class ClientResponse(HeadersMixin):
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
     __writer: asyncio.Task[None] | None = None
+    _stream_writer: AbstractStreamWriter | None = None
+    _output_size: int = 0
+    _upload_complete: asyncio.Future[None] | None = None
 
     def __init__(
         self,
@@ -225,6 +231,7 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession | None",
         request_headers: CIMultiDict[str],
         original_url: URL,
+        stream_writer: AbstractStreamWriter,
         **kwargs: object,
     ) -> None:
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -239,7 +246,10 @@ class ClientResponse(HeadersMixin):
 
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
-        if writer is not None:
+        if writer is None:  # Request already sent
+            self._output_size = stream_writer.output_size
+        else:
+            self._stream_writer = stream_writer
             self._writer = writer
         if continue100 is not None:
             self._continue = continue100
@@ -260,6 +270,11 @@ class ClientResponse(HeadersMixin):
 
     def __reset_writer(self, _: object = None) -> None:
         self.__writer = None
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
+        if self._upload_complete is not None and not self._upload_complete.done():
+            self._upload_complete.set_result(None)
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:
@@ -280,9 +295,28 @@ class ClientResponse(HeadersMixin):
             return
         if writer.done():
             # The writer is already done, so we can clear it immediately.
-            self.__writer = None
+            self.__reset_writer()
         else:
             writer.add_done_callback(self.__reset_writer)
+
+    @property
+    def output_size(self) -> int:
+        """Number of bytes sent for this request."""
+        if self._stream_writer is not None:
+            return self._stream_writer.output_size
+        return self._output_size
+
+    @property
+    def upload_complete(self) -> "asyncio.Future[None]":
+        """Future set when the request body has been fully sent.
+
+        Already done when the request had no body or was written eagerly.
+        """
+        if self._upload_complete is None:
+            self._upload_complete = self._loop.create_future()
+            if self._stream_writer is None:  # upload already finished
+                self._upload_complete.set_result(None)
+        return self._upload_complete
 
     @property
     def cookies(self) -> SimpleCookie:
@@ -323,7 +357,7 @@ class ClientResponse(HeadersMixin):
         return self._url.host
 
     @reify
-    def headers(self) -> "CIMultiDictProxy[str]":
+    def headers(self) -> HeadersDictProxy:
         return self._headers
 
     @reify
@@ -392,14 +426,8 @@ class ClientResponse(HeadersMixin):
 
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
-        links_str = ", ".join(self.headers.getall("link", []))
-
-        if not links_str:
-            return MultiDictProxy(MultiDict())
-
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-
-        for val in re.split(r",(?=\s*<)", links_str):
+        for val in self.headers.getall("link"):
             match = re.match(r"\s*<(.*)>(.*)", val)
             if match is None:  # Malformed link
                 continue
@@ -461,14 +489,15 @@ class ClientResponse(HeadersMixin):
         self.reason = message.reason
 
         # headers
-        self._headers = message.headers  # type is CIMultiDictProxy
-        self._raw_headers = message.raw_headers  # type is Tuple[bytes, bytes]
+        self._headers = message.headers
+        self._raw_headers = message.raw_headers
+        self._upgraded = message.upgrade
 
         # payload
         self.content = payload
 
         # cookies
-        if cookie_hdrs := self.headers.getall(hdrs.SET_COOKIE, ()):
+        if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
             self._raw_cookie_headers = tuple(cookie_hdrs)
         return self
@@ -563,6 +592,9 @@ class ClientResponse(HeadersMixin):
     def _cleanup_writer(self) -> None:
         if self.__writer is not None:
             self.__writer.cancel()
+        if self._stream_writer is not None:
+            self._output_size = self._stream_writer.output_size
+            self._stream_writer = None
         self._session = None
 
     def _notify_content(self) -> None:
@@ -688,7 +720,6 @@ class ClientRequestBase:
 
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
 
-    auth = None
     proxy: URL | None = None
     response_class = ClientResponse
     server_hostname: str | None = None  # Needed in connector.py
@@ -715,7 +746,6 @@ class ClientRequestBase:
         url: URL,
         *,
         headers: CIMultiDict[str],
-        auth: BasicAuth | None,
         loop: asyncio.AbstractEventLoop,
         ssl: SSLContext | bool | Fingerprint,
         trust_env: bool = False,
@@ -736,9 +766,13 @@ class ClientRequestBase:
         if loop.get_debug():
             self._source_traceback = traceback.extract_stack(sys._getframe(1))
 
-        self._update_host(url)
+        if not url.raw_host:
+            raise InvalidURL(url)
         self._update_headers(headers)
-        self._update_auth(auth, trust_env)
+        if url.raw_user or url.raw_password:
+            self.headers[hdrs.AUTHORIZATION] = encode_basic_auth(
+                url.user or "", url.password or ""
+            )
 
     def _reset_writer(self, _: object = None) -> None:
         self._writer_task = None
@@ -753,12 +787,9 @@ class ClientRequestBase:
             return None
 
         content_length_hdr = self.headers[hdrs.CONTENT_LENGTH]
-        try:
-            return int(content_length_hdr)
-        except ValueError:
-            raise ValueError(
-                f"Invalid Content-Length header: {content_length_hdr}"
-            ) from None
+        if not _DIGITS_RE.fullmatch(content_length_hdr):
+            raise ValueError(f"Invalid Content-Length header: {content_length_hdr!r}")
+        return int(content_length_hdr)
 
     @property
     def _writer(self) -> asyncio.Task[None] | None:
@@ -790,31 +821,9 @@ class ClientRequestBase:
                 self._ssl,
                 None,
                 None,
-                None,
+                self.server_hostname,
             ),
         )
-
-    def _update_auth(self, auth: BasicAuth | None, trust_env: bool = False) -> None:
-        """Set basic auth."""
-        if auth is None:
-            auth = self.auth
-        if auth is None:
-            return
-
-        if not isinstance(auth, BasicAuth):
-            raise TypeError("BasicAuth() tuple is required instead")
-
-        self.headers[hdrs.AUTHORIZATION] = auth.encode()
-
-    def _update_host(self, url: URL) -> None:
-        """Update destination host, port and connection type (ssl)."""
-        # get host/port
-        if not url.raw_host:
-            raise InvalidURL(url)
-
-        # basic auth info
-        if url.raw_user or url.raw_password:
-            self.auth = BasicAuth(url.user or "", url.password or "")
 
     def _update_headers(self, headers: CIMultiDict[str]) -> None:
         """Update request headers."""
@@ -829,7 +838,11 @@ class ClientRequestBase:
         self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
         self.headers.extend(headers)
 
-    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
+    def _create_response(
+        self,
+        task: asyncio.Task[None] | None,
+        stream_writer: AbstractStreamWriter,
+    ) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
@@ -841,6 +854,7 @@ class ClientRequestBase:
             session=None,
             request_headers=self.headers,
             original_url=self.original_url,
+            stream_writer=stream_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
@@ -914,7 +928,7 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
-        self._response = self._create_response(task)
+        self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
     async def _write_bytes(
@@ -933,15 +947,13 @@ class ClientRequestArgs(TypedDict, total=False):
     skip_auto_headers: Iterable[str] | None
     data: Any
     cookies: BaseCookie[str]
-    auth: BasicAuth | None
     version: HttpVersion
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
     proxy: URL | None
-    proxy_auth: BasicAuth | None
     timer: BaseTimerContext
     session: "ClientSession"
     ssl: SSLContext | bool | Fingerprint
@@ -977,15 +989,13 @@ class ClientRequest(ClientRequestBase):
         skip_auto_headers: Iterable[str] | None,
         data: Any,
         cookies: BaseCookie[str],
-        auth: BasicAuth | None,
         version: HttpVersion,
-        compress: str | bool,
+        compress: Literal["deflate", "gzip"] | bool,
         chunked: bool | None,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
         proxy: URL | None,
-        proxy_auth: BasicAuth | None,
         timer: BaseTimerContext,
         session: "ClientSession",
         ssl: SSLContext | bool | Fingerprint,
@@ -1003,7 +1013,7 @@ class ClientRequest(ClientRequestBase):
 
         if params:
             url = url.extend_query(params)
-        super().__init__(method, url, headers=headers, auth=auth, loop=loop, ssl=ssl)
+        super().__init__(method, url, headers=headers, loop=loop, ssl=ssl)
 
         if proxy is not None:
             assert type(proxy) is URL, proxy
@@ -1017,7 +1027,7 @@ class ClientRequest(ClientRequestBase):
         self._update_auto_headers(skip_auto_headers)
         self._update_cookies(cookies)
         self._update_content_encoding(data, compress)
-        self._update_proxy(proxy, proxy_auth, proxy_headers)
+        self._update_proxy(proxy, proxy_headers)
 
         self._update_body_from_data(data)
         if data is not None or self.method not in self.GET_METHODS:
@@ -1048,8 +1058,8 @@ class ClientRequest(ClientRequestBase):
                 url.scheme in _SSL_SCHEMES,
                 self._ssl,
                 self.proxy,
-                self.proxy_auth,
                 h,
+                self.server_hostname,
             ),
         )
 
@@ -1099,7 +1109,9 @@ class ClientRequest(ClientRequestBase):
 
         self.headers[hdrs.COOKIE] = c.output(header="", sep=";").strip()
 
-    def _update_content_encoding(self, data: Any, compress: bool | str) -> None:
+    def _update_content_encoding(
+        self, data: Any, compress: bool | Literal["deflate", "gzip"]
+    ) -> None:
         """Set request content encoding."""
         self.compress = None
         if not data:
@@ -1111,6 +1123,10 @@ class ClientRequest(ClientRequestBase):
                     "compress can not be set if Content-Encoding header is set"
                 )
         elif compress:
+            if isinstance(compress, str) and compress not in {"deflate", "gzip"}:
+                raise ValueError(
+                    "compress must be one of True, False, 'deflate', or 'gzip'"
+                )
             self.compress = compress if isinstance(compress, str) else "deflate"
             self.headers[hdrs.CONTENT_ENCODING] = self.compress
             self.chunked = True  # enable chunked, no need to deal with length
@@ -1273,21 +1289,27 @@ class ClientRequest(ClientRequestBase):
     def _update_proxy(
         self,
         proxy: URL | None,
-        proxy_auth: BasicAuth | None,
         proxy_headers: CIMultiDict[str] | None,
     ) -> None:
-        self.proxy = proxy
         if proxy is None:
-            self.proxy_auth = None
+            self.proxy = None
             self.proxy_headers = None
             return
-
-        if proxy_auth and not isinstance(proxy_auth, BasicAuth):
-            raise ValueError("proxy_auth must be None or BasicAuth() tuple")
-        self.proxy_auth = proxy_auth
+        # URL-embedded credentials on the proxy map to Proxy-Authorization.
+        if proxy.raw_user or proxy.raw_password:
+            auth_header = encode_basic_auth(proxy.user or "", proxy.password or "")
+            if proxy_headers is None:
+                proxy_headers = CIMultiDict()
+            proxy_headers.setdefault(hdrs.PROXY_AUTHORIZATION, auth_header)
+            proxy = proxy.with_user(None)
+        self.proxy = proxy
         self.proxy_headers = proxy_headers
 
-    def _create_response(self, task: asyncio.Task[None] | None) -> ClientResponse:
+    def _create_response(
+        self,
+        task: asyncio.Task[None] | None,
+        stream_writer: AbstractStreamWriter,
+    ) -> ClientResponse:
         return self.response_class(
             self.method,
             self.original_url,
@@ -1299,6 +1321,7 @@ class ClientRequest(ClientRequestBase):
             session=self._session,
             request_headers=self.headers,
             original_url=self.original_url,
+            stream_writer=stream_writer,
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
