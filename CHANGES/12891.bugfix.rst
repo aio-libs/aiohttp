@@ -1,0 +1,4 @@
+Stopped treating a response ``Transfer-Encoding`` whose final token contains
+non-ascii characters as ``chunked``; the token is now required to be ascii
+before case-folding, matching the request parser and :rfc:`9112#section-6.3`
+-- by :user:`dxbjavid`.
