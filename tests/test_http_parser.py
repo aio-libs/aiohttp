@@ -935,6 +935,16 @@ def test_request_te_duplicate_chunked(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_response_te_non_ascii_not_chunked(response: HttpResponseParser) -> None:
+    # The "k" is U+212A KELVIN SIGN, which str.lower() folds to ascii "k",
+    # so a naive te.lower() == "chunked" check would treat this as chunked.
+    # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
+    text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chun\xe2\x84\xaaed\r\n\r\nspam"
+    messages, upgraded, tail = response.feed_data(text)
+    msg = messages[0][0]
+    assert msg.chunked is False
+
+
 def test_conn_upgrade(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
