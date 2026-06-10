@@ -5,7 +5,7 @@ import asyncio
 import gc
 import types
 from collections import defaultdict
-from collections.abc import Iterator, Sequence
+from collections.abc import Awaitable, Callable, Iterator, Sequence
 from itertools import groupby
 from typing import TypeVar
 from unittest import mock
@@ -1102,6 +1102,170 @@ class TestStreamReader:
         data = await stream.read(5)
         assert b"line1" == data
         assert stream.at_eof()
+
+
+class TestStreamReaderChunkHook:
+    """Cover the _on_chunk_received hook used to fan out chunks to client tracing."""
+
+    def _make_one(
+        self, cb: Callable[[bytes], Awaitable[None]] | None = None
+    ) -> tuple[streams.StreamReader, list[bytes]]:
+        protocol = mock.create_autospec(
+            BaseProtocol, spec_set=True, instance=True, _reading_paused=False
+        )
+        stream = streams.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        seen: list[bytes] = []
+        if cb is None:
+
+            async def cb(chunk: bytes) -> None:
+                seen.append(chunk)
+
+        stream._on_chunk_received = cb
+        return stream, seen
+
+    async def test_readany_fires(self) -> None:
+        stream, seen = self._make_one()
+
+        async def feed_in_two_steps() -> None:
+            stream.feed_data(b"abc")
+            await asyncio.sleep(0)
+            stream.feed_data(b"def")
+
+        # Feed blocks one at a time, with readany() between, so each block
+        # is returned separately rather than drained together.
+        feeder = asyncio.create_task(feed_in_two_steps())
+        assert await stream.readany() == b"abc"
+        assert await stream.readany() == b"def"
+        await feeder
+        stream.feed_eof()
+        assert await stream.readany() == b""
+        assert seen == [b"abc", b"def"]
+
+    async def test_read_n_fires(self) -> None:
+        stream, seen = self._make_one()
+        stream.feed_data(b"abcdef")
+        stream.feed_eof()
+
+        assert await stream.read(3) == b"abc"
+        assert await stream.read(3) == b"def"
+        assert seen == [b"abc", b"def"]
+
+    async def test_read_all_fires_via_readany(self) -> None:
+        # read(-1) loops through readany(); the hook fires per readany() call,
+        # not per fed block (pre-fed buffer is drained in one shot).
+        stream, seen = self._make_one()
+        stream.feed_data(b"abc")
+        stream.feed_data(b"def")
+        stream.feed_eof()
+
+        assert await stream.read() == b"abcdef"
+        assert seen == [b"abcdef"]
+
+    async def test_readchunk_data_fires(self) -> None:
+        stream, seen = self._make_one()
+        stream.feed_data(b"abc")
+        stream.feed_eof()
+
+        data, end = await stream.readchunk()
+        assert (data, end) == (b"abc", False)
+        assert seen == [b"abc"]
+
+    async def test_readchunk_http_chunk_eof_does_not_fire(self) -> None:
+        # After the final http chunk, readchunk returns (b"", False) at EOF;
+        # that empty terminator must not fire the hook.
+        stream, seen = self._make_one()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"abc")
+        stream.end_http_chunk_receiving()
+        stream.feed_eof()
+
+        assert await stream.readchunk() == (b"abc", True)
+        assert await stream.readchunk() == (b"", False)
+        assert seen == [b"abc"]
+
+    async def test_readuntil_fires(self) -> None:
+        stream, seen = self._make_one()
+        stream.feed_data(b"line1\nline2\n")
+        stream.feed_eof()
+
+        assert await stream.readuntil() == b"line1\n"
+        assert await stream.readuntil() == b"line2\n"
+        assert seen == [b"line1\n", b"line2\n"]
+
+    async def test_readline_fires_once(self) -> None:
+        # readline chains through readuntil — must not double-fire.
+        stream, seen = self._make_one()
+        stream.feed_data(b"line1\n")
+        stream.feed_eof()
+
+        assert await stream.readline() == b"line1\n"
+        assert seen == [b"line1\n"]
+
+    async def test_readexactly_fires_via_read(self) -> None:
+        # readexactly chains through read(n) — each underlying read fires once.
+        stream, seen = self._make_one()
+        stream.feed_data(b"abcdef")
+        stream.feed_eof()
+
+        assert await stream.readexactly(6) == b"abcdef"
+        assert seen == [b"abcdef"]
+
+    async def test_empty_buffer_eof_does_not_fire(self) -> None:
+        stream, seen = self._make_one()
+        stream.feed_eof()
+
+        assert await stream.read() == b""
+        assert await stream.readany() == b""
+        assert await stream.readchunk() == (b"", False)
+        assert seen == []
+
+    async def test_iter_chunked_fires(self) -> None:
+        stream, seen = self._make_one()
+        stream.feed_data(b"abcdef")
+        stream.feed_eof()
+
+        collected = [chunk async for chunk in stream.iter_chunked(3)]
+        assert b"".join(collected) == b"abcdef"
+        assert b"".join(seen) == b"abcdef"
+
+    async def test_iter_any_fires(self) -> None:
+        # _read_nowait(-1) drains the buffer in a single call, so two
+        # pre-fed blocks come back as one chunk.
+        stream, seen = self._make_one()
+        stream.feed_data(b"abc")
+        stream.feed_data(b"def")
+        stream.feed_eof()
+
+        collected = [chunk async for chunk in stream.iter_any()]
+        assert collected == [b"abcdef"]
+        assert seen == [b"abcdef"]
+
+    async def test_iter_chunks_fires(self) -> None:
+        stream, seen = self._make_one()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"abc")
+        stream.end_http_chunk_receiving()
+        stream.begin_http_chunk_receiving()
+        stream.feed_data(b"def")
+        stream.end_http_chunk_receiving()
+        stream.feed_eof()
+
+        collected = [chunk async for chunk, _ in stream.iter_chunks()]
+        assert b"".join(collected) == b"abcdef"
+        assert seen == [b"abc", b"def"]
+
+    async def test_hook_exception_propagates(self) -> None:
+        async def cb(chunk: bytes) -> None:
+            raise RuntimeError("boom")
+
+        stream, _ = self._make_one(cb)
+        stream.feed_data(b"abc")
+        stream.feed_eof()
+
+        with pytest.raises(RuntimeError, match="boom"):
+            await stream.readany()
 
 
 async def test_empty_stream_reader() -> None:

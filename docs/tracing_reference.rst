@@ -237,6 +237,13 @@ Classes
 
       .. versionadded:: 3.1
 
+      .. versionchanged:: 4.0
+
+         The signal now fires for every chunk returned from
+         ``ClientResponse.content``. Previously it only fired once from
+         :meth:`ClientResponse.read` with the full body, and direct
+         ``.content`` access did not fire it at all.
+
    .. attribute:: on_request_redirect
 
       Property that gives access to the signals that will be executed when a

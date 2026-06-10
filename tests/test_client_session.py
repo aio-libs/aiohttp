@@ -1038,6 +1038,43 @@ async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
             assert gathered_req_headers["Custom-Header"] == "Custom value"
 
 
+async def test_response_chunk_received_via_content(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    body = b"x" * 4096
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.content_length = len(body)
+        await resp.prepare(request)
+        await resp.write(body)
+        return resp
+
+    chunks: list[bytes] = []
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        chunks.append(params.chunk)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    async with client.get("/") as resp:
+        async for _ in resp.content.iter_chunked(512):
+            pass
+        # Hook must fire per chunk delivered to the caller; together they
+        # must concatenate to the full body.
+        assert chunks
+        assert b"".join(chunks) == body
+
+
 async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:
     async def root_handler(request: web.Request) -> web.Response:
         return web.Response()
@@ -1163,7 +1200,8 @@ async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
             assert to_trace_urls(on_request_chunk_sent) == []
-            assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
+            # Empty response body: no chunks are delivered to the caller.
+            assert to_trace_urls(on_response_chunk_received) == []
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
     # Redirect
@@ -1179,7 +1217,7 @@ async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
             assert to_trace_urls(on_request_chunk_sent) == []
-            assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
+            assert to_trace_urls(on_response_chunk_received) == []
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),
                 to_url("/"),

@@ -57,7 +57,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .streams import StreamReader
+from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
@@ -496,6 +496,19 @@ class ClientResponse(HeadersMixin):
         # payload
         self.content = payload
 
+        # Setting a per-response hook on the singleton would leak
+        # across requests, and its read methods never deliver a chunk anyway.
+        if self._traces and payload is not EMPTY_PAYLOAD:
+            traces = self._traces
+            method = self.method
+            url = self.url
+
+            async def _on_chunk(chunk: bytes) -> None:
+                for trace in traces:
+                    await trace.send_response_chunk_received(method, url, chunk)
+
+            payload._on_chunk_received = _on_chunk
+
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
@@ -622,10 +635,6 @@ class ClientResponse(HeadersMixin):
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(
-                        self.method, self.url, self._body
-                    )
             except BaseException:
                 self.close()
                 raise

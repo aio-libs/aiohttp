@@ -101,6 +101,7 @@ class StreamReader:
         "_timer",
         "_eof_callbacks",
         "_eof_counter",
+        "_on_chunk_received",
         "total_bytes",
         "total_compressed_bytes",
     )
@@ -134,6 +135,7 @@ class StreamReader:
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: list[Callable[[], None]] = []
         self._eof_counter = 0
+        self._on_chunk_received: Callable[[bytes], Awaitable[None]] | None = None
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -363,6 +365,10 @@ class StreamReader:
         finally:
             self._waiter = None
 
+    async def _fire_chunk_received(self, chunk: bytes) -> None:
+        if chunk and (cb := self._on_chunk_received) is not None:
+            await cb(chunk)
+
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
 
@@ -403,6 +409,7 @@ class StreamReader:
             if not_enough:
                 await self._wait("readuntil")
 
+        await self._fire_chunk_received(chunk)
         return chunk
 
     async def read(self, n: int = -1) -> bytes:
@@ -414,6 +421,7 @@ class StreamReader:
 
         if n < 0:
             # Reading everything — remove decompression chunk limit.
+            # readany() fires the chunk hook for each block.
             self.set_read_chunk_size(sys.maxsize)
             blocks = []
             while True:
@@ -430,7 +438,9 @@ class StreamReader:
         while not self._buffer and not self._eof:
             await self._wait("read")
 
-        return self._read_nowait(n)
+        chunk = self._read_nowait(n)
+        await self._fire_chunk_received(chunk)
+        return chunk
 
     async def readany(self) -> bytes:
         if self._exception is not None:
@@ -442,7 +452,9 @@ class StreamReader:
         while not self._buffer and not self._eof:
             await self._wait("readany")
 
-        return self._read_nowait(-1)
+        chunk = self._read_nowait(-1)
+        await self._fire_chunk_received(chunk)
+        return chunk
 
     async def readchunk(self) -> tuple[bytes, bool]:
         """Returns a tuple of (data, end_of_http_chunk).
@@ -461,14 +473,18 @@ class StreamReader:
                 if pos == self._cursor:
                     return (b"", True)
                 if pos > self._cursor:
-                    return (self._read_nowait(pos - self._cursor), True)
+                    chunk = self._read_nowait(pos - self._cursor)
+                    await self._fire_chunk_received(chunk)
+                    return (chunk, True)
                 internal_logger.warning(
                     "Skipping HTTP chunk end due to data "
                     "consumption beyond chunk boundary"
                 )
 
             if self._buffer:
-                return (self._read_nowait_chunk(-1), False)
+                chunk = self._read_nowait_chunk(-1)
+                await self._fire_chunk_received(chunk)
+                return (chunk, False)
                 # return (self._read_nowait(-1), False)
 
             if self._eof:
