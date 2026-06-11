@@ -135,9 +135,9 @@ class StreamReader:
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: list[Callable[[], None]] = []
         self._eof_counter = 0
-        self._on_chunk_received: Callable[[bytes], Coroutine[None, None, None]] | None = (
-            None
-        )
+        self._on_chunk_received: (
+            Callable[[bytes], Coroutine[None, None, None]] | None
+        ) = None
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
