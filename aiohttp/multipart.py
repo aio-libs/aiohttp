@@ -526,7 +526,7 @@ class BodyPartReader:
     def decode(self, data: bytes) -> bytes:
         """Decodes data synchronously.
 
-        Decodes data according the specified Content-Encoding
+        Decodes data according to the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
 
         Note: For large payloads, consider using decode_iter() instead
@@ -540,7 +540,7 @@ class BodyPartReader:
     async def decode_iter(self, data: bytes) -> AsyncIterator[bytes]:
         """Async generator that yields decoded data chunks.
 
-        Decodes data according the specified Content-Encoding
+        Decodes data according to the specified Content-Encoding
         or Content-Transfer-Encoding headers value.
 
         This method offloads decompression to an executor for large payloads
