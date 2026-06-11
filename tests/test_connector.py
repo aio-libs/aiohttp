@@ -2926,7 +2926,7 @@ async def test_multiple_dns_resolution_requests_success(
         ):
             await task1
 
-        # Verify the the task is finished
+        # Verify the task is finished
         assert len(conn._resolve_host_tasks) == 0
 
         with pytest.raises(
@@ -2982,7 +2982,7 @@ async def test_multiple_dns_resolution_requests_failure(
         ):
             await task1
 
-        # Verify the the task is finished
+        # Verify the task is finished
         assert len(conn._resolve_host_tasks) == 0
 
         with pytest.raises(
@@ -3046,7 +3046,7 @@ async def test_multiple_dns_resolution_requests_cancelled(
         ):
             await task3
 
-        # Verify the the task is finished
+        # Verify the task is finished
         assert len(conn._resolve_host_tasks) == 0
 
 
@@ -3112,7 +3112,7 @@ async def test_multiple_dns_resolution_requests_first_cancelled(
         ):
             await task3
 
-        # Verify the the task is finished
+        # Verify the task is finished
         assert len(conn._resolve_host_tasks) == 0
 
 
@@ -3195,7 +3195,7 @@ async def test_multiple_dns_resolution_requests_first_fails_second_successful(
         ):
             await task3
 
-        # Verify the the task is finished
+        # Verify the task is finished
         assert len(conn._resolve_host_tasks) == 0
 
 
