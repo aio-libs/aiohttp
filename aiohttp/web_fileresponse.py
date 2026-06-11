@@ -39,11 +39,11 @@ except ImportError:
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
-async def sendfile(loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any) -> int:
+async def sendfile(loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any) -> None:
     if aiofastnet is not None:
-        return await aiofastnet.sendfile(loop, *args, **kwargs)
+        await aiofastnet.sendfile(loop, *args, **kwargs)
     else:
-        return await loop.sendfile(*args, **kwargs)
+        await loop.sendfile(*args, **kwargs)
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
