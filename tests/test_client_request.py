@@ -2281,7 +2281,7 @@ async def test_empty_body_isolation_after_update(
     assert ClientRequest._EMPTY_BODY.consumed is False
     assert ClientRequest._EMPTY_BODY.size == 0
 
-    
+
 def test_hostname_err(make_request: _RequestMaker) -> None:
     with pytest.raises(ValueError, matches="'socks5'"):
         make_request("get", "http://python.org/", proxy="socks5://127.0.0.1:80")
