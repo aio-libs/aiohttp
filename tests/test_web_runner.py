@@ -266,8 +266,13 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     assert site.name == "http://0.0.0.0:8080"
 
     server = mock.create_autospec(asyncio.Server, spec_set=True)
-    with mock.patch.object(web_runner_module, "create_server",
-                           autospec=True, spec_set=True, return_value=server) as create_server:
+    with mock.patch.object(
+        web_runner_module,
+        "create_server",
+        autospec=True,
+        spec_set=True,
+        return_value=server,
+    ) as create_server:
         await site.start()
 
         create_server.assert_called_once()

@@ -76,8 +76,13 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
     server.wait_closed.return_value = None
     server.sockets = []
 
-    with mock.patch.object(web_runner_module, "create_server",
-                           autospec=True, spec_set=True, return_value=server) as create_server_mock:
+    with mock.patch.object(
+        web_runner_module,
+        "create_server",
+        autospec=True,
+        spec_set=True,
+        return_value=server,
+    ) as create_server_mock:
         yield create_server_mock
 
 
