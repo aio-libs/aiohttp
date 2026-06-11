@@ -603,13 +603,14 @@ class ClientResponse(HeadersMixin):
     def _notify_content(self) -> None:
         content = self.content
         # content can be None here, but the types are cheated elsewhere.
-        if content.exception() is None:
-            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
-        # The bound method installed in start() captures self, creating a
-        # response→payload→method→self cycle. Clear it eagerly so the
-        # response is reclaimable without waiting for cycle GC.
-        if content._on_chunk_received is not None:
-            content._on_chunk_received = None
+        if content:  # type: ignore[truthy-bool]
+            if content.exception() is None:
+                set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+            # The bound method installed in start() captures self, creating a
+            # response→payload→method→self cycle. Clear it eagerly so the
+            # response is reclaimable without waiting for cycle GC.
+            if content._on_chunk_received is not None:
+                content._on_chunk_received = None
         self._released = True
 
     async def wait_for_close(self) -> None:
