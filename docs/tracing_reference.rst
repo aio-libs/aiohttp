@@ -346,7 +346,7 @@ Classes
 
    .. attribute:: method
 
-       Method that will be used  to make the request.
+       Method that will be used to make the request.
 
    .. attribute:: url
 
@@ -366,7 +366,7 @@ Classes
 
    .. attribute:: method
 
-       Method that will be used  to make the request.
+       Method that will be used to make the request.
 
    .. attribute:: url
 
@@ -386,7 +386,7 @@ Classes
 
    .. attribute:: method
 
-       Method that will be used  to make the request.
+       Method that will be used to make the request.
 
    .. attribute:: url
 
