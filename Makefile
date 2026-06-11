@@ -3,6 +3,8 @@
 to-hash-one = $(dir $1).hash/$(addsuffix .hash,$(notdir $1))
 to-hash = $(foreach fname,$1,$(call to-hash-one,$(fname)))
 
+CYTHON_EXTRA ?=
+PIP ?= python -m pip
 CYS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/*.pyi)  $(wildcard aiohttp/*.pxd) $(wildcard aiohttp/_websocket/*.pyx) $(wildcard aiohttp/_websocket/*.pyi) $(wildcard aiohttp/_websocket/*.pxd)
 PYXS := $(wildcard aiohttp/*.pyx) $(wildcard aiohttp/_websocket/*.pyx)
 CS := $(wildcard aiohttp/*.c) $(wildcard aiohttp/_websocket/*.c)
@@ -47,10 +49,10 @@ endif
 .SECONDARY: $(call to-hash,$(ALLS))
 
 .update-pip:
-	@python -m pip install --upgrade pip
+	@$(PIP) install --upgrade pip
 
 .install-cython: .update-pip $(call to-hash,requirements/cython.txt)
-	@python -m pip install -r requirements/cython.in -c requirements/cython.txt
+	@$(PIP) install -r requirements/cython.in -c requirements/cython.txt
 	@touch .install-cython
 
 aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
@@ -59,14 +61,14 @@ aiohttp/_find_header.c: $(call to-hash,aiohttp/hdrs.py ./tools/gen.py)
 # Special case for reader since we want to be able to disable
 # the extension with AIOHTTP_NO_EXTENSIONS
 aiohttp/_websocket/reader_c.c: aiohttp/_websocket/reader_c.py
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True $(CYTHON_EXTRA) -o $@ $< -I aiohttp -Werror
 
 # _find_headers generator creates _headers.pyi as well
 aiohttp/%.c: aiohttp/%.pyx $(call to-hash,$(CYS)) aiohttp/_find_header.c
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True $(CYTHON_EXTRA) -o $@ $< -I aiohttp -Werror
 
 aiohttp/_websocket/%.c: aiohttp/_websocket/%.pyx $(call to-hash,$(CYS))
-	cython -3 -o $@ $< -I aiohttp -Werror
+	cython -3 -X freethreading_compatible=True $(CYTHON_EXTRA) -o $@ $< -I aiohttp -Werror
 
 vendor/llhttp/node_modules: vendor/llhttp/package.json
 	cd vendor/llhttp; npm ci
@@ -81,8 +83,11 @@ generate-llhttp: .llhttp-gen
 .PHONY: cythonize
 cythonize: .install-cython $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c
 
+.PHONY: cythonize-nodeps
+cythonize-nodeps: $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c
+
 .install-deps: .install-cython $(PYXS:.pyx=.c) aiohttp/_websocket/reader_c.c $(call to-hash,$(CYS) $(REQS))
-	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
+	@$(PIP) install -r requirements/dev.in -c requirements/dev.txt
 	@touch .install-deps
 
 .PHONY: lint
@@ -97,7 +102,7 @@ mypy:
 	mypy
 
 .develop: .install-deps generate-llhttp $(call to-hash,$(PYS) $(CYS) $(CS))
-	python -m pip install -e . -c requirements/runtime-deps.txt
+	$(PIP) install -e . -c requirements/runtime-deps.txt
 	@touch .develop
 
 .PHONY: test
@@ -124,16 +129,6 @@ define run_tests_in_docker
 	DOCKER_BUILDKIT=1 docker build --build-arg PYTHON_VERSION=$(1) --build-arg AIOHTTP_NO_EXTENSIONS=$(2) -t "aiohttp-test-$(1)-$(2)" -f tools/testing/Dockerfile .
 	docker run --rm -ti -v `pwd`:/src -w /src "aiohttp-test-$(1)-$(2)" $(TEST_SPEC)
 endef
-
-.PHONY: test-3.9-no-extensions test
-test-3.9-no-extensions:
-	$(call run_tests_in_docker,3.9,y)
-test-3.9:
-	$(call run_tests_in_docker,3.9,n)
-test-3.10-no-extensions:
-	$(call run_tests_in_docker,3.10,y)
-test-3.10:
-	$(call run_tests_in_docker,3.10,n)
 
 .PHONY: clean
 clean:
@@ -184,12 +179,12 @@ doc-spelling:
 
 .PHONY: install
 install: .update-pip
-	@python -m pip install -r requirements/dev.in -c requirements/dev.txt
+	@$(PIP) install -r requirements/dev.in -c requirements/dev.txt
 
 .PHONY: install-dev
 install-dev: .develop
 
 .PHONY: sync-direct-runtime-deps
 sync-direct-runtime-deps:
-	@echo Updating 'requirements/runtime-deps.in' from 'setup.cfg'... >&2
+	@echo Updating 'requirements/runtime-deps.in' from 'pyproject.toml'... >&2
 	@python requirements/sync-direct-runtime-deps.py

@@ -1,14 +1,16 @@
 import asyncio
 import platform
 import signal
-from typing import Any, Iterator, NoReturn, Protocol, Union
+import socket
+from collections.abc import AsyncIterator
+from typing import Any, NoReturn, Protocol
 from unittest import mock
 
 import pytest
 
 from aiohttp import web
 from aiohttp.abc import AbstractAccessLogger
-from aiohttp.test_utils import get_unused_port_socket
+from aiohttp.test_utils import REUSE_ADDRESS
 from aiohttp.web_log import AccessLogger
 
 
@@ -22,10 +24,7 @@ def app() -> web.Application:
 
 
 @pytest.fixture
-def make_runner(
-    loop: asyncio.AbstractEventLoop, app: web.Application
-) -> Iterator[_RunnerMaker]:
-    asyncio.set_event_loop(loop)
+async def make_runner(app: web.Application) -> AsyncIterator[_RunnerMaker]:
     runners = []
 
     def go(handle_signals: bool = False, **kwargs: Any) -> web.AppRunner:
@@ -35,7 +34,7 @@ def make_runner(
 
     yield go
     for runner in runners:
-        loop.run_until_complete(runner.cleanup())
+        await runner.cleanup()
 
 
 async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
@@ -49,26 +48,44 @@ async def test_site_for_nonfrozen_app(make_runner: _RunnerMaker) -> None:
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_handle_signals(make_runner: _RunnerMaker) -> None:
-    runner = make_runner(handle_signals=True)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=True)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is not signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 @pytest.mark.skipif(
     platform.system() == "Windows", reason="the test is not valid for Windows"
 )
 async def test_runner_setup_without_signal_handling(make_runner: _RunnerMaker) -> None:
-    runner = make_runner(handle_signals=False)
-    await runner.setup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
-    await runner.cleanup()
-    assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    # Save the original signal handler
+    original_handler = signal.getsignal(signal.SIGTERM)
+    try:
+        # Set a known state for the signal handler to avoid flaky tests
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+
+        runner = make_runner(handle_signals=False)
+        await runner.setup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+        await runner.cleanup()
+        assert signal.getsignal(signal.SIGTERM) is signal.SIG_DFL
+    finally:
+        # Restore original signal handler
+        signal.signal(signal.SIGTERM, original_handler)
 
 
 async def test_site_double_added(make_runner: _RunnerMaker) -> None:
-    _sock = get_unused_port_socket("127.0.0.1")
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=REUSE_ADDRESS)
     runner = make_runner()
     await runner.setup()
     site = web.SockSite(runner, _sock)
@@ -140,7 +157,7 @@ async def test_app_handler_args_failure() -> None:
     ),
 )
 async def test_app_handler_args_ceil_threshold(
-    value: Union[int, str, None], expected: int
+    value: int | str | None, expected: int
 ) -> None:
     app = web.Application(handler_args={"timeout_ceil_threshold": value})
     runner = web.AppRunner(app)
@@ -196,8 +213,14 @@ async def test_app_make_handler_access_log_class2() -> None:
     assert runner._kwargs["access_log_class"] is Logger
 
 
+async def test_app_make_handler_no_access_log_class() -> None:
+    app = web.Application(handler_args={"access_log": None})
+    runner = web.AppRunner(app)
+    assert runner._kwargs["access_log"] is None
+
+
 async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
-    _sock = get_unused_port_socket("127.0.0.1")
+    _sock = socket.create_server(("127.0.0.1", 0), reuse_port=True)
     runner = make_runner()
     await runner.setup()
     tcp = web.SockSite(runner, _sock)
@@ -212,8 +235,9 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("selector",))
 async def test_named_pipe_runner_wrong_loop(
-    app: web.Application, selector_loop: asyncio.AbstractEventLoop, pipe_name: str
+    app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
@@ -224,8 +248,9 @@ async def test_named_pipe_runner_wrong_loop(
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
+@pytest.mark.asyncio(loop_factories=("proactor",))
 async def test_named_pipe_runner_proactor_loop(
-    proactor_loop: asyncio.AbstractEventLoop, app: web.Application, pipe_name: str
+    app: web.Application, pipe_name: str
 ) -> None:
     runner = web.AppRunner(app)
     await runner.setup()
@@ -243,7 +268,7 @@ async def test_tcpsite_default_host(make_runner: _RunnerMaker) -> None:
     m = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
     m.create_server.return_value = mock.create_autospec(asyncio.Server, spec_set=True)
     with mock.patch(
-        "asyncio.get_event_loop", autospec=True, spec_set=True, return_value=m
+        "asyncio.get_running_loop", autospec=True, spec_set=True, return_value=m
     ):
         await site.start()
 
@@ -256,7 +281,20 @@ async def test_tcpsite_empty_str_host(make_runner: _RunnerMaker) -> None:
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="")
+    assert site.port == 8080
     assert site.name == "http://0.0.0.0:8080"
+
+
+async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, port=0)
+    assert site.port == 0
+
+    await site.start()
+    assert site.port != 0
+    assert site.name.startswith("http://0.0.0.0:")
+    await site.stop()
 
 
 def test_run_after_asyncio_run() -> None:

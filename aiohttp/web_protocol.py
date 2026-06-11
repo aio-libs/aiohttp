@@ -3,37 +3,26 @@ import asyncio.streams
 import sys
 import traceback
 from collections import deque
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Deque,
-    Generic,
-    Optional,
-    Sequence,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-)
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 import yarl
+from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
-from .base_protocol import BaseProtocol
-from .helpers import ceil_timeout, frozen_dataclass_decorator
+from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
+from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout, frozen_dataclass_decorator
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
     HttpVersion10,
     RawRequestMessage,
     StreamWriter,
+    WebSocketReader,
 )
 from .http_exceptions import BadHttpMethod
 from .log import access_logger, server_logger
@@ -46,7 +35,14 @@ from .web_response import Response, StreamResponse
 
 __all__ = ("RequestHandler", "RequestPayloadError", "PayloadAccessError")
 
+# Max parsed-but-unhandled pipelined requests buffered per connection before
+# reading is paused. Bounds memory a client can pin by keeping one handler busy
+# and pipelining behind it; reading resumes as the queue drains.
+MAX_MSG_QUEUE_SIZE = 32
+
 if TYPE_CHECKING:
+    import ssl
+
     from .web_server import Server
 
 
@@ -64,8 +60,8 @@ _RequestFactory = Callable[
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
 _AnyAbstractAccessLogger = Union[
-    Type[AbstractAsyncAccessLogger],
-    Type[AbstractAccessLogger],
+    type[AbstractAsyncAccessLogger],
+    type[AbstractAccessLogger],
 ]
 
 ERROR = RawRequestMessage(
@@ -123,7 +119,7 @@ class _ErrInfo:
     message: str
 
 
-_MsgType = Tuple[Union[RawRequestMessage, _ErrInfo], StreamReader]
+_MsgType = tuple[RawRequestMessage | _ErrInfo, StreamReader]
 
 
 class RequestHandler(BaseProtocol, Generic[_Request]):
@@ -163,6 +159,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     """
 
     __slots__ = (
+        "max_field_size",
+        "max_headers",
+        "max_line_size",
         "_request_count",
         "_keepalive",
         "_manager",
@@ -174,13 +173,15 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_keepalive_timeout",
         "_lingering_time",
         "_messages",
+        "_max_msg_queue_size",
+        "_msg_queue_resume_size",
+        "_msg_queue_paused",
         "_message_tail",
         "_handler_waiter",
         "_waiter",
         "_task_handler",
-        "_upgrade",
         "_payload_parser",
-        "_request_parser",
+        "_data_received_cb",
         "logger",
         "access_log",
         "access_logger",
@@ -189,6 +190,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_current_request",
         "_timeout_ceil_threshold",
         "_request_in_progress",
+        "_logging_enabled",
+        "_cache",
     )
 
     def __init__(
@@ -201,54 +204,67 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
-        access_log: Optional[Logger] = access_logger,
+        access_log: Logger | None = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         max_line_size: int = 8190,
+        max_headers: int = 128,
         max_field_size: int = 8190,
         lingering_time: float = 10.0,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
-        super().__init__(loop)
-
-        # _request_count is the number of requests processed with the same connection.
-        self._request_count = 0
-        self._keepalive = False
-        self._current_request: Optional[_Request] = None
-        self._manager: Optional[Server[_Request]] = manager
-        self._request_handler: Optional[_RequestHandler[_Request]] = (
-            manager.request_handler
-        )
-        self._request_factory: Optional[_RequestFactory[_Request]] = (
-            manager.request_factory
-        )
-
-        self._tcp_keepalive = tcp_keepalive
-        # placeholder to be replaced on keepalive timeout setup
-        self._next_keepalive_close_time = 0.0
-        self._keepalive_handle: Optional[asyncio.Handle] = None
-        self._keepalive_timeout = keepalive_timeout
-        self._lingering_time = float(lingering_time)
-
-        self._messages: Deque[_MsgType] = deque()
-        self._message_tail = b""
-
-        self._waiter: Optional[asyncio.Future[None]] = None
-        self._handler_waiter: Optional[asyncio.Future[None]] = None
-        self._task_handler: Optional[asyncio.Task[None]] = None
-
-        self._upgrade = False
-        self._payload_parser: Any = None
-        self._request_parser: Optional[HttpRequestParser] = HttpRequestParser(
+        self._max_msg_queue_size = MAX_MSG_QUEUE_SIZE
+        # Low-water mark: resume reading once the queue drains to half the limit
+        # so we refill in batches instead of churning pause/resume per request.
+        self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
+        # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
+        # if BaseProtocol ever triggers a resume during init.
+        self._msg_queue_paused = False
+        parser = HttpRequestParser(
             self,
             loop,
             read_bufsize,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
+            max_headers=max_headers,
             payload_exception=RequestPayloadError,
             auto_decompress=auto_decompress,
+            max_msg_queue_size=MAX_MSG_QUEUE_SIZE,
         )
+        super().__init__(loop, parser)
+
+        # _request_count is the number of requests processed with the same connection.
+        self._request_count = 0
+        self._keepalive = False
+        self._current_request: _Request | None = None
+        self._manager: Server[_Request] | None = manager
+        self._request_handler: _RequestHandler[_Request] | None = (
+            manager.request_handler
+        )
+        self._request_factory: _RequestFactory[_Request] | None = (
+            manager.request_factory
+        )
+
+        self.max_line_size = max_line_size
+        self.max_headers = max_headers
+        self.max_field_size = max_field_size
+
+        self._tcp_keepalive = tcp_keepalive
+        # placeholder to be replaced on keepalive timeout setup
+        self._next_keepalive_close_time = 0.0
+        self._keepalive_handle: asyncio.Handle | None = None
+        self._keepalive_timeout = keepalive_timeout
+        self._lingering_time = float(lingering_time)
+
+        self._messages: deque[_MsgType] = deque()
+        self._message_tail = b""
+        self._data_received_cb: Callable[[], None] | None = None
+
+        self._waiter: asyncio.Future[None] | None = None
+        self._handler_waiter: asyncio.Future[None] | None = None
+        self._task_handler: asyncio.Task[None] | None = None
+        self._payload_parser: Any = None
 
         self._timeout_ceil_threshold: float = 5
         try:
@@ -260,7 +276,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self.access_log = access_log
         if access_log:
             if issubclass(access_log_class, AbstractAsyncAccessLogger):
-                self.access_logger: Optional[AbstractAsyncAccessLogger] = (
+                self.access_logger: AbstractAsyncAccessLogger | None = (
                     access_log_class()
                 )
             else:
@@ -269,12 +285,15 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     access_logger,
                     self._loop,
                 )
+            self._logging_enabled = self.access_logger.enabled
         else:
             self.access_logger = None
+            self._logging_enabled = False
 
         self._close = False
         self._force_close = False
         self._request_in_progress = False
+        self._cache: dict[str, Any] = {}
 
     def __repr__(self) -> str:
         return "<{} {}>".format(
@@ -282,11 +301,42 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             "connected" if self.transport is not None else "disconnected",
         )
 
+    @under_cached_property
+    def ssl_context(self) -> Optional["ssl.SSLContext"]:
+        """Return SSLContext if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("sslcontext")
+        )
+
+    @under_cached_property
+    def peername(
+        self,
+    ) -> str | tuple[str, int, int, int] | tuple[str, int] | None:
+        """Return peername if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("peername")
+        )
+
+    @under_cached_property
+    def sockname(
+        self,
+    ) -> str | tuple[str, int, int, int] | tuple[str, int] | None:
+        """Return sockname if available."""
+        return (
+            None
+            if self.transport is None
+            else self.transport.get_extra_info("sockname")
+        )
+
     @property
     def keepalive_timeout(self) -> float:
         return self._keepalive_timeout
 
-    async def shutdown(self, timeout: Optional[float] = 15.0) -> None:
+    async def shutdown(self, timeout: float | None = 15.0) -> None:
         """Do worker process exit preparations.
 
         We need to clean up everything and stop accepting requests.
@@ -353,7 +403,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             task = loop.create_task(self.start())
         self._task_handler = task
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
         if self._manager is None:
             return
         self._manager.connection_lost(self, exc)
@@ -366,7 +416,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager = None
         self._request_factory = None
         self._request_handler = None
-        self._request_parser = None
+        self._parser = None
 
         if self._keepalive_handle is not None:
             self._keepalive_handle.cancel()
@@ -385,11 +435,15 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_eof()
             self._payload_parser = None
 
-    def set_parser(self, parser: Any) -> None:
-        # Actual type is WebReader
+    def set_parser(
+        self,
+        parser: WebSocketReader,
+        data_received_cb: Callable[[], None] | None = None,
+    ) -> None:
         assert self._payload_parser is None
 
         self._payload_parser = parser
+        self._data_received_cb = data_received_cb
 
         if self._message_tail:
             self._payload_parser.feed_data(self._message_tail)
@@ -403,10 +457,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             return
         # parse http messages
         messages: Sequence[_MsgType]
-        if self._payload_parser is None and not self._upgrade:
-            assert self._request_parser is not None
+        if self._payload_parser is None and not self._upgraded:
+            assert self._parser is not None
             try:
-                messages, upgraded, tail = self._request_parser.feed_data(data)
+                messages, upgraded, tail = self._parser.feed_data(data)
             except HttpProcessingError as exc:
                 messages = [
                     (_ErrInfo(status=400, exc=exc, message=exc.message), EMPTY_PAYLOAD)
@@ -414,7 +468,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 upgraded = False
                 tail = b""
 
-            for msg, payload in messages or ():
+            for msg, payload in messages:
                 self._request_count += 1
                 self._messages.append((msg, payload))
 
@@ -423,19 +477,59 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 # don't set result twice
                 waiter.set_result(None)
 
-            self._upgrade = upgraded
+            # Queue full: pause the transport (the parser already stopped
+            # emitting). start() resumes as it drains the queue.
+            if (
+                not self._msg_queue_paused
+                and len(self._messages) >= self._max_msg_queue_size
+            ):
+                self._pause_msg_queue_reading()
+
+            self._upgraded = upgraded
             if upgraded and tail:
                 self._message_tail = tail
 
         # no parser, just store
-        elif self._payload_parser is None and self._upgrade and data:
+        elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
 
         # feed payload
         elif data:
+            if self._data_received_cb is not None:
+                self._data_received_cb()
             eof, tail = self._payload_parser.feed_data(data)
             if eof:
                 self.close()
+
+    def _reading_paused_for_msg_queue(self) -> bool:
+        return self._msg_queue_paused
+
+    def _pause_msg_queue_reading(self) -> None:
+        self._msg_queue_paused = True
+        if self.transport is not None:
+            try:
+                self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
+
+    def _resume_msg_queue_reading(self) -> None:
+        if not self._upgraded:
+            # Reparse buffered pipelined requests while still marked paused so
+            # a refill past the limit does not re-pause an already-paused
+            # transport; only resume below once it stayed under the limit.
+            self.data_received(b"")
+            if len(self._messages) >= self._max_msg_queue_size:
+                return
+        self._msg_queue_paused = False
+        if not self._reading_paused and self.transport is not None:
+            try:
+                self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def keep_alive(self, val: bool) -> None:
         """Set keep-alive connection mode.
@@ -467,9 +561,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self.transport = None
 
     async def log_access(
-        self, request: BaseRequest, response: StreamResponse, request_start: float
+        self,
+        request: BaseRequest,
+        response: StreamResponse,
+        request_start: float | None,
     ) -> None:
-        if self.access_logger is not None and self.access_logger.enabled:
+        if self._logging_enabled and self.access_logger is not None:
+            if TYPE_CHECKING:
+                assert request_start is not None
             await self.access_logger.log(request, response, request_start)
 
     def log_debug(self, *args: Any, **kw: Any) -> None:
@@ -487,7 +586,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         loop = self._loop
         now = loop.time()
         close_time = self._next_keepalive_close_time
-        if now <= close_time:
+        if now < close_time:
             # Keep alive close check fired too early, reschedule
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
             return
@@ -499,9 +598,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     async def _handle_request(
         self,
         request: _Request,
-        start_time: float,
+        start_time: float | None,
         request_handler: Callable[[_Request], Awaitable[StreamResponse]],
-    ) -> Tuple[StreamResponse, bool]:
+    ) -> tuple[StreamResponse, bool]:
         self._request_in_progress = True
         try:
             try:
@@ -543,8 +642,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         keep_alive(True) specified.
         """
         loop = self._loop
-        handler = asyncio.current_task(loop)
-        assert handler is not None
         manager = self._manager
         assert manager is not None
         keepalive_timeout = self._keepalive_timeout
@@ -563,7 +660,21 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             message, payload = self._messages.popleft()
 
-            start = loop.time()
+            # Free a parser slot; resume reading once drained to low water so
+            # pipelining keeps flowing while this request is handled.
+            # no branch: _parser is only None after connection_lost, whose path
+            # exits this loop, so the None case is not reachably exercisable.
+            if self._parser is not None:
+                self._parser.message_consumed()
+            if (
+                self._msg_queue_paused
+                and len(self._messages) <= self._msg_queue_resume_size
+            ):
+                self._resume_msg_queue_reading()
+
+            # time is only fetched if logging is enabled as otherwise
+            # its thrown away and never used.
+            start = loop.time() if self._logging_enabled else None
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
@@ -574,7 +685,16 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 request_handler = self._make_error_handler(message)
                 message = ERROR
 
-            request = self._request_factory(message, payload, self, writer, handler)
+            # Important don't hold a reference to the current task
+            # as on traceback it will prevent the task from being
+            # collected and will cause a memory leak.
+            request = self._request_factory(
+                message,
+                payload,
+                self,
+                writer,
+                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+            )
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
@@ -583,15 +703,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 else:
                     task = loop.create_task(coro)
                 try:
-                    resp, reset = await task  # type: ignore[possibly-undefined]
+                    resp, reset = await task
                 except ConnectionError:
                     self.log_debug("Ignored premature client disconnection")
                     break
 
                 # Drop the processed task from asyncio.Task.all_tasks() early
-                del task  # type: ignore[possibly-undefined]
-                # https://github.com/python/mypy/issues/14309
-                if reset:  # type: ignore[possibly-undefined]
+                del task
+                if reset:
                     self.log_debug("Ignored premature client disconnection 2")
                     break
 
@@ -633,26 +752,29 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection")
+                self.force_close()
                 raise
             except Exception as exc:
                 self.log_exception("Unhandled exception", exc_info=exc)
                 self.force_close()
+            except BaseException:
+                self.force_close()
+                raise
             finally:
+                request._task = None  # type: ignore[assignment] # Break reference cycle in case of exception
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
-                elif not self._force_close:
-                    if self._keepalive and not self._close:
-                        # start keep-alive timer
-                        if keepalive_timeout is not None:
-                            now = loop.time()
-                            close_time = now + keepalive_timeout
-                            self._next_keepalive_close_time = close_time
-                            if self._keepalive_handle is None:
-                                self._keepalive_handle = loop.call_at(
-                                    close_time, self._process_keepalive
-                                )
-                    else:
-                        break
+
+            if self._keepalive and not self._close and not self._force_close:
+                # start keep-alive timer
+                close_time = loop.time() + keepalive_timeout
+                self._next_keepalive_close_time = close_time
+                if self._keepalive_handle is None:
+                    self._keepalive_handle = loop.call_at(
+                        close_time, self._process_keepalive
+                    )
+            else:
+                break
 
         # remove handler, close transport if no handlers left
         if not self._force_close:
@@ -661,8 +783,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.transport.close()
 
     async def finish_response(
-        self, request: BaseRequest, resp: StreamResponse, start_time: float
-    ) -> Tuple[StreamResponse, bool]:
+        self, request: BaseRequest, resp: StreamResponse, start_time: float | None
+    ) -> tuple[StreamResponse, bool]:
         """Prepare the response and write_eof, then log access.
 
         This has to
@@ -671,12 +793,18 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         prematurely.
         """
         request._finish()
-        if self._request_parser is not None:
-            self._request_parser.set_upgraded(False)
-            self._upgrade = False
+        if self._parser is not None:
+            self._parser.set_upgraded(False)
+            self._upgraded = False
             if self._message_tail:
-                self._request_parser.feed_data(self._message_tail)
-                self._message_tail = b""
+                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
+                self._message_tail = tail
+                for msg, payload in messages:
+                    self._request_count += 1
+                    self._messages.append((msg, payload))
+                # This shouldn't be possible. If a future refactor results in this
+                # failing, then the code may need to be updated to set the waiter.
+                assert self._waiter is None
         try:
             prepare_meth = resp.prepare
         except AttributeError:
@@ -684,8 +812,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self.log_exception("Missing return statement on request handler")  # type: ignore[unreachable]
             else:
                 self.log_exception(
-                    "Web-handler should return a response instance, "
-                    "got {!r}".format(resp)
+                    f"Web-handler should return a response instance, got {resp!r}"
                 )
             exc = HTTPInternalServerError()
             resp = Response(
@@ -706,8 +833,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self,
         request: BaseRequest,
         status: int = 500,
-        exc: Optional[BaseException] = None,
-        message: Optional[str] = None,
+        exc: BaseException | None = None,
+        message: str | None = None,
     ) -> StreamResponse:
         """Handle errors.
 
@@ -719,9 +846,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # or encrypted traffic to an HTTP port. This is expected
             # to happen when connected to the public internet so we log
             # it at the debug level as to not fill logs with noise.
-            self.logger.debug("Error handling request", exc_info=exc)
+            self.logger.debug(
+                "Error handling request from %s", request.remote, exc_info=exc
+            )
         else:
-            self.log_exception("Error handling request", exc_info=exc)
+            self.log_exception(
+                "Error handling request from %s", request.remote, exc_info=exc
+            )
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0:
@@ -732,7 +863,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         ct = "text/plain"
         if status == HTTPStatus.INTERNAL_SERVER_ERROR:
-            title = "{0.value} {0.phrase}".format(HTTPStatus.INTERNAL_SERVER_ERROR)
+            title = f"{HTTPStatus.INTERNAL_SERVER_ERROR.value} {HTTPStatus.INTERNAL_SERVER_ERROR.phrase}"
             msg = HTTPStatus.INTERNAL_SERVER_ERROR.description
             tb = None
             if self._loop.get_debug():
@@ -745,10 +876,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     msg = f"<h2>Traceback:</h2>\n<pre>{tb}</pre>"
                 message = (
                     "<html><head>"
-                    "<title>{title}</title>"
-                    "</head><body>\n<h1>{title}</h1>"
-                    "\n{msg}\n</body></html>\n"
-                ).format(title=title, msg=msg)
+                    f"<title>{title}</title>"
+                    f"</head><body>\n<h1>{title}</h1>"
+                    f"\n{msg}\n</body></html>\n"
+                )
                 ct = "text/html"
             else:
                 if tb:
