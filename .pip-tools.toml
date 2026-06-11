@@ -1,4 +1,5 @@
 [pip-tools]
-allow-unsafe = true
+allow-unsafe = false
 resolver = "backtracking"
 strip-extras = true
+unsafe-package = "aiohttp"

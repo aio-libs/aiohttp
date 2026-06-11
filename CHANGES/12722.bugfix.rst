@@ -1,0 +1,1 @@
+Fixed :py:meth:`~aiohttp.FormData.add_field` accepting invalid bytes in ``name`` and ``filename`` -- by :user:`Dreamsorcerer`.

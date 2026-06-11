@@ -8,7 +8,6 @@ from libc.string cimport memcpy
 from multidict import istr
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
-cdef char BUFFER[BUF_SIZE]
 
 cdef object _istr = istr
 
@@ -19,16 +18,17 @@ cdef struct Writer:
     char *buf
     Py_ssize_t size
     Py_ssize_t pos
+    bint heap_allocated
 
-
-cdef inline void _init_writer(Writer* writer):
-    writer.buf = &BUFFER[0]
+cdef inline void _init_writer(Writer* writer, char *buf):
+    writer.buf = buf
     writer.size = BUF_SIZE
     writer.pos = 0
+    writer.heap_allocated = 0
 
 
 cdef inline void _release_writer(Writer* writer):
-    if writer.buf != BUFFER:
+    if writer.heap_allocated:
         PyMem_Free(writer.buf)
 
 
@@ -39,7 +39,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch):
     if writer.pos == writer.size:
         # reallocate
         size = writer.size + BUF_SIZE
-        if writer.buf == BUFFER:
+        if not writer.heap_allocated:
             buf = <char*>PyMem_Malloc(size)
             if buf == NULL:
                 PyErr_NoMemory()
@@ -52,6 +52,7 @@ cdef inline int _write_byte(Writer* writer, uint8_t ch):
                 return -1
         writer.buf = buf
         writer.size = size
+        writer.heap_allocated = 1
     writer.buf[writer.pos] = <char>ch
     writer.pos += 1
     return 0
@@ -97,32 +98,42 @@ cdef inline int _write_str(Writer* writer, str s):
             return -1
 
 
-# --------------- _serialize_headers ----------------------
-
-cdef str to_str(object s):
+cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
+    cdef Py_UCS4 ch
+    cdef str out_str
     if type(s) is str:
-        return <str>s
+        out_str = <str>s
     elif type(s) is _istr:
-        return PyObject_Str(s)
+        out_str = PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
     else:
-        return str(s)
+        out_str = str(s)
+
+    for ch in out_str:
+        # https://www.rfc-editor.org/info/rfc9110/#section-5.5-5
+        # https://www.rfc-editor.org/info/rfc9112/#section-4-3
+        if (ch < 0x20 and ch != 0x09) or ch == 0x7F:
+            raise ValueError(
+                "Forbidden control character detected in headers. "
+                "Potential header injection attack."
+            )
+        if _write_utf8(writer, ch) < 0:
+            return -1
 
 
+# --------------- _serialize_headers ----------------------
 
 def _serialize_headers(str status_line, headers):
     cdef Writer writer
     cdef object key
     cdef object val
-    cdef bytes ret
-    cdef str key_str
-    cdef str val_str
+    cdef char buf[BUF_SIZE]
 
-    _init_writer(&writer)
+    _init_writer(&writer, buf)
 
     try:
-        if _write_str(&writer, status_line) < 0:
+        if _write_str_raise_on_nlcr(&writer, status_line) < 0:
             raise
         if _write_byte(&writer, b'\r') < 0:
             raise
@@ -130,22 +141,13 @@ def _serialize_headers(str status_line, headers):
             raise
 
         for key, val in headers.items():
-            key_str = to_str(key)
-            val_str = to_str(val)
-
-            if "\r" in key_str or "\n" in key_str or "\r" in val_str or "\n" in val_str:
-                raise ValueError(
-                    "Newline or carriage return character detected in HTTP status message or "
-                    "header. This is a potential security issue."
-                )
-
-            if _write_str(&writer, key_str) < 0:
+            if _write_str_raise_on_nlcr(&writer, key) < 0:
                 raise
             if _write_byte(&writer, b':') < 0:
                 raise
             if _write_byte(&writer, b' ') < 0:
                 raise
-            if _write_str(&writer, val_str) < 0:
+            if _write_str_raise_on_nlcr(&writer, val) < 0:
                 raise
             if _write_byte(&writer, b'\r') < 0:
                 raise

@@ -1,11 +1,18 @@
 """codspeed benchmarks for cookies."""
 
 from http.cookies import BaseCookie
+from typing import TYPE_CHECKING
 
-from pytest_codspeed import BenchmarkFixture
+import pytest
 from yarl import URL
 
 from aiohttp.cookiejar import CookieJar
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 async def test_load_cookies_into_temp_cookiejar(benchmark: BenchmarkFixture) -> None:

@@ -6,6 +6,7 @@ from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import client, client_reqrep
+from aiohttp.helpers import HeadersDictProxy
 
 
 class TestClientResponseError:
@@ -43,7 +44,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(foo="bar"),
+            headers=HeadersDictProxy(CIMultiDict(foo="bar")),
         )
         err.foo = "bar"  # type: ignore[attr-defined]
         for proto in range(pickle.HIGHEST_PROTOCOL + 1):
@@ -66,11 +67,12 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(),
+            headers=HeadersDictProxy(CIMultiDict()),
         )
         assert repr(err) == (
             "ClientResponseError(%r, (), status=400, "
-            "message='Something wrong', headers=<CIMultiDict()>)" % (self.request_info,)
+            "message='Something wrong', headers=<HeadersDictProxy()>)"
+            % (self.request_info,)
         )
 
     def test_str(self) -> None:
@@ -79,7 +81,7 @@ class TestClientResponseError:
             history=(),
             status=400,
             message="Something wrong",
-            headers=CIMultiDict(),
+            headers=HeadersDictProxy(CIMultiDict()),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
@@ -91,7 +93,6 @@ class TestClientConnectorError:
         is_ssl=False,
         ssl=True,
         proxy=None,
-        proxy_auth=None,
         proxy_headers_hash=None,
     )
 
@@ -152,7 +153,6 @@ class TestClientConnectorCertificateError:
         is_ssl=False,
         ssl=True,
         proxy=None,
-        proxy_auth=None,
         proxy_headers_hash=None,
     )
 
@@ -200,6 +200,15 @@ class TestClientConnectorCertificateError:
             "Cannot connect to host example.com:8080 ssl:False"
             " [Exception: ('Bad certificate',)]"
         )
+
+    def test_oserror(self) -> None:
+        certificate_error = OSError(1, "Bad certificate")
+        err = client.ClientConnectorCertificateError(
+            connection_key=self.connection_key, certificate_error=certificate_error
+        )
+        assert err.os_error == certificate_error
+        assert err.errno == 1
+        assert err.strerror == "Bad certificate"
 
 
 class TestServerDisconnectedError:

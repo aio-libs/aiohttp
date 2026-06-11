@@ -1,12 +1,14 @@
 import asyncio
-import base64
 import datetime
 import gc
+import ipaddress
+import itertools
 import sys
 import weakref
+from collections.abc import Iterator
 from math import ceil, modf
 from pathlib import Path
-from typing import Dict, Iterator, Optional, Union
+from types import MappingProxyType
 from unittest import mock
 from urllib.request import getproxies_environment
 
@@ -81,6 +83,30 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
     assert result == expected
 
 
+# ------------------- parse_content_type ------------------------------
+
+
+@pytest.mark.parametrize(
+    "content_type, expected",
+    [
+        (
+            "text/plain",
+            ("text/plain", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "wrong",
+            ("application/octet-stream", MultiDictProxy(MultiDict())),
+        ),
+    ],
+)
+def test_parse_content_type(
+    content_type: str, expected: tuple[str, MappingProxyType[str, str]]
+) -> None:
+    result = helpers.parse_content_type(content_type)
+
+    assert result == expected
+
+
 # ------------------- guess_filename ----------------------------------
 
 
@@ -99,128 +125,54 @@ def test_guess_filename_with_default() -> None:
     assert helpers.guess_filename(None, "no-throw") == "no-throw"
 
 
-# ------------------- BasicAuth -----------------------------------
+# ------------------- encode_basic_auth -----------------------------------
 
 
-def test_basic_auth1() -> None:
-    # missing password here
-    with pytest.raises(ValueError):
-        helpers.BasicAuth(None)  # type: ignore[arg-type]
+def test_encode_basic_auth() -> None:
+    assert helpers.encode_basic_auth("nkim", "pwd") == "Basic bmtpbTpwd2Q="
 
 
-def test_basic_auth2() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth("nkim", None)  # type: ignore[arg-type]
+def test_encode_basic_auth_default_password() -> None:
+    assert helpers.encode_basic_auth("nkim") == "Basic bmtpbTo="
 
 
-def test_basic_with_auth_colon_in_login() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth("nkim:1", "pwd")
+def test_encode_basic_auth_blank_login_and_password() -> None:
+    assert helpers.encode_basic_auth("") == "Basic Og=="
 
 
-def test_basic_auth3() -> None:
-    auth = helpers.BasicAuth("nkim")
-    assert auth.login == "nkim"
-    assert auth.password == ""
+def test_encode_basic_auth_utf8() -> None:
+    assert helpers.encode_basic_auth("usér", "pàss") == "Basic dXPDqXI6cMOgc3M="
 
 
-def test_basic_auth4() -> None:
-    auth = helpers.BasicAuth("nkim", "pwd")
-    assert auth.login == "nkim"
-    assert auth.password == "pwd"
-    assert auth.encode() == "Basic bmtpbTpwd2Q="
+def test_encode_basic_auth_latin1() -> None:
+    assert (
+        helpers.encode_basic_auth("nkim", "café", encoding="latin1")
+        == "Basic bmtpbTpjYWbp"
+    )
 
 
-@pytest.mark.parametrize(
-    "header",
-    (
-        "Basic bmtpbTpwd2Q=",
-        "basic bmtpbTpwd2Q=",
-    ),
-)
-def test_basic_auth_decode(header: str) -> None:
-    auth = helpers.BasicAuth.decode(header)
-    assert auth.login == "nkim"
-    assert auth.password == "pwd"
+def test_encode_basic_auth_rejects_colon_in_login() -> None:
+    with pytest.raises(ValueError, match=r'":" is not allowed in login.*RFC 7617'):
+        helpers.encode_basic_auth("user:1", "pwd")
 
 
-def test_basic_auth_invalid() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("bmtpbTpwd2Q=")
+def test_strip_auth_from_url() -> None:
+    url, auth = helpers.strip_auth_from_url(URL("http://user:pass@example.com/"))
+    assert url == URL("http://example.com/")
+    assert auth == helpers.encode_basic_auth("user", "pass")
 
 
-def test_basic_auth_decode_not_basic() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("Complex bmtpbTpwd2Q=")
+def test_strip_auth_from_url_no_user() -> None:
+    url, auth = helpers.strip_auth_from_url(URL("http://:pass@example.com/"))
+    assert url == URL("http://example.com/")
+    assert auth == helpers.encode_basic_auth("", "pass")
 
 
-def test_basic_auth_decode_bad_base64() -> None:
-    with pytest.raises(ValueError):
-        helpers.BasicAuth.decode("Basic bmtpbTpwd2Q")
-
-
-@pytest.mark.parametrize("header", ("Basic ???", "Basic   "))
-def test_basic_auth_decode_illegal_chars_base64(header: str) -> None:
-    with pytest.raises(ValueError, match="Invalid base64 encoding."):
-        helpers.BasicAuth.decode(header)
-
-
-def test_basic_auth_decode_invalid_credentials() -> None:
-    with pytest.raises(ValueError, match="Invalid credentials."):
-        header = "Basic {}".format(base64.b64encode(b"username").decode())
-        helpers.BasicAuth.decode(header)
-
-
-@pytest.mark.parametrize(
-    "credentials, expected_auth",
-    (
-        (":", helpers.BasicAuth(login="", password="", encoding="latin1")),
-        (
-            "username:",
-            helpers.BasicAuth(login="username", password="", encoding="latin1"),
-        ),
-        (
-            ":password",
-            helpers.BasicAuth(login="", password="password", encoding="latin1"),
-        ),
-        (
-            "username:password",
-            helpers.BasicAuth(login="username", password="password", encoding="latin1"),
-        ),
-    ),
-)
-def test_basic_auth_decode_blank_username(
-    credentials: str, expected_auth: helpers.BasicAuth
-) -> None:
-    header = f"Basic {base64.b64encode(credentials.encode()).decode()}"
-    assert helpers.BasicAuth.decode(header) == expected_auth
-
-
-def test_basic_auth_from_url() -> None:
-    url = URL("http://user:pass@example.com")
-    auth = helpers.BasicAuth.from_url(url)
-    assert auth is not None
-    assert auth.login == "user"
-    assert auth.password == "pass"
-
-
-def test_basic_auth_no_user_from_url() -> None:
-    url = URL("http://:pass@example.com")
-    auth = helpers.BasicAuth.from_url(url)
-    assert auth is not None
-    assert auth.login == ""
-    assert auth.password == "pass"
-
-
-def test_basic_auth_no_auth_from_url() -> None:
-    url = URL("http://example.com")
-    auth = helpers.BasicAuth.from_url(url)
+def test_strip_auth_from_url_no_auth() -> None:
+    url = URL("http://example.com/")
+    stripped, auth = helpers.strip_auth_from_url(url)
+    assert stripped is url
     assert auth is None
-
-
-def test_basic_auth_from_not_url() -> None:
-    with pytest.raises(TypeError):
-        helpers.BasicAuth.from_url("http://user:pass@example.com")  # type: ignore[arg-type]
 
 
 # ----------------------------------- is_ip_address() ----------------------
@@ -280,11 +232,98 @@ def test_is_ip_address_invalid_type() -> None:
         helpers.is_ip_address(object())  # type: ignore[arg-type]
 
 
+# ------------------------------- is_canonical_ipv4_address() ---------------
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "0.0.0.0",
+        "127.0.0.1",
+        "8.8.8.8",
+        "192.168.0.1",
+        "255.255.255.255",
+    ],
+)
+def test_is_canonical_ipv4_address_accepts_dotted_quad(host: str) -> None:
+    assert helpers.is_canonical_ipv4_address(host)
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "2130706433",  # decimal integer form of 127.0.0.1
+        "017700000001",  # octal form of 127.0.0.1
+        "127.1",  # short-hand form of 127.0.0.1
+        "127.0.1",  # 3-part short-hand
+        "0177.0.0.1",  # octal leading-zero octet
+        "01.2.3.4",  # octal leading-zero octet
+        "256.0.0.1",  # octet out of range
+        "999.0.0.1",  # octet out of range
+        "1.2.3.4.5",  # too many octets
+        "127.0.0.",  # trailing dot / empty octet
+        "12³.0.0.1",  # superscript digit (str.isdigit but not int)
+        "１２７.0.0.1",  # full-width digits
+        "0xa.0.0.0",  # hex octet
+        " 127.0.0.1",  # leading whitespace
+        "127.0.0.1 ",  # trailing whitespace
+        "example.com",  # domain name
+        "",  # empty
+    ],
+)
+def test_is_canonical_ipv4_address_rejects_non_canonical(host: str) -> None:
+    assert not helpers.is_canonical_ipv4_address(host)
+
+
+def _ipaddress_accepts_ipv4(host: str) -> bool:
+    """Oracle: does the stdlib accept ``host`` as a canonical IPv4 address?"""
+    try:
+        ipaddress.IPv4Address(host)
+    except ipaddress.AddressValueError:
+        return False
+    return True
+
+
+def test_is_canonical_ipv4_address_matches_stdlib() -> None:
+    """Prove equivalence with ``ipaddress.IPv4Address`` over a broad corpus.
+
+    The helper is a fast hand-rolled substitute for the stdlib parser; this
+    exhaustively cross-checks the two agree on every combination of a set of
+    octet-like tokens covering the known edge cases (leading zeros, out of
+    range, empty, unicode digits, wrong octet count).
+    """
+    tokens = [
+        "0",
+        "1",
+        "9",
+        "10",
+        "99",
+        "255",
+        "256",
+        "999",
+        "00",
+        "01",
+        "0177",
+        "1234",
+        "",
+        "a",
+        "0x1",
+        "１",  # full-width 1
+        "1²",  # trailing superscript
+    ]
+    for count in range(1, 5):
+        for parts in itertools.product(tokens, repeat=count):
+            host = ".".join(parts)
+            assert helpers.is_canonical_ipv4_address(host) == _ipaddress_accepts_ipv4(
+                host
+            ), host
+
+
 # ----------------------------------- TimeoutHandle -------------------
 
 
-def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     assert cb == handle._callbacks[0][0]
@@ -292,12 +331,11 @@ def test_timeout_handle(loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
-def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
+def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
-    handle = helpers.TimeoutHandle(loop, timeout)
-    assert handle is not None
+    handle = helpers.TimeoutHandle(event_loop, timeout)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -308,13 +346,12 @@ def test_when_timeout_smaller_second(loop: asyncio.AbstractEventLoop) -> None:
 
 
 def test_when_timeout_smaller_second_with_low_threshold(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
-    handle = helpers.TimeoutHandle(loop, timeout, 0.01)
-    assert handle is not None
+    handle = helpers.TimeoutHandle(event_loop, timeout, 0.01)
+    timer = event_loop.time() + timeout
     start_handle = handle.start()
     assert start_handle is not None
     when = start_handle.when()
@@ -324,8 +361,8 @@ def test_when_timeout_smaller_second_with_low_threshold(
     assert when == ceil(timer)
 
 
-def test_timeout_handle_cb_exc(loop: asyncio.AbstractEventLoop) -> None:
-    handle = helpers.TimeoutHandle(loop, 10.2)
+def test_timeout_handle_cb_exc(event_loop: asyncio.AbstractEventLoop) -> None:
+    handle = helpers.TimeoutHandle(event_loop, 10.2)
     cb = mock.Mock()
     handle.register(cb)
     cb.side_effect = ValueError()
@@ -372,13 +409,11 @@ async def test_timer_context_timeout_does_not_leak_upward() -> None:
 )
 async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     """Verify that the TimerContext does not swallow cancellation."""
-    loop = asyncio.get_running_loop()
     current_task = asyncio.current_task()
     assert current_task is not None
-    ctx = helpers.TimerContext(loop)
+    ctx = helpers.TimerContext(asyncio.get_running_loop())
 
     async def task_with_timeout() -> None:
-        nonlocal ctx
         new_task = asyncio.current_task()
         assert new_task is not None
         with pytest.raises(asyncio.TimeoutError):
@@ -402,22 +437,20 @@ async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     assert task.cancelling() == 1
 
 
-def test_timer_context_no_task(loop: asyncio.AbstractEventLoop) -> None:
+def test_timer_context_no_task(event_loop: asyncio.AbstractEventLoop) -> None:
     with pytest.raises(RuntimeError):
-        with helpers.TimerContext(loop):
+        with helpers.TimerContext(event_loop):
             pass
 
 
-async def test_weakref_handle(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     await asyncio.sleep(0.1)
     assert cb.test.called
 
 
-async def test_weakref_handle_with_small_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_weakref_handle_with_small_threshold() -> None:
     cb = mock.Mock()
     loop = mock.Mock()
     loop.time.return_value = 10
@@ -427,9 +460,9 @@ async def test_weakref_handle_with_small_threshold(
     )
 
 
-async def test_weakref_handle_weak(loop: asyncio.AbstractEventLoop) -> None:
+async def test_weakref_handle_weak() -> None:
     cb = mock.Mock()
-    helpers.weakref_handle(cb, "test", 0.01, loop)
+    helpers.weakref_handle(cb, "test", 0.01, asyncio.get_running_loop())
     del cb
     gc.collect()
     await asyncio.sleep(0.1)
@@ -446,7 +479,7 @@ def test_ceil_call_later() -> None:
     loop.call_at.assert_called_with(21.0, cb)
 
 
-async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_round() -> None:
     async with helpers.ceil_timeout(7.5) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -458,7 +491,7 @@ async def test_ceil_timeout_round(loop: asyncio.AbstractEventLoop) -> None:
         assert frac == 0
 
 
-async def test_ceil_timeout_small(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_small() -> None:
     async with helpers.ceil_timeout(1.1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -486,7 +519,7 @@ def test_ceil_call_later_no_timeout() -> None:
     assert not loop.call_at.called
 
 
-async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
+async def test_ceil_timeout_none() -> None:
     async with helpers.ceil_timeout(None) as cm:
         if sys.version_info >= (3, 11):
             assert cm.when() is None
@@ -494,9 +527,7 @@ async def test_ceil_timeout_none(loop: asyncio.AbstractEventLoop) -> None:
             assert cm.deadline is None
 
 
-async def test_ceil_timeout_small_with_overriden_threshold(
-    loop: asyncio.AbstractEventLoop,
-) -> None:
+async def test_ceil_timeout_small_with_overriden_threshold() -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         if sys.version_info >= (3, 11):
             w = cm.when()
@@ -531,7 +562,7 @@ async def test_ceil_timeout_small_with_overriden_threshold(
     ],
 )
 def test_content_disposition(
-    params: Dict[str, str], quote_fields: bool, _charset: str, expected: str
+    params: dict[str, str], quote_fields: bool, _charset: str, expected: str
 ) -> None:
     result = helpers.content_disposition_header(
         "attachment", quote_fields=quote_fields, _charset=_charset, params=params
@@ -604,8 +635,8 @@ def test_proxies_from_env_skipped(
     url = URL(url_input)
     assert helpers.proxies_from_env() == {}
     assert len(caplog.records) == 1
-    log_message = "{proto!s} proxies {url!s} are not supported, ignoring".format(
-        proto=expected_scheme.upper(), url=url
+    log_message = (
+        f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
     )
     assert caplog.record_tuples == [("aiohttp.client", 30, log_message)]
 
@@ -628,11 +659,7 @@ def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -
     ret = helpers.proxies_from_env()
     assert ret.keys() == {expected_scheme}
     assert ret[expected_scheme].proxy == url.with_user(None)
-    proxy_auth = ret[expected_scheme].proxy_auth
-    assert proxy_auth is not None
-    assert proxy_auth.login == "user"
-    assert proxy_auth.password == "pass"
-    assert proxy_auth.encoding == "latin1"
+    assert ret[expected_scheme].proxy_auth == helpers.encode_basic_auth("user", "pass")
 
 
 # --------------------- get_env_proxy_for_url ------------------------------
@@ -719,7 +746,7 @@ def test_get_env_proxy_for_url_negative(url_input: str, expected_err_msg: str) -
         "url_scheme_match_http_proxy_list_multiple",
     ),
 )
-def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -> None:
+def test_get_env_proxy_for_url(proxy_env_vars: dict[str, str], url_input: str) -> None:
     url = URL(url_input)
     proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
     proxy_list = proxy_env_vars[url.scheme + "_proxy"]
@@ -730,14 +757,14 @@ def test_get_env_proxy_for_url(proxy_env_vars: Dict[str, str], url_input: str) -
 # ------------- set_result / set_exception ----------------------
 
 
-async def test_set_result(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_result(fut, 123)
     assert 123 == await fut
 
 
-async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_result_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_result(fut, 123)
 
@@ -745,15 +772,15 @@ async def test_set_result_cancelled(loop: asyncio.AbstractEventLoop) -> None:
         await fut
 
 
-async def test_set_exception(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception() -> None:
+    fut = asyncio.get_running_loop().create_future()
     helpers.set_exception(fut, RuntimeError())
     with pytest.raises(RuntimeError):
         await fut
 
 
-async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
-    fut = loop.create_future()
+async def test_set_exception_cancelled() -> None:
+    fut = asyncio.get_running_loop().create_future()
     fut.cancel()
     helpers.set_exception(fut, RuntimeError())
 
@@ -763,7 +790,7 @@ async def test_set_exception_cancelled(loop: asyncio.AbstractEventLoop) -> None:
 
 # ----------- ChainMapProxy --------------------------
 
-AppKeyDict = Dict[Union[str, web.AppKey[object]], object]
+AppKeyDict = dict[str | web.AppKey[object], object]
 
 
 class TestChainMapProxy:
@@ -976,6 +1003,19 @@ def test_cookies_mixin_path() -> None:
     )
 
 
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="No partitioned support")
+def test_cookies_mixin_partitioned() -> None:
+    sut = CookieImplementation()
+
+    assert sut.cookies == {}
+
+    sut.set_cookie("name", "value", partitioned=False)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Path=/"
+
+    sut.set_cookie("name", "value", partitioned=True)
+    assert str(sut.cookies) == "Set-Cookie: name=value; Partitioned; Path=/"
+
+
 def test_sutonse_cookie__issue_del_cookie() -> None:
     sut = CookieImplementation()
 
@@ -1030,7 +1070,7 @@ def test_populate_with_cookies() -> None:
         ),
     ],
 )
-def test_parse_http_date(value: str, expected: Optional[datetime.datetime]) -> None:
+def test_parse_http_date(value: str, expected: datetime.datetime | None) -> None:
     assert parse_http_date(value) == expected
 
 
@@ -1075,31 +1115,29 @@ def test_netrc_from_home_does_not_raise_if_access_denied(
 
 
 @pytest.mark.parametrize(
-    ["netrc_contents", "expected_auth"],
+    ["netrc_contents", "expected_header"],
     [
         (
             "machine example.com login username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers.encode_basic_auth("username", "pass"),
         ),
         (
             "machine example.com account username password pass\n",
-            helpers.BasicAuth("username", "pass"),
+            helpers.encode_basic_auth("username", "pass"),
         ),
         (
             "machine example.com password pass\n",
-            helpers.BasicAuth("", "pass"),
+            helpers.encode_basic_auth("", "pass"),
         ),
     ],
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_basicauth_present_in_netrc(
-    expected_auth: helpers.BasicAuth,
-) -> None:
-    """Test that netrc file contents are properly parsed into BasicAuth tuples"""
+def test_auth_header_from_netrc(expected_header: str) -> None:
+    """Test that netrc file contents are properly parsed into a header value."""
     netrc_obj = helpers.netrc_from_env()
 
-    assert expected_auth == helpers.basicauth_from_netrc(netrc_obj, "example.com")
+    assert expected_header == helpers._auth_header_from_netrc(netrc_obj, "example.com")
 
 
 @pytest.mark.parametrize(
@@ -1110,14 +1148,14 @@ def test_basicauth_present_in_netrc(
     indirect=("netrc_contents",),
 )
 @pytest.mark.usefixtures("netrc_contents")
-def test_read_basicauth_from_empty_netrc() -> None:
+def test_read_auth_header_from_empty_netrc() -> None:
     """Test that an error is raised if netrc doesn't have an entry for our host"""
     netrc_obj = helpers.netrc_from_env()
 
     with pytest.raises(
         LookupError, match="No entry for example.com found in the `.netrc` file."
     ):
-        helpers.basicauth_from_netrc(netrc_obj, "example.com")
+        helpers._auth_header_from_netrc(netrc_obj, "example.com")
 
 
 def test_method_must_be_empty_body() -> None:

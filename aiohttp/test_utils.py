@@ -1,38 +1,23 @@
 """Utilities shared by tests."""
 
 import asyncio
-import contextlib
-import gc
-import inspect
 import ipaddress
 import os
 import socket
 import sys
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from types import TracebackType
-from typing import (
-    TYPE_CHECKING,
-    Any,
-    Callable,
-    Dict,
-    Generic,
-    Iterator,
-    List,
-    Optional,
-    Type,
-    TypeVar,
-    Union,
-    cast,
-    overload,
-)
+from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, overload
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
-from multidict import CIMultiDict, CIMultiDictProxy
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
 from aiohttp.client import (
+    _BaseRequestContextManager,
     _RequestContextManager,
     _RequestOptions,
     _WSRequestContextManager,
@@ -42,7 +27,7 @@ from . import ClientSession, hdrs
 from .abc import AbstractCookieJar, AbstractStreamWriter
 from .client_reqrep import ClientResponse
 from .client_ws import ClientWebSocketResponse
-from .helpers import sentinel
+from .helpers import HeadersDictProxy
 from .http import HttpVersion, RawRequestMessage
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import LooseHeaders, StrOrURL
@@ -63,7 +48,7 @@ from .web_protocol import _RequestHandler
 if TYPE_CHECKING:
     from ssl import SSLContext
 else:
-    SSLContext = None
+    SSLContext = Any
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
@@ -79,32 +64,6 @@ _Request = TypeVar("_Request", bound=BaseRequest)
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
 
-def get_unused_port_socket(
-    host: str, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    return get_port_socket(host, 0, family)
-
-
-def get_port_socket(
-    host: str, port: int, family: socket.AddressFamily = socket.AF_INET
-) -> socket.socket:
-    s = socket.socket(family, socket.SOCK_STREAM)
-    if REUSE_ADDRESS:
-        # Windows has different semantics for SO_REUSEADDR,
-        # so don't set it. Ref:
-        # https://docs.microsoft.com/en-us/windows/win32/winsock/using-so-reuseaddr-and-so-exclusiveaddruse
-        s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind((host, port))
-    return s
-
-
-def unused_port() -> int:
-    """Return a port that is unused on the current host."""
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-        s.bind(("127.0.0.1", 0))
-        return cast(int, s.getsockname()[1])
-
-
 class BaseTestServer(ABC, Generic[_Request]):
     __test__ = False
 
@@ -113,15 +72,17 @@ class BaseTestServer(ABC, Generic[_Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         skip_url_asserts: bool = False,
         socket_factory: Callable[
             [str, int, socket.AddressFamily], socket.socket
-        ] = get_port_socket,
+        ] = lambda h, p, f: socket.create_server(
+            (h, p), family=f, reuse_port=REUSE_ADDRESS
+        ),
         **kwargs: Any,
     ) -> None:
-        self.runner: Optional[BaseRunner[_Request]] = None
-        self._root: Optional[URL] = None
+        self.runner: BaseRunner[_Request] | None = None
+        self._root: URL | None = None
         self.host = host
         self.port = port or 0
         self._closed = False
@@ -149,16 +110,17 @@ class BaseTestServer(ABC, Generic[_Request]):
         await site.start()
         server = site._server
         assert server is not None
-        sockets = server.sockets  # type: ignore[attr-defined]
+        sockets = server.sockets
         assert sockets is not None
         self.port = sockets[0].getsockname()[1]
         if not self.scheme:
             self.scheme = "https" if self._ssl else "http"
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
-    @abstractmethod  # pragma: no cover
+    @abstractmethod
     async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
-        pass
+        """Return a new runner for the server."""
+        # TODO(PY311): Use Unpack to specify Server kwargs.
 
     def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None
@@ -211,9 +173,9 @@ class BaseTestServer(ABC, Generic[_Request]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc_value: Optional[BaseException],
-        traceback: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc_value: BaseException | None,
+        traceback: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -225,13 +187,14 @@ class TestServer(BaseTestServer[Request]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> AppRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         return AppRunner(self.app, **kwargs)
 
 
@@ -242,13 +205,14 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         *,
         scheme: str = "",
         host: str = "127.0.0.1",
-        port: Optional[int] = None,
+        port: int | None = None,
         **kwargs: Any,
     ) -> None:
         self._handler = handler
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(self, **kwargs: Any) -> ServerRunner:
+        # TODO(PY311): Use Unpack to specify Server kwargs.
         srv = Server(self._handler, **kwargs)
         return ServerRunner(srv, **kwargs)
 
@@ -268,7 +232,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self: "TestClient[Request, Application]",
         server: TestServer,
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     @overload
@@ -276,16 +240,17 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self: "TestClient[_Request, None]",
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None: ...
     def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
-        cookie_jar: Optional[AbstractCookieJar] = None,
+        cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
     ) -> None:
+        # TODO(PY311): Use Unpack to specify ClientSession kwargs.
         if not isinstance(server, BaseTestServer):
             raise TypeError(
                 "server must be TestServer instance, found type: %r" % type(server)
@@ -296,14 +261,14 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
         self._session._retry_connection = False
         self._closed = False
-        self._responses: List[ClientResponse] = []
-        self._websockets: List[ClientWebSocketResponse] = []
+        self._responses: list[ClientResponse] = []
+        self._websockets: list[ClientWebSocketResponse[bool]] = []
 
     async def start_server(self) -> None:
         await self._server.start_server()
 
     @property
-    def scheme(self) -> Union[str, object]:
+    def scheme(self) -> str | object:
         return self._server.scheme
 
     @property
@@ -440,18 +405,54 @@ class TestClient(Generic[_Request, _ApplicationNone]):
                 self._request(hdrs.METH_DELETE, path, **kwargs)
             )
 
-    def ws_connect(self, path: StrOrURL, **kwargs: Any) -> _WSRequestContextManager:
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[True] = ..., **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[True]]]": ...
+
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[False], **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[Literal[False]]]": ...
+
+    @overload
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = ..., **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]": ...
+
+    def ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = True, **kwargs: Any
+    ) -> "_BaseRequestContextManager[ClientWebSocketResponse[bool]]":
         """Initiate websocket connection.
 
         The api corresponds to aiohttp.ClientSession.ws_connect.
 
         """
-        return _WSRequestContextManager(self._ws_connect(path, **kwargs))
+        return _WSRequestContextManager(
+            self._ws_connect(path, decode_text=decode_text, **kwargs)
+        )
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[True] = ..., **kwargs: Any
+    ) -> "ClientWebSocketResponse[Literal[True]]": ...
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: Literal[False], **kwargs: Any
+    ) -> "ClientWebSocketResponse[Literal[False]]": ...
+
+    @overload
+    async def _ws_connect(
+        self, path: StrOrURL, *, decode_text: bool = ..., **kwargs: Any
+    ) -> "ClientWebSocketResponse[bool]": ...
 
     async def _ws_connect(
-        self, path: StrOrURL, **kwargs: Any
-    ) -> ClientWebSocketResponse:
-        ws = await self._session.ws_connect(self.make_url(path), **kwargs)
+        self, path: StrOrURL, *, decode_text: bool = True, **kwargs: Any
+    ) -> "ClientWebSocketResponse[bool]":
+        ws = await self._session.ws_connect(
+            self.make_url(path), decode_text=decode_text, **kwargs
+        )
         self._websockets.append(ws)
         return ws
 
@@ -482,9 +483,9 @@ class TestClient(Generic[_Request, _ApplicationNone]):
 
     async def __aexit__(
         self,
-        exc_type: Optional[Type[BaseException]],
-        exc: Optional[BaseException],
-        tb: Optional[TracebackType],
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
     ) -> None:
         await self.close()
 
@@ -529,49 +530,6 @@ class AioHTTPTestCase(IsolatedAsyncioTestCase, ABC):
         return TestClient(server)
 
 
-_LOOP_FACTORY = Callable[[], asyncio.AbstractEventLoop]
-
-
-@contextlib.contextmanager
-def loop_context(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop, fast: bool = False
-) -> Iterator[asyncio.AbstractEventLoop]:
-    """A contextmanager that creates an event_loop, for test purposes.
-
-    Handles the creation and cleanup of a test loop.
-    """
-    loop = setup_test_loop(loop_factory)
-    yield loop
-    teardown_test_loop(loop, fast=fast)
-
-
-def setup_test_loop(
-    loop_factory: _LOOP_FACTORY = asyncio.new_event_loop,
-) -> asyncio.AbstractEventLoop:
-    """Create and return an asyncio.BaseEventLoop instance.
-
-    The caller should also call teardown_test_loop,
-    once they are done with the loop.
-    """
-    loop = loop_factory()
-    asyncio.set_event_loop(loop)
-    return loop
-
-
-def teardown_test_loop(loop: asyncio.AbstractEventLoop, fast: bool = False) -> None:
-    """Teardown and cleanup an event_loop created by setup_test_loop."""
-    closed = loop.is_closed()
-    if not closed:
-        loop.call_soon(loop.stop)
-        loop.run_forever()
-        loop.close()
-
-    if not fast:
-        gc.collect()
-
-    asyncio.set_event_loop(None)
-
-
 def _create_app_mock() -> mock.MagicMock:
     def get_dict(app: Any, key: str) -> Any:
         return app.__app_dict[key]
@@ -589,14 +547,13 @@ def _create_app_mock() -> mock.MagicMock:
     return app
 
 
-def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
+def _create_transport(sslcontext: SSLContext | None = None) -> mock.Mock:
     transport = mock.Mock()
 
-    def get_extra_info(key: str) -> Optional[SSLContext]:
+    def get_extra_info(key: str) -> SSLContext | tuple[str, int] | None:
         if key == "sslcontext":
             return sslcontext
-        else:
-            return None
+        return ("127.0.0.1", 80) if key == "sockname" else None
 
     transport.get_extra_info.side_effect = get_extra_info
     return transport
@@ -605,17 +562,17 @@ def _create_transport(sslcontext: Optional[SSLContext] = None) -> mock.Mock:
 def make_mocked_request(
     method: str,
     path: str,
-    headers: Optional[LooseHeaders] = None,
+    headers: LooseHeaders | None = None,
     *,
-    match_info: Optional[Dict[str, str]] = None,
+    match_info: dict[str, str] | None = None,
     version: HttpVersion = HttpVersion(1, 1),
     closing: bool = False,
-    app: Optional[Application] = None,
-    writer: Optional[AbstractStreamWriter] = None,
-    protocol: Optional[RequestHandler[Request]] = None,
-    transport: Optional[asyncio.Transport] = None,
+    app: Application | None = None,
+    writer: AbstractStreamWriter | None = None,
+    protocol: RequestHandler[Request] | None = None,
+    transport: asyncio.Transport | None = None,
     payload: StreamReader = EMPTY_PAYLOAD,
-    sslcontext: Optional[SSLContext] = None,
+    sslcontext: SSLContext | None = None,
     client_max_size: int = 1024**2,
     loop: Any = ...,
 ) -> Request:
@@ -640,15 +597,18 @@ def make_mocked_request(
         closing = True
 
     if headers:
-        headers = CIMultiDictProxy(CIMultiDict(headers))
+        headers = HeadersDictProxy(CIMultiDict(headers))
         raw_hdrs = tuple(
             (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
         )
     else:
-        headers = CIMultiDictProxy(CIMultiDict())
+        headers = HeadersDictProxy(CIMultiDict())
         raw_hdrs = ()
 
     chunked = "chunked" in headers.get(hdrs.TRANSFER_ENCODING, "").lower()
+    upgrade = headers.get(hdrs.CONNECTION, "").lower() == "upgrade" and bool(
+        headers.get(hdrs.UPGRADE)
+    )
 
     message = RawRequestMessage(
         method,
@@ -658,7 +618,7 @@ def make_mocked_request(
         raw_hdrs,
         closing,
         None,
-        False,
+        upgrade,
         chunked,
         URL(path),
     )
@@ -670,14 +630,24 @@ def make_mocked_request(
 
     if protocol is None:
         protocol = mock.Mock()
+        protocol.max_field_size = 8190
+        protocol.max_line_length = 8190
+        protocol.max_headers = 128
         protocol.transport = transport
+        type(protocol).peername = mock.PropertyMock(
+            return_value=transport.get_extra_info("peername")
+        )
+        type(protocol).sockname = mock.PropertyMock(
+            return_value=transport.get_extra_info("sockname")
+        )
+        type(protocol).ssl_context = mock.PropertyMock(return_value=sslcontext)
 
     if writer is None:
         writer = mock.Mock()
-        writer.write_headers = make_mocked_coro(None)
-        writer.write = make_mocked_coro(None)
-        writer.write_eof = make_mocked_coro(None)
-        writer.drain = make_mocked_coro(None)
+        writer.write_headers = mock.AsyncMock(return_value=None)
+        writer.write = mock.AsyncMock(return_value=None)
+        writer.write_eof = mock.AsyncMock(return_value=None)
+        writer.drain = mock.AsyncMock(return_value=None)
         writer.transport = transport
 
     protocol.transport = transport
@@ -693,18 +663,3 @@ def make_mocked_request(
     req._match_info = match_info
 
     return req
-
-
-def make_mocked_coro(
-    return_value: Any = sentinel, raise_exception: Any = sentinel
-) -> Any:
-    """Creates a coroutine mock."""
-
-    async def mock_coro(*args: Any, **kwargs: Any) -> Any:
-        if raise_exception is not sentinel:
-            raise raise_exception
-        if not inspect.isawaitable(return_value):
-            return return_value
-        await return_value
-
-    return mock.Mock(wraps=mock_coro)

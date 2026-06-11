@@ -30,3 +30,4 @@ project, pointing to `<https://github.com/aio-libs/aiohttp>`_.
 * `DEEPaaS API <https://github.com/indigo-dc/DEEPaaS>`_ REST API for Machine learning, Deep learning and artificial intelligence applications.
 * `BentoML <https://github.com/bentoml/BentoML>`_ Machine Learning model serving framework
 * `salted <https://github.com/RuedigerVoigt/salted>`_ fast link check library (for HTML, Markdown, LaTeX, ...) with CLI
+* `Unofficial Tabdeal API <https://github.com/MohsenHNSJ/unofficial_tabdeal_api>`_ A package to communicate with the *Tabdeal* trading platform.

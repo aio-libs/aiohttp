@@ -1,0 +1,8 @@
+-r base-ft.in
+-r test-common-base.in
+
+# pip-compile does not support environment markers for transitive dependencies. So
+# some packages that are transitive dependencies have to be explicitly excluded here:
+backports-asyncio-runner; python_version < "3.11"  # transitive dependency of "pytest-asyncio"; not installable on Python >= 3.11 using pip (uv works though)
+cffi; sys_platform != 'android' and sys_platform != 'ios'  # transitive dependency of "pycares"
+pycares; sys_platform != 'android' and sys_platform != 'ios'  # transitive dependency of "aiodns"
