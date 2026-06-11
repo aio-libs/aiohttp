@@ -123,7 +123,7 @@ async def create_connection(
             ssl_shutdown_timeout=ssl_shutdown_timeout,
         )
     else:
-        if sys.version_info >= (3, 11): # type: ignore[unreachable]
+        if sys.version_info >= (3, 11):  # type: ignore[unreachable]
             return await loop.create_connection(
                 protocol_factory,
                 ssl=ssl,
@@ -161,7 +161,7 @@ async def start_tls(
             ssl_shutdown_timeout=ssl_shutdown_timeout,
         )
     else:
-        if sys.version_info >= (3, 11): # type: ignore[unreachable]
+        if sys.version_info >= (3, 11):  # type: ignore[unreachable]
             return await loop.start_tls(
                 transport,
                 protocol,
