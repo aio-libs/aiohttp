@@ -43,7 +43,7 @@ async def sendfile(loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any) -
     if aiofastnet is not None:
         await aiofastnet.sendfile(loop, *args, **kwargs)
     else:
-        await loop.sendfile(*args, **kwargs)
+        await loop.sendfile(*args, **kwargs)  # type: ignore[unreachable]
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))

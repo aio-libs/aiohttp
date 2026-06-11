@@ -33,7 +33,7 @@ async def create_server(
     if aiofastnet is not None:
         return await aiofastnet.create_server(loop, *args, **kwargs)
     else:
-        return await loop.create_server(*args, **kwargs)
+        return await loop.create_server(*args, **kwargs) # type: ignore[unreachable]
 
 
 __all__ = (
