@@ -497,15 +497,9 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         if self._traces and payload is not EMPTY_PAYLOAD:
-            traces = self._traces
-            method = self.method
-            url = self.url
-
-            async def _on_chunk(chunk: bytes) -> None:
-                for trace in traces:
-                    await trace.send_response_chunk_received(method, url, chunk)
-
-            payload._on_chunk_received = _on_chunk
+            payload._on_chunk_received = functools.partial(
+                self._on_chunk_response_received, self.method, self.url
+            )
 
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
@@ -627,6 +621,17 @@ class ClientResponse(HeadersMixin):
                 ):
                     raise
         self.release()
+
+    async def _on_chunk_response_received(
+        self, method: str, url: URL, chunk: bytes
+    ) -> None:
+        try:
+            for trace in self._traces:
+                await trace.send_response_chunk_received(method, url, chunk)
+        except Exception:
+            # Don't close on CancelledError, so a caller using timeout() can retry.
+            self.close()
+            raise
 
     async def read(self) -> bytes:
         """Read response payload."""

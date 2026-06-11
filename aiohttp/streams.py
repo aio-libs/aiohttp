@@ -366,8 +366,15 @@ class StreamReader:
             self._waiter = None
 
     async def _fire_chunk_received(self, chunk: bytes) -> None:
-        if chunk and (cb := self._on_chunk_received) is not None:
+        cb = self._on_chunk_received
+        assert cb is not None
+        try:
             await cb(chunk)
+        except BaseException:
+            self._buffer.appendleft(chunk)
+            self._size += len(chunk)
+            self._cursor -= len(chunk)
+            raise
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
@@ -409,7 +416,8 @@ class StreamReader:
             if not_enough:
                 await self._wait("readuntil")
 
-        await self._fire_chunk_received(chunk)
+        if chunk and self._on_chunk_received is not None:
+            await self._fire_chunk_received(chunk)
         return chunk
 
     async def read(self, n: int = -1) -> bytes:
@@ -439,7 +447,8 @@ class StreamReader:
             await self._wait("read")
 
         chunk = self._read_nowait(n)
-        await self._fire_chunk_received(chunk)
+        if chunk and self._on_chunk_received is not None:
+            await self._fire_chunk_received(chunk)
         return chunk
 
     async def readany(self) -> bytes:
@@ -453,7 +462,8 @@ class StreamReader:
             await self._wait("readany")
 
         chunk = self._read_nowait(-1)
-        await self._fire_chunk_received(chunk)
+        if chunk and self._on_chunk_received is not None:
+            await self._fire_chunk_received(chunk)
         return chunk
 
     async def readchunk(self) -> tuple[bytes, bool]:
@@ -474,7 +484,8 @@ class StreamReader:
                     return (b"", True)
                 if pos > self._cursor:
                     chunk = self._read_nowait(pos - self._cursor)
-                    await self._fire_chunk_received(chunk)
+                    if chunk and self._on_chunk_received is not None:
+                        await self._fire_chunk_received(chunk)
                     return (chunk, True)
                 internal_logger.warning(
                     "Skipping HTTP chunk end due to data "
@@ -483,7 +494,8 @@ class StreamReader:
 
             if self._buffer:
                 chunk = self._read_nowait_chunk(-1)
-                await self._fire_chunk_received(chunk)
+                if chunk and self._on_chunk_received is not None:
+                    await self._fire_chunk_received(chunk)
                 return (chunk, False)
                 # return (self._read_nowait(-1), False)
 

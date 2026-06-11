@@ -1256,9 +1256,18 @@ class TestStreamReaderChunkHook:
         assert b"".join(collected) == b"abcdef"
         assert seen == [b"abc", b"def"]
 
-    async def test_hook_exception_propagates(self) -> None:
+    async def test_hook_exception_propagates_and_restores_chunk(self) -> None:
+        # On any hook exception, the chunk must propagate out *and* be pushed
+        # back so a follow-up read can still deliver it. The end-to-end
+        # cancellation path is covered by
+        # test_response_chunk_received_cancel_in_trace_recovers.
+        fired = 0
+
         async def cb(chunk: bytes) -> None:
-            raise RuntimeError("boom")
+            nonlocal fired
+            fired += 1
+            if fired == 1:
+                raise RuntimeError("boom")
 
         stream, _ = self._make_one(cb)
         stream.feed_data(b"abc")
@@ -1266,6 +1275,8 @@ class TestStreamReaderChunkHook:
 
         with pytest.raises(RuntimeError, match="boom"):
             await stream.readany()
+        assert await stream.readany() == b"abc"
+        assert fired == 2
 
 
 async def test_empty_stream_reader() -> None:
@@ -1296,6 +1307,20 @@ async def test_empty_stream_reader_iter_chunks() -> None:
     iter_chunks = s.iter_chunks()
     with pytest.raises(StopAsyncIteration):
         await iter_chunks.__anext__()
+
+
+async def test_empty_stream_reader_on_chunk_received_is_read_only() -> None:
+    # EMPTY_PAYLOAD is a module-level singleton; allowing per-response hooks
+    # to be installed on it would leak across requests.
+    assert streams.EMPTY_PAYLOAD._on_chunk_received is None
+
+    async def cb(chunk: bytes) -> None:
+        assert False
+
+    with pytest.raises(AttributeError, match="read-only"):
+        streams.EMPTY_PAYLOAD._on_chunk_received = cb
+    # Singleton state untouched after the failed assignment.
+    assert streams.EMPTY_PAYLOAD._on_chunk_received is None
 
 
 @pytest.fixture
