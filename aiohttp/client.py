@@ -69,7 +69,7 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddlewareType, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, _cached_build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
@@ -235,6 +235,31 @@ _RetType_co = TypeVar(
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
+# Module-level (not a closure) so it has a stable identity for the
+# ``_cached_build_client_middlewares`` cache key.
+async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
+    connector = req._session._connector
+    assert connector is not None
+    try:
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+    except asyncio.TimeoutError as exc:
+        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+
+    assert conn.protocol is not None
+    conn.protocol.set_response_params(**req._response_params)
+    try:
+        resp = await req._send(conn)
+        try:
+            await resp.start(conn)
+        except BaseException:
+            resp.close()
+            raise
+    except BaseException:
+        conn.close()
+        raise
+    return resp
+
+
 @final
 class ClientSession:
     """First-class interface for making HTTP requests."""
@@ -392,7 +417,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._retry_connection: bool = True
-        self._middlewares = middlewares
+        self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
@@ -677,41 +702,13 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    async def _connect_and_send_request(
-                        req: ClientRequest,
-                    ) -> ClientResponse:
-                        # connection timeout
-                        assert self._connector is not None
-                        try:
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=req._timeout
-                            )
-                        except asyncio.TimeoutError as exc:
-                            raise ConnectionTimeoutError(
-                                f"Connection timeout to host {req.url}"
-                            ) from exc
-
-                        assert conn.protocol is not None
-                        conn.protocol.set_response_params(**req._response_params)
-                        try:
-                            resp = await req._send(conn)
-                            try:
-                                await resp.start(conn)
-                            except BaseException:
-                                resp.close()
-                                raise
-                        except BaseException:
-                            conn.close()
-                            raise
-                        return resp
-
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
+                        self._middlewares if middlewares is None else tuple(middlewares)
                     )
 
                     if effective_middlewares:
-                        handler = build_client_middlewares(
+                        handler = _cached_build_client_middlewares(
                             _connect_and_send_request, effective_middlewares
                         )
                     else:

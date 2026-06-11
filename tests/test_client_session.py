@@ -564,7 +564,9 @@ async def test_reraise_os_error(
     req._send.side_effect = err
     req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     req._timeout = ClientTimeout()
+    req._traces = []
     session = await create_session(request_class=req_factory)
+    req._session = session
 
     async def create_connection(
         req: object, traces: object, timeout: object
@@ -596,7 +598,9 @@ async def test_close_conn_on_error(
     req._send.side_effect = err
     req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
     req._timeout = ClientTimeout()
+    req._traces = []
     session = await create_session(request_class=req_factory)
+    req._session = session
 
     connections = []
     assert session._connector is not None
@@ -656,10 +660,12 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
     req._timeout = ClientTimeout()
+    req._traces = []
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
     session = await create_session(connector=connector, request_class=req_factory)
+    req._session = session
 
     connections = []
     assert session._connector is not None
@@ -719,10 +725,12 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
     req._timeout = ClientTimeout()
+    req._traces = []
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
     )
+    req._session = session
 
     connections = []
     assert session._connector is not None
