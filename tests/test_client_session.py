@@ -1075,6 +1075,37 @@ async def test_response_chunk_received_via_content(
         assert b"".join(chunks) == body
 
 
+async def test_response_chunk_received_hook_cleared_on_release(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"x" * 256)
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        assert False
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    resp = await client.get("/")
+    assert resp.content._on_chunk_received is not None
+    resp.release()
+    assert resp.content._on_chunk_received is None
+
+    resp = await client.get("/")  # type: ignore[unreachable]
+    assert resp.content._on_chunk_received is not None
+    resp.close()
+    assert resp.content._on_chunk_received is None
+
+
 async def test_response_chunk_received_trace_failure_closes_response(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -1106,49 +1137,6 @@ async def test_response_chunk_received_trace_failure_closes_response(
         with pytest.raises(RuntimeError, match="boom"):
             await resp.content.readany()
         assert resp.closed
-
-
-async def test_response_chunk_received_cancel_in_trace_recovers(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    """Cancelling during the trace must leave the response open and the
-    chunk recoverable on the next read."""
-    body = b"x" * 512
-
-    async def handler(request: web.Request) -> web.StreamResponse:
-        resp = web.StreamResponse()
-        resp.content_length = len(body)
-        await resp.prepare(request)
-        await resp.write(body)
-        return resp
-
-    fired = 0
-
-    async def on_response_chunk_received(
-        session: object,
-        context: object,
-        params: tracing.TraceResponseChunkReceivedParams,
-    ) -> None:
-        nonlocal fired
-        fired += 1
-        if fired == 1:
-            # First firing simulates a hung exporter the caller times out on.
-            raise asyncio.CancelledError
-
-    trace_config = aiohttp.TraceConfig()
-    trace_config.on_response_chunk_received.append(on_response_chunk_received)
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-    client = await aiohttp_client(app, trace_configs=[trace_config])
-
-    async with client.get("/") as resp:
-        with pytest.raises(asyncio.CancelledError):
-            await resp.content.readany()
-        # Chunk pushed back into the buffer; next read delivers it.
-        recovered = await resp.content.readany()
-        assert recovered == body
-        assert fired == 2
 
 
 async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:

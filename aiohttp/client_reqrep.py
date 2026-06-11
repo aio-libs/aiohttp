@@ -497,9 +497,7 @@ class ClientResponse(HeadersMixin):
         self.content = payload
 
         if self._traces and payload is not EMPTY_PAYLOAD:
-            payload._on_chunk_received = functools.partial(
-                self._on_chunk_response_received, self.method, self.url
-            )
+            payload._on_chunk_received = self._on_chunk_response_received
 
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
@@ -605,8 +603,13 @@ class ClientResponse(HeadersMixin):
     def _notify_content(self) -> None:
         content = self.content
         # content can be None here, but the types are cheated elsewhere.
-        if content and content.exception() is None:  # type: ignore[truthy-bool]
+        if content.exception() is None:
             set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+        # The bound method installed in start() captures self, creating a
+        # response→payload→method→self cycle. Clear it eagerly so the
+        # response is reclaimable without waiting for cycle GC.
+        if content._on_chunk_received is not None:
+            content._on_chunk_received = None
         self._released = True
 
     async def wait_for_close(self) -> None:
@@ -622,14 +625,11 @@ class ClientResponse(HeadersMixin):
                     raise
         self.release()
 
-    async def _on_chunk_response_received(
-        self, method: str, url: URL, chunk: bytes
-    ) -> None:
+    async def _on_chunk_response_received(self, chunk: bytes) -> None:
         try:
             for trace in self._traces:
-                await trace.send_response_chunk_received(method, url, chunk)
-        except Exception:
-            # Don't close on CancelledError, so a caller using timeout() can retry.
+                await trace.send_response_chunk_received(self.method, self.url, chunk)
+        except BaseException:
             self.close()
             raise
 

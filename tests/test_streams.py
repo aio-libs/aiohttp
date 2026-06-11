@@ -5,7 +5,7 @@ import asyncio
 import gc
 import types
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Iterator, Sequence
+from collections.abc import Awaitable, Callable, Coroutine, Iterator, Sequence
 from itertools import groupby
 from typing import TypeVar
 from unittest import mock
@@ -14,7 +14,7 @@ import pytest
 
 from aiohttp import streams
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimerContext
 from aiohttp.http_exceptions import LineTooLong
 
 DATA: bytes = b"line1\nline2\nline3\n"
@@ -1108,7 +1108,7 @@ class TestStreamReaderChunkHook:
     """Cover the _on_chunk_received hook used to fan out chunks to client tracing."""
 
     def _make_one(
-        self, cb: Callable[[bytes], Awaitable[None]] | None = None
+        self, cb: Callable[[bytes], Coroutine[None, None, None]] | None = None
     ) -> tuple[streams.StreamReader, list[bytes]]:
         protocol = mock.create_autospec(
             BaseProtocol, spec_set=True, instance=True, _reading_paused=False
@@ -1256,18 +1256,49 @@ class TestStreamReaderChunkHook:
         assert b"".join(collected) == b"abcdef"
         assert seen == [b"abc", b"def"]
 
-    async def test_hook_exception_propagates_and_restores_chunk(self) -> None:
-        # On any hook exception, the chunk must propagate out *and* be pushed
-        # back so a follow-up read can still deliver it. The end-to-end
-        # cancellation path is covered by
-        # test_response_chunk_received_cancel_in_trace_recovers.
-        fired = 0
+    async def test_hook_runs_under_stream_timer(self) -> None:
+        # The per-stream timer (driven by sock_read) must bound the trace
+        # call, not just the wait for incoming bytes.
+        loop = asyncio.get_running_loop()
+        timer = TimerContext(loop)
+        protocol = mock.create_autospec(
+            BaseProtocol, spec_set=True, instance=True, _reading_paused=False
+        )
+        stream = streams.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, timer=timer, loop=loop
+        )
 
         async def cb(chunk: bytes) -> None:
-            nonlocal fired
-            fired += 1
-            if fired == 1:
-                raise RuntimeError("boom")
+            await asyncio.sleep(60)  # simulate a hung exporter
+
+        stream._on_chunk_received = cb
+        stream.feed_data(b"abc")
+        stream.feed_eof()
+
+        async def fire_timeout() -> None:
+            await asyncio.sleep(0)
+            timer.timeout()
+
+        timeout_task = asyncio.create_task(fire_timeout())
+        with pytest.raises(asyncio.TimeoutError):
+            await stream.readany()
+        await timeout_task
+
+    async def test_read_nowait_fires_via_task(self) -> None:
+        # read_nowait is sync; the hook is async. The fire is scheduled,
+        # so it lands on the next event loop tick — not before read_nowait
+        # has returned.
+        stream, seen = self._make_one()
+        stream.feed_data(b"abc")
+
+        assert stream.read_nowait() == b"abc"
+        assert seen == []
+        await asyncio.sleep(0)
+        assert seen == [b"abc"]
+
+    async def test_hook_exception_propagates(self) -> None:
+        async def cb(chunk: bytes) -> None:
+            raise RuntimeError("boom")
 
         stream, _ = self._make_one(cb)
         stream.feed_data(b"abc")
@@ -1275,8 +1306,6 @@ class TestStreamReaderChunkHook:
 
         with pytest.raises(RuntimeError, match="boom"):
             await stream.readany()
-        assert await stream.readany() == b"abc"
-        assert fired == 2
 
 
 async def test_empty_stream_reader() -> None:

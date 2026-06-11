@@ -1,6 +1,5 @@
-``TraceConfig.on_response_chunk_received`` now fires for every chunk returned
-from ``ClientResponse.content`` read methods (``read``, ``readany``,
-``readchunk``, ``readuntil``, ``iter_chunked``, ``iter_any``, ``iter_chunks``).
-Previously the signal only fired once from ``ClientResponse.read()`` with the
-entire body, and direct ``.content`` access bypassed tracing entirely
--- by :user:`Dreamsorcerer`.
+``TraceConfig.on_response_chunk_received`` now fires for every chunk returned from
+``ClientResponse.content`` read methods (``read``, ``readany``, ``readchunk``,
+``readuntil``, ``read_nowait``, ``iter_chunked``, ``iter_any``, ``iter_chunks``).
+Previously the signal only fired once from ``ClientResponse.read()`` with the entire
+body, and direct ``.content`` access bypassed tracing entirely -- by :user:`Dreamsorcerer`.

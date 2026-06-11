@@ -2,7 +2,7 @@ import asyncio
 import collections
 import sys
 import warnings
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Coroutine
 from typing import Final, Generic, TypeVar
 
 from .base_protocol import BaseProtocol
@@ -135,7 +135,9 @@ class StreamReader:
         self._timer = TimerNoop() if timer is None else timer
         self._eof_callbacks: list[Callable[[], None]] = []
         self._eof_counter = 0
-        self._on_chunk_received: Callable[[bytes], Awaitable[None]] | None = None
+        self._on_chunk_received: Callable[[bytes], Coroutine[None, None, None]] | None = (
+            None
+        )
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -368,13 +370,10 @@ class StreamReader:
     async def _fire_chunk_received(self, chunk: bytes) -> None:
         cb = self._on_chunk_received
         assert cb is not None
-        try:
+        # Run under the same per-stream timer that _wait() uses, so a hung
+        # trace handler is bounded by sock_read just like a hung socket read would be.
+        with self._timer:
             await cb(chunk)
-        except BaseException:
-            self._buffer.appendleft(chunk)
-            self._size += len(chunk)
-            self._cursor -= len(chunk)
-            raise
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
@@ -534,7 +533,13 @@ class StreamReader:
                 "Called while some coroutine is waiting for incoming data."
             )
 
-        return self._read_nowait(n)
+        chunk = self._read_nowait(n)
+        if chunk and (cb := self._on_chunk_received) is not None:
+            # read_nowait is sync but the hook is async; schedule it so the
+            # observability event still fires.
+            # TODO: Save and await this task.
+            asyncio.create_task(cb(chunk))  # type: ignore[unused-awaitable]
+        return chunk
 
     def _read_nowait_chunk(self, n: int) -> bytes:
         first_buffer = self._buffer[0]
@@ -607,7 +612,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
 
     @_on_chunk_received.setter
     def _on_chunk_received(
-        self, value: Callable[[bytes], Awaitable[None]] | None
+        self, value: Callable[[bytes], Coroutine[None, None, None]] | None
     ) -> None:
         raise AttributeError("EmptyStreamReader._on_chunk_received is read-only")
 

@@ -242,7 +242,9 @@ Classes
          The signal now fires for every chunk returned from
          ``ClientResponse.content``. Previously it only fired once from
          :meth:`ClientResponse.read` with the full body, and direct
-         ``.content`` access did not fire it at all.
+         ``.content`` access did not fire it at all. For the synchronous
+         :meth:`StreamReader.read_nowait` the hook runs as a scheduled task,
+         not inline.
 
    .. attribute:: on_request_redirect
 
