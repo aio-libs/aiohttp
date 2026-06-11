@@ -7,9 +7,9 @@ import os
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Iterable
 from itertools import chain
-from typing import IO, TYPE_CHECKING, Any, Final, TextIO
+from typing import IO, Any, Final, TextIO
 
 from multidict import CIMultiDict
 
@@ -17,13 +17,15 @@ from . import hdrs
 from .abc import AbstractStreamWriter
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     content_disposition_header,
     guess_filename,
     parse_mimetype,
     sentinel,
 )
+from .http_writer import _safe_header
 from .streams import StreamReader
-from .typedefs import JSONEncoder, _CIMultiDict
+from .typedefs import JSONBytesEncoder, JSONEncoder
 
 __all__ = (
     "PAYLOAD_REGISTRY",
@@ -38,11 +40,11 @@ __all__ = (
     "TextIOPayload",
     "StringIOPayload",
     "JsonPayload",
+    "JsonBytesPayload",
     "AsyncIterablePayload",
 )
 
 TOO_LARGE_BYTES_BODY: Final[int] = 2**20  # 1 MB
-READ_SIZE: Final[int] = 2**16  # 64 KB
 _CLOSE_FUTURES: set[asyncio.Future[None]] = set()
 
 
@@ -145,7 +147,7 @@ class Payload(ABC):
         self,
         value: Any,
         headers: (
-            _CIMultiDict | dict[str, str] | Iterable[tuple[str, str]] | None
+            CIMultiDict[str] | dict[str, str] | Iterable[tuple[str, str]] | None
         ) = None,
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
@@ -154,7 +156,7 @@ class Payload(ABC):
     ) -> None:
         self._encoding = encoding
         self._filename = filename
-        self._headers: _CIMultiDict = CIMultiDict()
+        self._headers = CIMultiDict[str]()
         self._value = value
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
@@ -189,16 +191,17 @@ class Payload(ABC):
         return self._filename
 
     @property
-    def headers(self) -> _CIMultiDict:
+    def headers(self) -> CIMultiDict[str]:
         """Custom item headers"""
         return self._headers
 
     @property
     def _binary_headers(self) -> bytes:
         return (
-            "".join([k + ": " + v + "\r\n" for k, v in self.headers.items()]).encode(
-                "utf-8"
-            )
+            "".join(
+                _safe_header(k) + ": " + _safe_header(v) + "\r\n"
+                for k, v in self.headers.items()
+            ).encode("utf-8")
             + b"\r\n"
         )
 
@@ -488,7 +491,7 @@ class IOBasePayload(Payload):
 
         Args:
             remaining_content_len: Optional limit on how many bytes to read in this operation.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A tuple containing:
@@ -503,7 +506,11 @@ class IOBasePayload(Payload):
         self._set_or_restore_start_position()
         size = self.size  # Call size only once since it does I/O
         return size, self._value.read(
-            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(
+                DEFAULT_CHUNK_SIZE,
+                size or DEFAULT_CHUNK_SIZE,
+                remaining_content_len or DEFAULT_CHUNK_SIZE,
+            )
         )
 
     def _read(self, remaining_content_len: int | None) -> bytes:
@@ -512,7 +519,7 @@ class IOBasePayload(Payload):
 
         Args:
             remaining_content_len: Optional maximum number of bytes to read.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A chunk of bytes read from the file object, respecting the
@@ -522,7 +529,7 @@ class IOBasePayload(Payload):
         the initial _read_and_available_len call has been made.
 
         """
-        return self._value.read(remaining_content_len or READ_SIZE)  # type: ignore[no-any-return]
+        return self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)  # type: ignore[no-any-return]
 
     @property
     def size(self) -> int | None:
@@ -625,9 +632,9 @@ class IOBasePayload(Payload):
                 None,
                 self._read,
                 (
-                    min(READ_SIZE, remaining_content_len)
+                    min(DEFAULT_CHUNK_SIZE, remaining_content_len)
                     if remaining_content_len is not None
-                    else READ_SIZE
+                    else DEFAULT_CHUNK_SIZE
                 ),
             )
 
@@ -752,7 +759,7 @@ class TextIOPayload(IOBasePayload):
 
         Args:
             remaining_content_len: Optional limit on how many bytes to read in this operation.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A tuple containing:
@@ -771,7 +778,11 @@ class TextIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         size = self.size
         chunk = self._value.read(
-            min(READ_SIZE, size or READ_SIZE, remaining_content_len or READ_SIZE)
+            min(
+                DEFAULT_CHUNK_SIZE,
+                size or DEFAULT_CHUNK_SIZE,
+                remaining_content_len or DEFAULT_CHUNK_SIZE,
+            )
         )
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
@@ -781,7 +792,7 @@ class TextIOPayload(IOBasePayload):
 
         Args:
             remaining_content_len: Optional maximum number of bytes to read.
-                If None, READ_SIZE will be used as the default chunk size.
+                If None, DEFAULT_CHUNK_SIZE will be used as the default chunk size.
 
         Returns:
             A chunk of bytes read from the file object and encoded using the payload's
@@ -793,7 +804,7 @@ class TextIOPayload(IOBasePayload):
         the specified encoding (or UTF-8 if none was provided).
 
         """
-        chunk = self._value.read(remaining_content_len or READ_SIZE)
+        chunk = self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
@@ -877,7 +888,7 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         loop_count = 0
         remaining_bytes = content_length
-        while chunk := self._value.read(READ_SIZE):
+        while chunk := self._value.read(DEFAULT_CHUNK_SIZE):
             if loop_count > 0:
                 # Avoid blocking the event loop
                 # if they pass a large BytesIO object
@@ -939,26 +950,37 @@ class JsonPayload(BytesPayload):
         )
 
 
-if TYPE_CHECKING:
-    from collections.abc import AsyncIterable, AsyncIterator
+class JsonBytesPayload(BytesPayload):
+    """JSON payload for encoders that return bytes directly.
 
-    _AsyncIterator = AsyncIterator[bytes]
-    _AsyncIterable = AsyncIterable[bytes]
-else:
-    from collections.abc import AsyncIterable, AsyncIterator
+    Use this when your JSON encoder (like orjson) returns bytes
+    instead of str, avoiding the encode/decode overhead.
+    """
 
-    _AsyncIterator = AsyncIterator
-    _AsyncIterable = AsyncIterable
+    def __init__(
+        self,
+        value: Any,
+        dumps: JSONBytesEncoder,
+        content_type: str = "application/json",
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
+        super().__init__(
+            dumps(value),
+            content_type=content_type,
+            *args,
+            **kwargs,
+        )
 
 
 class AsyncIterablePayload(Payload):
-    _iter: _AsyncIterator | None = None
-    _value: _AsyncIterable
+    _iter: AsyncIterator[bytes] | None = None
+    _value: AsyncIterable[bytes]
     _cached_chunks: list[bytes] | None = None
     # _consumed stays False to allow reuse with cached content
     _autoclose = True  # Iterator doesn't need explicit closing
 
-    def __init__(self, value: _AsyncIterable, *args: Any, **kwargs: Any) -> None:
+    def __init__(self, value: AsyncIterable[bytes], *args: Any, **kwargs: Any) -> None:
         if not isinstance(value, AsyncIterable):
             raise TypeError(
                 "value argument must support "

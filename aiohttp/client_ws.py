@@ -2,8 +2,9 @@
 
 import asyncio
 import sys
+from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Final
+from typing import Any, Final, Generic, Literal, overload
 
 from ._websocket.reader import WebSocketDataQueue
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
@@ -14,7 +15,8 @@ from .http import (
     WS_CLOSING_MESSAGE,
     WebSocketError,
     WSCloseCode,
-    WSMessage,
+    WSMessageDecodeText,
+    WSMessageNoDecodeText,
     WSMsgType,
 )
 from .http_websocket import _INTERNAL_RECEIVE_TYPES, WebSocketWriter, WSMessageError
@@ -22,14 +24,26 @@ from .streams import EofStream
 from .typedefs import (
     DEFAULT_JSON_DECODER,
     DEFAULT_JSON_ENCODER,
+    JSONBytesEncoder,
     JSONDecoder,
     JSONEncoder,
 )
 
+if sys.version_info >= (3, 13):
+    from typing import TypeVar
+else:
+    from typing_extensions import TypeVar
+
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
+    from typing import Self
 else:
     import async_timeout
+    from typing_extensions import Self
+
+# TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
+# Covariant because it only affects return types, not input types
+_DecodeText = TypeVar("_DecodeText", bound=bool, covariant=True, default=Literal[True])
 
 
 @frozen_dataclass_decorator
@@ -43,7 +57,7 @@ DEFAULT_WS_CLIENT_TIMEOUT: Final[ClientWSTimeout] = ClientWSTimeout(
 )
 
 
-class ClientWebSocketResponse:
+class ClientWebSocketResponse(Generic[_DecodeText]):
     def __init__(
         self,
         reader: WebSocketDataQueue,
@@ -84,11 +98,17 @@ class ClientWebSocketResponse:
         self._compress = compress
         self._client_notakeover = client_notakeover
         self._ping_task: asyncio.Task[None] | None = None
+        self._need_heartbeat_reset = False
+        self._heartbeat_reset_handle: asyncio.Handle | None = None
 
         self._reset_heartbeat()
 
     def _cancel_heartbeat(self) -> None:
         self._cancel_pong_response_cb()
+        if self._heartbeat_reset_handle is not None:
+            self._heartbeat_reset_handle.cancel()
+            self._heartbeat_reset_handle = None
+        self._need_heartbeat_reset = False
         if self._heartbeat_cb is not None:
             self._heartbeat_cb.cancel()
             self._heartbeat_cb = None
@@ -100,6 +120,23 @@ class ClientWebSocketResponse:
         if self._pong_response_cb is not None:
             self._pong_response_cb.cancel()
             self._pong_response_cb = None
+
+    def _on_data_received(self) -> None:
+        if self._heartbeat is None or self._need_heartbeat_reset:
+            return
+        loop = self._loop
+        assert loop is not None
+        # Coalesce multiple chunks received in the same loop tick into a single
+        # heartbeat reset. Resetting immediately per chunk increases timer churn.
+        self._need_heartbeat_reset = True
+        self._heartbeat_reset_handle = loop.call_soon(self._flush_heartbeat_reset)
+
+    def _flush_heartbeat_reset(self) -> None:
+        self._heartbeat_reset_handle = None
+        if not self._need_heartbeat_reset:
+            return
+        self._reset_heartbeat()
+        self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
@@ -124,6 +161,12 @@ class ClientWebSocketResponse:
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
+
+        # If heartbeat reset is pending (data is being received), skip sending
+        # the ping and let the reset callback handle rescheduling the heartbeat.
+        if self._need_heartbeat_reset:
+            return
+
         loop = self._loop
         now = loop.time()
         if now < self._heartbeat_when:
@@ -260,6 +303,20 @@ class ClientWebSocketResponse:
     ) -> None:
         await self.send_str(dumps(data), compress=compress)
 
+    async def send_json_bytes(
+        self,
+        data: Any,
+        compress: int | None = None,
+        *,
+        dumps: JSONBytesEncoder,
+    ) -> None:
+        """Send JSON data using a bytes-returning encoder as a binary frame.
+
+        Use this when your JSON encoder (like orjson) returns bytes
+        instead of str, avoiding the encode/decode overhead.
+        """
+        await self.send_bytes(dumps(data), compress=compress)
+
     async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
@@ -309,7 +366,24 @@ class ClientWebSocketResponse:
                 self._response.close()
                 return True
 
-    async def receive(self, timeout: float | None = None) -> WSMessage:
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[True]]", timeout: float | None = None
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[Literal[False]]", timeout: float | None = None
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def receive(
+        self: "ClientWebSocketResponse[_DecodeText]", timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
+    async def receive(
+        self, timeout: float | None = None
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText:
         receive_timeout = timeout or self._timeout.ws_receive
 
         while True:
@@ -334,7 +408,6 @@ class ClientWebSocketResponse:
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
-                    self._reset_heartbeat()
                 finally:
                     self._waiting = False
                     if self._close_wait:
@@ -383,7 +456,26 @@ class ClientWebSocketResponse:
 
             return msg
 
-    async def receive_str(self, *, timeout: float | None = None) -> str:
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[True]]", *, timeout: float | None = None
+    ) -> str: ...
+
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[Literal[False]]", *, timeout: float | None = None
+    ) -> bytes: ...
+
+    @overload
+    async def receive_str(
+        self: "ClientWebSocketResponse[_DecodeText]", *, timeout: float | None = None
+    ) -> str | bytes: ...
+
+    async def receive_str(self, *, timeout: float | None = None) -> str | bytes:
+        """Receive TEXT message.
+
+        Returns str when decode_text=True (default), bytes when decode_text=False.
+        """
         msg = await self.receive(timeout)
         if msg.type is not WSMsgType.TEXT:
             raise WSMessageTypeError(
@@ -399,25 +491,64 @@ class ClientWebSocketResponse:
             )
         return msg.data
 
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[True]]",
+        *,
+        loads: JSONDecoder = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[Literal[False]]",
+        *,
+        loads: Callable[[bytes], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
+    @overload
+    async def receive_json(
+        self: "ClientWebSocketResponse[_DecodeText]",
+        *,
+        loads: JSONDecoder | Callable[[bytes], Any] = ...,
+        timeout: float | None = None,
+    ) -> Any: ...
+
     async def receive_json(
         self,
         *,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
+        loads: JSONDecoder | Callable[[bytes], Any] = DEFAULT_JSON_DECODER,
         timeout: float | None = None,
     ) -> Any:
         data = await self.receive_str(timeout=timeout)
-        return loads(data)
+        return loads(data)  # type: ignore[arg-type]
 
-    def __aiter__(self) -> "ClientWebSocketResponse":
+    def __aiter__(self) -> Self:
         return self
 
-    async def __anext__(self) -> WSMessage:
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[Literal[True]]",
+    ) -> WSMessageDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[Literal[False]]",
+    ) -> WSMessageNoDecodeText: ...
+
+    @overload
+    async def __anext__(
+        self: "ClientWebSocketResponse[_DecodeText]",
+    ) -> WSMessageDecodeText | WSMessageNoDecodeText: ...
+
+    async def __anext__(self) -> WSMessageDecodeText | WSMessageNoDecodeText:
         msg = await self.receive()
         if msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED):
             raise StopAsyncIteration
         return msg
 
-    async def __aenter__(self) -> "ClientWebSocketResponse":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(

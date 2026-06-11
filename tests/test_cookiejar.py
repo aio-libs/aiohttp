@@ -1,12 +1,14 @@
 import datetime
 import heapq
 import itertools
+import json
 import logging
-import pickle
-import sys
+import os
+import stat
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
+from types import MappingProxyType
 from unittest import mock
 
 import pytest
@@ -15,13 +17,6 @@ from yarl import URL
 
 from aiohttp import CookieJar, DummyCookieJar
 from aiohttp.typedefs import LooseCookies
-
-
-def dump_cookiejar() -> bytes:  # pragma: no cover
-    """Create pickled data for test_pickle_format()."""
-    cj = CookieJar()
-    cj.update_cookies(_cookies_to_send())
-    return pickle.dumps(cj._cookies, pickle.HIGHEST_PROTOCOL)
 
 
 def _cookies_to_send() -> SimpleCookie:
@@ -770,6 +765,7 @@ class TestCookieJarSafe:
 async def test_dummy_cookie_jar() -> None:
     cookie = SimpleCookie("foo=bar; Domain=example.com;")
     dummy_jar = DummyCookieJar()
+    assert dummy_jar.unsafe is False
     assert dummy_jar.quote_cookie is True
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
@@ -778,6 +774,54 @@ async def test_dummy_cookie_jar() -> None:
         next(iter(dummy_jar))
     assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()
+
+
+async def test_dummy_cookie_jar_cookies_property() -> None:
+    dummy_jar = DummyCookieJar()
+    assert dict(dummy_jar.cookies) == {}
+    assert dummy_jar.host_only_cookies == frozenset()
+
+
+async def test_cookie_jar_cookies_property() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie(
+        "shared-cookie=first; domain-cookie=second; Domain=example.com; Path=/; "
+    )
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    cookies = jar.cookies
+    # Should be a read-only view
+    assert isinstance(cookies, MappingProxyType)
+    # Should contain the stored cookies with their full attributes
+    found_names = {name for simple_cookie in cookies.values() for name in simple_cookie}
+    assert "shared-cookie" in found_names
+    assert "domain-cookie" in found_names
+    # Verify that domain attribute is preserved
+    for key, simple_cookie in cookies.items():
+        for name, morsel in simple_cookie.items():
+            if name == "domain-cookie":
+                assert morsel["domain"] == "example.com"
+                assert morsel["path"] == "/"
+
+
+async def test_cookie_jar_host_only_cookies_property() -> None:
+    jar = CookieJar()
+    # Cookies without an explicit Domain attribute are host-only
+    cookie = SimpleCookie("hostonly=value;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    host_only = jar.host_only_cookies
+    assert isinstance(host_only, frozenset)
+    assert ("example.com", "hostonly") in host_only
+
+
+async def test_cookie_jar_cookies_property_immutable() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie("foo=bar;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+    cookies = jar.cookies
+    with pytest.raises(TypeError):
+        cookies[("new", "key")] = SimpleCookie()  # type: ignore[index]
 
 
 async def test_loose_cookies_types() -> None:
@@ -1027,41 +1071,6 @@ async def test_cookie_jar_clear_domain() -> None:
         next(iterator)
 
 
-def test_pickle_format(cookies_to_send: SimpleCookie) -> None:
-    """Test if cookiejar pickle format breaks.
-
-    If this test fails, it may indicate that saved cookiejars will stop working.
-    If that happens then:
-        1. Avoid releasing the change in a bugfix release.
-        2. Try to include a migration script in the release notes (example below).
-        3. Use dump_cookiejar() at the top of this file to update `pickled`.
-
-    Depending on the changes made, a migration script might look like:
-        import pickle
-        with file_path.open("rb") as f:
-            cookies = pickle.load(f)
-
-        morsels = [(name, m) for c in cookies.values() for name, m in c.items()]
-        cookies.clear()
-        for name, m in morsels:
-            cookies[(m["domain"], m["path"])][name] = m
-
-        with file_path.open("wb") as f:
-            pickle.dump(cookies, f, pickle.HIGHEST_PROTOCOL)
-    """
-    if sys.version_info < (3, 14):
-        pickled = b"\x80\x04\x95\xc8\x0b\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1cubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x1e\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah!h\x1b\x8c\x06second\x94h\x1dh-ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0bexample.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah.h\x1b\x8c\x05fifth\x94h\x1dh;ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h<\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah?h\x1b\x8c\x05third\x94h\x1dhKubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hL\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahOh\x1b\x8c\x06fourth\x94h\x1dh[ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\\\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah_h\x1b\x8c\x05sixth\x94h\x1dhkubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94hl\x8c\x07max-age\x94h\x08\x8c\x06secure\x94\x88\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ahoh\x1b\x8c\x07seventh\x94h\x1dh{ubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h|\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x7fh\x1b\x8c\x06eighth\x94h\x1dh\x8bub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x8ch\x1b\x8c\x05ninth\x94h\x1dh\x99ubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x9b\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x9a\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\x9eh\x1b\x8c\x05tenth\x94h\x1dh\xaaubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\xac\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xab\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xafh\x1b\x8c\x08eleventh\x94h\x1dh\xbbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\t/one/two/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x0cpathtest.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xbch\x1b\x8c\x07twelfth\x94h\x1dh\xcaubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xcb\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xceh\x1b\x8c\nthirteenth\x94h\x1dh\xdbubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xdc\x8c\x07max-age\x94\x8c\x0260\x94\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xdfh\x1b\x8c\nfourteenth\x94h\x1dh\xecubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\xed\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xf0h\x1b\x8c\tfifteenth\x94h\x1dh\xfcub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94h\x11\x8c\x07comment\x94h\x08\x8c\x06domain\x94\x8c\x12invalid-values.com\x94\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08u}\x94(h\x1ah\xfdh\x1b\x8c\tsixteenth\x94h\x1dj\n\x01\x00\x00ubuu."
-    else:
-        pickled = b'\x80\x05\x95\x06\x08\x00\x00\x00\x00\x00\x00\x8c\x0bcollections\x94\x8c\x0bdefaultdict\x94\x93\x94\x8c\x0chttp.cookies\x94\x8c\x0cSimpleCookie\x94\x93\x94\x85\x94R\x94(\x8c\x00\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rshared-cookie\x94h\x03\x8c\x06Morsel\x94\x93\x94)\x81\x94(\x8c\x07expires\x94h\x08\x8c\x04path\x94\x8c\x01/\x94\x8c\x07comment\x94h\x08\x8c\x06domain\x94h\x08\x8c\x07max-age\x94h\x08\x8c\x06secure\x94h\x08\x8c\x08httponly\x94h\x08\x8c\x07version\x94h\x08\x8c\x08samesite\x94h\x08\x8c\x0bpartitioned\x94h\x08u}\x94(\x8c\x03key\x94h\x0b\x8c\x05value\x94\x8c\x05first\x94\x8c\x0bcoded_value\x94h\x1dubs\x8c\x0bexample.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\rdomain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h\x1fh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh"h\x1c\x8c\x06second\x94h\x1eh%ub\x8c\x14dotted-domain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x0bexample.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh&h\x1c\x8c\x05fifth\x94h\x1eh*ubu\x8c\x11test1.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain1-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h+h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh.h\x1c\x8c\x05third\x94h\x1eh1ubs\x8c\x11test2.example.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x11subdomain2-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h2h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh5h\x1c\x8c\x06fourth\x94h\x1eh8ubs\x8c\rdifferent.org\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x17different-domain-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h9h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh<h\x1c\x8c\x05sixth\x94h\x1eh?ubs\x8c\nsecure.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\rsecure-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13h@h\x14h\x08h\x15\x88h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhCh\x1c\x8c\x07seventh\x94h\x1ehFubs\x8c\x0cpathtest.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x0eno-path-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hGh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhJh\x1c\x8c\x06eighth\x94h\x1ehMub\x8c\x0cpath1-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhNh\x1c\x8c\x05ninth\x94h\x1ehRubu\x8c\x0cpathtest.com\x94\x8c\x04/one\x94\x86\x94h\x05)\x81\x94\x8c\x0cpath2-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10hTh\x12h\x08h\x13hSh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhWh\x1c\x8c\x05tenth\x94h\x1ehZubs\x8c\x0cpathtest.com\x94\x8c\x08/one/two\x94\x86\x94h\x05)\x81\x94(\x8c\x0cpath3-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\\h\x12h\x08h\x13h[h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh_h\x1c\x8c\x08eleventh\x94h\x1ehbub\x8c\x0cpath4-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10\x8c\t/one/two/\x94h\x12h\x08h\x13\x8c\x0cpathtest.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhch\x1c\x8c\x07twelfth\x94h\x1ehhubu\x8c\x0fexpirestest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0eexpires-cookie\x94h\r)\x81\x94(h\x0f\x8c\x1cTue, 1 Jan 2999 12:00:00 GMT\x94h\x10h\x11h\x12h\x08h\x13hih\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhlh\x1c\x8c\nthirteenth\x94h\x1ehpubs\x8c\x0emaxagetest.com\x94h\x08\x86\x94h\x05)\x81\x94\x8c\x0emax-age-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hqh\x14\x8c\x0260\x94h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bhth\x1c\x8c\nfourteenth\x94h\x1ehxubs\x8c\x12invalid-values.com\x94h\x08\x86\x94h\x05)\x81\x94(\x8c\x16invalid-max-age-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13hyh\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh|h\x1c\x8c\tfifteenth\x94h\x1eh\x7fub\x8c\x16invalid-expires-cookie\x94h\r)\x81\x94(h\x0fh\x08h\x10h\x11h\x12h\x08h\x13\x8c\x12invalid-values.com\x94h\x14h\x08h\x15h\x08h\x16h\x08h\x17h\x08h\x18h\x08h\x19h\x08u}\x94(h\x1bh\x80h\x1c\x8c\tsixteenth\x94h\x1eh\x84ubuu.'
-
-    cookies = pickle.loads(pickled)
-
-    cj = CookieJar()
-    cj.update_cookies(cookies_to_send)
-
-    assert cookies == cj._cookies
-
-
 @pytest.mark.parametrize(
     "url",
     [
@@ -1307,7 +1316,7 @@ def test_update_cookies_from_headers_with_attributes() -> None:
         "secure-cookie=value1; Secure; HttpOnly; SameSite=Strict",
         "expiring-cookie=value2; Max-Age=3600; Path=/app",
         "domain-cookie=value3; Domain=.example.com; Path=/",
-        "dated-cookie=value4; Expires=Wed, 09 Jun 2030 10:18:14 GMT",
+        "dated-cookie=value4; Expires=Wed, 09 Jun 3024 10:18:14 GMT",
     ]
 
     jar.update_cookies_from_headers(headers, url)
@@ -1564,3 +1573,280 @@ async def test_shared_cookie_with_multiple_domains() -> None:
     # Verify cache is reused efficiently
     assert ("", "") in jar._morsel_cache
     assert "universal" in jar._morsel_cache[("", "")]
+
+
+def test_save_load_json_roundtrip(
+    tmp_path: Path,
+    cookies_to_receive: SimpleCookie,
+) -> None:
+    """Verify save/load roundtrip preserves cookies via JSON format."""
+    file_path = tmp_path / "cookies.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies(cookies_to_receive)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    saved_cookies = SimpleCookie()
+    for cookie in jar_save:
+        saved_cookies[cookie.key] = cookie
+
+    loaded_cookies = SimpleCookie()
+    for cookie in jar_load:
+        loaded_cookies[cookie.key] = cookie
+
+    assert saved_cookies == loaded_cookies
+
+
+def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
+    """Verify save/load roundtrip works with partitioned cookies."""
+    file_path = tmp_path / "partitioned.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["session=cookie; Partitioned"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    # Compare individual cookie values (same approach as test_save_load_partitioned_cookies)
+    saved = list(jar_save)
+    loaded = list(jar_load)
+    assert len(saved) == len(loaded)
+    for s, lo in zip(saved, loaded):
+        assert s.key == lo.key
+        assert s.value == lo.value
+        assert s["domain"] == lo["domain"]
+        assert s["path"] == lo["path"]
+
+
+def test_save_load_json_preserves_host_only_scope(tmp_path: Path) -> None:
+    """Verify save/load keeps host-only cookies off subdomains."""
+    file_path = tmp_path / "host_only.json"
+    issuer = URL("https://auth.example.com/login")
+    subdomain = URL("https://sub.auth.example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies({"sid": "hostonly"}, response_url=issuer)
+    assert "sid" not in jar_save.filter_cookies(subdomain)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert jar_load.host_only_cookies == frozenset({("auth.example.com", "sid")})
+    assert "sid" not in jar_load.filter_cookies(subdomain)
+    assert "sid" in jar_load.filter_cookies(issuer)
+
+
+def test_save_load_json_domain_cookie_still_matches_subdomain(
+    tmp_path: Path,
+) -> None:
+    """Verify save/load keeps an explicit Domain cookie valid for subdomains."""
+    file_path = tmp_path / "domain.json"
+    subdomain = URL("https://sub.example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=domaincookie; Domain=example.com"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert jar_load.host_only_cookies == frozenset()
+    assert "sid" in jar_load.filter_cookies(subdomain)
+
+
+def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
+    """Verify save/load restores the absolute deadline without resetting it."""
+    file_path = tmp_path / "max_age.json"
+    url = URL("https://example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Max-Age=3600; Domain=example.com"], url
+    )
+    expirations = dict(jar_save._expirations)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    # The deadline is restored as the original absolute time, not now + Max-Age.
+    assert dict(jar_load._expirations) == expirations
+    assert "sid" in jar_load.filter_cookies(url)
+
+
+def test_save_load_json_drops_expired_cookie(tmp_path: Path) -> None:
+    """Verify a cookie whose persisted deadline is in the past is dropped on load."""
+    file_path = tmp_path / "expired.json"
+    url = URL("https://example.com/")
+
+    # Save a future-expiring cookie, then rewrite its persisted deadline to the
+    # past so the cookie survives save() and the drop happens on the load path.
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Expires=Tue, 1 Jan 2999 12:00:00 GMT; Domain=example.com"], url
+    )
+    jar_save.save(file_path=file_path)
+    data = json.loads(file_path.read_text())
+    _, cookies = next(iter(data.items()))
+    cookies["sid"]["expires_timestamp"] = 0.0
+    file_path.write_text(json.dumps(data))
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert len(jar_load) == 0
+    assert "sid" not in jar_load.filter_cookies(url)
+
+
+def test_save_load_json_preserves_expires_deadline(tmp_path: Path) -> None:
+    """Verify a future Expires deadline survives a save/load roundtrip."""
+    file_path = tmp_path / "expires.json"
+    url = URL("https://example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Expires=Tue, 1 Jan 2999 12:00:00 GMT; Domain=example.com"], url
+    )
+    expirations = dict(jar_save._expirations)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert dict(jar_load._expirations) == expirations
+    assert "sid" in jar_load.filter_cookies(url)
+
+
+def test_load_json_old_format_without_new_keys(tmp_path: Path) -> None:
+    """Verify a file written by an older version (no host_only/expires_timestamp) loads."""
+    file_path = tmp_path / "old.json"
+    # Old schema: no host_only, no expires_timestamp; relative max-age morsel attr.
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|/": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "x",
+                        "coded_value": "x",
+                        "domain": "example.com",
+                        "max-age": "3600",
+                    }
+                }
+            }
+        )
+    )
+    url = URL("https://example.com/")
+
+    jar_load = CookieJar()
+    # No exception when the new keys are absent.
+    jar_load.load(file_path=file_path)
+
+    # A host-only cookie saved without Domain by an older version had no domain
+    # field, so it now loads as a domain cookie (the documented migration loss).
+    assert "sid" in jar_load.filter_cookies(url)
+    # max-age is rescheduled from load time rather than an absolute deadline.
+    assert any(key[2] == "sid" for key in jar_load._expirations)
+
+
+def test_json_format_is_safe(tmp_path: Path) -> None:
+    """Verify the JSON file format cannot execute code on load."""
+    import json
+
+    file_path = tmp_path / "safe.json"
+
+    # Write something that might look dangerous but is just data
+    malicious_data = {
+        "evil.com|/": {
+            "session": {
+                "key": "session",
+                "value": "__import__('os').system('echo PWNED')",
+                "coded_value": "__import__('os').system('echo PWNED')",
+            }
+        }
+    }
+    with open(file_path, "w") as f:
+        json.dump(malicious_data, f)
+
+    jar = CookieJar()
+    jar.load(file_path=file_path)
+
+    # The "malicious" string is just a cookie value, not executed code
+    cookies = list(jar)
+    assert len(cookies) == 1
+    assert cookies[0].value == "__import__('os').system('echo PWNED')"
+
+
+def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
+    """Verify save/load preserves Secure and HttpOnly flags."""
+    file_path = tmp_path / "secure.json"
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["token=abc123; Secure; HttpOnly; Path=/; Domain=example.com"],
+        URL("https://example.com/"),
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    loaded_cookies = list(jar_load)
+    assert len(loaded_cookies) == 1
+    cookie = loaded_cookies[0]
+    assert cookie.key == "token"
+    assert cookie.value == "abc123"
+    assert cookie["secure"] is True
+    assert cookie["httponly"] is True
+    assert cookie["domain"] == "example.com"
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
+    file_path = tmp_path / "private-cookies.json"
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert file_path.exists()
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path) -> None:
+    file_path = tmp_path / "existing-cookies.json"
+    file_path.write_text("{}", encoding="utf-8")
+    file_path.chmod(0o644)
+
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o644
+
+
+async def test_cookie_jar_unsafe_property() -> None:
+    jar_safe = CookieJar()
+    assert jar_safe.unsafe is False
+
+    jar_unsafe = CookieJar(unsafe=True)
+    assert jar_unsafe.unsafe is True

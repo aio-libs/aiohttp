@@ -3,6 +3,7 @@ import pathlib
 import sys
 
 from setuptools import Extension, setup
+from setuptools.command.build_ext import build_ext
 
 if sys.version_info < (3, 10):
     raise RuntimeError("aiohttp 4.x requires Python 3.10+")
@@ -12,6 +13,7 @@ USE_SYSTEM_DEPS = bool(
     os.environ.get("AIOHTTP_USE_SYSTEM_DEPS", os.environ.get("USE_SYSTEM_DEPS"))
 )
 NO_EXTENSIONS: bool = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
+CYTHON_TRACING: bool = bool(os.environ.get("AIOHTTP_CYTHON_TRACE"))
 HERE = pathlib.Path(__file__).parent
 IS_GIT_REPO = (HERE / ".git").exists()
 
@@ -54,8 +56,16 @@ else:
         "include_dirs": ["vendor/llhttp/build"],
     }
 
+cython_trace_macros = [("CYTHON_TRACE", 1)] if CYTHON_TRACING else []
+if cython_trace_macros:
+    llhttp_kwargs.setdefault("define_macros", []).extend(cython_trace_macros)
+
 extensions = [
-    Extension("aiohttp._websocket.mask", ["aiohttp/_websocket/mask.c"]),
+    Extension(
+        "aiohttp._websocket.mask",
+        ["aiohttp/_websocket/mask.c"],
+        define_macros=cython_trace_macros,
+    ),
     Extension(
         "aiohttp._http_parser",
         [
@@ -65,13 +75,32 @@ extensions = [
         ],
         **llhttp_kwargs,
     ),
-    Extension("aiohttp._http_writer", ["aiohttp/_http_writer.c"]),
-    Extension("aiohttp._websocket.reader_c", ["aiohttp/_websocket/reader_c.c"]),
+    Extension(
+        "aiohttp._http_writer",
+        ["aiohttp/_http_writer.c"],
+        define_macros=cython_trace_macros,
+    ),
+    Extension(
+        "aiohttp._websocket.reader_c",
+        ["aiohttp/_websocket/reader_c.c"],
+        define_macros=cython_trace_macros,
+    ),
 ]
 
 
+class ParallelBuildExt(build_ext):
+    def build_extensions(self) -> None:
+        if self.parallel is None:
+            self.parallel = os.cpu_count() or 1
+        super().build_extensions()
+
+
 build_type = "Pure" if NO_EXTENSIONS else "Accelerated"
-setup_kwargs = {} if NO_EXTENSIONS else {"ext_modules": extensions}
+setup_kwargs = (
+    {}
+    if NO_EXTENSIONS
+    else {"ext_modules": extensions, "cmdclass": {"build_ext": ParallelBuildExt}}
+)
 
 print("*********************", file=sys.stderr)
 print("* {build_type} build *".format_map(locals()), file=sys.stderr)

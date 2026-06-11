@@ -1,5 +1,4 @@
 import asyncio
-import collections.abc
 import datetime
 import enum
 import json
@@ -9,19 +8,20 @@ import warnings
 from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, cast, overload
 
 from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
-from .compression_utils import ZLibCompressor
+from .compression_utils import MAX_SYNC_CHUNK_SIZE, ZLibCompressor
 from .helpers import (
     ETAG_ANY,
     QUOTED_ETAG_RE,
     CookieMixin,
     ETag,
     HeadersMixin,
+    ResponseKey,
     must_be_empty_body,
     parse_http_date,
     populate_with_cookies,
@@ -32,20 +32,24 @@ from .helpers import (
 )
 from .http import SERVER_SOFTWARE, HttpVersion10, HttpVersion11
 from .payload import Payload
-from .typedefs import JSONEncoder, LooseHeaders
+from .typedefs import JSONBytesEncoder, JSONEncoder, LooseHeaders
 
 REASON_PHRASES = {http_status.value: http_status.phrase for http_status in HTTPStatus}
-LARGE_BODY_SIZE = 1024**2
 
-__all__ = ("ContentCoding", "StreamResponse", "Response", "json_response")
+__all__ = (
+    "ContentCoding",
+    "StreamResponse",
+    "Response",
+    "json_response",
+    "json_bytes_response",
+)
 
 
 if TYPE_CHECKING:
     from .web_request import BaseRequest
 
-    BaseClass = MutableMapping[str, Any]
-else:
-    BaseClass = collections.abc.MutableMapping
+
+_T = TypeVar("_T")
 
 
 # TODO(py311): Convert to StrEnum for wider use
@@ -66,7 +70,9 @@ CONTENT_CODINGS = {coding.value: coding for coding in ContentCoding}
 ############################################################
 
 
-class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
+class StreamResponse(
+    MutableMapping[str | ResponseKey[Any], Any], HeadersMixin, CookieMixin
+):
 
     _body: None | bytes | bytearray | Payload
     _length_check = True
@@ -98,7 +104,7 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         the headers when creating a new response object. It is not intended
         to be used by external code.
         """
-        self._state: dict[str, Any] = {}
+        self._state: dict[str | ResponseKey[Any], Any] = {}
 
         if _real_headers is not None:
             self._headers = _real_headers
@@ -150,8 +156,8 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
         self._status = status
         if reason is None:
             reason = REASON_PHRASES.get(self._status, "")
-        elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")
+        elif "\r" in reason or "\n" in reason:
+            raise ValueError("Reason cannot contain \\r or \\n")
         self._reason = reason
 
     @property
@@ -488,19 +494,31 @@ class StreamResponse(BaseClass, HeadersMixin, CookieMixin):
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    def __getitem__(self, key: str) -> Any:
+    @overload  # type: ignore[override]
+    def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
+
+    @overload
+    def __getitem__(self, key: str) -> Any: ...
+
+    def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    def __setitem__(self, key: str, value: Any) -> None:
+    @overload  # type: ignore[override]
+    def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
+
+    @overload
+    def __setitem__(self, key: str, value: Any) -> None: ...
+
+    def __setitem__(self, key: str | ResponseKey[_T], value: Any) -> None:
         self._state[key] = value
 
-    def __delitem__(self, key: str) -> None:
+    def __delitem__(self, key: str | ResponseKey[_T]) -> None:
         del self._state[key]
 
     def __len__(self) -> int:
         return len(self._state)
 
-    def __iter__(self) -> Iterator[str]:
+    def __iter__(self) -> Iterator[str | ResponseKey[Any]]:
         return iter(self._state)
 
     def __hash__(self) -> int:
@@ -528,7 +546,7 @@ class Response(StreamResponse):
         headers: LooseHeaders | None = None,
         content_type: str | None = None,
         charset: str | None = None,
-        zlib_executor_size: int | None = None,
+        zlib_executor_size: int = MAX_SYNC_CHUNK_SIZE,
         zlib_executor: Executor | None = None,
     ) -> None:
         if body is not None and text is not None:
@@ -670,8 +688,10 @@ class Response(StreamResponse):
         if body is None or self._must_be_empty_body:
             await super().write_eof()
         elif isinstance(self._body, Payload):
-            await self._body.write(self._payload_writer)
-            await self._body.close()
+            try:
+                await self._body.write(self._payload_writer)
+            finally:
+                await self._body.close()
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))
@@ -707,13 +727,6 @@ class Response(StreamResponse):
             executor=self._zlib_executor,
         )
         assert self._body is not None
-        if self._zlib_executor_size is None and len(self._body) > LARGE_BODY_SIZE:
-            warnings.warn(
-                "Synchronous compression of large response bodies "
-                f"({len(self._body)} bytes) might block the async event loop. "
-                "Consider providing a custom value to zlib_executor_size/"
-                "zlib_executor response properties or disabling compression on it."
-            )
         self._compressed_body = (
             await compressor.compress(self._body) + compressor.flush()
         )
@@ -739,6 +752,35 @@ def json_response(
             text = dumps(data)
     return Response(
         text=text,
+        body=body,
+        status=status,
+        reason=reason,
+        headers=headers,
+        content_type=content_type,
+    )
+
+
+def json_bytes_response(
+    data: Any = sentinel,
+    *,
+    dumps: JSONBytesEncoder,
+    body: bytes | None = None,
+    status: int = 200,
+    reason: str | None = None,
+    headers: LooseHeaders | None = None,
+    content_type: str = "application/json",
+) -> Response:
+    """Create a JSON response using a bytes-returning encoder.
+
+    Use this when your JSON encoder (like orjson) returns bytes
+    instead of str, avoiding the encode/decode overhead.
+    """
+    if data is not sentinel:
+        if body is not None:
+            raise ValueError("only one of data or body should be specified")
+        else:
+            body = dumps(data)
+    return Response(
         body=body,
         status=status,
         reason=reason,

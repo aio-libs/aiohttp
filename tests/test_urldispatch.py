@@ -1,5 +1,5 @@
-import asyncio
 import pathlib
+import platform
 import re
 from collections.abc import (
     Awaitable,
@@ -373,8 +373,8 @@ def test_add_static_path_checks(
     """Test that static paths must exist and be directories."""
     with pytest.raises(ValueError, match="does not exist"):
         router.add_static("/", tmp_path / "does-not-exist")
-        with pytest.raises(ValueError, match="is not a directory"):
-            router.add_static("/", __file__)
+    with pytest.raises(ValueError, match="is not a directory"):
+        router.add_static("/", __file__)
 
 
 def test_add_static_path_resolution(router: web.UrlDispatcher) -> None:
@@ -462,7 +462,7 @@ def test_add_static_append_version_follow_symlink(
 
     # Register global static route:
     resource = router.add_static(
-        "/st", str(tmp_path), follow_symlinks=True, append_version=True
+        "/st", str(tmp_path), break_symlink_sandbox=True, append_version=True
     )
 
     url = resource.url_for(filename="/append_version_symlink/data.unknown_mime_type")
@@ -486,7 +486,7 @@ def test_add_static_append_version_not_follow_symlink(
 
     # Register global static route:
     resource = router.add_static(
-        "/st", str(tmp_path), follow_symlinks=False, append_version=True
+        "/st", str(tmp_path), break_symlink_sandbox=False, append_version=True
     )
 
     filename = "/append_version_symlink/data.unknown_mime_type"
@@ -1062,7 +1062,7 @@ def test_static_route_user_home(router: web.UrlDispatcher) -> None:
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
     route = router.add_static("/st", str(static_dir))
-    assert here == route.get_info()["directory"]
+    assert here.resolve() == route.get_info()["directory"]
 
 
 def test_static_route_points_to_file(router: web.UrlDispatcher) -> None:
@@ -1081,6 +1081,19 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/st", pathlib.Path(aiohttp.__file__).parent)
     ret = await resource.resolve(make_mocked_request("POST", "/st/abc.py"))
     assert (None, {"HEAD", "GET"}) == ret
+
+
+@pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
+async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
+    """Test relative path traversing outside root does not resolve."""
+    static_file = pathlib.Path(aiohttp.__file__).resolve()
+    request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
+    assert pathlib.Path(request_path).resolve() == static_file
+
+    resource = router.add_static("/st", static_file.parent)
+    ret = await resource.resolve(make_mocked_request("GET", request_path))
+    # Should not resolve, otherwise filesystem information may be leaked.
+    assert (None, set()) == ret
 
 
 async def test_check_allowed_method_for_found_resource(
@@ -1180,17 +1193,13 @@ def test_subapp_rule_resource(app: web.Application) -> None:
         resource.url_for()
 
 
-async def test_add_domain_not_str(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain_not_str(app: web.Application) -> None:
     app = web.Application()
     with pytest.raises(TypeError):
         app.add_domain(1, app)  # type: ignore[arg-type]
 
 
-async def test_add_domain(
-    app: web.Application, loop: asyncio.AbstractEventLoop
-) -> None:
+async def test_add_domain(app: web.Application) -> None:
     subapp1 = web.Application()
     h1 = make_handler()
     subapp1.router.add_get("/", h1)
@@ -1286,16 +1295,9 @@ def test_frozen_app_on_subapp(app: web.Application) -> None:
 
 def test_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
-    options = None
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is None
+    assert all(r.method != "OPTIONS" for r in resource)
     resource.set_options_route(make_handler())
-    for route in resource:
-        if route.method == "OPTIONS":
-            options = route
-    assert options is not None
+    assert any(r.method == "OPTIONS" for r in resource)
 
     with pytest.raises(RuntimeError):
         resource.set_options_route(make_handler())

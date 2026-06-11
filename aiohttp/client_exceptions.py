@@ -1,23 +1,17 @@
 """HTTP related errors."""
 
 import asyncio
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Union
-
-from multidict import MultiMapping
 
 from .typedefs import StrOrURL
 
-if TYPE_CHECKING:
+try:
     import ssl
 
     SSLContext = ssl.SSLContext
-else:
-    try:
-        import ssl
-
-        SSLContext = ssl.SSLContext
-    except ImportError:  # pragma: no cover
-        ssl = SSLContext = None  # type: ignore[assignment]
+except ImportError:  # pragma: no cover
+    ssl = SSLContext = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
@@ -78,7 +72,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: MultiMapping[str] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -347,10 +341,21 @@ class ClientConnectorSSLError(*ssl_error_bases):  # type: ignore[misc]
 class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     """Response certificate error."""
 
+    _conn_key: ConnectionKey
+
     def __init__(
-        self, connection_key: ConnectionKey, certificate_error: Exception
+        # TODO: If we require ssl in future, this can become ssl.CertificateError
+        self,
+        connection_key: ConnectionKey,
+        certificate_error: Exception,
     ) -> None:
-        self._conn_key = connection_key
+        if isinstance(certificate_error, cert_errors + (OSError,)):
+            # ssl.CertificateError has errno and strerror, so we should be fine
+            os_error = certificate_error
+        else:
+            os_error = OSError()
+
+        super().__init__(connection_key, os_error)
         self._certificate_error = certificate_error
         self.args = (connection_key, certificate_error)
 

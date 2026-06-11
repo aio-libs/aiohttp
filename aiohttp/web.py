@@ -8,10 +8,10 @@ from argparse import ArgumentParser
 from collections.abc import Awaitable, Callable, Iterable, Iterable as TypingIterable
 from contextlib import suppress
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, cast
+from typing import Any, cast
 
 from .abc import AbstractAccessLogger
-from .helpers import AppKey
+from .helpers import AppKey, RequestKey, ResponseKey
 from .log import access_logger
 from .typedefs import PathLike
 from .web_app import Application, CleanupError
@@ -81,7 +81,13 @@ from .web_log import AccessLogger
 from .web_middlewares import middleware, normalize_path_middleware
 from .web_protocol import PayloadAccessError, RequestHandler, RequestPayloadError
 from .web_request import BaseRequest, FileField, Request
-from .web_response import ContentCoding, Response, StreamResponse, json_response
+from .web_response import (
+    ContentCoding,
+    Response,
+    StreamResponse,
+    json_bytes_response,
+    json_response,
+)
 from .web_routedef import (
     AbstractRouteDef,
     RouteDef,
@@ -203,11 +209,14 @@ __all__ = (
     "BaseRequest",
     "FileField",
     "Request",
+    "RequestKey",
     # web_response
     "ContentCoding",
     "Response",
     "StreamResponse",
+    "json_bytes_response",
     "json_response",
+    "ResponseKey",
     # web_routedef
     "AbstractRouteDef",
     "RouteDef",
@@ -256,13 +265,10 @@ __all__ = (
 )
 
 
-if TYPE_CHECKING:
+try:
     from ssl import SSLContext
-else:
-    try:
-        from ssl import SSLContext
-    except ImportError:  # pragma: no cover
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    SSLContext = object  # type: ignore[misc,assignment]
 
 # Only display warning when using -Wdefault, -We, -X dev or similar.
 warnings.filterwarnings("ignore", category=NotAppKeyWarning, append=True)
@@ -482,9 +488,18 @@ def run_app(
         pass
     finally:
         try:
-            main_task.cancel()
-            with suppress(asyncio.CancelledError):
-                loop.run_until_complete(main_task)
+            # Skip when ``main_task`` is already done (e.g. raised during startup).
+            # Re-running ``loop.run_until_complete`` on a finished task calls
+            # ``Future.result`` again, which does
+            # ``raise self._exception.with_traceback(self._exception_tb)`` and
+            # resets ``exc.__traceback__`` to the originally saved tb — by then
+            # shallow — clobbering the deep traceback the caller would otherwise
+            # see (frames from ``cleanup_ctx`` / ``on_startup`` and the user code
+            # that actually raised).
+            if not main_task.done():
+                main_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    loop.run_until_complete(main_task)
         finally:
             _cancel_tasks(asyncio.all_tasks(loop), loop)
             loop.run_until_complete(loop.shutdown_asyncgens())

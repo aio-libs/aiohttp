@@ -1,6 +1,7 @@
 """Http related parsers and protocol."""
 
 import asyncio
+import re
 import sys
 from typing import (  # noqa
     TYPE_CHECKING,
@@ -363,16 +364,22 @@ class StreamWriter(AbstractStreamWriter):
             await protocol._drain_helper()
 
 
+# https://www.rfc-editor.org/info/rfc9110/#section-5.5-5
+# https://www.rfc-editor.org/info/rfc9112/#section-4-3
+_FORBIDDEN_HEADER_CHARS_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
+
+
 def _safe_header(string: str) -> str:
-    if "\r" in string or "\n" in string:
+    if _FORBIDDEN_HEADER_CHARS_RE.search(string) is not None:
         raise ValueError(
-            "Newline or carriage return detected in headers. "
+            "Forbidden control character detected in headers. "
             "Potential header injection attack."
         )
     return string
 
 
 def _py_serialize_headers(status_line: str, headers: "CIMultiDict[str]") -> bytes:
+    _safe_header(status_line)
     headers_gen = (_safe_header(k) + ": " + _safe_header(v) for k, v in headers.items())
     line = status_line + "\r\n" + "\r\n".join(headers_gen) + "\r\n\r\n"
     return line.encode("utf-8")

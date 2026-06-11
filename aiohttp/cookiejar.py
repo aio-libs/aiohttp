@@ -3,15 +3,16 @@ import contextlib
 import datetime
 import heapq
 import itertools
-import os  # noqa
+import json
+import os
 import pathlib
-import pickle
 import re
 import time
 import warnings
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping
 from http.cookies import BaseCookie, Morsel, SimpleCookie
+from types import MappingProxyType
 from typing import Union
 
 from yarl import URL
@@ -35,6 +36,9 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
+
+# Not persisted; the absolute deadline is saved instead.
+_RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 
 
 class CookieJar(AbstractCookieJar):
@@ -108,18 +112,116 @@ class CookieJar(AbstractCookieJar):
         self._expirations: dict[tuple[str, str, str], float] = {}
 
     @property
+    def unsafe(self) -> bool:
+        return self._unsafe
+
+    @property
     def quote_cookie(self) -> bool:
         return self._quote_cookie
 
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return the cookies stored in this jar."""
+        return MappingProxyType(self._cookies)
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return the host-only cookies stored in this jar."""
+        return frozenset(self._host_only_cookies)
+
     def save(self, file_path: PathLike) -> None:
+        """Save cookies to a file using JSON format.
+
+        :param file_path: Path to file where cookies will be serialized,
+            :class:`str` or :class:`pathlib.Path` instance.
+        """
         file_path = pathlib.Path(file_path)
-        with file_path.open(mode="wb") as f:
-            pickle.dump(self._cookies, f, pickle.HIGHEST_PROTOCOL)
+        data: dict[str, dict[str, dict[str, str | bool | float]]] = {}
+        for (domain, path), cookie in self._cookies.items():
+            key = f"{domain}|{path}"
+            data[key] = {}
+            for name, morsel in cookie.items():
+                morsel_data: dict[str, str | bool | float] = {
+                    "key": morsel.key,
+                    "value": morsel.value,
+                    "coded_value": morsel.coded_value,
+                }
+                # Skip relative expiry; the absolute deadline is saved below.
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
+                    if attr in _RELATIVE_EXPIRY_ATTRS:
+                        continue
+                    attr_val = morsel[attr]
+                    if attr_val:
+                        morsel_data[attr] = attr_val
+                # Persist or it reloads as a domain cookie and leaks to subdomains.
+                if (domain, name) in self._host_only_cookies:
+                    morsel_data["host_only"] = True
+                if (exp := self._expirations.get((domain, path, name))) is not None:
+                    morsel_data["expires_timestamp"] = exp
+                data[key][name] = morsel_data
+
+        # Cookie persistence may include authentication/session tokens.
+        # Use 0o600 at creation time to avoid umask-dependent overexposure
+        # and enforce least-privilege access to sensitive credential data.
+        with open(
+            file_path,
+            mode="w",
+            encoding="utf-8",
+            opener=lambda path, flags: os.open(path, flags, 0o600),
+        ) as f:
+            json.dump(data, f, indent=2)
 
     def load(self, file_path: PathLike) -> None:
+        """Load cookies from a JSON file.
+
+        Replaces the current jar contents; loaded cookies pass through the
+        same acceptance rules as :meth:`update_cookies`.
+
+        :param file_path: Path to file from where cookies will be
+            imported, :class:`str` or :class:`pathlib.Path` instance.
+        """
         file_path = pathlib.Path(file_path)
-        with file_path.open(mode="rb") as f:
-            self._cookies = pickle.load(f)
+        with file_path.open(mode="r", encoding="utf-8") as f:
+            data = json.load(f)
+        self._load_json_data(data)
+
+    def _load_json_data(
+        self, data: dict[str, dict[str, dict[str, str | bool | float]]]
+    ) -> None:
+        """Replace contents, routing cookies through update_cookies()."""
+        self.clear()
+        for compound_key, cookie_data in data.items():
+            domain, path = compound_key.split("|", 1)
+            for name, morsel_data in cookie_data.items():
+                morsel: Morsel[str] = Morsel()
+                # Use __setstate__ to bypass validation, same pattern
+                # used in _build_morsel and _cookie_helpers.
+                morsel.__setstate__(  # type: ignore[attr-defined]
+                    {
+                        "key": morsel_data["key"],
+                        "value": morsel_data["value"],
+                        "coded_value": morsel_data["coded_value"],
+                    }
+                )
+                # Restore morsel attributes
+                for attr in morsel._reserved:  # type: ignore[attr-defined]
+                    if attr in morsel_data and attr not in (
+                        "key",
+                        "value",
+                        "coded_value",
+                    ):
+                        morsel[attr] = morsel_data[attr]
+                # Drop the domain so update_cookies() re-marks it host-only.
+                if morsel_data.get("host_only"):
+                    morsel["domain"] = ""
+                response_url = (
+                    URL.build(scheme="https", host=domain) if domain else URL()
+                )
+                self.update_cookies({name: morsel}, response_url)
+                # Restore the absolute deadline; update_cookies() schedules none.
+                if (exp := morsel_data.get("expires_timestamp")) is not None:
+                    self._expire_cookie(float(exp), domain, path, name)
+        self._do_expiration()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
@@ -389,8 +491,7 @@ class CookieJar(AbstractCookieJar):
             coded_value = value = cookie.value
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
-        # setting protected attributes directly and unlikely to change since it would
-        # break pickling.
+        # setting protected attributes directly.
         morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
         return morsel
 
@@ -489,8 +590,22 @@ class DummyCookieJar(AbstractCookieJar):
         return 0
 
     @property
+    def unsafe(self) -> bool:
+        return False
+
+    @property
     def quote_cookie(self) -> bool:
         return True
+
+    @property
+    def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
+        """Return an empty mapping."""
+        return MappingProxyType({})
+
+    @property
+    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        """Return an empty frozenset."""
+        return frozenset()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         pass

@@ -99,8 +99,8 @@ class HTTPException(CookieMixin, Exception):
     ) -> None:
         if reason is None:
             reason = self.default_reason
-        elif "\n" in reason:
-            raise ValueError("Reason cannot contain \\n")
+        elif "\r" in reason or "\n" in reason:
+            raise ValueError("Reason cannot contain \\r or \\n")
 
         if text is None:
             if not self.empty_body:
@@ -366,12 +366,8 @@ class HTTPPreconditionFailed(HTTPClientError):
 class HTTPRequestEntityTooLarge(HTTPClientError):
     status_code = 413
 
-    def __init__(self, max_size: int, actual_size: int, **kwargs: Any) -> None:
-        kwargs.setdefault(
-            "text",
-            f"Maximum request body size {max_size} exceeded, "
-            f"actual body size {actual_size}",
-        )
+    def __init__(self, max_size: int, **kwargs: Any) -> None:
+        kwargs.setdefault("text", f"Maximum request body size {max_size} exceeded.")
         super().__init__(**kwargs)
 
 

@@ -11,8 +11,9 @@ from collections.abc import (
     MutableMapping,
     Sequence,
 )
+from contextlib import AbstractAsyncContextManager, asynccontextmanager
 from functools import lru_cache, partial, update_wrapper
-from typing import TYPE_CHECKING, Any, TypeVar, cast, final, overload
+from typing import Any, TypeVar, cast, final, overload
 
 from aiosignal import Signal
 from frozenlist import FrozenList
@@ -39,21 +40,11 @@ from .web_urldispatcher import (
 
 __all__ = ("Application", "CleanupError")
 
-
-if TYPE_CHECKING:
-    _AppSignal = Signal["Application"]
-    _RespPrepareSignal = Signal[Request, StreamResponse]
-    _Middlewares = FrozenList[Middleware]
-    _MiddlewaresHandlers = Sequence[Middleware]
-    _Subapps = list["Application"]
-else:
-    # No type checker mode, skip types
-    _AppSignal = Signal
-    _RespPrepareSignal = Signal
-    _Handler = Callable
-    _Middlewares = FrozenList
-    _MiddlewaresHandlers = Sequence
-    _Subapps = list
+_AppSignal = Signal["Application"]
+_RespPrepareSignal = Signal[Request, StreamResponse]
+_Middlewares = FrozenList[Middleware]
+_MiddlewaresHandlers = Sequence[Middleware]
+_Subapps = list["Application"]
 
 _T = TypeVar("_T")
 _U = TypeVar("_U")
@@ -140,7 +131,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
 
     def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
-            f"Inheritance class {cls.__name__} from web.Application " "is forbidden"
+            f"Inheritance class {cls.__name__} from web.Application is forbidden"
         )
 
     # MutableMapping API
@@ -263,7 +254,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
             DeprecationWarning,
             stacklevel=2,
         )
-        return asyncio.get_event_loop().get_debug()
+        return asyncio.get_running_loop().get_debug()
 
     def _reg_subapp_signals(self, subapp: "Application") -> None:
         def reg_handler(signame: str) -> None:
@@ -415,34 +406,34 @@ class CleanupError(RuntimeError):
         return cast(list[BaseException], self.args[1])
 
 
-if TYPE_CHECKING:
-    _CleanupContextBase = FrozenList[Callable[[Application], AsyncIterator[None]]]
-else:
-    _CleanupContextBase = FrozenList
+_CleanupContextCallable = (
+    Callable[[Application], AbstractAsyncContextManager[None]]
+    | Callable[[Application], AsyncIterator[None]]
+)
 
 
-class CleanupContext(_CleanupContextBase):
+class CleanupContext(FrozenList[_CleanupContextCallable]):
     def __init__(self) -> None:
         super().__init__()
-        self._exits: list[AsyncIterator[None]] = []
+        self._exits: list[AbstractAsyncContextManager[None]] = []
 
     async def _on_startup(self, app: Application) -> None:
         for cb in self:
-            it = cb(app).__aiter__()
-            await it.__anext__()
-            self._exits.append(it)
+            ctx = cb(app)
+
+            if not isinstance(ctx, AbstractAsyncContextManager):
+                ctx = asynccontextmanager(cb)(app)  # type: ignore[arg-type]
+
+            await ctx.__aenter__()
+            self._exits.append(ctx)
 
     async def _on_cleanup(self, app: Application) -> None:
         errors = []
         for it in reversed(self._exits):
             try:
-                await it.__anext__()
-            except StopAsyncIteration:
-                pass
+                await it.__aexit__(None, None, None)
             except (Exception, asyncio.CancelledError) as exc:
                 errors.append(exc)
-            else:
-                errors.append(RuntimeError(f"{it!r} has more than one 'yield'"))
         if errors:
             if len(errors) == 1:
                 raise errors[0]

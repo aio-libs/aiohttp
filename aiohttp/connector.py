@@ -28,6 +28,7 @@ from .client_exceptions import (
     ClientConnectorSSLError,
     ClientHttpProxyError,
     ClientProxyConnectionError,
+    InvalidUrlClientError,
     ServerFingerprintMismatch,
     UnixClientConnectorError,
     cert_errors,
@@ -43,6 +44,7 @@ from .client_reqrep import (
 from .helpers import (
     _SENTINEL,
     ceil_timeout,
+    is_canonical_ipv4_address,
     is_ip_address,
     sentinel,
     set_exception,
@@ -56,18 +58,13 @@ if sys.version_info >= (3, 12):
 else:
     Buffer = "bytes | bytearray | memoryview[int] | memoryview[bytes]"
 
-if TYPE_CHECKING:
+try:
     import ssl
 
     SSLContext = ssl.SSLContext
-else:
-    try:
-        import ssl
-
-        SSLContext = ssl.SSLContext
-    except ImportError:  # pragma: no cover
-        ssl = None  # type: ignore[assignment]
-        SSLContext = object  # type: ignore[misc,assignment]
+except ImportError:  # pragma: no cover
+    ssl = None  # type: ignore[assignment]
+    SSLContext = object  # type: ignore[misc,assignment]
 
 EMPTY_SCHEMA_SET = frozenset({""})
 HTTP_SCHEMA_SET = frozenset({"http", "https"})
@@ -80,9 +77,9 @@ NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
     3,
     13,
     1,
-) or sys.version_info < (3, 12, 7)
+) or sys.version_info < (3, 12, 8)
 # Cleanup closed is no longer needed after https://github.com/python/cpython/pull/118960
-# which first appeared in Python 3.12.7 and 3.13.1
+# which first appeared in Python 3.12.8 and 3.13.1
 
 
 __all__ = (
@@ -555,6 +552,30 @@ class BaseConnector:
 
         return total_remain
 
+    def _update_proxy_auth_header_and_build_proxy_req(
+        self, req: ClientRequest
+    ) -> ClientRequestBase:
+        """Set Proxy-Authorization header for non-SSL proxy requests and builds the proxy request for SSL proxy requests."""
+        url = req.proxy
+        assert url is not None
+        headers = req.proxy_headers or CIMultiDict[str]()
+        headers[hdrs.HOST] = req.headers[hdrs.HOST]
+        proxy_req = ClientRequestBase(
+            hdrs.METH_GET,
+            url,
+            headers=headers,
+            loop=self._loop,
+            ssl=req.ssl,
+        )
+        if not req.is_ssl():
+            # For non-SSL proxies the request goes directly through the proxy,
+            # so any Proxy-Authorization belongs on the request itself, not on
+            # the synthetic proxy request used for SSL CONNECT.
+            proxy_auth = proxy_req.headers.pop(hdrs.PROXY_AUTHORIZATION, None)
+            if proxy_auth is not None:
+                req.headers[hdrs.PROXY_AUTHORIZATION] = proxy_auth
+        return proxy_req
+
     async def connect(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
     ) -> Connection:
@@ -563,12 +584,16 @@ class BaseConnector:
         if (conn := await self._get(key, traces)) is not None:
             # If we do not have to wait and we can get a connection from the pool
             # we can avoid the timeout ceil logic and directly return the connection
+            if req.proxy:
+                self._update_proxy_auth_header_and_build_proxy_req(req)
             return conn
 
         async with ceil_timeout(timeout.connect, timeout.ceil_threshold):
             if self._available_connections(key) <= 0:
                 await self._wait_for_available_connection(key, traces)
                 if (conn := await self._get(key, traces)) is not None:
+                    if req.proxy:
+                        self._update_proxy_auth_header_and_build_proxy_req(req)
                     return conn
 
             placeholder = cast(
@@ -771,25 +796,33 @@ class BaseConnector:
 
 
 class _DNSCacheTable:
-    def __init__(self, ttl: float | None = None) -> None:
-        self._addrs_rr: dict[tuple[str, int], tuple[Iterator[ResolveResult], int]] = {}
+    def __init__(self, ttl: float | None = None, max_size: int = 1000) -> None:
+        self._addrs_rr: OrderedDict[
+            tuple[str, int], tuple[Iterator[ResolveResult], int]
+        ] = OrderedDict()
         self._timestamps: dict[tuple[str, int], float] = {}
         self._ttl = ttl
+        self._max_size = max_size
 
     def __contains__(self, host: object) -> bool:
         return host in self._addrs_rr
 
     def add(self, key: tuple[str, int], addrs: list[ResolveResult]) -> None:
+        if key in self._addrs_rr:
+            self._addrs_rr.move_to_end(key)
+
         self._addrs_rr[key] = (cycle(addrs), len(addrs))
 
         if self._ttl is not None:
             self._timestamps[key] = monotonic()
 
+        if len(self._addrs_rr) > self._max_size:
+            oldest_key, _ = self._addrs_rr.popitem(last=False)
+            self._timestamps.pop(oldest_key, None)
+
     def remove(self, key: tuple[str, int]) -> None:
         self._addrs_rr.pop(key, None)
-
-        if self._ttl is not None:
-            self._timestamps.pop(key, None)
+        self._timestamps.pop(key, None)
 
     def clear(self) -> None:
         self._addrs_rr.clear()
@@ -800,6 +833,7 @@ class _DNSCacheTable:
         addrs = list(islice(loop, length))
         # Consume one more element to shift internal state of `cycle`
         next(loop)
+        self._addrs_rr.move_to_end(key)
         return addrs
 
     def expired(self, key: tuple[str, int]) -> bool:
@@ -886,6 +920,7 @@ class TCPConnector(BaseConnector):
         *,
         use_dns_cache: bool = True,
         ttl_dns_cache: int | None = 10,
+        dns_cache_max_size: int = 1000,
         family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
         ssl: bool | Fingerprint | SSLContext = True,
         local_addr: tuple[str, int] | None = None,
@@ -926,7 +961,9 @@ class TCPConnector(BaseConnector):
             self._resolver_owner = False
 
         self._use_dns_cache = use_dns_cache
-        self._cached_hosts = _DNSCacheTable(ttl=ttl_dns_cache)
+        self._cached_hosts = _DNSCacheTable(
+            ttl=ttl_dns_cache, max_size=dns_cache_max_size
+        )
         self._throttle_dns_futures: dict[tuple[str, int], set[asyncio.Future[None]]] = (
             {}
         )
@@ -970,10 +1007,10 @@ class TCPConnector(BaseConnector):
                          - If ssl_shutdown_timeout=0: connections are aborted
                          - If ssl_shutdown_timeout>0: graceful shutdown is performed
         """
-        if self._resolver_owner:
-            await self._resolver.close()
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
         await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
+        if self._resolver_owner:
+            await self._resolver.close()
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -1011,6 +1048,11 @@ class TCPConnector(BaseConnector):
     ) -> list[ResolveResult]:
         """Resolve host and return list of addresses."""
         if is_ip_address(host):
+            # Reject legacy numeric IPv4 forms (e.g. 2130706433, 127.1) that
+            # socket would map onto an address, slipping past a connector-level
+            # policy that only sees the raw host.
+            if ":" not in host and not is_canonical_ipv4_address(host):
+                raise InvalidUrlClientError(host, "is not a canonical IPv4 address")
             return [
                 {
                     "hostname": host,
@@ -1026,6 +1068,9 @@ class TCPConnector(BaseConnector):
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
+
+            if self._closed:
+                raise ClientConnectionError("Connector is closed")
 
             res = await self._resolver.resolve(host, port, family=self._family)
 
@@ -1238,6 +1283,12 @@ class TCPConnector(BaseConnector):
     ) -> None:
         """Issue a warning if the requested URL has HTTPS scheme."""
         if req.url.scheme != "https":
+            return
+
+        # TLS-in-TLS only applies when the proxy itself is HTTPS.
+        # When the proxy is HTTP, start_tls upgrades a plain TCP connection,
+        # which is standard TLS and works on all event loops and Python versions.
+        if req.proxy is None or req.proxy.scheme != "https":
             return
 
         # Check if uvloop is being used, which supports TLS in TLS,
@@ -1458,31 +1509,12 @@ class TCPConnector(BaseConnector):
     async def _create_proxy_connection(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
     ) -> tuple[asyncio.BaseTransport, ResponseHandler]:
-        headers = CIMultiDict[str]() if req.proxy_headers is None else req.proxy_headers
-        headers[hdrs.HOST] = req.headers[hdrs.HOST]
-
-        url = req.proxy
-        assert url is not None
-        proxy_req = ClientRequestBase(
-            hdrs.METH_GET,
-            url,
-            headers=headers,
-            auth=req.proxy_auth,
-            loop=self._loop,
-            ssl=req.ssl,
-        )
+        proxy_req = self._update_proxy_auth_header_and_build_proxy_req(req)
 
         # create connection to proxy server
         transport, proto = await self._create_direct_connection(
             proxy_req, [], timeout, client_error=ClientProxyConnectionError
         )
-
-        auth = proxy_req.headers.pop(hdrs.AUTHORIZATION, None)
-        if auth is not None:
-            if not req.is_ssl():
-                req.headers[hdrs.PROXY_AUTHORIZATION] = auth
-            else:
-                proxy_req.headers[hdrs.PROXY_AUTHORIZATION] = auth
 
         if req.is_ssl():
             self._warn_about_tls_in_tls(transport, req)
@@ -1498,9 +1530,7 @@ class TCPConnector(BaseConnector):
             # asyncio handles this perfectly
             proxy_req.method = hdrs.METH_CONNECT
             proxy_req.url = req.url
-            key = req.connection_key._replace(
-                proxy=None, proxy_auth=None, proxy_headers_hash=None
-            )
+            key = req.connection_key._replace(proxy=None, proxy_headers_hash=None)
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
             proxy_resp = await proxy_req._send(conn)
             try:

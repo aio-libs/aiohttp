@@ -7,6 +7,7 @@ import html
 import inspect
 import keyword
 import os
+import platform
 import re
 import sys
 from collections.abc import (
@@ -28,7 +29,7 @@ from yarl import URL
 
 from . import hdrs
 from .abc import AbstractMatchInfo, AbstractRouter, AbstractView
-from .helpers import DEBUG
+from .helpers import DEBUG, DEFAULT_CHUNK_SIZE
 from .http import HttpVersion11
 from .typedefs import Handler, PathLike
 from .web_exceptions import (
@@ -60,10 +61,6 @@ __all__ = (
 if TYPE_CHECKING:
     from .web_app import Application
 
-    BaseDict = dict[str, str]
-else:
-    BaseDict = dict
-
 CIRCULAR_SYMLINK_ERROR = (RuntimeError,) if sys.version_info < (3, 13) else ()
 
 HTTP_METHOD_RE: Final[Pattern[str]] = re.compile(
@@ -74,6 +71,7 @@ ROUTE_RE: Final[Pattern[str]] = re.compile(
 )
 PATH_SEP: Final[str] = re.escape("/")
 
+IS_WINDOWS: Final[bool] = platform.system() == "Windows"
 
 _ExpectHandler = Callable[[Request], Awaitable[StreamResponse | None]]
 _Resolve = tuple[Optional["UrlMappingMatchInfo"], set[str]]
@@ -160,7 +158,7 @@ class AbstractRoute(abc.ABC):
             expect_handler = _default_expect_handler
 
         assert inspect.iscoroutinefunction(expect_handler) or (
-            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(expect_handler)  # type: ignore[deprecated]
         ), f"Coroutine is expected, got {expect_handler!r}"
 
         method = method.upper()
@@ -168,14 +166,14 @@ class AbstractRoute(abc.ABC):
             raise ValueError(f"{method} is not allowed HTTP method")
 
         if inspect.iscoroutinefunction(handler) or (
-            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)
+            sys.version_info < (3, 14) and asyncio.iscoroutinefunction(handler)  # type: ignore[deprecated]
         ):
             pass
         elif isinstance(handler, type) and issubclass(handler, AbstractView):
             pass
         else:
             raise TypeError(
-                "Only async functions are allowed as web-handlers " f", got {handler!r}"
+                f"Only async functions are allowed as web-handlers, got {handler!r}"
             )
 
         self._method = method
@@ -212,7 +210,7 @@ class AbstractRoute(abc.ABC):
         return await self._expect_handler(request)
 
 
-class UrlMappingMatchInfo(BaseDict, AbstractMatchInfo):
+class UrlMappingMatchInfo(dict[str, str], AbstractMatchInfo):
 
     __slots__ = ("_route", "_apps", "_current_app", "_frozen")
 
@@ -509,9 +507,9 @@ class StaticResource(PrefixResource):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
-        follow_symlinks: bool = False,
+        break_symlink_sandbox: bool = False,
         append_version: bool = False,
     ) -> None:
         super().__init__(prefix, name=name)
@@ -524,7 +522,7 @@ class StaticResource(PrefixResource):
         self._directory = directory
         self._show_index = show_index
         self._chunk_size = chunk_size
-        self._follow_symlinks = follow_symlinks
+        self._break_symlink_sandbox = break_symlink_sandbox
         self._expect_handler = expect_handler
         self._append_version = append_version
 
@@ -555,7 +553,7 @@ class StaticResource(PrefixResource):
         if append_version:
             unresolved_path = self._directory.joinpath(filename)
             try:
-                if self._follow_symlinks:
+                if self._break_symlink_sandbox:
                     normalized_path = Path(os.path.normpath(unresolved_path))
                     normalized_path.relative_to(self._directory)
                     filepath = normalized_path.resolve()
@@ -564,7 +562,7 @@ class StaticResource(PrefixResource):
                     filepath.relative_to(self._directory)
             except (ValueError, FileNotFoundError):
                 # ValueError for case when path point to symlink
-                # with follow_symlinks is False
+                # with break_symlink_sandbox is False
                 return url  # relatively safe
             if filepath.is_file():
                 # TODO cache file content
@@ -601,7 +599,12 @@ class StaticResource(PrefixResource):
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe
         method = request.method
-        if not path.startswith(self._prefix2) and path != self._prefix:
+        # We normalise here to avoid matches that traverse below the static root.
+        # e.g. /static/../../../../home/user/webapp/static/
+        norm_path = os.path.normpath(path)
+        if IS_WINDOWS:
+            norm_path = norm_path.replace("\\", "/")
+        if not norm_path.startswith(self._prefix2) and norm_path != self._prefix:
             return None, set()
 
         allowed_methods = self._allowed_methods
@@ -618,14 +621,11 @@ class StaticResource(PrefixResource):
         return iter(self._routes.values())
 
     async def _handle(self, request: Request) -> StreamResponse:
-        rel_url = request.match_info["filename"]
-        filename = Path(rel_url)
-        if filename.anchor:
-            # rel_url is an absolute name like
-            # /static/\\machine_name\c$ or /static/D:\path
-            # where the static dir is totally different
-            raise HTTPForbidden()
-
+        filename = request.match_info["filename"]
+        if Path(filename).is_absolute():
+            # filename is an absolute path e.g. //network/share or D:\path
+            # which could be a UNC path leading to NTLM credential theft
+            raise HTTPNotFound()
         unresolved_path = self._directory.joinpath(filename)
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
@@ -634,11 +634,11 @@ class StaticResource(PrefixResource):
 
     def _resolve_path_to_response(self, unresolved_path: Path) -> StreamResponse:
         """Take the unresolved path and query the file system to form a response."""
-        # Check for access outside the root directory. For follow symlinks, URI
-        # cannot traverse out, but symlinks can. Otherwise, no access outside
-        # root is permitted.
+        # Check for access outside the root directory. When the sandbox is
+        # broken, URI cannot traverse out, but symlinks can. Otherwise, no
+        # access outside root is permitted.
         try:
-            if self._follow_symlinks:
+            if self._break_symlink_sandbox:
                 normalized_path = Path(os.path.normpath(unresolved_path))
                 normalized_path.relative_to(self._directory)
                 file_path = normalized_path.resolve()
@@ -1133,9 +1133,9 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         *,
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
-        chunk_size: int = 256 * 1024,
+        chunk_size: int = DEFAULT_CHUNK_SIZE,
         show_index: bool = False,
-        follow_symlinks: bool = False,
+        break_symlink_sandbox: bool = False,
         append_version: bool = False,
     ) -> StaticResource:
         """Add static files view.
@@ -1154,7 +1154,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             expect_handler=expect_handler,
             chunk_size=chunk_size,
             show_index=show_index,
-            follow_symlinks=follow_symlinks,
+            break_symlink_sandbox=break_symlink_sandbox,
             append_version=append_version,
         )
         self.register_resource(resource)
