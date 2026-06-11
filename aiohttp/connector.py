@@ -112,7 +112,7 @@ async def create_connection(
     if aiofastnet is not None:
         return await aiofastnet.create_connection(loop, *args, **kwargs)
     else:
-        return await loop.create_connection(*args, **kwargs) # type: ignore[unreachable]
+        return await loop.create_connection(*args, **kwargs)  # type: ignore[unreachable]
 
 
 async def start_tls(
@@ -121,7 +121,7 @@ async def start_tls(
     if aiofastnet is not None:
         return await aiofastnet.start_tls(loop, *args, **kwargs)
     else:
-        return await loop.start_tls(*args, **kwargs) # type: ignore[unreachable]
+        return await loop.start_tls(*args, **kwargs)  # type: ignore[unreachable]
 
 
 class Connection:
