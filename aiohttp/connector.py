@@ -106,22 +106,78 @@ if TYPE_CHECKING:
 
 async def create_connection(
     loop: asyncio.AbstractEventLoop,
-    *args: Any,
-    **kwargs: Any,
+    protocol_factory: Callable[[], ResponseHandler],
+    *,
+    ssl: SSLContext | None,
+    sock: socket.socket,
+    server_hostname: str | None,
+    ssl_shutdown_timeout: float | None = None,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
-        return await aiofastnet.create_connection(loop, *args, **kwargs)
+        return await aiofastnet.create_connection(
+            loop,
+            protocol_factory,
+            ssl=ssl,
+            sock=sock,
+            server_hostname=server_hostname,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
     else:
-        return await loop.create_connection(*args, **kwargs)  # type: ignore[unreachable]
+        if sys.version_info >= (3, 11): # type: ignore[unreachable]
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+            )
 
 
 async def start_tls(
-    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+    loop: asyncio.AbstractEventLoop,
+    transport: asyncio.Transport,
+    protocol: ResponseHandler,
+    sslcontext: SSLContext,
+    *,
+    server_hostname: str | None,
+    ssl_handshake_timeout: float | None,
+    ssl_shutdown_timeout: float | None = None,
 ) -> asyncio.BaseTransport | None:
     if aiofastnet is not None:
-        return await aiofastnet.start_tls(loop, *args, **kwargs)
+        return await aiofastnet.start_tls(
+            loop,
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname=server_hostname,
+            ssl_handshake_timeout=ssl_handshake_timeout,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
     else:
-        return await loop.start_tls(*args, **kwargs)  # type: ignore[unreachable]
+        if sys.version_info >= (3, 11): # type: ignore[unreachable]
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+            )
 
 
 class Connection:
