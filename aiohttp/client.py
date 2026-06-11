@@ -611,9 +611,10 @@ class ClientSession:
                         with suppress(LookupError):
                             proxy, proxy_auth = get_env_proxy_for_url(url)
 
-                    if proxy and not "http" in proxy.scheme:
+                    if proxy and "http" not in proxy.scheme:
                         raise ValueError(
-                            "aiohttp works with http(s) proxy only currently."
+                            f"aiohttp only works with http(s) proxies (got: {proxy.scheme!r}."
+                            "\nSee third-party libraries for other proxy schemes."
                         )
 
                     req = self._request_class(
