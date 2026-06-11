@@ -1733,7 +1733,7 @@ manually.
       The :class:`ClientResponse <ClientResponse>` response object.
       Can be used to get the response headers and cookies.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.15
 
    .. method:: get_extra_info(name, default=None)
 
