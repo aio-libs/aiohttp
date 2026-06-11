@@ -5,7 +5,7 @@ import asyncio
 import gc
 import types
 from collections import defaultdict
-from collections.abc import Awaitable, Callable, Coroutine, Iterator, Sequence
+from collections.abc import Callable, Coroutine, Iterator, Sequence
 from itertools import groupby
 from typing import TypeVar
 from unittest import mock
