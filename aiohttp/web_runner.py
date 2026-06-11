@@ -2,6 +2,7 @@ import asyncio
 import signal
 import socket
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import Any, Generic, TypeVar
 
 from yarl import URL
@@ -28,12 +29,40 @@ except ImportError:
 
 
 async def create_server(
-    loop: asyncio.AbstractEventLoop, *args: Any, **kwargs: Any
+    loop: asyncio.AbstractEventLoop,
+    protocol_factory: Callable[[], asyncio.Protocol],
+    host: str | None = None,
+    port: int | None = None,
+    *,
+    sock: socket.socket | None = None,
+    ssl: SSLContext | None = None,
+    backlog: int = 100,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
 ) -> asyncio.Server:
     if aiofastnet is not None:
-        return await aiofastnet.create_server(loop, *args, **kwargs)
+        return await aiofastnet.create_server(
+            loop,
+            protocol_factory,
+            host,
+            port,
+            sock=sock,
+            ssl=ssl,
+            backlog=backlog,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port,
+        )
     else:
-        return await loop.create_server(*args, **kwargs)  # type: ignore[unreachable]
+        return await loop.create_server(  # type: ignore[unreachable]
+            protocol_factory,
+            host,
+            port,
+            sock=sock,
+            ssl=ssl,
+            backlog=backlog,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port,
+        )
 
 
 __all__ = (
