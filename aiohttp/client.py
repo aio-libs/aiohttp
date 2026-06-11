@@ -667,9 +667,9 @@ class ClientSession:
                                     {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
                                 )
 
-                    if proxy and "http" not in proxy.scheme:
+                    if proxy_ and proxy_.scheme not in {"", "http", "https"}:
                         raise ValueError(
-                            f"aiohttp only works with http(s) proxies (got: {proxy.scheme!r}."
+                            f"aiohttp only works with http(s) proxies (got: {proxy_.scheme!r}."
                             "\nSee third-party libraries for other proxy schemes."
                         )
 
