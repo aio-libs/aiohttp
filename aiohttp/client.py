@@ -667,12 +667,6 @@ class ClientSession:
                                     {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
                                 )
 
-                    if proxy_ and proxy_.scheme not in {"", "http", "https"}:
-                        raise ValueError(
-                            f"aiohttp only works with http(s) proxies (got: {proxy_.scheme!r}."
-                            "\nSee third-party libraries for other proxy schemes."
-                        )
-
                     req = self._request_class(
                         method,
                         url,
