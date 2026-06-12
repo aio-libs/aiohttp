@@ -1295,6 +1295,13 @@ class ClientRequest(ClientRequestBase):
             self.proxy = None
             self.proxy_headers = None
             return
+
+        if proxy.scheme not in {"", "http", "https"}:
+            raise ValueError(
+                f"aiohttp only supports http(s) proxies (got: {proxy.scheme!r}).\n"
+                "See third-party libraries for other proxy schemes."
+            )
+
         # URL-embedded credentials on the proxy map to Proxy-Authorization.
         if proxy.raw_user or proxy.raw_password:
             auth_header = encode_basic_auth(proxy.user or "", proxy.password or "")
