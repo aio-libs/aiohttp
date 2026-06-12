@@ -297,6 +297,8 @@ To enable KTLS, you have to do and check the following:
       except ImportError:
           aiofastnet = None
 
+* You Linux kernel version is 5.19 or newer
+
 * Make sure the Linux ``tls`` kernel module is loaded::
 
     sudo modprobe tls
