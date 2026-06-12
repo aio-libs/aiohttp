@@ -471,6 +471,9 @@ jobs:
         make cythonize
     - name: Install self
       run: python -m pip install -e .
+    - name: Load kernel TLS module
+      if: runner.os == 'Linux'
+      run: sudo modprobe tls
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v4
       with:
