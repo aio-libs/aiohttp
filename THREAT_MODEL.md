@@ -313,6 +313,17 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   Werkzeug emit duplicate `Content-Type` / `Server`); fix disables the
   check on the response parser (lax mode) while keeping it on the
   request parser (strict).
+- **GHSA-63hw-fmq6-xxg2 (CVE-2026-54277)** (3.14.1) — the
+  Cython / llhttp request parser failed to enforce `max_line_size`
+  when a single request or header line arrived across multiple TCP
+  segments, letting an attacker stream an oversized line in small
+  fragments to exhaust memory.
+- **GHSA-4fvr-rgm6-gqmc (CVE-2026-54273)** (3.14.1) — no cap
+  on the number of HTTP/1 pipelined requests queued on a single
+  connection; the `_messages` deque in `web_protocol.RequestHandler`
+  could grow without bound. Memory was previously bounded only
+  transitively by `read_bufsize` ([§5.7](#57-server-connection-lifecycle) threat 7.4);
+  the fix adds an explicit pipeline-count cap.
 
 These are all currently in place; this section assumes no regression.
 
@@ -535,8 +546,11 @@ client-side, the writer adds masks to outgoing frames.
   `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
   This is the primary mitigation for zip-bomb-style attacks against
   WebSocket peers.
-- No formal CVE has been published against the WebSocket framing layer to
-  date.
+- **GHSA-xcgm-r5h9-7989 (CVE-2026-54274)** (3.14.1) — a peer could
+  send large WebSocket frames with incomplete payloads, bypassing the
+  per-frame memory limit because the buffer grew before the
+  `max_msg_size` check fired against the (still-unknown) final size.
+  Fixed by accounting for the in-flight buffer in the cap.
 
 ---
 
@@ -660,6 +674,10 @@ boundary at which user-supplied strings can become wire bytes.
   `quote_fields=False` opt-out path can no longer be used to inject
   extra `Content-Disposition` parameters or a fake-part break-out
   (threat 4.12).
+- **PR #12794** (3.14.1) — precautionary hardening:
+  multipart body parts whose `Content-Length` header is not a plain
+  decimal sequence (e.g. `+5`, `-1`, `1_0`) are now rejected, matching
+  the main request parser's strictness per RFC 9110 §8.6.
 
 These are all currently in place; this section assumes no regression.
 
