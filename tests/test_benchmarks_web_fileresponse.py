@@ -115,7 +115,10 @@ def test_simple_web_file_response(
                 and pytestconfig.getoption("--codspeed")
             ):
                 assert server_transport is not None
+                # ubuntu-latest has OpenSSL 3.0.
                 # OpenSSL 3.0 supports kTLS send, but not receive, for TLS 1.3.
+                # Which is good enough for this benchmark
+                # Verify that kTLS is indeed enabled for sending
                 assert server_transport.get_extra_info("ktls_send_enabled")
         await client.close()
 
