@@ -104,7 +104,7 @@ Multipart reference
 
    .. method:: decode(data)
 
-      Decodes data synchronously according the specified ``Content-Encoding``
+      Decodes data synchronously according to the specified ``Content-Encoding``
       or ``Content-Transfer-Encoding`` headers value.
 
       Supports ``gzip``, ``deflate`` and ``identity`` encodings for
@@ -127,7 +127,7 @@ Multipart reference
    .. method:: decode_iter(data)
       :async:
 
-      Decodes data asynchronously according the specified ``Content-Encoding``
+      Decodes data asynchronously according to the specified ``Content-Encoding``
       or ``Content-Transfer-Encoding`` headers value.
 
       This is an async iterator and will return decoded data in chunks. This

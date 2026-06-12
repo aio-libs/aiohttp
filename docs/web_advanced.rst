@@ -318,7 +318,7 @@ to :func:`aiohttp_jinja2.setup`::
 
 After that you may use the template engine in your
 :ref:`handlers <aiohttp-web-handler>`. The most convenient way is to simply
-wrap your handlers with the  :func:`aiohttp_jinja2.template` decorator::
+wrap your handlers with the :func:`aiohttp_jinja2.template` decorator::
 
     @aiohttp_jinja2.template('tmpl.jinja2')
     async def handler(request):
