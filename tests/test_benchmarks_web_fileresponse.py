@@ -1,6 +1,7 @@
 """codspeed benchmarks for the web file responses."""
 
 import asyncio
+import os
 import pathlib
 import ssl
 from collections.abc import Awaitable, Callable, Iterator
@@ -82,8 +83,8 @@ def benchmark_file(
     request: pytest.FixtureRequest, tmp_path: pathlib.Path
 ) -> Iterator[pathlib.Path]:
     filepath = tmp_path / "sample.txt"
-    with filepath.open("wb") as file:
-        file.truncate(request.param)
+    filepath.touch()
+    os.truncate(filepath, request.param)
     yield filepath
     filepath.unlink()
 
