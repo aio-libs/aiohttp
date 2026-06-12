@@ -8,6 +8,9 @@ For regular contributors, return to :doc:`contributing`.
 
 .. contents::
    :local:
+   :depth: 1
+
+.. highlight:: none
 
 Running reproducer code
 -----------------------
@@ -16,7 +19,7 @@ Running reproducer code
 
    When evaluating a bug report or vulnerability report, treat reproducer code as
    untrusted. If you don't understand what it does or are unfamiliar with a library
-   it imports *do not run it* (and ask the reporter to provide a simpler reproducer).
+   it imports **do not run it** (and ask the reporter to provide a simpler reproducer).
    We also recommend that any reproducers you do run are executed in a container.
 
 Creating a new release
@@ -173,10 +176,11 @@ Responding to a reported vulnerability
    (see `Notifying about a disclosed vulnerability`_).
 #. **Coordinate a release.**
 
-  #. **Agree the timing.** For an embargoed high-severity incident, set the
-     release date to align with the lift of any private-list embargo.
-  #. **Merge all the private forks** and create and merge the backports for each.
-  #. **Create the release.** Follow `Creating a new release`_.
+   #. **Agree the timing.** For an embargoed high-severity incident, set the
+      release date to align with the lift of any private-list embargo.
+   #. **Merge all the private forks** and create and merge the backports for
+      each.
+   #. **Create the release.** Follow `Creating a new release`_.
 #. **Update patch link** in GHSA description.
 #. **Publish the GHSA** usually around 1 day after release.
 #. **Notify** according to the severity tier
