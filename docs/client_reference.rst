@@ -1264,7 +1264,7 @@ is controlled by *force_close* constructor's parameter).
 
    :param int family: TCP socket family, both IPv4 and IPv6 by default.
                       For *IPv4* only use :data:`socket.AF_INET`,
-                      for  *IPv6* only -- :data:`socket.AF_INET6`.
+                      for *IPv6* only -- :data:`socket.AF_INET6`.
 
                       *family* is ``0`` by default, that means both
                       IPv4 and IPv6 are accepted. To specify only

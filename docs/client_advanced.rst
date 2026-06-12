@@ -479,7 +479,7 @@ To tweak or change *transport* layer of requests you can pass a custom
    By default *session* object takes the ownership of the connector, among
    other things closing the connections once the *session* is closed. If
    you are keen on share the same *connector* through different *session*
-   instances you must give the  *connector_owner* parameter as **False**
+   instances you must give the *connector_owner* parameter as **False**
    for each *session* instance.
 
 .. seealso:: :ref:`aiohttp-client-reference-connectors` section for
