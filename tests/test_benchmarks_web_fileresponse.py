@@ -119,7 +119,7 @@ def test_simple_web_file_sendfile_fallback_response(
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
-    benchmark_file: pathlib.Path
+    benchmark_file: pathlib.Path,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse without sendfile."""
     response_count = 100
