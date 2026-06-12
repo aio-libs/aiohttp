@@ -42,7 +42,6 @@ def aiohttp_client_sync(
         client = aiohttp_client_cls(server, **kwargs)
 
         await server.start_server(ssl=server_ssl_context)
-        await client.start_server()
         clients.append(client)
         return client
 
