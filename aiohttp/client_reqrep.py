@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, TypedDict, Union
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -62,10 +62,11 @@ from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
     import ssl
-    from ssl import SSLContext
+    from ssl import SSLContext, SSLObject
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
+    SSLObject = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -80,6 +81,29 @@ if TYPE_CHECKING:
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+
+
+def _extract_ssl_object(
+    connection: Union["Connection", asyncio.BaseTransport, None],
+) -> SSLObject | None:
+    """Extract SSL object from connection or transport if available."""
+    if connection is None:
+        return None
+
+    # Handle both Connection objects and Transport objects
+    if hasattr(connection, "transport"):
+        # This is a Connection object
+        transport = connection.transport
+    elif hasattr(connection, "get_extra_info"):
+        # This is a Transport object
+        transport = connection
+    else:
+        return None
+
+    if transport is None:
+        return None
+
+    return transport.get_extra_info("ssl_object")
 
 
 def _gen_default_accept_encoding() -> str:
@@ -471,6 +495,7 @@ class ClientResponse(HeadersMixin):
                         status=exc.code,
                         message=exc.message,
                         headers=exc.headers,
+                        ssl_object=_extract_ssl_object(connection),
                     ) from exc
 
                 if message.code < 100 or message.code > 199 or message.code == 101:
@@ -566,6 +591,7 @@ class ClientResponse(HeadersMixin):
                 status=self.status,
                 message=self.reason,
                 headers=self.headers,
+                ssl_object=_extract_ssl_object(self._connection),
             )
 
     def _release_connection(self) -> None:
@@ -690,6 +716,7 @@ class ClientResponse(HeadersMixin):
                         "unexpected mimetype: %s" % self.content_type
                     ),
                     headers=self.headers,
+                    ssl_object=_extract_ssl_object(self._connection),
                 )
 
         if encoding is None:
