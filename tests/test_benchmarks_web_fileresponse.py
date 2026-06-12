@@ -108,7 +108,12 @@ def test_simple_web_file_response(
     async def run_file_response_benchmark() -> None:
         client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(response_count):
-            await client.get("/", **conn_type.c_kwargs)
+            response = await client.get("/", **conn_type.c_kwargs)
+            # Consume response.
+            # Large responses may leave transport unclosed on at least python 3.10, because client.get() returns
+            # after headers and the body is never consumed. Small responses can be buffered incidentally; large
+            # responses expose the leak.
+            await response.read()
         await client.close()
 
     @benchmark
@@ -138,7 +143,8 @@ def test_simple_web_file_sendfile_fallback_response(
     async def run_file_response_benchmark() -> None:
         client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
         for _ in range(response_count):
-            await client.get("/", **conn_type.c_kwargs)
+            response = await client.get("/", **conn_type.c_kwargs)
+            await response.read()
         await client.close()
 
     @benchmark
