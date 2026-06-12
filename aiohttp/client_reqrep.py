@@ -197,6 +197,7 @@ class ClientResponse(HeadersMixin):
     _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
+    _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
     _cookies: SimpleCookie | None = None
@@ -490,6 +491,7 @@ class ClientResponse(HeadersMixin):
         # headers
         self._headers = message.headers
         self._raw_headers = message.raw_headers
+        self._upgraded = message.upgrade
 
         # payload
         self.content = payload

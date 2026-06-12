@@ -67,11 +67,11 @@ coverage==7.14.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==48.0.0
+cryptography==48.0.1
     # via trustme
 cython==3.2.5
     # via -r requirements/cython.in
-distlib==0.4.1
+distlib==0.4.3
     # via virtualenv
 docutils==0.21.2
     # via
@@ -81,7 +81,7 @@ exceptiongroup==1.3.1
     # via pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.29.1
+filelock==3.29.3
     # via
     #   python-discovery
     #   virtualenv
@@ -234,7 +234,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.4.0
+python-discovery==1.4.2
     # via virtualenv
 python-on-whales==0.81.0
     # via
@@ -329,7 +329,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.4.2
+virtualenv==21.4.3
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common-base.in
