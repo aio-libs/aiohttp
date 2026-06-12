@@ -114,7 +114,7 @@ def test_simple_web_file_response(
             ):
                 assert server_transport is not None
                 # TODO: Uncomment once I figure out why it couldn't enable kTLS on github CI
-                # assert server_transport.get_extra_info("ktls_send_enabled")
+                assert server_transport.get_extra_info("ktls_send_enabled")
                 # assert server_transport.get_extra_info("ktls_recv_enabled")
         await client.close()
 
