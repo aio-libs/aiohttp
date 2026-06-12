@@ -344,6 +344,17 @@ jobs:
         echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
         sudo udevadm control --reload-rules
         sudo udevadm trigger --name-match=kvm
+    - name: Free up disk space
+      if: ${{ matrix.config.platform == 'android' }}
+      # There have been issues to install the Android emulator. Probably this is due to the
+      # disk being full. To hopefully work around this, we free up some disk space. See also
+      # https://github.com/pybind/pybind11/pull/5914#issuecomment-3607856613
+      run: |
+        df -m
+        sudo rm -rf $ANDROID_HOME/ndk /opt/hostedtoolcache/CodeQL \
+          /usr/local/lib/node_modules /usr/local/share/chromium \
+          /usr/local/share/powershell
+        df -m
     - name: Install cibuildwheel
       run: uv pip install cibuildwheel==3.4.1
     - name: Build wheels and test
