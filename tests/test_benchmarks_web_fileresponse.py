@@ -82,7 +82,8 @@ def benchmark_file(
     request: pytest.FixtureRequest, tmp_path: pathlib.Path
 ) -> Iterator[pathlib.Path]:
     filepath = tmp_path / "sample.txt"
-    filepath.write_bytes(b"x" * request.param)
+    with filepath.open("wb") as file:
+        file.truncate(request.param)
     yield filepath
     filepath.unlink()
 
