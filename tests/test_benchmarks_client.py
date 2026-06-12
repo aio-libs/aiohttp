@@ -36,6 +36,7 @@ def aiohttp_client_sync(
         server = TestServer(app)
         client = TestClient(server)
         await server.start_server(**(server_kwargs or {}))
+        await client.start_server()
         clients.append(client)
         return client
 
