@@ -77,18 +77,28 @@ def conn_type(
     return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
+@pytest.fixture(params=(10 * 1024, 1024 * 1024), ids=("small", "large"))
+def benchmark_file(
+    request: pytest.FixtureRequest, tmp_path: pathlib.Path
+) -> Iterator[pathlib.Path]:
+    filepath = tmp_path / "sample.txt"
+    filepath.write_bytes(b"x" * request.param)
+    yield filepath
+    filepath.unlink()
+
+
 def test_simple_web_file_response(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
+    benchmark_file: pathlib.Path,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse."""
     response_count = 100
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
 
     async def handler(request: web.Request) -> web.FileResponse:
-        return web.FileResponse(path=filepath)
+        return web.FileResponse(path=benchmark_file)
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
@@ -109,16 +119,16 @@ def test_simple_web_file_sendfile_fallback_response(
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
+    benchmark_file: pathlib.Path
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse without sendfile."""
     response_count = 100
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
 
     async def handler(request: web.Request) -> web.FileResponse:
         transport = request.transport
         assert transport is not None
         transport._sendfile_compatible = False  # type: ignore[attr-defined]
-        return web.FileResponse(path=filepath)
+        return web.FileResponse(path=benchmark_file)
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
