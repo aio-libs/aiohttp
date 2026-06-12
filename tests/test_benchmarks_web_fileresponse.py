@@ -83,6 +83,7 @@ def test_simple_web_file_response(
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
+    pytestconfig: pytest.Config,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse."""
     response_count = 100
@@ -111,11 +112,11 @@ def test_simple_web_file_response(
                 and server_ssl_context is not None
                 and sys.platform == "linux"
                 and sys.version_info >= (3, 12)
+                and pytestconfig.getoption("--codspeed")
             ):
                 assert server_transport is not None
-                # TODO: Uncomment once I figure out why it couldn't enable kTLS on github CI
+                # OpenSSL 3.0 supports kTLS send, but not receive, for TLS 1.3.
                 assert server_transport.get_extra_info("ktls_send_enabled")
-                # assert server_transport.get_extra_info("ktls_recv_enabled")
         await client.close()
 
     @benchmark
