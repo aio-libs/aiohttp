@@ -118,9 +118,7 @@ def test_simple_web_file_response(
         for _ in range(benchmark_file.response_count):
             response = await client.get("/", **conn_type.c_kwargs)
             # Consume response.
-            # Large responses may leave transport unclosed on at least python 3.10, because client.get() returns
-            # after headers and the body is never consumed. Small responses can be buffered incidentally; large
-            # responses expose the leak.
+            # Large responses may leave transport unclosed on at least python 3.10. 
             await response.read()
         await client.close()
 
