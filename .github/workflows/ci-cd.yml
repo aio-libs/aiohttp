@@ -242,6 +242,9 @@ jobs:
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: uv pip install -e .
+    - name: Load kernel TLS module
+      if: runner.os == 'Linux'
+      run: sudo modprobe tls
     - name: Run unittests
       env:
         COLOR: yes
