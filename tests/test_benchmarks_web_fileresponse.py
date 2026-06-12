@@ -89,7 +89,8 @@ def test_simple_web_file_response(
     filepath = pathlib.Path(__file__).parent / "sample.txt"
     server_ssl_context = conn_type.s_kwargs.get("ssl")
     if server_ssl_context is not None:
-        server_ssl_context.options |= ssl.OP_ENABLE_KTLS
+        if sys.version_info >= (3, 12):
+           server_ssl_context.options |= ssl.OP_ENABLE_KTLS
 
     server_transport: asyncio.Transport | None = None
 
@@ -109,6 +110,7 @@ def test_simple_web_file_response(
                 request_number == 0
                 and server_ssl_context is not None
                 and sys.platform == "linux"
+                and sys.version_info >= (3, 12)
             ):
                 assert server_transport is not None
                 assert server_transport.get_extra_info("ktls_send_enabled")
