@@ -90,7 +90,7 @@ def test_simple_web_file_response(
     server_ssl_context = conn_type.s_kwargs.get("ssl")
     if server_ssl_context is not None:
         if sys.version_info >= (3, 12):
-           server_ssl_context.options |= ssl.OP_ENABLE_KTLS
+            server_ssl_context.options |= ssl.OP_ENABLE_KTLS
 
     server_transport: asyncio.Transport | None = None
 
