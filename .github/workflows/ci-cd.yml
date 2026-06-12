@@ -477,6 +477,12 @@ jobs:
     - name: Load kernel TLS module
       if: runner.os == 'Linux'
       run: sudo modprobe tls
+    - name: Show kernel and OpenSSL build information
+      if: runner.os == 'Linux'
+      run: |
+        lsb_release -a
+        uname -r
+        openssl version -a
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v4
       with:
