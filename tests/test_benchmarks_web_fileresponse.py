@@ -81,12 +81,11 @@ def conn_type(
 @pytest.fixture(params=(10 * 1024, 1024 * 1024), ids=("small", "large"))
 def benchmark_file(
     request: pytest.FixtureRequest, tmp_path: pathlib.Path
-) -> Iterator[pathlib.Path]:
+) -> pathlib.Path:
     filepath = tmp_path / "sample.txt"
     filepath.touch()
     os.truncate(filepath, request.param)
-    yield filepath
-    filepath.unlink()
+    return filepath
 
 
 def test_simple_web_file_response(
