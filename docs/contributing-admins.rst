@@ -84,7 +84,7 @@ is in hand.
 
 .. note::
 
-   Vulnerability reports arrive through the aio-libs organization ``SECURITY.md``
+   Vulnerability reports arrive through the organization's ``SECURITY.md``
    -- GitHub private vulnerability reporting, or email to the security coordinators.
    Never triage a suspected vulnerability in a public issue or pull request.
 
@@ -198,7 +198,7 @@ Baseline (all severities)
    The published GHSA (which feeds the CVE and the GitHub Advisory Database).
 
 Higher (Medium-High)
-   For most high severity issues, additionally post to the public oss-security
+   For most high severity issues, additionally post to the public ``oss-security``
    mailing list once the advisory is public.
 
 Highest (High-Critical)
@@ -242,7 +242,7 @@ Template for the embargoed ``linux-distros`` pre-notification::
 
     Contact: <incident lead name and security email>
 
-Template for the public oss-security disclosure::
+Template for the public ``oss-security`` disclosure::
 
     To: oss-security@lists.openwall.com
     Subject: CVE-XXXX-XXXXX: aiohttp <one-line summary>
@@ -283,7 +283,7 @@ A malicious or tampered release on PyPI, or a compromised publish pipeline.
    a PyPI project owner or maintainer account.
 #. **Verify the legitimate artifacts with Sigstore.** Every genuine release is
    signed by the release pipeline, with the ``.sigstore`` bundles attached to
-   the GitHub Release. Verify the sdist and wheels; a divergence from what is on
+   the GitHub Release. Verify the ``sdist`` and wheels; a divergence from what is on
    PyPI localizes the tampering.
 #. **Lock the publish path.** Publishing uses a PyPI OIDC trusted publisher, so
    there is no long-lived token to rotate. Instead, on PyPI temporarily remove
@@ -292,10 +292,10 @@ A malicious or tampered release on PyPI, or a compromised publish pipeline.
 #. **Audit the release inputs.** Review recent changes to the release workflow,
    its tag trigger, and the third-party action versions it uses.
 #. **Audit the committed Cython sources.** The generated ``.c`` files ship in
-   the sdist and are not checked against their ``.pyx`` sources in CI (see
+   the ``sdist`` and are not checked against their ``.pyx`` sources in CI (see
    ``THREAT_MODEL.md`` section 5.19). Regenerate them with ``make cythonize``
    and ``git diff`` against the released revision. Re-verify the
-   ``vendor/llhttp`` submodule pin and ``package-lock.json``.
+   ``vendor/llhttp`` pin and ``package-lock.json``.
 #. **Reissue a clean release** via `Creating a new release`_ once the cause is
    fixed. Never re-publish over a yanked version number.
 #. **Notify** per severity -- a malicious published release is High.
@@ -309,7 +309,7 @@ A GitHub or PyPI account takeover, or leaked publishing or signing material.
    revoke its repository access, and start the audit-log review. If the
    compromised account is the sole organization owner, or no other owner is
    reachable, contact GitHub Support at https://support.github.com/contact
-   for emergency account lockdown and organization recovery.
+   for emergency account lock down and organization recovery.
 #. **Kill sessions and credentials** on the affected account. On GitHub: change
    the password, sign out all sessions, revoke every personal access token,
    OAuth app, and SSH or GPG key, then re-enroll two-factor authentication.
@@ -323,9 +323,9 @@ A GitHub or PyPI account takeover, or leaked publishing or signing material.
    pushes, tag creation, branch-protection or settings changes, new secrets or
    deploy keys, new collaborators, and workflow edits.
 #. **Revert and re-verify.** Force-revert any unauthorized commits or tags, and
-   re-verify recent releases against their Sigstore bundles. If a malicious
+   re-verify recent releases against their ``Sigstore`` bundles. If a malicious
    release shipped, escalate to `Supply-chain or release compromise`_.
-#. **Handle signing material.** Sigstore signing is keyless, so there is no
+#. **Handle signing material.** ``Sigstore`` signing is key-less, so there is no
    static signing key to rotate. Any separate GPG key used for signed tags must
    be treated as compromised, then revoked and rotated.
 
@@ -353,7 +353,7 @@ A compromise of GitHub Actions, repository settings, or branch protections.
    compromise`_ -- regenerate them and ``git diff``.
 #. **Re-pin and rebuild.** If a third-party action was compromised, pin the
    affected actions by full commit hash, re-run CI from a clean known-good
-   revision, and re-verify with Sigstore any release made during the suspected
+   revision, and re-verify with ``Sigstore`` any release made during the suspected
    window.
 #. **Escalate** to `Supply-chain or release compromise`_ if a release shipped
    through the compromised pipeline.
