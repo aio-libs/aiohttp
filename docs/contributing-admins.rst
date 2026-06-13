@@ -206,7 +206,7 @@ Highest (High-Critical)
    an embargoed pre-notification to the private distribution-security lists -- primarily
    ``linux-distros`` -- and attempt to notify affected downstreams. Use the
    `vuln_search.py dependents-enumeration script
-   <https://gist.github.com/Dreamsorcerer/70285fac0a11c3d9c26b577f7dd989a7>`_
+   <https://github.com/aio-libs/.github/blob/master/tools/vuln_search.py>`_
    to search aiohttp's GitHub dependents; it needs a GitHub token and may need to be
    run over a few days, so start it early.
 
