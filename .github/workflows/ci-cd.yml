@@ -186,6 +186,7 @@ jobs:
         pyver: ['3.10', '3.11', '3.12', '3.13', '3.14']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
+        python-provider: [uv]
         experimental: [false]
         exclude:
           - os: macos
@@ -196,22 +197,42 @@ jobs:
           - pyver: pypy-3.11
             no-extensions: 'Y'
             os: ubuntu
+            python-provider: uv
             experimental: false
           - os: ubuntu
             pyver: "3.14t"
             no-extensions: ''
+            python-provider: uv
+            experimental: false
+          - pyver: '3.12'
+            no-extensions: ''
+            os: ubuntu
+            python-provider: setup-python
             experimental: false
       fail-fast: true
     runs-on: ${{ matrix.os }}-latest
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 15
+    env:
+      UV_SYSTEM_PYTHON: >-
+        ${{ matrix.python-provider == 'setup-python' && 'true' || 'false' }}
     steps:
     - name: Checkout
       uses: actions/checkout@v6
       with:
         submodules: true
-    - name: Setup Python ${{ matrix.pyver }}
-      id: python-install
+    - name: Setup Python ${{ matrix.pyver }} with setup-python
+      if: ${{ matrix.python-provider == 'setup-python' }}
+      uses: actions/setup-python@v6
+      with:
+        python-version: ${{ matrix.pyver }}
+    - name: Setup uv
+      if: ${{ matrix.python-provider == 'setup-python' }}
+      uses: astral-sh/setup-uv@v8.2.0
+      with:
+        enable-cache: true
+    - name: Setup Python ${{ matrix.pyver }} with uv
+      if: ${{ matrix.python-provider == 'uv' }}
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
@@ -242,6 +263,11 @@ jobs:
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: uv pip install -e .
+    - name: Report aiofastnet availability
+      run: |
+        python -c "import aiofastnet; print('aiofastnet is importable')" \
+          || echo "aiofastnet is not importable"
+      shell: bash
     - name: Run unittests
       env:
         COLOR: yes
@@ -282,7 +308,9 @@ jobs:
           }},VM-${{
             matrix.os
           }},Py-${{
-            steps.python-install.outputs.python-version
+            matrix.pyver
+          }},PythonProvider-${{
+            matrix.python-provider
           }}
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
