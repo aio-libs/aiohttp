@@ -471,7 +471,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             ):
                 self.log_debug(
                     "SSL/TLS ClientHello detected from %s on HTTP connection, closing connection",
-                    self._peername,
+                    self.peername,
                 )
                 self.force_close()
                 return
