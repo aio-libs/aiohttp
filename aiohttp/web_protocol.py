@@ -459,6 +459,22 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         messages: Sequence[_MsgType]
         if self._payload_parser is None and not self._upgraded:
             assert self._parser is not None
+            TLS_HANDSHAKE_CONTENT_TYPE = 0x16
+            TLS_MAJOR_VERSION = 0x03
+            TLS_CLIENT_HELLO = 0x01
+
+            if (
+                len(data) >= 6
+                and data[0] == TLS_HANDSHAKE_CONTENT_TYPE
+                and data[1] == TLS_MAJOR_VERSION
+                and data[5] == TLS_CLIENT_HELLO
+            ):
+                self.log_debug(
+                    "SSL/TLS ClientHello detected from %s on HTTP connection, closing connection",
+                    self.peername,
+                )
+                self.force_close()
+                return
             try:
                 messages, upgraded, tail = self._parser.feed_data(data)
             except HttpProcessingError as exc:
