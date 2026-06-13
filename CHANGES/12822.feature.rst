@@ -1,0 +1,3 @@
+Added ``aiofastnet`` package to ``speedups`` extra. aiofastnet provides faster alternatives to the standard loop functions, which are used to run server or establish connections. If you experience any issues that you think might be related to this change, you can try to disable ``aiofastnet`` by uninstalling aiofastnet package.
+
+-- by :user:`tarasko`.
