@@ -83,6 +83,13 @@ DEBUG = sys.flags.dev_mode or (
 )
 
 
+EMPTY_SCHEMA_SET = frozenset({""})
+HTTP_SCHEMA_SET = frozenset({"http", "https"})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
+
+
 CHAR = {chr(i) for i in range(0, 128)}
 CTL = {chr(i) for i in range(0, 32)} | {
     chr(127),

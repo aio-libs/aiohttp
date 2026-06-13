@@ -36,6 +36,7 @@ from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
 from .helpers import (
     _SENTINEL,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     BaseTimerContext,
     BasicAuth,
     HeadersMixin,
@@ -1336,6 +1337,12 @@ class ClientRequest:
             self.proxy_auth = None
             self.proxy_headers = None
             return
+
+        if proxy.scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
+            raise ValueError(
+                f"aiohttp only supports http(s) proxies (got: {proxy.scheme!r}).\n"
+                "See third-party libraries for other proxy schemes."
+            )
 
         if proxy_auth and not isinstance(proxy_auth, helpers.BasicAuth):
             raise ValueError("proxy_auth must be None or BasicAuth() tuple")
