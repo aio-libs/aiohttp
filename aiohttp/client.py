@@ -83,7 +83,6 @@ from .client_ws import (
     ClientWSTimeout,
 )
 from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
     BaseConnector,
     NamedPipeConnector,
     TCPConnector,
@@ -94,6 +93,7 @@ from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
     _auth_header_from_netrc,
     frozen_dataclass_decorator,
