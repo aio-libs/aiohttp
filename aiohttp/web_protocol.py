@@ -460,12 +460,14 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if self._payload_parser is None and not self._upgraded:
             assert self._parser is not None
             if len(data) >= 3 and data[0] == 0x16 and data[1] == 0x03:
+                _tls_minor = data[2]
+                _tls_version = {0x00: "SSLv3", 0x01: "TLSv1.0", 0x02: "TLSv1.1", 0x03: "TLSv1.2", 0x04: "TLSv1.3"}.get(_tls_minor, f"TLSv1.{_tls_minor}")
                 self.log_debug("SSL/TLS %s handshake detected from %s on HTTP connection, closing connection",
-                               "ClientHello" if data[2] < 0x03 else "TLSv1.0+",
+                               _tls_version,
                                self._peername,
                                )
                 self.force_close()
-                return
+
             try:
                 messages, upgraded, tail = self._parser.feed_data(data)
             except HttpProcessingError as exc:
