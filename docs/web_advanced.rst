@@ -665,6 +665,14 @@ Produced output::
    Middleware 2 finished
    Middleware 1 finished
 
+Middlewares also run for responses synthesized from malformed HTTP
+requests (HTTP 400). For these requests
+:attr:`~aiohttp.abc.AbstractMatchInfo.http_exception` is an
+:exc:`HTTPBadRequest` instance and its ``__cause__`` exposes the
+underlying parser exception. As long as an exception doesn't
+propagate out of a middleware, it can modify every response sent
+from the server.
+
 Request Body Stream Consumption
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

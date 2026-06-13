@@ -1,8 +1,9 @@
+import asyncio
 from collections.abc import Awaitable, Callable, Iterable
 from typing import NoReturn
 
 import pytest
-from pytest_aiohttp import AiohttpClient
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 from yarl import URL
 
 from aiohttp import web, web_app
@@ -413,6 +414,37 @@ class TestNormalizePathMiddleware:
         assert resp.status == 308
         assert resp.headers["Location"] == "/google.com"
         assert resp.url.query == URL("//google.com").query
+
+
+async def test_normalize_path_skips_parser_error(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    # Regression: normalize_path_middleware used to redirect SystemRoute
+    # matches indiscriminately. After parser errors started flowing through
+    # the middleware chain (issue #3287) the dummy "/" rel_url on a
+    # malformed request would match a real "/" route and trigger 301.
+    async def root(request: web.Request) -> web.Response:
+        return web.Response(text="root")
+
+    app = web.Application(middlewares=[web.normalize_path_middleware()])
+    app.router.add_get("/", root)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(b"garbage\r\n\r\n")
+        await writer.drain()
+        head = b""
+        while b"\r\n\r\n" not in head:
+            chunk = await reader.read(4096)
+            if not chunk:
+                break
+            head += chunk
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+    assert head.startswith(b"HTTP/1.0 400 ")
 
 
 async def test_bug_3669(aiohttp_client: AiohttpClient) -> None:

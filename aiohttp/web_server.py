@@ -8,6 +8,7 @@ from typing import Any, Generic, TypeVar, overload
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
+from .web_exceptions import HTTPBadRequest
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest
 from .web_response import StreamResponse
@@ -22,6 +23,7 @@ _RequestFactory = Callable[
         "RequestHandler[_Request]",
         AbstractStreamWriter,
         "asyncio.Task[None]",
+        HTTPBadRequest | None,
     ],
     _Request,
 ]
@@ -101,8 +103,17 @@ class Server(Generic[_Request]):
         protocol: RequestHandler[BaseRequest],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
+        pre_handler_error: HTTPBadRequest | None,
     ) -> BaseRequest:
-        return BaseRequest(message, payload, protocol, writer, task, self._loop)
+        return BaseRequest(
+            message,
+            payload,
+            protocol,
+            writer,
+            task,
+            self._loop,
+            pre_handler_error=pre_handler_error,
+        )
 
     def pre_shutdown(self) -> None:
         for conn in self._connections:
