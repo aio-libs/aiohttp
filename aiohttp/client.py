@@ -80,19 +80,14 @@ from .client_ws import (
     ClientWebSocketResponse as ClientWebSocketResponse,
     ClientWSTimeout as ClientWSTimeout,
 )
-from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
-    BaseConnector as BaseConnector,
-    NamedPipeConnector as NamedPipeConnector,
-    TCPConnector as TCPConnector,
-    UnixConnector as UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     BasicAuth,
     TimeoutHandle,
     basicauth_from_netrc,

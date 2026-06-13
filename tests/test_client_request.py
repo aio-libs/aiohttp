@@ -220,6 +220,14 @@ def test_hostname_err(make_request) -> None:
         make_request("get", "http://:8080/")
 
 
+@pytest.mark.parametrize("scheme", ("socks5", "socks5h"))
+async def test_proxy_scheme_err(make_request: _RequestMaker, scheme: str) -> None:
+    with pytest.raises(ValueError, match=f"'{scheme}'"):
+        make_request(
+            "get", URL("http://py.org/"), proxy=URL(f"{scheme}://127.0.0.1:80")
+        )
+
+
 def test_host_header_host_first(make_request) -> None:
     req = make_request("get", "http://python.org/")
     assert list(req.headers)[0] == hdrs.HOST
