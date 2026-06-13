@@ -464,7 +464,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                                "ClientHello" if data[2] < 0x03 else "TLSv1.0+",
                                self._peername,
                                )
-                self.close()
+                self.force_close()
                 return
             try:
                 messages, upgraded, tail = self._parser.feed_data(data)
