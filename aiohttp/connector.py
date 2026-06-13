@@ -43,6 +43,7 @@ from .client_reqrep import (
 )
 from .helpers import (
     _SENTINEL,
+    HIGH_LEVEL_SCHEMA_SET,
     ceil_timeout,
     is_canonical_ipv4_address,
     is_ip_address,
@@ -71,13 +72,6 @@ try:
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
-
-EMPTY_SCHEMA_SET = frozenset({""})
-HTTP_SCHEMA_SET = frozenset({"http", "https"})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-
-HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
-HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
 NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
     3,

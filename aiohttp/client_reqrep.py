@@ -36,6 +36,7 @@ from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
 from .helpers import (
     _SENTINEL,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     BaseTimerContext,
     HeadersDictProxy,
     HeadersMixin,
@@ -1295,6 +1296,13 @@ class ClientRequest(ClientRequestBase):
             self.proxy = None
             self.proxy_headers = None
             return
+
+        if proxy.scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
+            raise ValueError(
+                f"aiohttp only supports http(s) proxies (got: {proxy.scheme!r}).\n"
+                "See third-party libraries for other proxy schemes."
+            )
+
         # URL-embedded credentials on the proxy map to Proxy-Authorization.
         if proxy.raw_user or proxy.raw_password:
             auth_header = encode_basic_auth(proxy.user or "", proxy.password or "")
