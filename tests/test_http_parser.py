@@ -789,6 +789,34 @@ def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
     assert not upgrade
 
 
+@pytest.mark.parametrize(
+    ("connection", "expected"),
+    [
+        ("upgrade", True),
+        ("upgrade, keep-alive", True),  # other tokens alongside upgrade
+        ("keep-alive, upgrade", True),  # upgrade not first
+        ("Upgrade, Keep-Alive", True),  # case-insensitive
+        ("keep-alive", False),  # no upgrade token
+        ("keep-alive, notupgrade", False),  # substring is not a token
+    ],
+)
+def test_response_upgrade_token_in_connection_list(
+    response: HttpResponseParser, connection: str, expected: bool
+) -> None:
+    # RFC 9110 §7.6.1: Connection is a comma-separated token list, so the parser
+    # must set msg.upgrade for a 101 response whenever "upgrade" appears as a
+    # token, regardless of position, case, or neighbouring tokens.
+    text = (
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: " + connection.encode() + b"\r\n\r\n"
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg = messages[0][0]
+    assert msg.upgrade == expected
+    assert upgrade == expected
+
+
 def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"

@@ -1275,7 +1275,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
+            if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,

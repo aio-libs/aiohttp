@@ -385,3 +385,42 @@ async def test_abort_without_transport(loop: asyncio.AbstractEventLoop) -> None:
         # Should not raise and should still clean up
         assert proto._exception is None
         mock_drop_timeout.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("connection", "expected"),
+    [(b"upgrade, keep-alive", True), (b"keep-alive", False)],
+)
+async def test_response_start_records_upgrade(
+    connection: bytes, expected: bool
+) -> None:
+    """ClientResponse.start() preserves the parser's Connection upgrade flag."""
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+    conn = mock.Mock(protocol=proto)
+    proto.set_response_params(read_until_eof=True)
+    proto.data_received(
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: " + connection + b"\r\n\r\n"
+    )
+
+    url = URL("http://ws-upgrade.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        request_info=mock.Mock(),
+        traces=[],
+        loop=loop,
+        session=mock.Mock(),
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    await response.start(conn)
+    assert response._upgraded is expected
+    response.close()
