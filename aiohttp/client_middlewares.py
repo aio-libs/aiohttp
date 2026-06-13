@@ -55,4 +55,4 @@ def build_client_middlewares(
     return current_handler
 
 
-_cached_build_client_middlewares = lru_cache(maxsize=1024)(build_client_middlewares)
+_cached_build_client_middlewares = lru_cache(maxsize=64)(build_client_middlewares)
