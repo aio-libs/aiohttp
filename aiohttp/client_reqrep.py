@@ -33,6 +33,7 @@ from .client_exceptions import (
     ServerFingerprintMismatch,
 )
 from .compression_utils import HAS_BROTLI, HAS_ZSTD
+from .connector import HTTP_AND_EMPTY_SCHEMA_SET
 from .formdata import FormData
 from .helpers import (
     _SENTINEL,
