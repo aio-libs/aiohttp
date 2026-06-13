@@ -83,6 +83,36 @@ _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
+@frozen_dataclass_decorator
+class ClientTimeout:
+    total: float | None = None
+    connect: float | None = None
+    sock_read: float | None = None
+    sock_connect: float | None = None
+    ceil_threshold: float = 5
+
+    # pool_queue_timeout: Optional[float] = None
+    # dns_resolution_timeout: Optional[float] = None
+    # socket_connect_timeout: Optional[float] = None
+    # connection_acquiring_timeout: Optional[float] = None
+    # new_connection_timeout: Optional[float] = None
+    # http_header_timeout: Optional[float] = None
+    # response_body_timeout: Optional[float] = None
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
+    # to overwrite the defaults
+
+    def __post_init__(self) -> None:
+        if self.total is not None and self.total == 0:
+            raise ValueError(
+                "total timeout must be a positive number or None to disable, "
+                "got 0. Using 0 to disable timeouts is no longer supported, "
+                "use None instead."
+            )
+
+
 def _gen_default_accept_encoding() -> str:
     encodings = [
         "gzip",
@@ -182,6 +212,19 @@ class ConnectionKey(NamedTuple):
     proxy: URL | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
     server_hostname: str | None = None
+
+
+class ResponseParams(TypedDict):
+    timer: BaseTimerContext | None
+    skip_payload: bool
+    read_until_eof: bool
+    auto_decompress: bool
+    read_timeout: float | None
+    read_bufsize: int
+    timeout_ceil_threshold: float
+    max_line_size: int
+    max_field_size: int
+    max_headers: int
 
 
 class ClientResponse(HeadersMixin):
@@ -955,7 +998,9 @@ class ClientRequestArgs(TypedDict, total=False):
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
     proxy: URL | None
+    response_params: ResponseParams
     timer: BaseTimerContext
+    timeout: ClientTimeout
     session: "ClientSession"
     ssl: SSLContext | bool | Fingerprint
     proxy_headers: CIMultiDict[str] | None
@@ -968,6 +1013,10 @@ class ClientRequest(ClientRequestBase):
     _EMPTY_BODY = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
     _body = _EMPTY_BODY
     _continue = None  # waiter future for '100 Continue' response
+    _response_params: ResponseParams = None  # type: ignore[assignment]
+    _session: "ClientSession" = None  # type: ignore[assignment]
+    _timeout = ClientTimeout()
+    _traces: list["Trace"] = ()  # type: ignore[assignment]
 
     GET_METHODS = {
         hdrs.METH_GET,
@@ -997,7 +1046,9 @@ class ClientRequest(ClientRequestBase):
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
         proxy: URL | None,
+        response_params: ResponseParams,
         timer: BaseTimerContext,
+        timeout: ClientTimeout,
         session: "ClientSession",
         ssl: SSLContext | bool | Fingerprint,
         proxy_headers: CIMultiDict[str] | None,
@@ -1021,7 +1072,9 @@ class ClientRequest(ClientRequestBase):
         self._session = session
         self.chunked = chunked
         self.response_class = response_class
+        self._response_params = response_params
         self._timer = timer
+        self._timeout = timeout
         self.server_hostname = server_hostname
         self.version = version
 

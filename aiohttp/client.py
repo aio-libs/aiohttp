@@ -69,13 +69,15 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddlewareType, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, _cached_build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -91,7 +93,6 @@ from .helpers import (
     HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
     _auth_header_from_netrc,
-    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     netrc_from_env,
     sentinel,
@@ -215,36 +216,6 @@ class _WSConnectOptions(TypedDict, total=False):
     max_msg_size: int
 
 
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: float | None = None
-    connect: float | None = None
-    sock_read: float | None = None
-    sock_connect: float | None = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
-
-    def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
-            raise ValueError(
-                "total timeout must be a positive number or None to disable, "
-                "got 0. Using 0 to disable timeouts is no longer supported, "
-                "use None instead."
-            )
-
-
 # 5 Minute default read timeout
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
@@ -257,6 +228,31 @@ _RetType_co = TypeVar(
     covariant=True,
 )
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
+
+
+# Module-level (not a closure) so it has a stable identity for the
+# ``_cached_build_client_middlewares`` cache key.
+async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
+    connector = req._session._connector
+    assert connector is not None
+    try:
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+    except asyncio.TimeoutError as exc:
+        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+
+    assert conn.protocol is not None
+    conn.protocol.set_response_params(**req._response_params)
+    try:
+        resp = await req._send(conn)
+        try:
+            await resp.start(conn)
+        except BaseException:
+            resp.close()
+            raise
+    except BaseException:
+        conn.close()
+        raise
+    return resp
 
 
 @final
@@ -416,7 +412,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._retry_connection: bool = True
-        self._middlewares = middlewares
+        self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
@@ -662,6 +658,19 @@ class ClientSession:
                                     {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
                                 )
 
+                    response_params: ResponseParams = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                        "max_headers": max_headers,
+                    }
+
                     req = self._request_class(
                         method,
                         url,
@@ -677,7 +686,9 @@ class ClientSession:
                         loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy_,
+                        response_params=response_params,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
@@ -686,52 +697,13 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    async def _connect_and_send_request(
-                        req: ClientRequest,
-                    ) -> ClientResponse:
-                        # connection timeout
-                        assert self._connector is not None
-                        try:
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
-                        except asyncio.TimeoutError as exc:
-                            raise ConnectionTimeoutError(
-                                f"Connection timeout to host {req.url}"
-                            ) from exc
-
-                        assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                            max_headers=max_headers,
-                        )
-                        try:
-                            resp = await req._send(conn)
-                            try:
-                                await resp.start(conn)
-                            except BaseException:
-                                resp.close()
-                                raise
-                        except BaseException:
-                            conn.close()
-                            raise
-                        return resp
-
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
+                        self._middlewares if middlewares is None else tuple(middlewares)
                     )
 
                     if effective_middlewares:
-                        handler = build_client_middlewares(
+                        handler = _cached_build_client_middlewares(
                             _connect_and_send_request, effective_middlewares
                         )
                     else:
