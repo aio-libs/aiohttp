@@ -78,7 +78,7 @@ class DecompressSizeError(PayloadEncodingError):
 
 
 class LineTooLong(BadHttpMessage):
-    args: tuple[bytes, str | int, str]
+    args: tuple[str | bytes, str | int, str]
 
     def __init__(
         self,
