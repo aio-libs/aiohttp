@@ -35,6 +35,7 @@ backoff
 backend
 backends
 backport
+backported
 Backport
 Backporting
 backports
@@ -319,6 +320,7 @@ seekable
 sendfile
 serializable
 serializer
+severities
 shourtcuts
 skipuntil
 Skyscanner
@@ -360,6 +362,7 @@ toolbar
 toplevel
 towncrier
 tp
+triages
 tuples
 ue
 UI
