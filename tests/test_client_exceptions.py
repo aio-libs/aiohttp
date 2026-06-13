@@ -10,6 +10,8 @@ from multidict import CIMultiDict
 from yarl import URL
 
 from aiohttp import client, client_reqrep
+from aiohttp.http_parser import RawResponseMessage
+from aiohttp.typedefs import StrOrURL
 
 if sys.version_info >= (3, 11):
     from typing import assert_type
