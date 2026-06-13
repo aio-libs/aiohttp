@@ -78,6 +78,8 @@ class DecompressSizeError(PayloadEncodingError):
 
 
 class LineTooLong(BadHttpMessage):
+    args: tuple[str | bytes, str | int, str]
+
     def __init__(
         self,
         line: str | bytes,
@@ -89,6 +91,8 @@ class LineTooLong(BadHttpMessage):
 
 
 class InvalidHeader(BadHttpMessage):
+    args: tuple[bytes | str]
+
     def __init__(self, hdr: bytes | str) -> None:
         hdr_s = hdr.decode(errors="backslashreplace") if isinstance(hdr, bytes) else hdr
         super().__init__(f"Invalid HTTP header: {hdr!r}")
@@ -97,6 +101,8 @@ class InvalidHeader(BadHttpMessage):
 
 
 class BadStatusLine(BadHttpMessage):
+    args: tuple[str]
+
     def __init__(self, line: str = "", error: str | None = None) -> None:
         if not isinstance(line, str):
             line = repr(line)

@@ -1,8 +1,12 @@
 # Tests for http_exceptions.py
 
 import pickle
+import sys
 
 from aiohttp import http_exceptions
+
+if sys.version_info >= (3, 11):
+    from typing import assert_type
 
 
 class TestHttpProcessingError:
@@ -73,6 +77,8 @@ class TestLineTooLong:
         assert err.code == 400
         assert err.message == "Got more than 10 bytes when reading: b'spam'."
         assert err.headers is None
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[bytes, int])
 
     def test_pickle(self) -> None:
         err = http_exceptions.LineTooLong(line=b"spam", limit=10, actual_size="12")
@@ -104,6 +110,8 @@ class TestInvalidHeader:
         assert err.code == 400
         assert err.message == "Invalid HTTP header: 'X-Spam'"
         assert err.headers is None
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[bytes | str])
 
     def test_pickle(self) -> None:
         err = http_exceptions.InvalidHeader(hdr="X-Spam")
@@ -131,6 +139,8 @@ class TestBadStatusLine:
         err = http_exceptions.BadStatusLine("Test")
         assert err.line == "Test"
         assert str(err) == "400, message:\n  Bad status line 'Test'"
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[str])
 
     def test_ctor2(self) -> None:
         err = http_exceptions.BadStatusLine(b"")
