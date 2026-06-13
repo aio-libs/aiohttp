@@ -851,6 +851,13 @@ def test_clone_override_client_max_size() -> None:
     assert req2.client_max_size == 2048
 
 
+def test_clone_preserves_pre_handler_error() -> None:
+    req = make_mocked_request("GET", "/path")
+    err = web.HTTPBadRequest(text="bad")
+    req._pre_handler_error = err
+    assert req.clone().pre_handler_error is err
+
+
 def test_clone_method() -> None:
     req = make_mocked_request("GET", "/path")
     req2 = req.clone(method="POST")
