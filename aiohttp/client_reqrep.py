@@ -1296,7 +1296,7 @@ class ClientRequest(ClientRequestBase):
             self.proxy_headers = None
             return
 
-        if proxy.scheme not in {"", "http", "https"}:
+        if proxy.scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
             raise ValueError(
                 f"aiohttp only supports http(s) proxies (got: {proxy.scheme!r}).\n"
                 "See third-party libraries for other proxy schemes."

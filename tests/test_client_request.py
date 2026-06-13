@@ -242,14 +242,11 @@ async def test_hostname_err(make_client_request: _RequestMaker) -> None:
         make_client_request("get", URL("http://:8080/"))
 
 
-async def test_proxy_scheme_err(make_client_request: _RequestMaker) -> None:
-    with pytest.raises(ValueError, match="'socks5'"):
+@pytest.mark.parametrize("scheme", ("socks5", "socks5h"))
+async def test_proxy_scheme_err(make_client_request: _RequestMaker, scheme: str) -> None:
+    with pytest.raises(ValueError, match=f"'{scheme}'"):
         make_client_request(
-            "get", URL("http://py.org/"), proxy=URL("socks5://127.0.0.1:80")
-        )
-    with pytest.raises(ValueError, match="'socks5h'"):
-        make_client_request(
-            "get", URL("http://py.org/"), proxy=URL("socks5h://127.0.0.1:80")
+            "get", URL("http://py.org/"), proxy=URL(f"{scheme}://127.0.0.1:80")
         )
 
 
