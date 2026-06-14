@@ -136,6 +136,29 @@ class TestClientResponseError:
         del obj
         assert err.ssl_object is not None
 
+    def test_getstate_excludes_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        state = err.__getstate__()
+        assert "_ssl_object" not in state
+        assert "status" in state
+
+    def test_setstate_clears_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        state = err.__getstate__()
+        err.__setstate__(state)
+        assert err.ssl_object is None
+
+    def test_setstate_with_none_state(self) -> None:
+        err = client.ClientResponseError(request_info=self.request_info, history=())
+        err.__setstate__(None)
+        assert err.ssl_object is None
+
 
 class TestClientConnectorError:
     connection_key = client_reqrep.ConnectionKey(
@@ -433,6 +456,25 @@ class TestExtractSSLObject:
         mock_connection.transport = mock_transport
 
         result = _extract_ssl_object(mock_connection)
+
+        assert result is None
+
+    def test_extract_ssl_object_transport_passed_directly(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+
+        class DirectTransport:
+            def get_extra_info(self, key: str, default: object = None) -> object:
+                return mock_ssl_object if key == "ssl_object" else default
+
+        result = _extract_ssl_object(DirectTransport())  # type: ignore[arg-type]
+
+        assert result is mock_ssl_object
+
+    def test_extract_ssl_object_no_matching_attribute(self) -> None:
+        class UnknownConnection:
+            pass
+
+        result = _extract_ssl_object(UnknownConnection())  # type: ignore[arg-type]
 
         assert result is None
 

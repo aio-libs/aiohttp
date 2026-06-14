@@ -56,7 +56,7 @@ def test_fingerprint_check_passes_ssl_object_on_mismatch() -> None:
             return mock_ssl_object
         if key == "peername":
             return ("127.0.0.1", 443)
-        return default
+        return default  # pragma: no cover
 
     transport.get_extra_info.side_effect = get_extra_info
 
@@ -87,7 +87,7 @@ def test_fingerprint_check_ssl_object_none_when_get_extra_info_raises() -> None:
             raise RuntimeError("transport closed")
         if key == "peername":
             return ("127.0.0.1", 443)
-        return default
+        return default  # pragma: no cover
 
     transport = mock.Mock()
     transport.get_extra_info.side_effect = get_extra_info
@@ -104,8 +104,8 @@ async def test_ssl_object_on_server_fingerprint_mismatch(
     aiohttp_client: AiohttpClient,
     tls_certificate_fingerprint_sha256: bytes,
 ) -> None:
-    async def handler(request: web.Request) -> NoReturn:
-        assert False
+    async def handler(request: web.Request) -> NoReturn:  # pragma: no cover
+        assert False  # pragma: no cover
 
     bad_fingerprint = b"\x00" * len(tls_certificate_fingerprint_sha256)
     connector = aiohttp.TCPConnector(ssl=aiohttp.Fingerprint(bad_fingerprint))
