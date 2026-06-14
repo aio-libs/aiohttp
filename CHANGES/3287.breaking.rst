@@ -1,3 +1,3 @@
 The ``request_factory`` (usually provided by aiohttp) callable must now accept ``pre_handler_error``.
 
-Users of the low-level :class:`aiohttp.Server` (without an :class:`~aiohttp.web.Application`) now receive malformed requests via their handler with :attr:`~aiohttp.web.BaseRequest.pre_handler_error` set to an :exc:`~aiohttp.web.HTTPBadRequest` and must emit the error response themselves; :class:`~aiohttp.web.Application` users are unaffected -- by :user:`Dreamsorcerer`.
+Users of the low-level ``aiohttp.Server`` (without an ``Application``) now receive malformed requests via their handler with ``BaseRequest.pre_handler_error`` set to an ``HTTPBadRequest`` and must emit the error response themselves; ``Application`` users are unaffected -- by :user:`Dreamsorcerer`.
