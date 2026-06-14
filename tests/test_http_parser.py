@@ -47,7 +47,7 @@ except ImportError:
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard  # noqa: I900
+        import compression.zstd as zstandard
     else:
         import backports.zstd as zstandard
 except ImportError:
@@ -630,9 +630,32 @@ def test_parse_unusual_request_line(parser: HttpRequestParser) -> None:
     msg, _ = messages[0]
     assert msg.compression is None
     assert not msg.upgrade
-    assert msg.method == "#smol"
+    assert msg.method == "#SMOL"
     assert msg.path == "//a"
     assert msg.version == (1, 3)
+
+
+def test_py_parser_normalises_method_to_uppercase(
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
+) -> None:
+    """Test Python parser canonicalises method tokens.
+
+    llhttp rejects lowercase upstream, so this only applies to the Python parser.
+    """
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserPy(
+        protocol,
+        event_loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    protocol._parser = parser
+    text = b"get /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, _upgrade, _tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.method == "GET"
 
 
 def test_parse(parser: HttpRequestParser) -> None:
