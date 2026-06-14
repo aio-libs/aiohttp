@@ -118,8 +118,7 @@ async def test_raw_server_parser_error_visible_to_handler(
         head = b""
         while b"\r\n\r\n" not in head:
             chunk = await reader.read(4096)
-            if not chunk:
-                break
+            assert chunk, "connection closed before headers complete"
             head += chunk
         body = head.partition(b"\r\n\r\n")[2] + await reader.read()
     finally:

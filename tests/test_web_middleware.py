@@ -423,8 +423,8 @@ async def test_normalize_path_skips_parser_error(
     # matches indiscriminately. After parser errors started flowing through
     # the middleware chain (issue #3287) the dummy "/" rel_url on a
     # malformed request would match a real "/" route and trigger 301.
-    async def root(request: web.Request) -> web.Response:
-        return web.Response(text="root")
+    async def root(request: web.Request) -> NoReturn:
+        pytest.fail("root handler should not run for a parser-errored request")
 
     app = web.Application(middlewares=[web.normalize_path_middleware()])
     app.router.add_get("/", root)
@@ -437,8 +437,7 @@ async def test_normalize_path_skips_parser_error(
         head = b""
         while b"\r\n\r\n" not in head:
             chunk = await reader.read(4096)
-            if not chunk:
-                break
+            assert chunk, "connection closed before headers complete"
             head += chunk
     finally:
         writer.close()

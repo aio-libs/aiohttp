@@ -659,8 +659,7 @@ async def _read_response(
     head = b""
     while b"\r\n\r\n" not in head:
         chunk = await reader.read(4096)
-        if not chunk:
-            break
+        assert chunk, "connection closed before headers complete"
         head += chunk
     header_block, _, body = head.partition(b"\r\n\r\n")
     status_line, *header_lines = header_block.split(b"\r\n")
@@ -692,12 +691,10 @@ async def test_parser_error_passes_through_middleware(
         request: web.Request, handler: Handler
     ) -> web.StreamResponse:
         try:
-            response = await handler(request)
+            return await handler(request)
         except web.HTTPException as exc:
             exc.headers[hdrs.SERVER] = "custom"
             raise
-        response.headers[hdrs.SERVER] = "custom"
-        return response
 
     app = web.Application(middlewares=[server_header])
     server = await aiohttp_server(app)
