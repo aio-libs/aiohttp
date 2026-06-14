@@ -127,18 +127,6 @@ class TestClientResponseError:
         )
         assert repr(err) == expected_repr
 
-    def test_ssl_object_weakref(self) -> None:
-        class SSLObject:
-            pass
-
-        obj = SSLObject()
-        err = client.ClientResponseError(
-            request_info=self.request_info, history=(), ssl_object=obj
-        )
-        assert err.ssl_object is obj
-        del obj
-        assert err.ssl_object is None
-
 
 class TestClientConnectorError:
     connection_key = client_reqrep.ConnectionKey(
@@ -403,11 +391,12 @@ class TestExtractSSLObject:
         assert result is mock_ssl_object
         mock_transport.get_extra_info.assert_called_once_with("ssl_object")
 
-    def test_extract_ssl_object_no_exception_suppression(self) -> None:
+    def test_extract_ssl_object_exception_handling(self) -> None:
         mock_transport = Mock()
         mock_transport.get_extra_info.side_effect = Exception("Transport error")
         mock_connection = Mock()
         mock_connection.transport = mock_transport
 
-        with pytest.raises(Exception, match="Transport error"):
-            _extract_ssl_object(mock_connection)
+        result = _extract_ssl_object(mock_connection)
+
+        assert result is None

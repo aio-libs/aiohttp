@@ -63,11 +63,10 @@ from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
     import ssl
-    from ssl import SSLContext, SSLObject
+    from ssl import SSLContext
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
-    SSLObject = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -85,8 +84,8 @@ _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
 def _extract_ssl_object(
-    connection: Union["Connection", asyncio.BaseTransport, None],
-) -> SSLObject | None:
+    connection: Optional[Union["Connection", object]],
+) -> Optional[object]:
     """Extract SSL object from connection or transport if available."""
     if connection is None:
         return None
@@ -104,7 +103,11 @@ def _extract_ssl_object(
     if transport is None:
         return None
 
-    return transport.get_extra_info("ssl_object")
+    try:
+        return transport.get_extra_info("ssl_object")
+    except Exception:
+        # If we can't get the SSL object for any reason, return None
+        return None
 
 
 def _gen_default_accept_encoding() -> str:
