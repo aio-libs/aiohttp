@@ -704,7 +704,7 @@ DER with e.g::
 Example: Access SSL certificate information from exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. versionadded:: 3.13
+.. versionadded:: 4.0
 
 When :class:`ClientResponseError` or its subclasses are raised, you can access
 SSL certificate information even after the connection has been closed using

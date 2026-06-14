@@ -2785,7 +2785,7 @@ Response errors
    .. attribute:: ssl_object
 
       SSL object from the connection transport, if available
-      (:class:`ssl.SSLSocket` or ``None``).
+      (:class:`ssl.SSLObject` or ``None``).
 
       This attribute provides access to SSL certificate information even after
       the connection has been closed. Useful for advanced certificate
@@ -2801,7 +2801,7 @@ Response errors
                   peer_cert = e.ssl_object.getpeercert()
                   print(f"Certificate subject: {peer_cert.get('subject')}")
 
-      .. versionadded:: 3.13
+      .. versionadded:: 4.0
 
 
 .. class:: ContentTypeError
