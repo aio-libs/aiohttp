@@ -111,7 +111,7 @@ class TestClientResponseError:
 
     def test_repr_with_ssl_object(self) -> None:
         mock_ssl_object = Mock(spec=ssl.SSLObject)
-        mock_ssl_object.__repr__ = Mock(return_value="<MockSSLObject>")
+        type(mock_ssl_object).__repr__ = Mock(return_value="<MockSSLObject>")  # type: ignore[method-assign]
         err = client.ClientResponseError(
             request_info=self.request_info,
             history=(),
@@ -128,10 +128,7 @@ class TestClientResponseError:
         assert repr(err) == expected_repr
 
     def test_ssl_object_strong_ref_persists(self) -> None:
-        class FakeSSLObject:
-            pass
-
-        obj = FakeSSLObject()
+        obj = Mock(spec=ssl.SSLObject)
         err = client.ClientResponseError(
             request_info=self.request_info, history=(), ssl_object=obj
         )
@@ -349,7 +346,7 @@ class TestServerFingerprintMismatch:
 
     def test_repr_with_ssl_object(self) -> None:
         mock_ssl_object = Mock(spec=ssl.SSLObject)
-        mock_ssl_object.__repr__ = Mock(return_value="<MockSSLObject>")
+        type(mock_ssl_object).__repr__ = Mock(return_value="<MockSSLObject>")  # type: ignore[method-assign]
         err = client.ServerFingerprintMismatch(
             b"exp", b"got", "example.com", 8080, ssl_object=mock_ssl_object
         )

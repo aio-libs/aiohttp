@@ -1,4 +1,5 @@
 import hashlib
+import ssl
 from typing import NoReturn
 from unittest import mock
 
@@ -9,7 +10,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.client_exceptions import ServerFingerprintMismatch
 
-ssl = pytest.importorskip("ssl")
+pytest.importorskip("ssl")
 
 
 def test_fingerprint_sha256() -> None:
