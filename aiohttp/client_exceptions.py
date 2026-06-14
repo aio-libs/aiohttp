@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from .typedefs import StrOrURL
 
@@ -10,8 +10,9 @@ try:
     import ssl
 
     SSLContext = ssl.SSLContext
+    SSLObject = ssl.SSLObject
 except ImportError:  # pragma: no cover
-    ssl = SSLContext = None  # type: ignore[assignment]
+    ssl = SSLContext = SSLObject = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
@@ -76,7 +77,7 @@ class ClientResponseError(ClientError):
         status: int | None = None,
         message: str = "",
         headers: Mapping[str, str] | None = None,
-        ssl_object: object | None = None,
+        ssl_object: "SSLObject | None" = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -86,8 +87,21 @@ class ClientResponseError(ClientError):
         self.message = message
         self.headers = headers
         self.history = history
-        self.ssl_object = ssl_object
+        self._ssl_object = ssl_object
         self.args = (request_info, history)
+
+    @property
+    def ssl_object(self) -> "SSLObject | None":
+        return self._ssl_object
+
+    def __getstate__(self) -> dict:
+        state = self.__dict__.copy()
+        state.pop("_ssl_object", None)
+        return state
+
+    def __setstate__(self, state: dict) -> None:
+        self.__dict__.update(state)
+        self._ssl_object = None
 
     def __str__(self) -> str:
         return f"{self.status}, message={self.message!r}, url={str(self.request_info.real_url)!r}"
@@ -166,7 +180,7 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Union[SSLContext, bool, "Fingerprint"]:
+    def ssl(self) -> "SSLContext | bool | Fingerprint":
         return self._conn_key.ssl
 
     def __str__(self) -> str:

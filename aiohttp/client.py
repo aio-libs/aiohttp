@@ -778,11 +778,12 @@ class ClientSession:
                         if max_redirects and redirects >= max_redirects:
                             if req._body is not None:
                                 await req._body.close()
+                            ssl_object = resp._ssl_object
                             resp.close()
                             raise TooManyRedirects(
                                 history[0].request_info,
                                 tuple(history),
-                                ssl_object=_extract_ssl_object(resp._connection),
+                                ssl_object=ssl_object,
                             )
 
                         # For 301 and 302, mimic IE, now changed in RFC

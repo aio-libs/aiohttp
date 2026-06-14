@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, Optional, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -63,10 +63,11 @@ from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
     import ssl
-    from ssl import SSLContext
+    from ssl import SSLContext, SSLObject
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
+    SSLObject = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -84,18 +85,15 @@ _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 
 def _extract_ssl_object(
-    connection: Optional[Union["Connection", object]],
-) -> Optional[object]:
+    connection: "Connection | asyncio.BaseTransport | None",
+) -> SSLObject | None:
     """Extract SSL object from connection or transport if available."""
     if connection is None:
         return None
 
-    # Handle both Connection objects and Transport objects
     if hasattr(connection, "transport"):
-        # This is a Connection object
         transport = connection.transport
     elif hasattr(connection, "get_extra_info"):
-        # This is a Transport object
         transport = connection
     else:
         return None
@@ -106,7 +104,6 @@ def _extract_ssl_object(
     try:
         return transport.get_extra_info("ssl_object")
     except Exception:
-        # If we can't get the SSL object for any reason, return None
         return None
 
 
@@ -228,6 +225,7 @@ class ClientResponse(HeadersMixin):
     _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
+    _ssl_object: SSLObject | None = None
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: asyncio.Future[bool] | None = None
@@ -485,6 +483,7 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._protocol = connection.protocol
         self._connection = connection
+        self._ssl_object = _extract_ssl_object(connection)
 
         with self._timer:
             while True:
@@ -595,7 +594,7 @@ class ClientResponse(HeadersMixin):
                 status=self.status,
                 message=self.reason,
                 headers=self.headers,
-                ssl_object=_extract_ssl_object(self._connection),
+                ssl_object=self._ssl_object,
             )
 
     def _release_connection(self) -> None:
@@ -720,7 +719,7 @@ class ClientResponse(HeadersMixin):
                         "unexpected mimetype: %s" % self.content_type
                     ),
                     headers=self.headers,
-                    ssl_object=_extract_ssl_object(self._connection),
+                    ssl_object=self._ssl_object,
                 )
 
         if encoding is None:

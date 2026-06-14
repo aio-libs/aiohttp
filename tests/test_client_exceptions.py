@@ -127,6 +127,18 @@ class TestClientResponseError:
         )
         assert repr(err) == expected_repr
 
+    def test_ssl_object_strong_ref_persists(self) -> None:
+        class FakeSSLObject:
+            pass
+
+        obj = FakeSSLObject()
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=obj
+        )
+        assert err.ssl_object is obj
+        del obj
+        assert err.ssl_object is not None
+
 
 class TestClientConnectorError:
     connection_key = client_reqrep.ConnectionKey(
@@ -391,7 +403,7 @@ class TestExtractSSLObject:
         assert result is mock_ssl_object
         mock_transport.get_extra_info.assert_called_once_with("ssl_object")
 
-    def test_extract_ssl_object_exception_handling(self) -> None:
+    def test_extract_ssl_object_suppresses_exception(self) -> None:
         mock_transport = Mock()
         mock_transport.get_extra_info.side_effect = Exception("Transport error")
         mock_connection = Mock()
@@ -400,3 +412,41 @@ class TestExtractSSLObject:
         result = _extract_ssl_object(mock_connection)
 
         assert result is None
+
+
+class TestSSLObjectTimingCapture:
+    """Tests that ssl_object is captured early so it survives connection release."""
+
+    request_info = client.RequestInfo(
+        url=URL("http://example.com"),
+        method="GET",
+        headers=CIMultiDictProxy(CIMultiDict()),
+        real_url=URL("http://example.com"),
+    )
+
+    def test_client_response_error_ssl_object_available_after_connection_cleared(
+        self,
+    ) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info,
+            history=(),
+            ssl_object=mock_ssl_object,
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_too_many_redirects_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.TooManyRedirects(
+            request_info=self.request_info,
+            history=(),
+            ssl_object=mock_ssl_object,
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_too_many_redirects_ssl_object_none_by_default(self) -> None:
+        err = client.TooManyRedirects(
+            request_info=self.request_info,
+            history=(),
+        )
+        assert err.ssl_object is None
