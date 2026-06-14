@@ -1,10 +1,13 @@
 import hashlib
+from typing import NoReturn
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp.client_exceptions import ServerFingerprintMismatch
+from aiohttp import web
 
 ssl = pytest.importorskip("ssl")
 
@@ -92,3 +95,26 @@ def test_fingerprint_check_ssl_object_none_when_get_extra_info_raises() -> None:
         fp.check(transport)
 
     assert exc_info.value.ssl_object is None
+
+
+async def test_ssl_object_on_server_fingerprint_mismatch(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    tls_certificate_fingerprint_sha256: bytes,
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    bad_fingerprint = b"\x00" * len(tls_certificate_fingerprint_sha256)
+    connector = aiohttp.TCPConnector(ssl=aiohttp.Fingerprint(bad_fingerprint))
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    with pytest.raises(ServerFingerprintMismatch) as exc_info:
+        await client.get("/")
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)
