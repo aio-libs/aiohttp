@@ -47,7 +47,7 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger
-from .typedefs import PathLike
+from .typedefs import PathLike  # noqa
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
