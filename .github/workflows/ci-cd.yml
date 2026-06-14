@@ -204,9 +204,14 @@ jobs:
             no-extensions: ''
             python-provider: uv
             experimental: false
-          - pyver: '3.12'
+          - pyver: '3.13'
             no-extensions: ''
             os: ubuntu
+            python-provider: setup-python
+            experimental: false
+          - pyver: '3.13'
+            no-extensions: ''
+            os: macos
             python-provider: setup-python
             experimental: false
       fail-fast: true
