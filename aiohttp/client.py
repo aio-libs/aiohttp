@@ -777,9 +777,12 @@ class ClientSession:
                         if max_redirects and redirects >= max_redirects:
                             if req._body is not None:
                                 await req._body.close()
+                            ssl_object = resp._ssl_object
                             resp.close()
                             raise TooManyRedirects(
-                                history[0].request_info, tuple(history)
+                                history[0].request_info,
+                                tuple(history),
+                                ssl_object=ssl_object,
                             )
 
                         # For 301 and 302, mimic IE, now changed in RFC
@@ -1108,6 +1111,7 @@ class ClientSession:
                     message="Invalid response status",
                     status=resp.status,
                     headers=resp.headers,
+                    ssl_object=resp._ssl_object,
                 )
 
             if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":
@@ -1117,6 +1121,7 @@ class ClientSession:
                     message="Invalid upgrade header",
                     status=resp.status,
                     headers=resp.headers,
+                    ssl_object=resp._ssl_object,
                 )
 
             if not resp._upgraded:
@@ -1126,6 +1131,7 @@ class ClientSession:
                     message="Invalid connection header",
                     status=resp.status,
                     headers=resp.headers,
+                    ssl_object=resp._ssl_object,
                 )
 
             # key calculation
@@ -1138,6 +1144,7 @@ class ClientSession:
                     message="Invalid challenge response",
                     status=resp.status,
                     headers=resp.headers,
+                    ssl_object=resp._ssl_object,
                 )
 
             # websocket protocol
@@ -1167,6 +1174,7 @@ class ClientSession:
                             message=exc.args[0],
                             status=resp.status,
                             headers=resp.headers,
+                            ssl_object=resp._ssl_object,
                         ) from exc
                 else:
                     compress = 0

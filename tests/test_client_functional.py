@@ -43,10 +43,18 @@ from pytest_mock import MockerFixture
 from yarl import URL, Query
 
 import aiohttp
-from aiohttp import Fingerprint, ServerFingerprintMismatch, hdrs, payload, web
+from aiohttp import (
+    Fingerprint,
+    ServerFingerprintMismatch,
+    WSServerHandshakeError,
+    hdrs,
+    payload,
+    web,
+)
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.client_exceptions import (
     ClientResponseError,
+    ContentTypeError,
     InvalidURL,
     InvalidUrlClientError,
     InvalidUrlRedirectClientError,
@@ -5950,3 +5958,131 @@ async def test_upload_complete_late_access(aiohttp_client: AiohttpClient) -> Non
         # Writer task is done; future is created lazily on this first access.
         assert resp._upload_complete is None
         assert resp.upload_complete.done()
+
+
+async def test_ssl_object_on_raise_for_status_inside_context(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=404, text="Not found")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    with pytest.raises(ClientResponseError) as exc_info:
+        async with client.get("/") as resp:
+            resp.raise_for_status()
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)
+    assert exc_info.value.ssl_object.getpeercert() is not None
+
+
+async def test_ssl_object_on_raise_for_status_outside_context(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=404, text="Not found")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    async with client.get("/") as resp:
+        await resp.read()
+
+    with pytest.raises(ClientResponseError) as exc_info:
+        resp.raise_for_status()
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)
+
+
+async def test_ssl_object_on_content_type_error(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=200, text="plain text", content_type="text/plain")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    with pytest.raises(ContentTypeError) as exc_info:
+        async with client.get("/") as resp:
+            await resp.json()
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)
+
+
+async def test_ssl_object_none_on_plain_http(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=404, text="Not found")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(ClientResponseError) as exc_info:
+        async with client.get("/") as resp:
+            resp.raise_for_status()
+
+    assert exc_info.value.ssl_object is None
+
+
+async def test_ssl_object_on_too_many_redirects(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def redirect(request: web.Request) -> NoReturn:
+        count = int(request.match_info["count"])
+        assert count
+        raise web.HTTPFound(location=f"/redirect/{count - 1}")
+
+    app = web.Application()
+    app.router.add_get(r"/redirect/{count:\d+}", redirect)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    with pytest.raises(TooManyRedirects) as exc_info:
+        await client.get("/redirect/5", max_redirects=2)
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)
+
+
+async def test_ssl_object_on_ws_handshake_error(
+    aiohttp_server: AiohttpServer,
+    ssl_ctx: ssl.SSLContext,
+    aiohttp_client: AiohttpClient,
+    client_ssl_ctx: ssl.SSLContext,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=200, text="not a websocket upgrade")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app, ssl=ssl_ctx)
+    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
+    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+
+    with pytest.raises(WSServerHandshakeError) as exc_info:
+        await client.ws_connect("/")
+
+    assert isinstance(exc_info.value.ssl_object, ssl.SSLObject)

@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, cast
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -63,10 +63,11 @@ from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
     import ssl
-    from ssl import SSLContext
+    from ssl import SSLContext, SSLObject
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
+    SSLObject = object  # type: ignore[misc,assignment]
 
 
 __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
@@ -81,6 +82,29 @@ if TYPE_CHECKING:
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+
+
+def _extract_ssl_object(
+    connection: "Connection | asyncio.BaseTransport | None",
+) -> SSLObject | None:
+    """Extract SSL object from connection or transport if available."""
+    if connection is None:
+        return None
+
+    if hasattr(connection, "transport"):
+        transport = connection.transport
+    elif hasattr(connection, "get_extra_info"):
+        transport = connection
+    else:
+        return None
+
+    if transport is None:
+        return None
+
+    try:
+        return cast("SSLObject | None", transport.get_extra_info("ssl_object"))
+    except Exception:
+        return None
 
 
 def _gen_default_accept_encoding() -> str:
@@ -156,7 +180,13 @@ class Fingerprint:
         got = self._hashfunc(cert).digest()
         if got != self._fingerprint:
             host, port, *_ = transport.get_extra_info("peername")
-            raise ServerFingerprintMismatch(self._fingerprint, got, host, port)
+            try:
+                ssl_object: SSLObject | None = transport.get_extra_info("ssl_object")
+            except Exception:
+                ssl_object = None
+            raise ServerFingerprintMismatch(
+                self._fingerprint, got, host, port, ssl_object=ssl_object
+            )
 
 
 if ssl is not None:
@@ -201,6 +231,7 @@ class ClientResponse(HeadersMixin):
     _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
+    _ssl_object: SSLObject | None = None
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: asyncio.Future[bool] | None = None
@@ -458,6 +489,7 @@ class ClientResponse(HeadersMixin):
         self._closed = False
         self._protocol = connection.protocol
         self._connection = connection
+        self._ssl_object = _extract_ssl_object(connection)
 
         with self._timer:
             while True:
@@ -472,6 +504,7 @@ class ClientResponse(HeadersMixin):
                         status=exc.code,
                         message=exc.message,
                         headers=exc.headers,
+                        ssl_object=_extract_ssl_object(connection),
                     ) from exc
 
                 if message.code < 100 or message.code > 199 or message.code == 101:
@@ -567,6 +600,7 @@ class ClientResponse(HeadersMixin):
                 status=self.status,
                 message=self.reason,
                 headers=self.headers,
+                ssl_object=self._ssl_object,
             )
 
     def _release_connection(self) -> None:
@@ -691,6 +725,7 @@ class ClientResponse(HeadersMixin):
                         "unexpected mimetype: %s" % self.content_type
                     ),
                     headers=self.headers,
+                    ssl_object=self._ssl_object,
                 )
 
         if encoding is None:

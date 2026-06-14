@@ -1,12 +1,15 @@
 import errno
 import pickle
+import ssl
 import sys
+from unittest.mock import Mock
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from aiohttp import client, client_reqrep
+from aiohttp.client_reqrep import _extract_ssl_object
 from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http_parser import RawResponseMessage
 from aiohttp.typedefs import StrOrURL
@@ -94,6 +97,67 @@ class TestClientResponseError:
             headers=HeadersDictProxy(CIMultiDict()),
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
+
+    def test_ssl_object_none_by_default(self) -> None:
+        err = client.ClientResponseError(request_info=self.request_info, history=())
+        assert err.ssl_object is None
+
+    def test_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_repr_with_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        type(mock_ssl_object).__repr__ = Mock(return_value="<MockSSLObject>")  # type: ignore[method-assign]
+        err = client.ClientResponseError(
+            request_info=self.request_info,
+            history=(),
+            status=400,
+            message="Something wrong",
+            headers=CIMultiDict(),
+            ssl_object=mock_ssl_object,
+        )
+        expected_repr = (
+            "ClientResponseError(%r, (), status=400, "
+            "message='Something wrong', headers=<CIMultiDict()>, ssl_object=<MockSSLObject>)"
+            % (self.request_info,)
+        )
+        assert repr(err) == expected_repr
+
+    def test_ssl_object_strong_ref_persists(self) -> None:
+        obj = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=obj
+        )
+        assert err.ssl_object is obj
+        del obj
+        assert err.ssl_object is not None
+
+    def test_getstate_excludes_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        state = err.__getstate__()
+        assert "_ssl_object" not in state
+        assert "status" in state
+
+    def test_setstate_clears_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info, history=(), ssl_object=mock_ssl_object
+        )
+        state = err.__getstate__()
+        err.__setstate__(state)
+        assert err.ssl_object is None
+
+    def test_setstate_with_none_state(self) -> None:
+        err = client.ClientResponseError(request_info=self.request_info, history=())
+        err.__setstate__(None)
+        assert err.ssl_object is None
 
 
 class TestClientConnectorError:
@@ -292,6 +356,32 @@ class TestServerFingerprintMismatch:
             "got=b'got' host='example.com' port=8080>"
         )
 
+    def test_ssl_object_none_by_default(self) -> None:
+        err = client.ServerFingerprintMismatch(b"exp", b"got", "example.com", 8080)
+        assert err.ssl_object is None
+
+    def test_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ServerFingerprintMismatch(
+            b"exp", b"got", "example.com", 8080, ssl_object=mock_ssl_object
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_repr_with_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        type(mock_ssl_object).__repr__ = Mock(return_value="<MockSSLObject>")  # type: ignore[method-assign]
+        err = client.ServerFingerprintMismatch(
+            b"exp", b"got", "example.com", 8080, ssl_object=mock_ssl_object
+        )
+        assert repr(err) == (
+            "<ServerFingerprintMismatch expected=b'exp' "
+            "got=b'got' host='example.com' port=8080 ssl_object=<MockSSLObject>>"
+        )
+
+    def test_repr_without_ssl_object(self) -> None:
+        err = client.ServerFingerprintMismatch(b"exp", b"got", "example.com", 8080)
+        assert "ssl_object" not in repr(err)
+
 
 class TestInvalidURL:
     def test_ctor(self) -> None:
@@ -334,3 +424,94 @@ class TestInvalidURL:
     def test_str_with_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert str(err) == ":wrong:url: - :description:"
+
+
+class TestExtractSSLObject:
+    def test_extract_ssl_object_none_connection(self) -> None:
+        result = _extract_ssl_object(None)
+        assert result is None
+
+    def test_extract_ssl_object_no_transport(self) -> None:
+        mock_connection = Mock()
+        mock_connection.transport = None
+        result = _extract_ssl_object(mock_connection)
+        assert result is None
+
+    def test_extract_ssl_object_success(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        mock_transport = Mock()
+        mock_transport.get_extra_info.return_value = mock_ssl_object
+        mock_connection = Mock()
+        mock_connection.transport = mock_transport
+
+        result = _extract_ssl_object(mock_connection)
+
+        assert result is mock_ssl_object
+        mock_transport.get_extra_info.assert_called_once_with("ssl_object")
+
+    def test_extract_ssl_object_suppresses_exception(self) -> None:
+        mock_transport = Mock()
+        mock_transport.get_extra_info.side_effect = Exception("Transport error")
+        mock_connection = Mock()
+        mock_connection.transport = mock_transport
+
+        result = _extract_ssl_object(mock_connection)
+
+        assert result is None
+
+    def test_extract_ssl_object_transport_passed_directly(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+
+        class DirectTransport:
+            def get_extra_info(self, key: str, default: object = None) -> object:
+                return mock_ssl_object if key == "ssl_object" else default
+
+        result = _extract_ssl_object(DirectTransport())  # type: ignore[arg-type]
+
+        assert result is mock_ssl_object
+
+    def test_extract_ssl_object_no_matching_attribute(self) -> None:
+        class UnknownConnection:
+            pass
+
+        result = _extract_ssl_object(UnknownConnection())  # type: ignore[arg-type]
+
+        assert result is None
+
+
+class TestSSLObjectTimingCapture:
+    """Tests that ssl_object is captured early so it survives connection release."""
+
+    request_info = client.RequestInfo(
+        url=URL("http://example.com"),
+        method="GET",
+        headers=CIMultiDictProxy(CIMultiDict()),
+        real_url=URL("http://example.com"),
+    )
+
+    def test_client_response_error_ssl_object_available_after_connection_cleared(
+        self,
+    ) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ClientResponseError(
+            request_info=self.request_info,
+            history=(),
+            ssl_object=mock_ssl_object,
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_too_many_redirects_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.TooManyRedirects(
+            request_info=self.request_info,
+            history=(),
+            ssl_object=mock_ssl_object,
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_too_many_redirects_ssl_object_none_by_default(self) -> None:
+        err = client.TooManyRedirects(
+            request_info=self.request_info,
+            history=(),
+        )
+        assert err.ssl_object is None

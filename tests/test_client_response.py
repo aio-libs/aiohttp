@@ -2,6 +2,7 @@
 
 import asyncio
 import gc
+import ssl
 import sys
 from http.cookies import SimpleCookie
 from json import JSONDecodeError
@@ -991,6 +992,62 @@ def test_raise_for_status_4xx_without_reason() -> None:
     assert str(cm.value.status) == "404"
     assert str(cm.value.message) == ""
     assert response.closed
+
+
+def test_raise_for_status_ssl_object_captured_before_connection_release() -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    mock_ssl_object = mock.Mock(spec=ssl.SSLObject)
+    response._ssl_object = mock_ssl_object
+    response._connection = None
+    response.status = 403
+    response.reason = "FORBIDDEN"
+    with pytest.raises(aiohttp.ClientResponseError) as cm:
+        response.raise_for_status()
+    assert cm.value.ssl_object is mock_ssl_object
+
+
+async def test_json_content_type_error_ssl_object_captured_before_release() -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=mock.Mock(),
+        session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    mock_ssl_object = mock.Mock(spec=ssl.SSLObject)
+    response._ssl_object = mock_ssl_object
+    response._connection = None
+    response.status = 200
+    response.reason = "OK"
+    response._body = b"plain text"
+    response._headers = HeadersDictProxy(CIMultiDict({"Content-Type": "text/plain"}))
+    with pytest.raises(aiohttp.ContentTypeError) as cm:
+        await response.json(content_type="application/json")
+    assert cm.value.ssl_object is mock_ssl_object
 
 
 def test_resp_host() -> None:
