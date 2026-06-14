@@ -892,8 +892,7 @@ class Request(BaseRequest):
 
     async def _prepare_hook(self, response: StreamResponse) -> None:
         match_info = self._match_info
-        if match_info is None:
-            return
+        assert match_info is not None
         for app in match_info._apps:
             if on_response_prepare := app.on_response_prepare:
                 await on_response_prepare.send(self, response)
