@@ -265,15 +265,30 @@ class ServerFingerprintMismatch(ServerConnectionError):
 
     args: tuple[bytes, bytes, str, int]
 
-    def __init__(self, expected: bytes, got: bytes, host: str, port: int) -> None:
+    def __init__(
+        self,
+        expected: bytes,
+        got: bytes,
+        host: str,
+        port: int,
+        *,
+        ssl_object: "SSLObject | None" = None,
+    ) -> None:
         self.expected = expected
         self.got = got
         self.host = host
         self.port = port
+        self.ssl_object = ssl_object
         self.args = (expected, got, host, port)
 
     def __repr__(self) -> str:
-        return f"<{self.__class__.__name__} expected={self.expected!r} got={self.got!r} host={self.host!r} port={self.port!r}>"
+        result = (
+            f"<{self.__class__.__name__} expected={self.expected!r} got={self.got!r}"
+            f" host={self.host!r} port={self.port!r}"
+        )
+        if self.ssl_object is not None:
+            result += f" ssl_object={self.ssl_object!r}"
+        return result + ">"
 
 
 class ClientPayloadError(ClientError):

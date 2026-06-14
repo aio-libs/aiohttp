@@ -180,7 +180,13 @@ class Fingerprint:
         got = self._hashfunc(cert).digest()
         if got != self._fingerprint:
             host, port, *_ = transport.get_extra_info("peername")
-            raise ServerFingerprintMismatch(self._fingerprint, got, host, port)
+            try:
+                ssl_object: SSLObject | None = transport.get_extra_info("ssl_object")
+            except Exception:
+                ssl_object = None
+            raise ServerFingerprintMismatch(
+                self._fingerprint, got, host, port, ssl_object=ssl_object
+            )
 
 
 if ssl is not None:

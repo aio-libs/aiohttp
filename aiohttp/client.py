@@ -76,7 +76,6 @@ from .client_reqrep import (
     ClientResponse,
     Fingerprint,
     RequestInfo,
-    _extract_ssl_object,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -1112,7 +1111,7 @@ class ClientSession:
                     message="Invalid response status",
                     status=resp.status,
                     headers=resp.headers,
-                    ssl_object=_extract_ssl_object(resp._connection),
+                    ssl_object=resp._ssl_object,
                 )
 
             if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":
@@ -1122,7 +1121,7 @@ class ClientSession:
                     message="Invalid upgrade header",
                     status=resp.status,
                     headers=resp.headers,
-                    ssl_object=_extract_ssl_object(resp._connection),
+                    ssl_object=resp._ssl_object,
                 )
 
             if not resp._upgraded:
@@ -1132,7 +1131,7 @@ class ClientSession:
                     message="Invalid connection header",
                     status=resp.status,
                     headers=resp.headers,
-                    ssl_object=_extract_ssl_object(resp._connection),
+                    ssl_object=resp._ssl_object,
                 )
 
             # key calculation
@@ -1145,7 +1144,7 @@ class ClientSession:
                     message="Invalid challenge response",
                     status=resp.status,
                     headers=resp.headers,
-                    ssl_object=_extract_ssl_object(resp._connection),
+                    ssl_object=resp._ssl_object,
                 )
 
             # websocket protocol
@@ -1175,7 +1174,7 @@ class ClientSession:
                             message=exc.args[0],
                             status=resp.status,
                             headers=resp.headers,
-                            ssl_object=_extract_ssl_object(resp._connection),
+                            ssl_object=resp._ssl_object,
                         ) from exc
                 else:
                     compress = 0

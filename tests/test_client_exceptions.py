@@ -336,6 +336,32 @@ class TestServerFingerprintMismatch:
             "got=b'got' host='example.com' port=8080>"
         )
 
+    def test_ssl_object_none_by_default(self) -> None:
+        err = client.ServerFingerprintMismatch(b"exp", b"got", "example.com", 8080)
+        assert err.ssl_object is None
+
+    def test_ssl_object_stored(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        err = client.ServerFingerprintMismatch(
+            b"exp", b"got", "example.com", 8080, ssl_object=mock_ssl_object
+        )
+        assert err.ssl_object is mock_ssl_object
+
+    def test_repr_with_ssl_object(self) -> None:
+        mock_ssl_object = Mock(spec=ssl.SSLObject)
+        mock_ssl_object.__repr__ = Mock(return_value="<MockSSLObject>")
+        err = client.ServerFingerprintMismatch(
+            b"exp", b"got", "example.com", 8080, ssl_object=mock_ssl_object
+        )
+        assert repr(err) == (
+            "<ServerFingerprintMismatch expected=b'exp' "
+            "got=b'got' host='example.com' port=8080 ssl_object=<MockSSLObject>>"
+        )
+
+    def test_repr_without_ssl_object(self) -> None:
+        err = client.ServerFingerprintMismatch(b"exp", b"got", "example.com", 8080)
+        assert "ssl_object" not in repr(err)
+
 
 class TestInvalidURL:
     def test_ctor(self) -> None:
