@@ -11,7 +11,7 @@ from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
-from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
+from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict, cast
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
@@ -102,7 +102,7 @@ def _extract_ssl_object(
         return None
 
     try:
-        return transport.get_extra_info("ssl_object")
+        return cast("SSLObject | None", transport.get_extra_info("ssl_object"))
     except Exception:
         return None
 

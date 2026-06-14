@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from .typedefs import StrOrURL
 
@@ -94,13 +94,14 @@ class ClientResponseError(ClientError):
     def ssl_object(self) -> "SSLObject | None":
         return self._ssl_object
 
-    def __getstate__(self) -> dict:
+    def __getstate__(self) -> dict[str, Any]:
         state = self.__dict__.copy()
         state.pop("_ssl_object", None)
         return state
 
-    def __setstate__(self, state: dict) -> None:
-        self.__dict__.update(state)
+    def __setstate__(self, state: dict[str, Any] | None) -> None:
+        if state:
+            self.__dict__.update(state)
         self._ssl_object = None
 
     def __str__(self) -> str:
