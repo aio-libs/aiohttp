@@ -6,8 +6,8 @@ import pytest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
-from aiohttp.client_exceptions import ServerFingerprintMismatch
 from aiohttp import web
+from aiohttp.client_exceptions import ServerFingerprintMismatch
 
 ssl = pytest.importorskip("ssl")
 
