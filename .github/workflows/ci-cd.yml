@@ -103,9 +103,13 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
         set -euo pipefail
+        # Fetch the body fresh: github.event.pull_request.body is frozen at
+        # the webhook payload and stale on re-runs after a body edit.
+        PR_BODY=$(
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
+        )
         added=$(
           gh api --paginate \
             "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
