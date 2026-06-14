@@ -520,7 +520,11 @@ async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
     async def handler(request: web.Request) -> NoReturn:
         assert False
 
-    resource.set_options_route(handler)
+    route = resource.set_options_route(handler)
+    assert isinstance(route, web.ResourceRoute)
+    assert route.method == hdrs.METH_OPTIONS
+    assert route.handler is handler
+    assert route.resource is resource
     mapping, allowed_methods = await resource.resolve(
         make_mocked_request("OPTIONS", "/st/path")
     )

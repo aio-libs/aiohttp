@@ -2368,6 +2368,21 @@ Resource classes hierarchy::
 
          if file not found has no impact
 
+   .. method:: set_options_route(handler)
+
+      Register *handler* as the ``OPTIONS`` route for this resource.
+
+      Raises :exc:`RuntimeError` if an ``OPTIONS`` route was already set.
+
+      :param handler: a :ref:`web-handler<aiohttp-web-handler>` for
+                      ``OPTIONS`` requests.
+
+      :return: the newly created :class:`ResourceRoute`.
+
+      .. versionchanged:: 3.15
+
+         Now returns the created :class:`ResourceRoute` instead of ``None``.
+
 
 .. class:: PrefixedSubAppResource
 
