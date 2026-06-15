@@ -24,7 +24,7 @@ cfgv==3.5.0
     # via pre-commit
 click==8.4.1
     # via slotscheck
-cryptography==48.0.1
+cryptography==49.0.0
     # via trustme
 distlib==0.4.3
     # via virtualenv
