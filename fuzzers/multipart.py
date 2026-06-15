@@ -53,10 +53,12 @@ async def fuzz_bodypart_reader(data: bytes) -> None:
     if not obj.at_eof():
         await obj.form()
 
+
 @atheris.instrument_func
 def TestOneInput(data: bytes) -> None:
     with suppress(ValueError):
         asyncio.run(fuzz_bodypart_reader(data))
+
 
 if __name__ == "__main__":
     atheris.Setup(sys.argv, TestOneInput)
