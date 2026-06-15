@@ -38,10 +38,6 @@ def TestOneInput(data):
         parser.feed_data(data)
 
 
-def main():
+if __name__ == "__main__":
     atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
     atheris.Fuzz()
-
-
-if __name__ == "__main__":
-    main()
