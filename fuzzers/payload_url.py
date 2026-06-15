@@ -20,8 +20,10 @@ from contextlib import suppress
 import atheris
 
 with atheris.instrument_imports():
-    from aiohttp.payload import StringPayload
     from yarl import URL
+
+    from aiohttp.payload import StringPayload
+
 
 @atheris.instrument_func
 def TestOneInput(data: bytes) -> None:
@@ -32,6 +34,7 @@ def TestOneInput(data: bytes) -> None:
         p = StringPayload(original)
     with suppress(ValueError):
         u = URL(original)
+
 
 if __name__ == "__main__":
     atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
