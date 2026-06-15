@@ -40,7 +40,7 @@ distlib==0.4.3
     # via virtualenv
 exceptiongroup==1.3.1
     # via pytest
-filelock==3.29.3
+filelock==3.29.4
     # via
     #   python-discovery
     #   virtualenv
