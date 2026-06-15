@@ -60,7 +60,7 @@ coverage==7.14.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==48.0.1
+cryptography==49.0.0
     # via trustme
 cython==3.2.5
     # via -r requirements/cython.in
