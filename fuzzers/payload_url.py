@@ -17,7 +17,7 @@
 import sys
 from contextlib import suppress
 
-import atheris
+import atheris  # noqa: I900
 
 with atheris.instrument_imports():
     from yarl import URL

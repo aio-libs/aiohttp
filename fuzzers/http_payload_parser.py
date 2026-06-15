@@ -19,7 +19,7 @@ import sys
 from contextlib import suppress
 from unittest import mock
 
-import atheris
+import atheris  # noqa: I900
 
 with atheris.instrument_imports():
     from aiohttp import StreamReader

@@ -17,7 +17,7 @@
 import asyncio
 import sys
 
-import atheris
+import atheris  # noqa: I900
 
 with atheris.instrument_imports():
     from multidict import CIMultiDict
