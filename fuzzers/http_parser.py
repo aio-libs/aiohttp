@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import asyncio
-import os
 import sys
 from contextlib import suppress
 from unittest import mock
@@ -41,10 +40,6 @@ def TestOneInput(data: bytes) -> None:
         parser.feed_eof()
 
 
-def main():
+if __name__ == "__main__":
     atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
     atheris.Fuzz()
-
-
-if __name__ == "__main__":
-    main()
