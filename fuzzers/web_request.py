@@ -21,10 +21,12 @@ import sys
 import atheris
 
 with atheris.instrument_imports():
-    import aiohttp
-    from aiohttp.test_utils import make_mocked_request
     from multidict import CIMultiDict
     from yarl import URL
+
+    import aiohttp
+    from aiohttp.test_utils import make_mocked_request
+
 
 @atheris.instrument_func
 async def fuzz_run_one_async(data: bytes) -> None:
@@ -43,9 +45,11 @@ async def fuzz_run_one_async(data: bytes) -> None:
     req.forwarded
     ret = await req.post()
 
+
 @atheris.instrument_func
 def TestOneInput(data: bytes) -> None:
     asyncio.run(fuzz_run_one_async(data))
+
 
 if __name__ == "__main__":
     atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
