@@ -15,7 +15,6 @@
 # limitations under the License.
 
 import asyncio
-import os
 import sys
 
 import atheris
@@ -24,7 +23,6 @@ with atheris.instrument_imports():
     from multidict import CIMultiDict
     from yarl import URL
 
-    import aiohttp
     from aiohttp.test_utils import make_mocked_request
 
 
@@ -43,7 +41,7 @@ async def fuzz_run_one_async(data: bytes) -> None:
     req = make_mocked_request("GET", url_s, headers=headers)
 
     req.forwarded
-    ret = await req.post()
+    await req.post()
 
 
 @atheris.instrument_func

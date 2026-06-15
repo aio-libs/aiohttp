@@ -31,9 +31,9 @@ def TestOneInput(data: bytes) -> None:
     original = fdp.ConsumeString(sys.maxsize)
 
     with suppress(UnicodeEncodeError):
-        p = StringPayload(original)
+        StringPayload(original)
     with suppress(ValueError):
-        u = URL(original)
+        URL(original)
 
 
 if __name__ == "__main__":
