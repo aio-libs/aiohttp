@@ -32,6 +32,7 @@ HttpRequestParser = HttpRequestParserC if AIOHTTP_VAL == 0 else HttpRequestParse
 LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
 PROTOCOL = BaseProtocol(loop)
 
+
 @atheris.instrument_func
 def TestOneInput(data: bytes) -> None:
     parser = HttpRequestParser(PROTOCOL, LOOP, 32768)
@@ -39,9 +40,11 @@ def TestOneInput(data: bytes) -> None:
         parser.feed_data(data)
         parser.feed_eof()
 
+
 def main():
     atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
     atheris.Fuzz()
+
 
 if __name__ == "__main__":
     main()
