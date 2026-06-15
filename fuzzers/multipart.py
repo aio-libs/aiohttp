@@ -17,6 +17,7 @@
 import asyncio
 import io
 import sys
+from contextlib import suppress
 
 import atheris
 

@@ -14,6 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import asyncio
 import sys
 from contextlib import suppress
 from unittest import mock
@@ -21,17 +22,18 @@ from unittest import mock
 import atheris
 
 with atheris.instrument_imports():
+    from aiohttp import StreamReader
     from aiohttp.base_protocol import BaseProtocol
     from aiohttp.http_exceptions import BadHttpMessage
     from aiohttp.http_parser import HttpPayloadParser
 
 LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
-PROTOCOL = BaseProtocol(loop)
+PROTOCOL = BaseProtocol(LOOP)
 
 
 @atheris.instrument_func
 def TestOneInput(data):
-    out = aiohttp.StreamReader(PROTOCOL, 2**16, loop=LOOP)
+    out = StreamReader(PROTOCOL, 2**16, loop=LOOP)
     parser = HttpPayloadParser(out, LOOP, 32768)
     with suppress(BadHttpMessage):
         parser.feed_data(data)

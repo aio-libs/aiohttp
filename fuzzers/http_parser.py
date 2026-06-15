@@ -29,7 +29,7 @@ with atheris.instrument_imports():
 AIOHTTP_VAL = 0
 HttpRequestParser = HttpRequestParserC if AIOHTTP_VAL == 0 else HttpRequestParserPy
 LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
-PROTOCOL = BaseProtocol(loop)
+PROTOCOL = BaseProtocol(LOOP)
 
 
 @atheris.instrument_func
