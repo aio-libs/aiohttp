@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
@@ -84,18 +83,13 @@ from .client_ws import (
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
-    BaseConnector,
-    NamedPipeConnector,
-    TCPConnector,
-    UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
     _auth_header_from_netrc,
     get_env_proxy_for_url,
@@ -343,7 +337,7 @@ class ClientSession:
         loop = asyncio.get_running_loop()
 
         if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
+            timeout = ClientTimeout()
         if not isinstance(timeout, ClientTimeout):
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "

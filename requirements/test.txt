@@ -42,7 +42,7 @@ coverage==7.14.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==48.0.1
+cryptography==49.0.0
     # via trustme
 exceptiongroup==1.3.1
     # via pytest
@@ -113,7 +113,7 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.0.3
+pytest==9.1.0
     # via
     #   -r requirements/test-common-base.in
     #   pytest-aiohttp
