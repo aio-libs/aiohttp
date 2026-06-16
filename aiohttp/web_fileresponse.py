@@ -131,12 +131,21 @@ class FileResponse(StreamResponse):
         if transport is None:
             raise ConnectionResetError("Connection lost")
 
-        # We want to use loop.sendfile only if it supports native sendfile
-        # Otherwise we want to use our fallback.
+        # Use loop.sendfile() only when it can use native sendfile.
+        # Otherwise, use aiohttp's fallback, which is more efficient than
+        # asyncio's fallback for FileResponse.
+        #
+        # asyncio does not provide a public API for checking whether native
+        # sendfile is available for a transport. Calling loop.sendfile() with
+        # fallback=False is not enough: for fallback-only transports, asyncio
+        # raises a generic RuntimeError instead of SendfileNotAvailableError.
+        #
+        # The private _SendfileMode marker is the most reliable signal for
+        # asyncio transports, but third-party loops may not provide it.
 
         SendfileMode = asyncio.constants._SendfileMode  # type: ignore[attr-defined]
         mode = getattr(transport, "_sendfile_compatible", SendfileMode.TRY_NATIVE)
-        if mode in (SendfileMode.UNSUPPORTED, SendfileMode.FALLBACK):
+        if mode in (False, SendfileMode.UNSUPPORTED, SendfileMode.FALLBACK):
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
         try:
