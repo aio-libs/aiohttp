@@ -139,7 +139,7 @@ def test_simple_web_file_sendfile_fallback_response(
     async def handler(request: web.Request) -> web.FileResponse:
         transport = request.transport
         assert transport is not None
-        transport._sendfile_compatible = asyncio.constants._SendfileMode.UNSUPPORTED  # type: ignore[attr-defined]
+        transport._sendfile_compatible = False  # type: ignore[attr-defined]
         return web.FileResponse(path=benchmark_file.path)
 
     app = web.Application()
