@@ -10,6 +10,9 @@ on:
 jobs:
   clear-pr-unfinished:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'issue_comment' ||
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     permissions:
       id-token: write
       issues: write

@@ -103,9 +103,13 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
         set -euo pipefail
+        # Fetch the body fresh: github.event.pull_request.body is frozen at
+        # the webhook payload and stale on re-runs after a body edit.
+        PR_BODY=$(
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
+        )
         added=$(
           gh api --paginate \
             "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
@@ -744,7 +748,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v4.0.0
+      uses: pypa/cibuildwheel@v4.1.0
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing
