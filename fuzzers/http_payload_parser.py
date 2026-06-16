@@ -25,16 +25,16 @@ with atheris.instrument_imports():
     from aiohttp import StreamReader
     from aiohttp.base_protocol import BaseProtocol
     from aiohttp.http_exceptions import BadHttpMessage
-    from aiohttp.http_parser import HttpPayloadParser
+    from aiohttp.http_parser import HeadersParser, HttpPayloadParser
 
 LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
 PROTOCOL = BaseProtocol(LOOP)
 
 
 @atheris.instrument_func
-def TestOneInput(data):
+def TestOneInput(data: bytes) -> None:
     out = StreamReader(PROTOCOL, 2**16, loop=LOOP)
-    parser = HttpPayloadParser(out, LOOP, 32768)
+    parser = HttpPayloadParser(out, headers_parser=HeadersParser())
     with suppress(BadHttpMessage):
         parser.feed_data(data)
 
