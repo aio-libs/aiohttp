@@ -133,7 +133,7 @@ class FileResponse(StreamResponse):
 
         # Use loop.sendfile() only when it can use native sendfile.
         # Otherwise, use aiohttp's fallback, which is more efficient than
-        # asyncio's fallback for FileResponse. 
+        # asyncio's fallback for FileResponse.
         #
         # asyncio does not provide a public API for checking whether native
         # sendfile is available for a transport. Calling loop.sendfile() with
