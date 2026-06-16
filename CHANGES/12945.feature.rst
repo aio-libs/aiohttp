@@ -1,1 +1,2 @@
-Always use aiohttp's sendfile fallback if native sendfile is not available -- by :user:`tarasko`.
+Changed FileResponse to always use aiohttp's sendfile fallback if native sendfile is not available
+-- by :user:`tarasko`.
