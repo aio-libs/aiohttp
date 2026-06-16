@@ -4,6 +4,7 @@ codecov:
     manual_trigger: true
 
 comment:
+  layout: "newheader, diff, flags, components, files"
   require_head: false
   require_base: false
 
@@ -18,33 +19,3 @@ component_management:
     - component_id: tests
       paths:
         - tests/**
-
-flags:
-  library:
-    paths:
-    - aiohttp/
-  configs:
-    paths:
-    - requirements/
-    - ".git*"
-    - "*.toml"
-    - "*.yml"
-  changelog:
-    paths:
-    - CHANGES/
-    - CHANGES.rst
-  docs:
-    paths:
-    - docs/
-    - "*.md"
-    - "*.rst"
-    - "*.txt"
-  tests:
-    paths:
-    - tests/
-  tools:
-    paths:
-    - tools/
-  third-party:
-    paths:
-    - vendor/
