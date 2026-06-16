@@ -1,7 +1,7 @@
 # Extracted from `pyproject.toml` via `make sync-direct-runtime-deps`
 
 aiodns >= 3.3.0; sys_platform != 'android' and sys_platform != 'ios'
-aiofastnet >= 0.15.0; platform_python_implementation == 'CPython' and sys_platform != 'android' and sys_platform != 'ios'
+aiofastnet >= 0.16.0; platform_python_implementation == 'CPython' and sys_platform != 'android' and sys_platform != 'ios'
 aiohappyeyeballs >= 2.5.0
 aiosignal >= 1.4.0
 async-timeout >= 4.0, < 6.0 ; python_version < '3.11'

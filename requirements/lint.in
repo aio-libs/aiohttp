@@ -1,5 +1,5 @@
 aiodns
-aiofastnet >= 0.15.0
+aiofastnet >= 0.16.0
 backports.zstd; implementation_name == "cpython" and python_version < "3.14"
 blockbuster
 freezegun
