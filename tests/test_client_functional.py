@@ -1255,6 +1255,24 @@ async def test_read_timeout_on_write(aiohttp_client: AiohttpClient) -> None:
     assert result == b"foo"
 
 
+async def test_request_exception_cleanup_with_no_total_timeout(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    # With total=None, the timer handle is None; the exception-cleanup branch
+    # in _request must handle that path (regression coverage for `if handle:`).
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=500)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    timeout = aiohttp.ClientTimeout(total=None)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/", raise_for_status=True)
+
+
 async def test_timeout_on_reading_data(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:

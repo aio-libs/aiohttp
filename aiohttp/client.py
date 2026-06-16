@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
@@ -217,7 +216,7 @@ class _WSConnectOptions(TypedDict, total=False):
 
 @frozen_dataclass_decorator
 class ClientTimeout:
-    total: float | None = None
+    total: float | None = 5 * 60  # 5 minute default timeout
     connect: float | None = None
     sock_read: float | None = None
     sock_connect: float | None = None
@@ -237,16 +236,29 @@ class ClientTimeout:
     # to overwrite the defaults
 
     def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
+        # Ensure total is never lower than a more specific timeout, otherwise
+        # the latter would be silently capped by total and rendered useless.
+        # total=None means the user explicitly disabled the total timeout.
+        if self.total is None:
+            return
+        object.__setattr__(
+            self,
+            "total",
+            max(
+                self.total,
+                self.connect or 0,
+                self.sock_read or 0,
+                self.sock_connect or 0,
+            ),
+        )
+
+        if self.total == 0:
             raise ValueError(
                 "total timeout must be a positive number or None to disable, "
                 "got 0. Using 0 to disable timeouts is no longer supported, "
                 "use None instead."
             )
 
-
-# 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
@@ -342,7 +354,7 @@ class ClientSession:
         loop = asyncio.get_running_loop()
 
         if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
+            timeout = ClientTimeout()
         if not isinstance(timeout, ClientTimeout):
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "

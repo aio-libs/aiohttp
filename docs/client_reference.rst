@@ -2170,7 +2170,7 @@ Utilities
 ---------
 
 
-.. class:: ClientTimeout(*, total=None, connect=None, \
+.. class:: ClientTimeout(*, total=5*60, connect=None, \
                          sock_connect=None, sock_read=None)
    :canonical: aiohttp.client.ClientTimeout
 
@@ -2182,7 +2182,7 @@ Utilities
 
       Total number of seconds for the whole request.
 
-      :class:`float`, ``None`` by default.
+      :class:`float`, 300 seconds (5 min) by default.
 
    .. attribute:: connect
 
