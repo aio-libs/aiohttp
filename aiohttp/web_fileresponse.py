@@ -134,7 +134,7 @@ class FileResponse(StreamResponse):
         # We want to use loop.sendfile only if it supports native sendfile
         # Otherwise we want to use our fallback.
 
-        SendfileMode = asyncio.constants._SendfileMode # type: ignore[attr-defined]
+        SendfileMode = asyncio.constants._SendfileMode  # type: ignore[attr-defined]
         mode = getattr(transport, "_sendfile_compatible", SendfileMode.TRY_NATIVE)
         if mode in (SendfileMode.UNSUPPORTED, SendfileMode.FALLBACK):
             return await self._sendfile_fallback(writer, fobj, offset, count)
