@@ -24,9 +24,10 @@ import atheris  # noqa: I900
 with atheris.instrument_imports():
     from aiohttp import BodyPartReader
     from aiohttp.hdrs import CONTENT_TYPE
+    from aiohttp.helpers import HeadersDictProxy
 
 
-class FuzzStream:
+class FuzzStream(StreamReader):
     def __init__(self, content: bytes):
         self.content = io.BytesIO(content)
 
@@ -48,7 +49,7 @@ async def fuzz_bodypart_reader(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)
     obj = BodyPartReader(
         b"--:",
-        {CONTENT_TYPE: fdp.ConsumeUnicode(30)},
+        HeadersDictProxy({CONTENT_TYPE: fdp.ConsumeUnicode(30)}),
         FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),
     )
     if not obj.at_eof():
