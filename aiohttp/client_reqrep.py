@@ -85,7 +85,7 @@ _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 
 @frozen_dataclass_decorator
 class ClientTimeout:
-    total: float | None = None
+    total: float | None = 5 * 60  # 5 minute default timeout
     connect: float | None = None
     sock_read: float | None = None
     sock_connect: float | None = None
@@ -105,7 +105,23 @@ class ClientTimeout:
     # to overwrite the defaults
 
     def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
+        # Ensure total is never lower than a more specific timeout, otherwise
+        # the latter would be silently capped by total and rendered useless.
+        # total=None means the user explicitly disabled the total timeout.
+        if self.total is None:
+            return
+        object.__setattr__(
+            self,
+            "total",
+            max(
+                self.total,
+                self.connect or 0,
+                self.sock_read or 0,
+                self.sock_connect or 0,
+            ),
+        )
+
+        if self.total == 0:
             raise ValueError(
                 "total timeout must be a positive number or None to disable, "
                 "got 0. Using 0 to disable timeouts is no longer supported, "
