@@ -132,8 +132,8 @@ class FileResponse(StreamResponse):
             raise ConnectionResetError("Connection lost")
 
         try:
-            await loop.sendfile(transport, fobj, offset, count)
-        except NotImplementedError:
+            await loop.sendfile(transport, fobj, offset, count, fallback=False)
+        except (NotImplementedError, asyncio.SendfileNotAvailableError):
             return await self._sendfile_fallback(writer, fobj, offset, count)
 
         await super().write_eof()
