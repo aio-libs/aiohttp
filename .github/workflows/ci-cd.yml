@@ -347,6 +347,9 @@ jobs:
       # jlumbroso/free-disk-space approach, which ESPHome found slow), bind-mount
       # the roomier /mnt volume over the directories cibuildwheel fills: the
       # Android SDK/emulator install and the ~/.android AVD data.
+      # $ANDROID_HOME ships pre-populated on the runner, so its existing contents
+      # are copied into the /mnt backing dir before the bind mount to avoid
+      # shadowing the pre-installed SDK.
       run: |
         root_avail=$(df -k / | awk 'NR==2 {print $4}')
         mnt_avail=$(df -k /mnt 2>/dev/null | awk 'NR==2 {print $4}')
@@ -361,8 +364,14 @@ jobs:
             sudo mkdir -p "$mnt_dir"
             sudo chown "$USER:$USER" "$mnt_dir"
             mkdir -p "$target"
+            if [ -n "$(ls -A "$target" 2>/dev/null)" ]; then
+              echo "Preserving existing contents of $target"
+              sudo cp -a "$target/." "$mnt_dir/"
+            fi
             sudo mount --bind "$mnt_dir" "$target"
           done
+          echo "Disk space after bind mounts:"
+          df -h
         else
           echo "Using / for Android build files (/mnt unavailable or smaller)"
         fi
