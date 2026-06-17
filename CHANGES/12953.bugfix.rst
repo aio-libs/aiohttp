@@ -3,4 +3,4 @@ it had been returned to the pool. An idle pooled connection could be left with a
 pending read timeout that fired and poisoned it, so the next request reusing the
 connection failed immediately with :exc:`aiohttp.SocketTimeoutError`. The read
 timeout is now only rescheduled when resuming a transport that was actually
-paused for backpressure -- by :user:`daragok`.
+paused -- by :user:`daragok`.

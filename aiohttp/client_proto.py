@@ -196,16 +196,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._drop_timeout()
 
     def resume_reading(self, resume_parser: bool = True) -> None:
-        # Only (re)arm the read timeout when we are genuinely resuming a
-        # transport that was paused for backpressure -- i.e. a read is still
-        # in flight. resume_reading() is also called with the transport
-        # unpaused merely to resume the parser (e.g. decompression) or while
-        # draining an already-buffered, completed response; in those cases the
-        # connection may already be back in the keep-alive pool, and rescheduling
-        # would arm a timer on an idle pooled connection that later fires and
-        # poisons it. The in-flight read timeout is armed via start_timeout()
-        # and refreshed in data_received(), so this branch is the only one that
-        # must be guarded.
         was_paused = self._reading_paused
         super().resume_reading(resume_parser)
         if was_paused:
