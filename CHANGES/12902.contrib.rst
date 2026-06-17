@@ -1,3 +1,0 @@
-Free up disk space before the Android emulator install to reduce sporadic CI failures.
-
--- by :user:`aiolibsbot`
