@@ -340,6 +340,17 @@ jobs:
     - name: Cythonize
       run: |
         make cythonize
+    - name: Free up disk space for Android emulator
+      if: ${{ matrix.config.platform == 'android' }}
+      # The Android emulator install can run out of disk space on the default
+      # runner image, causing sporadic CI failures. Reclaim space by dropping
+      # large pre-installed toolchains we do not need. See aiohttp PR #12902.
+      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+      with:
+        # Keep the Android SDK (this job needs it); reclaim space from the
+        # large toolchains and caches we never touch. Skip the slow apt purge.
+        android: false
+        large-packages: false
     - name: Enable KVM group perms for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
       # This is normally done by cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
