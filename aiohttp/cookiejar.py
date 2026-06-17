@@ -31,6 +31,9 @@ CookieItem = Union[str, "Morsel[str]"]
 _FORMAT_PATH = "{}/{}".format
 _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 
+# RFC 6265 5.2.2: a Max-Age value is an optional "-" followed by ASCII digits.
+_MAX_AGE_RE = re.compile(r"-?[0-9]+")
+
 # The minimum number of scheduled cookie expirations before we start cleaning up
 # the expiration heap. This is a performance optimization to avoid cleaning up the
 # heap too often when there are only a few scheduled expirations.
@@ -372,7 +375,13 @@ class CookieJar(AbstractCookieJar):
             path = path.rstrip("/")
 
             if max_age := cookie["max-age"]:
+                # int() would also accept sign prefixes, underscores and
+                # surrounding whitespace, so a Max-Age other clients treat as
+                # malformed (and ignore, leaving a session cookie) would
+                # otherwise be honoured here and persist the cookie.
                 try:
+                    if not _MAX_AGE_RE.fullmatch(max_age):
+                        raise ValueError
                     delta_seconds = int(max_age)
                     max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
                     self._expire_cookie(max_age_expiration, domain, path, name)

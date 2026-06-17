@@ -1401,6 +1401,32 @@ def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     assert filtered["session"].value == "new-value"
 
 
+def test_update_cookies_ignores_non_rfc_max_age() -> None:
+    """Max-Age values RFC 6265 5.2.2 says to ignore must not persist a cookie."""
+    url: URL = URL("http://maxage.example.com/")
+    headers = [
+        "underscore=v; Max-Age=1_000",
+        "signed=v; Max-Age=+1000",
+        "valid=v; Max-Age=1000",
+    ]
+
+    with freeze_time("2024-01-01"):
+        jar: CookieJar = CookieJar()
+        jar.update_cookies_from_headers(headers, url)
+        sent_now: BaseCookie[str] = jar.filter_cookies(url)
+
+    assert {"underscore", "signed", "valid"} <= set(sent_now)
+
+    # 1800s later a real Max-Age=1000 cookie has expired, but the malformed
+    # ones were treated as session cookies (Max-Age ignored) and remain.
+    with freeze_time("2024-01-01 00:30:00"):
+        sent_later: BaseCookie[str] = jar.filter_cookies(url)
+
+    assert "valid" not in sent_later
+    assert "underscore" in sent_later
+    assert "signed" in sent_later
+
+
 def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     """Test that DummyCookieJar ignores update_cookies_from_headers."""
     jar: DummyCookieJar = DummyCookieJar()
