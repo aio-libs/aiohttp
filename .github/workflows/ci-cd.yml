@@ -342,40 +342,15 @@ jobs:
         make cythonize
     - name: Free up disk space for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
-      # The default runner volume (/) is too small for the Android SDK + emulator
-      # image. Instead of paying an `apt purge` cost on every run (the
-      # jlumbroso/free-disk-space approach, which ESPHome found slow), bind-mount
-      # the roomier /mnt volume over the directories cibuildwheel fills: the
-      # Android SDK/emulator install and the ~/.android AVD data.
-      # $ANDROID_HOME ships pre-populated on the runner, so its existing contents
-      # are copied into the /mnt backing dir before the bind mount to avoid
-      # shadowing the pre-installed SDK.
-      run: |
-        root_avail=$(df -k / | awk 'NR==2 {print $4}')
-        mnt_avail=$(df -k /mnt 2>/dev/null | awk 'NR==2 {print $4}' || true)
-        echo "Available space: / has ${root_avail}KB, /mnt has ${mnt_avail}KB"
-        if [ -n "$mnt_avail" ] && [ "$mnt_avail" -gt "$root_avail" ]; then
-          echo "Using /mnt for Android build files (more space available)"
-          for pair in \
-            "android-sdk:${ANDROID_HOME:-/usr/local/lib/android/sdk}" \
-            "android-home:$HOME/.android"; do
-            mnt_dir="/mnt/${pair%%:*}"
-            target="${pair#*:}"
-            sudo mkdir -p "$mnt_dir"
-            sudo chown "$USER:$USER" "$mnt_dir"
-            mkdir -p "$target"
-            if [ -n "$(ls -A "$target" 2>/dev/null)" ]; then
-              echo "Preserving existing contents of $target"
-              sudo cp -a "$target/." "$mnt_dir/"
-              sudo chown -R "$USER:$USER" "$mnt_dir"
-            fi
-            sudo mount --bind "$mnt_dir" "$target"
-          done
-          echo "Disk space after bind mounts:"
-          df -h
-        else
-          echo "Using / for Android build files (/mnt unavailable or smaller)"
-        fi
+      # The default runner volume is too small for the Android SDK + emulator
+      # image, causing sporadic install failures. Reclaim space by removing
+      # unused toolchains. The /mnt bind-mount approach does not work here:
+      # / and /mnt share one partition on the aio-libs runners, so it frees
+      # nothing. Keep android: false so the Android SDK itself is preserved.
+      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+      with:
+        android: false
+        large-packages: false
     - name: Enable KVM group perms for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
       # This is normally done by cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
