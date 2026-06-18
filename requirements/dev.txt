@@ -47,7 +47,7 @@ brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != 
     # via -r requirements/runtime-deps.in
 build==1.5.0
     # via pip-tools
-certifi==2026.5.20
+certifi==2026.6.17
     # via requests
 cffi==2.0.0
     # via
@@ -319,7 +319,7 @@ uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.5.0
+virtualenv==21.5.1
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common-base.in
