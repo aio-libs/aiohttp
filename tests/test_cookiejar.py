@@ -1,10 +1,14 @@
 import datetime
 import heapq
 import itertools
+import json
 import logging
+import os
+import stat
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
+from types import MappingProxyType
 from unittest import mock
 
 import pytest
@@ -770,6 +774,54 @@ async def test_dummy_cookie_jar() -> None:
         next(iter(dummy_jar))
     assert not dummy_jar.filter_cookies(URL("http://example.com/"))
     dummy_jar.clear()
+
+
+async def test_dummy_cookie_jar_cookies_property() -> None:
+    dummy_jar = DummyCookieJar()
+    assert dict(dummy_jar.cookies) == {}
+    assert dummy_jar.host_only_cookies == frozenset()
+
+
+async def test_cookie_jar_cookies_property() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie(
+        "shared-cookie=first; domain-cookie=second; Domain=example.com; Path=/; "
+    )
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    cookies = jar.cookies
+    # Should be a read-only view
+    assert isinstance(cookies, MappingProxyType)
+    # Should contain the stored cookies with their full attributes
+    found_names = {name for simple_cookie in cookies.values() for name in simple_cookie}
+    assert "shared-cookie" in found_names
+    assert "domain-cookie" in found_names
+    # Verify that domain attribute is preserved
+    for key, simple_cookie in cookies.items():
+        for name, morsel in simple_cookie.items():
+            if name == "domain-cookie":
+                assert morsel["domain"] == "example.com"
+                assert morsel["path"] == "/"
+
+
+async def test_cookie_jar_host_only_cookies_property() -> None:
+    jar = CookieJar()
+    # Cookies without an explicit Domain attribute are host-only
+    cookie = SimpleCookie("hostonly=value;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+
+    host_only = jar.host_only_cookies
+    assert isinstance(host_only, frozenset)
+    assert ("example.com", "hostonly") in host_only
+
+
+async def test_cookie_jar_cookies_property_immutable() -> None:
+    jar = CookieJar()
+    cookie = SimpleCookie("foo=bar;")
+    jar.update_cookies(cookie, URL("http://example.com/"))
+    cookies = jar.cookies
+    with pytest.raises(TypeError):
+        cookies[("new", "key")] = SimpleCookie()  # type: ignore[index]
 
 
 async def test_loose_cookies_types() -> None:
@@ -1572,6 +1624,140 @@ def test_save_load_json_partitioned_cookies(tmp_path: Path) -> None:
         assert s["path"] == lo["path"]
 
 
+def test_save_load_json_preserves_host_only_scope(tmp_path: Path) -> None:
+    """Verify save/load keeps host-only cookies off subdomains."""
+    file_path = tmp_path / "host_only.json"
+    issuer = URL("https://auth.example.com/login")
+    subdomain = URL("https://sub.auth.example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies({"sid": "hostonly"}, response_url=issuer)
+    assert "sid" not in jar_save.filter_cookies(subdomain)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert jar_load.host_only_cookies == frozenset({("auth.example.com", "sid")})
+    assert "sid" not in jar_load.filter_cookies(subdomain)
+    assert "sid" in jar_load.filter_cookies(issuer)
+
+
+def test_save_load_json_domain_cookie_still_matches_subdomain(
+    tmp_path: Path,
+) -> None:
+    """Verify save/load keeps an explicit Domain cookie valid for subdomains."""
+    file_path = tmp_path / "domain.json"
+    subdomain = URL("https://sub.example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=domaincookie; Domain=example.com"], URL("https://example.com/")
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert jar_load.host_only_cookies == frozenset()
+    assert "sid" in jar_load.filter_cookies(subdomain)
+
+
+def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
+    """Verify save/load restores the absolute deadline without resetting it."""
+    file_path = tmp_path / "max_age.json"
+    url = URL("https://example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Max-Age=3600; Domain=example.com"], url
+    )
+    expirations = dict(jar_save._expirations)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    # The deadline is restored as the original absolute time, not now + Max-Age.
+    assert dict(jar_load._expirations) == expirations
+    assert "sid" in jar_load.filter_cookies(url)
+
+
+def test_save_load_json_drops_expired_cookie(tmp_path: Path) -> None:
+    """Verify a cookie whose persisted deadline is in the past is dropped on load."""
+    file_path = tmp_path / "expired.json"
+    url = URL("https://example.com/")
+
+    # Save a future-expiring cookie, then rewrite its persisted deadline to the
+    # past so the cookie survives save() and the drop happens on the load path.
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Expires=Tue, 1 Jan 2999 12:00:00 GMT; Domain=example.com"], url
+    )
+    jar_save.save(file_path=file_path)
+    data = json.loads(file_path.read_text())
+    _, cookies = next(iter(data.items()))
+    cookies["sid"]["expires_timestamp"] = 0.0
+    file_path.write_text(json.dumps(data))
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert len(jar_load) == 0
+    assert "sid" not in jar_load.filter_cookies(url)
+
+
+def test_save_load_json_preserves_expires_deadline(tmp_path: Path) -> None:
+    """Verify a future Expires deadline survives a save/load roundtrip."""
+    file_path = tmp_path / "expires.json"
+    url = URL("https://example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=x; Expires=Tue, 1 Jan 2999 12:00:00 GMT; Domain=example.com"], url
+    )
+    expirations = dict(jar_save._expirations)
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert dict(jar_load._expirations) == expirations
+    assert "sid" in jar_load.filter_cookies(url)
+
+
+def test_load_json_old_format_without_new_keys(tmp_path: Path) -> None:
+    """Verify a file written by an older version (no host_only/expires_timestamp) loads."""
+    file_path = tmp_path / "old.json"
+    # Old schema: no host_only, no expires_timestamp; relative max-age morsel attr.
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|/": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "x",
+                        "coded_value": "x",
+                        "domain": "example.com",
+                        "max-age": "3600",
+                    }
+                }
+            }
+        )
+    )
+    url = URL("https://example.com/")
+
+    jar_load = CookieJar()
+    # No exception when the new keys are absent.
+    jar_load.load(file_path=file_path)
+
+    # A host-only cookie saved without Domain by an older version had no domain
+    # field, so it now loads as a domain cookie (the documented migration loss).
+    assert "sid" in jar_load.filter_cookies(url)
+    # max-age is rescheduled from load time rather than an absolute deadline.
+    assert any(key[2] == "sid" for key in jar_load._expirations)
+
+
 def test_json_format_is_safe(tmp_path: Path) -> None:
     """Verify the JSON file format cannot execute code on load."""
     import json
@@ -1622,6 +1808,40 @@ def test_save_load_json_secure_cookies(tmp_path: Path) -> None:
     assert cookie["secure"] is True
     assert cookie["httponly"] is True
     assert cookie["domain"] == "example.com"
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_creates_private_cookie_file(tmp_path: Path) -> None:
+    file_path = tmp_path / "private-cookies.json"
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert file_path.exists()
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o600
+
+
+@pytest.mark.skipif(
+    os.name != "posix", reason="POSIX permission bits are required for this test"
+)
+def test_save_preserves_existing_cookie_file_permissions(tmp_path: Path) -> None:
+    file_path = tmp_path / "existing-cookies.json"
+    file_path.write_text("{}", encoding="utf-8")
+    file_path.chmod(0o644)
+
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=abc123; Path=/"], URL("https://example.com/")
+    )
+
+    jar.save(file_path=file_path)
+
+    assert stat.S_IMODE(file_path.stat().st_mode) == 0o644
 
 
 async def test_cookie_jar_unsafe_property() -> None:

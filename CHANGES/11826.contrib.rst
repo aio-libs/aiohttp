@@ -1,7 +1,0 @@
-The coverage tool is now configured using the new native
-auto-discovered :file:`.coveragerc.toml` file
--- by :user:`webknjaz`.
-
-It is also set up to use the ``ctrace`` core that works
-around the performance issues in the ``sysmon`` tracer
-which is default under Python 3.14.

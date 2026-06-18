@@ -231,3 +231,4 @@ Table Of Contents
    misc
    external
    contributing
+   threat_model

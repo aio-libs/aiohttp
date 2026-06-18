@@ -2,10 +2,10 @@ import io
 from unittest import mock
 
 import pytest
+from pytest_aiohttp import AiohttpClient
 
 from aiohttp import FormData, web
 from aiohttp.http_writer import StreamWriter
-from aiohttp.pytest_plugin import AiohttpClient
 
 
 @pytest.fixture
@@ -82,11 +82,25 @@ def test_invalid_type_formdata_content_type(val: object) -> None:
         form.add_field("foo", "bar", content_type=val)  # type: ignore[arg-type]
 
 
-@pytest.mark.parametrize("val", ("\r", "\n", "a\ra\n", "a\na\r"))
+@pytest.mark.parametrize("val", ("\r", "\n", "a\ra\n", "a\na\r", "a\x00b"))
 def test_invalid_value_formdata_content_type(val: str) -> None:
     form = FormData()
     with pytest.raises(ValueError):
         form.add_field("foo", "bar", content_type=val)
+
+
+@pytest.mark.parametrize("val", ("\r", "\n", "a\ra\n", "a\na\r", "a\x00b"))
+def test_invalid_value_formdata_name(val: str) -> None:
+    form = FormData()
+    with pytest.raises(ValueError):
+        form.add_field(val, "bar")
+
+
+@pytest.mark.parametrize("val", ("\r", "\n", "a\ra\n", "a\na\r", "a\x00b"))
+def test_invalid_value_formdata_filename(val: str) -> None:
+    form = FormData()
+    with pytest.raises(ValueError):
+        form.add_field("foo", "bar", filename=val)
 
 
 def test_invalid_formdata_filename() -> None:

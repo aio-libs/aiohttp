@@ -4,24 +4,27 @@ import contextlib
 import gzip
 import pathlib
 import socket
-from collections.abc import Iterable, Iterator
+from collections.abc import AsyncIterator, Iterable
 from typing import Protocol
 from unittest import mock
 
 import pytest
 from _pytest.fixtures import SubRequest
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
 import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
-from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
 
 try:
     import brotlicffi as brotli
 except ImportError:
-    import brotli
+    try:
+        import brotli
+    except ImportError:
+        brotli = None
 
 try:
     import ssl
@@ -56,14 +59,17 @@ def hello_txt(
     }
     # Uncompressed file is not actually written to test it is not required.
     hello["gzip"].write_bytes(gzip.compress(HELLO_AIOHTTP))
-    hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
+    if brotli is not None:
+        hello["br"].write_bytes(brotli.compress(HELLO_AIOHTTP))
     hello["bzip2"].write_bytes(bz2.compress(HELLO_AIOHTTP))
     encoding = getattr(request, "param", None)
+    if encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
     return hello[encoding]
 
 
 @pytest.fixture(params=["sendfile", "no_sendfile"], ids=["sendfile", "no_sendfile"])
-def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Sender]:
+async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
@@ -75,7 +81,7 @@ def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Se
 
     if request.param == "no_sendfile":
         with mock.patch.object(
-            loop,
+            asyncio.get_running_loop(),
             "sendfile",
             autospec=True,
             spec_set=True,
@@ -87,7 +93,7 @@ def sender(request: SubRequest, loop: asyncio.AbstractEventLoop) -> Iterator[_Se
 
 
 @pytest.fixture
-def app_with_static_route(sender: _Sender) -> web.Application:
+async def app_with_static_route(sender: _Sender) -> web.Application:
     filename = "data.unknown_mime_type"
     filepath = pathlib.Path(__file__).parent / filename
 
@@ -276,6 +282,8 @@ async def test_static_file_custom_content_type_compress(
     expect_encoding: str,
 ) -> None:
     """Test that custom type with encoding is returned for unencoded requests."""
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
 
     async def handler(request: web.Request) -> web.FileResponse:
         resp = sender(hello_txt, chunk_size=16)
@@ -311,6 +319,8 @@ async def test_static_file_with_encoding_and_enable_compression(
     forced_compression: web.ContentCoding | None,
 ) -> None:
     """Test that enable_compression does not double compress when an encoded file is also present."""
+    if expect_encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
 
     async def handler(request: web.Request) -> web.FileResponse:
         resp = sender(hello_txt)
@@ -601,7 +611,7 @@ async def test_static_file_ssl(
     app.router.add_static("/static", dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
     conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    client = await aiohttp_client(server, connector=conn)
+    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
 
     resp = await client.get("/static/" + filename)
     assert 200 == resp.status

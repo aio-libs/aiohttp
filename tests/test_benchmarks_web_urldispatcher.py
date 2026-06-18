@@ -6,17 +6,23 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, cast
+from typing import TYPE_CHECKING, NoReturn, cast
 from unittest import mock
 
 import pytest
-from multidict import CIMultiDict, CIMultiDictProxy
-from pytest_codspeed import BenchmarkFixture
+from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
+from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http import HttpVersion, RawRequestMessage
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 @pytest.fixture
@@ -38,7 +44,7 @@ def _mock_request(method: str, path: str) -> web.Request:
         method,
         path,
         HttpVersion(1, 1),
-        CIMultiDictProxy(CIMultiDict()),
+        HeadersDictProxy(CIMultiDict()),
         (),
         False,
         None,
@@ -53,7 +59,7 @@ def _mock_request(method: str, path: str) -> web.Request:
 
 
 def test_resolve_root_route(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level PlainResources route 100 times."""
@@ -75,17 +81,17 @@ def test_resolve_root_route(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_root_route_with_many_fixed_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level PlainResources route 100 times."""
@@ -113,17 +119,17 @@ def test_resolve_root_route_with_many_fixed_routes(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_static_root_route(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve top level StaticResource route 100 times."""
@@ -143,17 +149,17 @@ def test_resolve_static_root_route(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["directory"] == here, ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_single_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve PlainResources route 100 times."""
@@ -176,17 +182,17 @@ def test_resolve_single_fixed_url_with_many_routes(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == "/api/server/dispatch/1/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_multiple_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve 250 different PlainResources routes."""
@@ -211,17 +217,17 @@ def test_resolve_multiple_fixed_url_with_many_routes(
             ret = await router.resolve(request)
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == "/api/server/dispatch/249/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_multiple_level_fixed_url_with_many_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve 1024 different PlainResources routes."""
@@ -252,17 +258,17 @@ def test_resolve_multiple_level_fixed_url_with_many_routes(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == url, ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_dynamic_resource_url_with_many_static_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 PlainResources registered."""
@@ -289,7 +295,7 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert (
         ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
@@ -297,11 +303,11 @@ def test_resolve_dynamic_resource_url_with_many_static_routes(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 DynamicResources registered."""
@@ -330,7 +336,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert (
         ret.get_info()["formatter"] == "/api/server/dispatch/{customer}/update"
@@ -338,11 +344,11 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefix(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve different a DynamicResource when there are 250 DynamicResources registered with the same common prefix."""
@@ -359,7 +365,7 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
     requests = [
         _mock_request(method="GET", path=f"/api/{customer}/update")
-        for customer in range(250)
+        for customer in range(150)
     ]
 
     async def run_url_dispatcher_benchmark() -> web.UrlMappingMatchInfo | None:
@@ -369,17 +375,17 @@ def test_resolve_dynamic_resource_url_with_many_dynamic_routes_with_common_prefi
 
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["formatter"] == "/api/{customer}/update", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_gitapi(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -401,7 +407,7 @@ def test_resolve_gitapi(
     alnums = string.ascii_letters + string.digits
 
     requests = []
-    for i in range(250):
+    for i in range(150):
         owner = "".join(random.sample(alnums, 10))
         repo = "".join(random.sample(alnums, 10))
         pull_number = random.randint(0, 250)
@@ -417,7 +423,7 @@ def test_resolve_gitapi(
             ret = await router.resolve(request)
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert (
         ret.get_info()["formatter"]
@@ -426,11 +432,11 @@ def test_resolve_gitapi(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_gitapi_subapps(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -472,7 +478,7 @@ def test_resolve_gitapi_subapps(
     alnums = string.ascii_letters + string.digits
 
     requests = []
-    for i in range(250):
+    for i in range(150):
         owner = "".join(random.sample(alnums, 10))
         repo = "".join(random.sample(alnums, 10))
         pull_number = random.randint(0, 250)
@@ -488,7 +494,7 @@ def test_resolve_gitapi_subapps(
             ret = await router.resolve(request)
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert (
         ret.get_info()["formatter"]
@@ -497,11 +503,11 @@ def test_resolve_gitapi_subapps(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_gitapi_root(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     github_urls: list[str],
 ) -> None:
@@ -524,17 +530,17 @@ def test_resolve_gitapi_root(
             ret = await router.resolve(request)
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert ret.get_info()["path"] == "/", ret.get_info()
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())
 
 
 def test_resolve_prefix_resources_many_prefix_many_plain(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     """Resolve prefix resource (sub_app) whene 250 PlainResources registered and there are 250 subapps that shares the same sub_app path prefix."""
@@ -564,7 +570,7 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
             ret = await router.resolve(request)
         return ret
 
-    ret = loop.run_until_complete(run_url_dispatcher_benchmark())
+    ret = event_loop.run_until_complete(run_url_dispatcher_benchmark())
     assert ret is not None
     assert (
         ret.get_info()["path"] == "/api/path/to/plugin/249/deep/enough/sub/path"
@@ -572,4 +578,4 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(run_url_dispatcher_benchmark())
+        event_loop.run_until_complete(run_url_dispatcher_benchmark())

@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
@@ -69,34 +68,30 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddlewareType, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, _cached_build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
-    BaseConnector,
-    NamedPipeConnector,
-    TCPConnector,
-    UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
+    DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
-    BasicAuth,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
-    basicauth_from_netrc,
-    frozen_dataclass_decorator,
+    _auth_header_from_netrc,
     get_env_proxy_for_url,
     netrc_from_env,
     sentinel,
@@ -180,16 +175,14 @@ class _RequestOptions(TypedDict, total=False):
     cookies: LooseCookies | None
     headers: LooseHeaders | None
     skip_auto_headers: Iterable[str] | None
-    auth: BasicAuth | None
     allow_redirects: bool
     max_redirects: int
-    compress: str | bool
+    compress: Literal["deflate", "gzip"] | bool
     chunked: bool | None
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
     read_until_eof: bool
     proxy: StrOrURL | None
-    proxy_auth: BasicAuth | None
     timeout: "ClientTimeout | _SENTINEL | None"
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
@@ -211,51 +204,16 @@ class _WSConnectOptions(TypedDict, total=False):
     autoclose: bool
     autoping: bool
     heartbeat: float | None
-    auth: BasicAuth | None
     origin: str | None
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    proxy_auth: BasicAuth | None
     ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
     max_msg_size: int
 
-
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: float | None = None
-    connect: float | None = None
-    sock_read: float | None = None
-    sock_connect: float | None = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
-
-    def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
-            raise ValueError(
-                "total timeout must be a positive number or None to disable, "
-                "got 0. Using 0 to disable timeouts is no longer supported, "
-                "use None instead."
-            )
-
-
-# 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
@@ -293,6 +251,31 @@ def _recover_redirect_location(r_url: str, charset: str = "latin-1") -> str:
             return raw.decode("latin-1")
 
 
+# Module-level (not a closure) so it has a stable identity for the
+# ``_cached_build_client_middlewares`` cache key.
+async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
+    connector = req._session._connector
+    assert connector is not None
+    try:
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+    except asyncio.TimeoutError as exc:
+        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+
+    assert conn.protocol is not None
+    conn.protocol.set_response_params(**req._response_params)
+    try:
+        resp = await req._send(conn)
+        try:
+            await resp.start(conn)
+        except BaseException:
+            resp.close()
+            raise
+    except BaseException:
+        conn.close()
+        raise
+    return resp
+
+
 @final
 class ClientSession:
     """First-class interface for making HTTP requests."""
@@ -305,7 +288,6 @@ class ClientSession:
         "_loop",
         "_cookie_jar",
         "_connector_owner",
-        "_default_auth",
         "_version",
         "_json_serialize",
         "_json_serialize_bytes",
@@ -326,7 +308,6 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
-        "_default_proxy_auth",
         "_retry_connection",
         "_middlewares",
     )
@@ -339,9 +320,7 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         skip_auto_headers: Iterable[str] | None = None,
-        auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
@@ -356,7 +335,7 @@ class ClientSession:
         trust_env: bool = False,
         requote_redirect_url: bool = True,
         trace_configs: list[TraceConfig[object]] | None = None,
-        read_bufsize: int = 2**16,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
         max_field_size: int = 8190,
         max_headers: int = 128,
@@ -380,7 +359,7 @@ class ClientSession:
         loop = asyncio.get_running_loop()
 
         if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
+            timeout = ClientTimeout()
         if not isinstance(timeout, ClientTimeout):
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "
@@ -419,7 +398,6 @@ class ClientSession:
             self._cookie_jar.update_cookies(cookies)
 
         self._connector_owner = connector_owner
-        self._default_auth = auth
         self._version = version
         self._json_serialize = json_serialize
         self._json_serialize_bytes = json_serialize_bytes
@@ -454,9 +432,8 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
-        self._default_proxy_auth = proxy_auth
         self._retry_connection: bool = True
-        self._middlewares = middlewares
+        self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
@@ -509,10 +486,9 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         skip_auto_headers: Iterable[str] | None = None,
-        auth: BasicAuth | None = None,
         allow_redirects: bool = True,
         max_redirects: int = 10,
-        compress: str | bool = False,
+        compress: Literal["deflate", "gzip"] | bool = False,
         chunked: bool | None = None,
         expect100: bool = False,
         raise_for_status: (
@@ -520,7 +496,6 @@ class ClientSession:
         ) = None,
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
@@ -585,13 +560,12 @@ class ClientSession:
 
         if proxy is None:
             proxy = self._default_proxy
-        if proxy_auth is None:
-            proxy_auth = self._default_proxy_auth
 
+        resolved_proxy_headers: CIMultiDict[str] | None
         if proxy is None:
-            proxy_headers = None
+            resolved_proxy_headers = None
         else:
-            proxy_headers = self._prepare_headers(proxy_headers)
+            resolved_proxy_headers = self._prepare_headers(proxy_headers)
             try:
                 proxy = URL(proxy)
             except ValueError as e:
@@ -653,43 +627,29 @@ class ClientSession:
                             else InvalidUrlClientError
                         )
                         raise err_exc_cls(url)
-                    # If `auth` was passed for an already authenticated URL,
-                    # disallow only if this is the initial URL; this is to avoid issues
-                    # with sketchy redirects that are not the caller's responsibility
-                    if not history and (auth and auth_from_url):
-                        raise ValueError(
-                            "Cannot combine AUTH argument with "
-                            "credentials encoded in URL"
-                        )
 
-                    # Override the auth with the one from the URL only if we
-                    # have no auth, or if we got an auth from a redirect URL
-                    if auth is None or (history and auth_from_url is not None):
-                        auth = auth_from_url
-
-                    if (
-                        auth is None
-                        and self._default_auth
-                        and (
-                            not self._base_url or self._base_url_origin == url.origin()
-                        )
+                    if auth_from_url is not None:
+                        # URL-embedded credentials override any Authorization
+                        # header already present (e.g. carried from a previous
+                        # redirect). On the initial request, refuse to silently
+                        # shadow an explicit Authorization header.
+                        if not history and hdrs.AUTHORIZATION in headers:
+                            raise ValueError(
+                                "Cannot combine AUTHORIZATION header with "
+                                "credentials encoded in URL"
+                            )
+                        headers[hdrs.AUTHORIZATION] = auth_from_url
+                    elif (
+                        self._trust_env
+                        and url.host is not None
+                        and hdrs.AUTHORIZATION not in headers
                     ):
-                        auth = self._default_auth
-
-                    # Try netrc if auth is still None and trust_env is enabled.
-                    if auth is None and self._trust_env and url.host is not None:
-                        auth = await self._loop.run_in_executor(
+                        # Fall back to ~/.netrc credentials when trust_env is set.
+                        netrc_auth = await self._loop.run_in_executor(
                             None, self._get_netrc_auth, url.host
                         )
-
-                    # It would be confusing if we support explicit
-                    # Authorization header with auth argument
-                    if auth is not None and hdrs.AUTHORIZATION in headers:
-                        raise ValueError(
-                            "Cannot combine AUTHORIZATION header "
-                            "with AUTH argument or credentials "
-                            "encoded in URL"
-                        )
+                        if netrc_auth is not None:
+                            headers[hdrs.AUTHORIZATION] = netrc_auth
 
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
@@ -707,10 +667,30 @@ class ClientSession:
                     if proxy is not None:
                         proxy_ = URL(proxy)
                     elif self._trust_env:
+                        # Re-resolve per iteration; drop stale env-proxy auth so
+                        # a redirect that switches proxies can't leak credentials.
+                        resolved_proxy_headers = None
                         with suppress(LookupError):
-                            proxy_, proxy_auth = await asyncio.to_thread(
+                            proxy_, env_proxy_auth = await asyncio.to_thread(
                                 get_env_proxy_for_url, url
                             )
+                            if env_proxy_auth is not None:
+                                resolved_proxy_headers = CIMultiDict(
+                                    {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
+                                )
+
+                    response_params: ResponseParams = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                        "max_headers": max_headers,
+                    }
 
                     req = self._request_class(
                         method,
@@ -720,7 +700,6 @@ class ClientSession:
                         skip_auto_headers=skip_headers,
                         data=data,
                         cookies=all_cookies,
-                        auth=auth,
                         version=version,
                         compress=compress,
                         chunked=chunked,
@@ -728,62 +707,24 @@ class ClientSession:
                         loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy_,
-                        proxy_auth=proxy_auth,
+                        response_params=response_params,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
-                        proxy_headers=proxy_headers,
+                        proxy_headers=resolved_proxy_headers,
                         traces=traces,
                         trust_env=self.trust_env,
                     )
 
-                    async def _connect_and_send_request(
-                        req: ClientRequest,
-                    ) -> ClientResponse:
-                        # connection timeout
-                        assert self._connector is not None
-                        try:
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
-                        except asyncio.TimeoutError as exc:
-                            raise ConnectionTimeoutError(
-                                f"Connection timeout to host {req.url}"
-                            ) from exc
-
-                        assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                            max_headers=max_headers,
-                        )
-                        try:
-                            resp = await req._send(conn)
-                            try:
-                                await resp.start(conn)
-                            except BaseException:
-                                resp.close()
-                                raise
-                        except BaseException:
-                            conn.close()
-                            raise
-                        return resp
-
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
+                        self._middlewares if middlewares is None else tuple(middlewares)
                     )
 
                     if effective_middlewares:
-                        handler = build_client_middlewares(
+                        handler = _cached_build_client_middlewares(
                             _connect_and_send_request, effective_middlewares
                         )
                     else:
@@ -910,7 +851,7 @@ class ClientSession:
                             ) from origin_val_err
 
                         if url.origin() != redirect_origin:
-                            auth = None
+                            cookies = None
                             headers.pop(hdrs.AUTHORIZATION, None)
                             headers.pop(hdrs.COOKIE, None)
                             headers.pop(hdrs.PROXY_AUTHORIZATION, None)
@@ -928,9 +869,7 @@ class ClientSession:
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
 
-            if raise_for_status is None:
-                pass
-            elif callable(raise_for_status):
+            if callable(raise_for_status):
                 await raise_for_status(resp)
             elif raise_for_status:
                 resp.raise_for_status()
@@ -1003,12 +942,10 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: float | None = None,
-        auth: BasicAuth | None = None,
         origin: str | None = None,
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
@@ -1027,12 +964,10 @@ class ClientSession:
                 autoclose=autoclose,
                 autoping=autoping,
                 heartbeat=heartbeat,
-                auth=auth,
                 origin=origin,
                 params=params,
                 headers=headers,
                 proxy=proxy,
-                proxy_auth=proxy_auth,
                 ssl=ssl,
                 server_hostname=server_hostname,
                 proxy_headers=proxy_headers,
@@ -1082,12 +1017,10 @@ class ClientSession:
         autoclose: bool = True,
         autoping: bool = True,
         heartbeat: float | None = None,
-        auth: BasicAuth | None = None,
         origin: str | None = None,
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        proxy_auth: BasicAuth | None = None,
         ssl: SSLContext | bool | Fingerprint = True,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
@@ -1157,9 +1090,7 @@ class ClientSession:
             params=params,
             headers=real_headers,
             read_until_eof=False,
-            auth=auth,
             proxy=proxy,
-            proxy_auth=proxy_auth,
             ssl=ssl,
             server_hostname=server_hostname,
             proxy_headers=proxy_headers,
@@ -1185,7 +1116,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
+            if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
@@ -1255,7 +1186,7 @@ class ClientSession:
 
             transport = conn.transport
             assert transport is not None
-            reader = WebSocketDataQueue(conn_proto, 2**16, loop=self._loop)
+            reader = WebSocketDataQueue(conn_proto, DEFAULT_CHUNK_SIZE, loop=self._loop)
             writer = WebSocketWriter(
                 conn_proto,
                 transport,
@@ -1301,16 +1232,15 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def _get_netrc_auth(self, host: str) -> BasicAuth | None:
-        """
-        Get auth from netrc for the given host.
+    def _get_netrc_auth(self, host: str) -> str | None:
+        """Return an ``Authorization`` header value for ``host`` from netrc.
 
-        This method is designed to be called in an executor to avoid
-        blocking I/O in the event loop.
+        Designed to be called in an executor to avoid blocking I/O on the
+        event loop.
         """
         netrc_obj = netrc_from_env()
         try:
-            return basicauth_from_netrc(netrc_obj, host)
+            return _auth_header_from_netrc(netrc_obj, host)
         except LookupError:
             return None
 
@@ -1472,11 +1402,6 @@ class ClientSession:
     def skip_auto_headers(self) -> frozenset[istr]:
         """Headers for which autogeneration should be skipped"""
         return self._skip_auto_headers
-
-    @property
-    def auth(self) -> BasicAuth | None:
-        """An object that represents HTTP Basic Authorization"""
-        return self._default_auth
 
     @property
     def json_serialize(self) -> JSONEncoder:
@@ -1641,8 +1566,6 @@ else:
         headers - (optional) Dictionary of HTTP Headers to send with
         the request
         cookies - (optional) Dict object to send with the request
-        auth - (optional) BasicAuth named tuple represent HTTP Basic Auth
-        auth - aiohttp.helpers.BasicAuth
         allow_redirects - (optional) If set to False, do not follow
         redirects
         version - Request HTTP version.

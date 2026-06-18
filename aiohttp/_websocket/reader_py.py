@@ -213,12 +213,6 @@ class WebSocketReader:
                 if opcode != OP_CODE_CONTINUATION:
                     self._opcode = opcode
                 self._partial += payload
-                if self._max_msg_size and len(self._partial) >= self._max_msg_size:
-                    raise WebSocketError(
-                        WSCloseCode.MESSAGE_TOO_BIG,
-                        f"Message size {len(self._partial)} "
-                        f"exceeds limit {self._max_msg_size}",
-                    )
                 return
 
             has_partial = bool(self._partial)
@@ -240,13 +234,6 @@ class WebSocketReader:
                 self._partial.clear()
             else:
                 assembled_payload = payload
-
-            if self._max_msg_size and len(assembled_payload) >= self._max_msg_size:
-                raise WebSocketError(
-                    WSCloseCode.MESSAGE_TOO_BIG,
-                    f"Message size {len(assembled_payload)} "
-                    f"exceeds limit {self._max_msg_size}",
-                )
 
             # Decompress process must to be done after all packets
             # received.
@@ -382,6 +369,19 @@ class WebSocketReader:
                         "Received frame with non-zero reserved bits",
                     )
 
+                if opcode not in {
+                    OP_CODE_CONTINUATION,
+                    OP_CODE_TEXT,
+                    OP_CODE_BINARY,
+                    OP_CODE_CLOSE,
+                    OP_CODE_PING,
+                    OP_CODE_PONG,
+                }:
+                    raise WebSocketError(
+                        WSCloseCode.PROTOCOL_ERROR,
+                        f"Unexpected opcode={opcode!r}",
+                    )
+
                 if opcode > 0x7 and fin == 0:
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
@@ -433,6 +433,22 @@ class WebSocketReader:
                     start_pos += 8
                 else:
                     self._payload_bytes_to_read = len_flag
+
+                # Reject oversized data frames before buffering any payload
+                # bytes. Control frames are capped at 125 bytes (checked in
+                # READ_HEADER) so only text/binary/continuation need this.
+                if self._max_msg_size and self._frame_opcode in {
+                    OP_CODE_TEXT,
+                    OP_CODE_BINARY,
+                    OP_CODE_CONTINUATION,
+                }:
+                    projected_size = self._payload_bytes_to_read + len(self._partial)
+                    if projected_size >= self._max_msg_size:
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            f"Message size {projected_size} "
+                            f"exceeds limit {self._max_msg_size}",
+                        )
 
                 self._state = READ_PAYLOAD_MASK if self._has_mask else READ_PAYLOAD
 

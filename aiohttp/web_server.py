@@ -123,4 +123,11 @@ class Server(Generic[_Request]):
                 for k, v in self._kwargs.items()
                 if k in ["debug", "access_log_class"]
             }
-            return RequestHandler(self, loop=self._loop, **kwargs)
+            handler = RequestHandler(self, loop=self._loop, **kwargs)
+            handler.logger.warning(
+                "Failed to create request handler with custom kwargs %r, "
+                "falling back to filtered kwargs. This may indicate a "
+                "misconfiguration.",
+                self._kwargs,
+            )
+            return handler

@@ -1,2 +1,0 @@
-Fixed redirects with consumed non-rewindable request bodies to raise
-:class:`aiohttp.ClientPayloadError` instead of silently sending an empty body.

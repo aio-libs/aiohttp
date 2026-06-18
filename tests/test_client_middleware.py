@@ -5,6 +5,7 @@ import socket
 from typing import NoReturn
 
 import pytest
+from pytest_aiohttp import AiohttpServer
 
 from aiohttp import (
     ClientError,
@@ -17,9 +18,11 @@ from aiohttp import (
     web,
 )
 from aiohttp.abc import ResolveResult
-from aiohttp.client_middlewares import build_client_middlewares
+from aiohttp.client_middlewares import (
+    _cached_build_client_middlewares,
+    build_client_middlewares,
+)
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.pytest_plugin import AiohttpServer
 from aiohttp.resolver import ThreadedResolver
 from aiohttp.tracing import Trace
 
@@ -443,6 +446,76 @@ async def test_build_client_middlewares_empty() -> None:
     # Test empty case
     result = build_client_middlewares(handler, ())
     assert result is handler  # Should return handler unchanged
+
+
+async def test_middleware_chain_cached_across_requests(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """The middleware chain is built once and reused for subsequent requests."""
+
+    async def server_handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    async def passthrough(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        return await handler(request)
+
+    app = web.Application()
+    app.router.add_get("/", server_handler)
+    server = await aiohttp_server(app)
+
+    _cached_build_client_middlewares.cache_clear()
+
+    async with ClientSession(middlewares=(passthrough,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+        info = _cached_build_client_middlewares.cache_info()
+        assert (info.hits, info.misses) == (0, 1)
+
+        for _ in range(3):
+            async with session.get(server.make_url("/")) as resp:
+                assert resp.status == 200
+
+        info = _cached_build_client_middlewares.cache_info()
+        assert (info.hits, info.misses) == (3, 1)
+
+
+async def test_per_request_middleware_uses_separate_cache_entry(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A per-request middleware tuple is a distinct cache key from the session's."""
+
+    async def server_handler(request: web.Request) -> web.Response:
+        return web.Response(text="OK")
+
+    async def mw_a(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        return await handler(request)
+
+    async def mw_b(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        return await handler(request)
+
+    app = web.Application()
+    app.router.add_get("/", server_handler)
+    server = await aiohttp_server(app)
+
+    _cached_build_client_middlewares.cache_clear()
+
+    async with ClientSession(middlewares=(mw_a,)) as session:
+        async with session.get(server.make_url("/")) as resp:
+            assert resp.status == 200
+        async with session.get(server.make_url("/"), middlewares=(mw_b,)) as resp:
+            assert resp.status == 200
+        async with session.get(server.make_url("/"), middlewares=(mw_b,)) as resp:
+            assert resp.status == 200
+
+        info = _cached_build_client_middlewares.cache_info()
+        # mw_a session-level: 1 miss; mw_b per-request: 1 miss + 1 hit.
+        assert (info.hits, info.misses) == (1, 2)
 
 
 async def test_client_middleware_class_based_auth(
@@ -955,7 +1028,7 @@ async def test_middleware_uses_session_avoids_recursion_with_path_check(
         if request.url.path != "/log":
             # Use the session from the request to make the logging call
             async with request.session.post(
-                f"http://localhost:{log_server.port}/log",
+                log_server.make_url("/log"),
                 json={"method": str(request.method), "url": str(request.url)},
             ) as resp:
                 assert resp.status == 200
@@ -1023,7 +1096,7 @@ async def test_middleware_uses_session_avoids_recursion_with_disabled_middleware
         # Use the session from the request to make the logging call
         # Disable middleware to avoid infinite recursion
         async with request.session.post(
-            f"http://localhost:{log_server.port}/log",
+            log_server.make_url("/log"),
             json={"method": str(request.method), "url": str(request.url)},
             middlewares=(),  # This prevents infinite recursion
         ) as resp:

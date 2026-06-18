@@ -4,13 +4,19 @@ import asyncio
 import sys
 from collections.abc import Callable
 from http.cookies import BaseCookie
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+import pytest
 from multidict import CIMultiDict
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
-from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientRequestArgs,
+    ClientResponse,
+    ClientTimeout,
+    ResponseParams,
+)
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
@@ -22,6 +28,11 @@ if sys.version_info >= (3, 11):
     _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
 else:
     _RequestMaker = Any
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 async def test_client_request_update_cookies(
@@ -41,7 +52,7 @@ async def test_client_request_update_cookies(
 
 
 def test_create_client_request_with_cookies(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
@@ -50,22 +61,36 @@ def test_create_client_request_with_cookies(
     cookies = cookie_jar.filter_cookies(url)
     assert cookies["cookie"].value == "value"
     timer = TimerNoop()
+    timeout = ClientTimeout()
     traces: list[Trace] = []
     headers = CIMultiDict[str]()
+    response_params: ResponseParams = {
+        "timer": timer,
+        "skip_payload": True,
+        "read_until_eof": True,
+        "auto_decompress": True,
+        "read_timeout": timeout.sock_read,
+        "read_bufsize": 2**16,
+        "timeout_ceil_threshold": 5,
+        "max_line_size": 8190,
+        "max_field_size": 8190,
+        "max_headers": 128,
+    }
 
     @benchmark
     def _run() -> None:
         ClientRequest(
             method="get",
             url=url,
-            loop=loop,
+            loop=event_loop,
             params=None,
             skip_auto_headers=None,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             proxy_headers=None,
+            response_params=response_params,
             timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
@@ -74,7 +99,6 @@ def test_create_client_request_with_cookies(
             headers=headers,
             data=None,
             cookies=cookies,
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
@@ -83,28 +107,42 @@ def test_create_client_request_with_cookies(
 
 
 def test_create_client_request_with_headers(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
 ) -> None:
     url = URL("http://python.org")
     timer = TimerNoop()
+    timeout = ClientTimeout()
     traces: list[Trace] = []
     headers = CIMultiDict({"header": "value", "another": "header"})
     cookies = BaseCookie[str]()
+    response_params: ResponseParams = {
+        "timer": timer,
+        "skip_payload": True,
+        "read_until_eof": True,
+        "auto_decompress": True,
+        "read_timeout": timeout.sock_read,
+        "read_bufsize": 2**16,
+        "timeout_ceil_threshold": 5,
+        "max_line_size": 8190,
+        "max_field_size": 8190,
+        "max_headers": 128,
+    }
 
     @benchmark
     def _run() -> None:
         ClientRequest(
             method="get",
             url=url,
-            loop=loop,
+            loop=event_loop,
             params=None,
             skip_auto_headers=None,
             response_class=ClientResponse,
             proxy=None,
-            proxy_auth=None,
             proxy_headers=None,
+            response_params=response_params,
             timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             traces=traces,
@@ -113,7 +151,6 @@ def test_create_client_request_with_headers(
             headers=headers,
             data=None,
             cookies=cookies,
-            auth=None,
             version=HttpVersion11,
             compress=False,
             chunked=None,
@@ -122,7 +159,7 @@ def test_create_client_request_with_headers(
 
 
 def test_send_client_request_one_hundred(
-    loop: asyncio.AbstractEventLoop,
+    event_loop: asyncio.AbstractEventLoop,
     benchmark: BenchmarkFixture,
     make_client_request: _RequestMaker,
 ) -> None:
@@ -132,7 +169,7 @@ def test_send_client_request_one_hundred(
         """Need async context."""
         return make_client_request("get", url)
 
-    req = loop.run_until_complete(make_req())
+    req = event_loop.run_until_complete(make_req())
 
     class MockTransport(asyncio.Transport):
         """Mock transport for testing that do no real I/O."""
@@ -145,7 +182,6 @@ def test_send_client_request_one_hundred(
             """Swallow writes."""
 
     class MockProtocol(asyncio.BaseProtocol):
-
         def __init__(self) -> None:
             self.transport = MockTransport()
 
@@ -160,7 +196,6 @@ def test_send_client_request_one_hundred(
             """Swallow start_timeout."""
 
     class MockConnector:
-
         def __init__(self) -> None:
             self.force_close = False
 
@@ -178,4 +213,4 @@ def test_send_client_request_one_hundred(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(send_requests())
+        event_loop.run_until_complete(send_requests())

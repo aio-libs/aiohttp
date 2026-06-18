@@ -254,7 +254,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
             DeprecationWarning,
             stacklevel=2,
         )
-        return asyncio.get_event_loop().get_debug()
+        return asyncio.get_running_loop().get_debug()
 
     def _reg_subapp_signals(self, subapp: "Application") -> None:
         def reg_handler(signame: str) -> None:

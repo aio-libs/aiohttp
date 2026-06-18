@@ -1,9 +1,8 @@
 """HTTP related errors."""
 
 import asyncio
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Union
-
-from multidict import MultiMapping
 
 from .typedefs import StrOrURL
 
@@ -66,6 +65,8 @@ class ClientResponseError(ClientError):
     headers: Response headers.
     """
 
+    args: tuple[RequestInfo, tuple[ClientResponse, ...]]
+
     def __init__(
         self,
         request_info: RequestInfo,
@@ -73,7 +74,7 @@ class ClientResponseError(ClientError):
         *,
         status: int | None = None,
         message: str = "",
-        headers: MultiMapping[str] | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         self.request_info = request_info
         if status is not None:
@@ -138,6 +139,8 @@ class ClientConnectorError(ClientOSError):
     Raised in :class:`aiohttp.connector.TCPConnector` if
         a connection can not be established.
     """
+
+    args: tuple[ConnectionKey, OSError]
 
     def __init__(self, connection_key: ConnectionKey, os_error: OSError) -> None:
         self._conn_key = connection_key
@@ -216,6 +219,8 @@ class ServerConnectionError(ClientConnectionError):
 class ServerDisconnectedError(ServerConnectionError):
     """Server disconnected."""
 
+    args: tuple[RawResponseMessage | str]
+
     def __init__(self, message: RawResponseMessage | str | None = None) -> None:
         if message is None:
             message = "Server disconnected"
@@ -238,6 +243,8 @@ class SocketTimeoutError(ServerTimeoutError):
 
 class ServerFingerprintMismatch(ServerConnectionError):
     """SSL certificate does not match expected fingerprint."""
+
+    args: tuple[bytes, bytes, str, int]
 
     def __init__(self, expected: bytes, got: bytes, host: str, port: int) -> None:
         self.expected = expected
@@ -262,6 +269,8 @@ class InvalidURL(ClientError, ValueError):
     """
 
     # Derive from ValueError for backward compatibility
+
+    args: tuple[StrOrURL] | tuple[StrOrURL, str]
 
     def __init__(self, url: StrOrURL, description: str | None = None) -> None:
         # The type of url is not yarl.URL because the exception can be raised
@@ -343,6 +352,7 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     """Response certificate error."""
 
     _conn_key: ConnectionKey
+    args: tuple[ConnectionKey, Exception]
 
     def __init__(
         # TODO: If we require ssl in future, this can become ssl.CertificateError
