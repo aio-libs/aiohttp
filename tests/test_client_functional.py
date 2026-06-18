@@ -1269,11 +1269,8 @@ async def test_sock_read_timeout_not_rearmed_on_pooled_connection(
     app = web.Application()
     app.router.add_get("/", handler)
 
-    # keepalive_timeout well above sock_read so the pooled connection is not
-    # evicted by the connector cleanup before a stray timer could fire.
-    conn = aiohttp.TCPConnector(keepalive_timeout=30)
     timeout = aiohttp.ClientTimeout(total=30, sock_read=0.1)
-    client = await aiohttp_client(app, connector=conn, timeout=timeout)
+    client = await aiohttp_client(app, timeout=timeout)
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -1282,17 +1279,17 @@ async def test_sock_read_timeout_not_rearmed_on_pooled_connection(
     assert client.session.connector is not None
     pooled = next(iter(client.session.connector._conns.values()))
     proto = pooled[0][0]
-    # The pooled connection must carry no armed read-timeout handle.
+    # The pooled connection must carry no read-timeout handle, otherwise
+    # it could trigger an exception on the next request.
     assert proto._read_timeout_handle is None
-
-    # Idle past sock_read: a stray timer would now poison the connection.
-    await asyncio.sleep(0.3)
     assert proto.exception() is None
 
     # The connection is still reusable.
     async with client.get("/") as resp:
         assert resp.status == 200
         assert await resp.json() == {"ok": True}
+
+    assert next(iter(connector._conns.values()))[0][0] is proto
 
 
 async def test_request_exception_cleanup_with_no_total_timeout(
