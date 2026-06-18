@@ -1289,7 +1289,7 @@ async def test_sock_read_timeout_not_rearmed_on_pooled_connection(
         assert resp.status == 200
         assert await resp.json() == {"ok": True}
 
-    assert next(iter(connector._conns.values()))[0][0] is proto
+    assert next(iter(client.session.connector._conns.values()))[0][0] is proto
 
 
 async def test_request_exception_cleanup_with_no_total_timeout(
