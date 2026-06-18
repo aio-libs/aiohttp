@@ -17,5 +17,8 @@ global-exclude *.lib
 global-exclude *.dll
 global-exclude *.a
 global-exclude *.obj
+graft vendor
+global-exclude .hash
+prune **/.hash
 exclude aiohttp/*.html
 prune docs/_build
