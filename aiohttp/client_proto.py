@@ -190,8 +190,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._drop_timeout()
 
     def resume_reading(self, resume_parser: bool = True) -> None:
+        was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        self._reschedule_timeout()
+        if was_paused:
+            self._reschedule_timeout()
 
     def set_exception(
         self,
