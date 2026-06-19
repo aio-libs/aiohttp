@@ -347,7 +347,7 @@ jobs:
       # unused toolchains. The /mnt bind-mount approach does not work here:
       # / and /mnt share one partition on the aio-libs runners, so it frees
       # nothing. Keep android: false so the Android SDK itself is preserved.
-      uses: jlumbroso/free-disk-space@54081f138730dfa15788a46383842cd2f914a1be  # v1.3.1
+      uses: BRAINSia/free-disk-space@v2.1.3
       with:
         android: false
         large-packages: false
