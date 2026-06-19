@@ -79,7 +79,7 @@ def parse_content_disposition(
         return bool(string) and TOKEN >= set(string)
 
     def is_quoted(string: str) -> bool:
-        return string[0] == string[-1] == '"'
+        return len(string) >= 2 and string[0] == string[-1] == '"'
 
     def is_rfc5987(string: str) -> bool:
         return is_token(string) and string.count("'") == 2
