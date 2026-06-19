@@ -346,6 +346,7 @@ jobs:
       with:
         android: false
         docker-images: false
+        mandb: false
         large-packages: false
     - name: Enable KVM group perms for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
