@@ -31,6 +31,11 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
+
 
 class _Sender(Protocol):
     def __call__(
@@ -73,20 +78,32 @@ async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
-        ret = web.FileResponse(path, chunk_size=chunk_size)
-        is_patched = web_fileresponse_module.sendfile is sendfile_mock
-        assert is_patched if request.param == "no_sendfile" else not is_patched
-        return ret
+        if request.param == "no_sendfile":
+            if aiofastnet is None:
+                assert asyncio.get_running_loop().sendfile is sendfile_mock
+            else:
+                assert aiofastnet.sendfile is sendfile_mock
+        return web.FileResponse(path, chunk_size=chunk_size)
 
     if request.param == "no_sendfile":
-        with mock.patch.object(
-            web_fileresponse_module,
-            "sendfile",
-            autospec=True,
-            spec_set=True,
-            side_effect=NotImplementedError,
-        ) as sendfile_mock:
-            yield maker
+        if aiofastnet is None:
+            with mock.patch.object(
+                asyncio.get_running_loop(),
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
+        else:
+            with mock.patch.object(
+                aiofastnet,
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
     else:
         yield maker
 
