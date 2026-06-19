@@ -342,7 +342,6 @@ jobs:
         make cythonize
     - name: Free up disk space for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
-      # Android SDK + emulator needs significant space, sometimes the runner doesn't have enough.
       uses: BRAINSia/free-disk-space@v2.1.3
       with:
         android: false
