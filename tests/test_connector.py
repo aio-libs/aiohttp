@@ -2174,7 +2174,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_passed_to_create_connection(
     ) as create_connection:
         create_connection.return_value = mock.Mock(), mock.Mock()
 
-        req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+        req = ClientRequest("GET", URL("http://127.0.0.1"), loop=loop)
 
         with closing(await conn.connect(req, [], ClientTimeout())):
             # For non-SSL connections, ssl_shutdown_timeout should not be passed
@@ -2207,7 +2207,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_not_passed_pre_311(
                 assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
             # Test with HTTP
-            req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+            req = ClientRequest("GET", URL("http://127.0.0.1"), loop=loop)
             with closing(await conn.connect(req, [], ClientTimeout())):
                 assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
@@ -2373,7 +2373,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_zero_not_passed(
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
         # Test with HTTP (should not have ssl_shutdown_timeout anyway)
-        req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+        req = ClientRequest("GET", URL("http://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
@@ -2404,7 +2404,7 @@ async def test_tcp_connector_ssl_shutdown_timeout_nonzero_passed(
             assert create_connection.call_args.kwargs["ssl_shutdown_timeout"] == 5.0
 
         # Test with HTTP (should not have ssl_shutdown_timeout)
-        req = ClientRequest("GET", URL("https://127.0.0.1"), loop=loop)
+        req = ClientRequest("GET", URL("http://127.0.0.1"), loop=loop)
         with closing(await conn.connect(req, [], ClientTimeout())):
             assert "ssl_shutdown_timeout" not in create_connection.call_args.kwargs
 
