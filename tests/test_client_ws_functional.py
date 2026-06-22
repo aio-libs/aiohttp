@@ -19,7 +19,7 @@ from aiohttp import (
     web,
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
-from aiohttp._websocket.reader import WS_DEFLATE_TRAILING, WebSocketDataQueue
+from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WebSocketError, WSCloseCode
 from aiohttp.pytest_plugin import AiohttpClient
