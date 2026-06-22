@@ -143,8 +143,8 @@ class WebSocketReader:
         self,
         queue: WebSocketDataQueue,
         max_msg_size: int,
-        compress: bool = True,
-        decode_text: bool = True,
+        compress: bool,
+        decode_text: bool,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size

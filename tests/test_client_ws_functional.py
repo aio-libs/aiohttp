@@ -2,6 +2,7 @@ import asyncio
 import json
 import struct
 import sys
+import zlib
 from contextlib import suppress
 from typing import Literal, NoReturn
 from unittest import mock
@@ -18,10 +19,10 @@ from aiohttp import (
     hdrs,
     web,
 )
-from aiohttp._websocket.models import WSMessageBinary
+from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
-from aiohttp.http import WSCloseCode
+from aiohttp.http import WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -1618,3 +1619,65 @@ async def test_receive_json_with_orjson_style_loads(
         # receive_json() with orjson-style loads should work with bytes
         data = await ws.receive_json(loads=orjson_style_loads)
         assert data == {"value": 42}
+
+
+def _deflate_no_header(payload: bytes) -> bytes:
+    """Compress like permessage-deflate: raw DEFLATE minus the trailing 00 00 ff ff."""
+    compressor = zlib.compressobj(
+        zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -zlib.MAX_WBITS
+    )
+    data = compressor.compress(payload) + compressor.flush(zlib.Z_SYNC_FLUSH)
+    return data.removesuffix(WS_DEFLATE_TRAILING)
+
+
+def _build_rsv1_text_frame(payload: bytes) -> bytes:
+    """Build an unmasked TEXT frame with FIN and the RSV1 (compressed) bit set."""
+    compressed = _deflate_no_header(payload)
+    first_byte = 0x80 | 0x40 | WSMsgType.TEXT.value  # FIN + RSV1 + TEXT
+    length = len(compressed)
+    if length < 126:
+        header = struct.pack("!BB", first_byte, length)
+    elif length < (1 << 16):
+        header = struct.pack("!BBH", first_byte, 126, length)
+    else:
+        header = struct.pack("!BBQ", first_byte, 127, length)
+    return header + compressed
+
+
+async def test_client_rejects_compressed_frame_without_negotiation(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A client that never negotiated permessage-deflate must reject RSV1 frames.
+
+    Per RFC 6455 section 5.2, a non-zero reserved bit with no negotiated
+    extension defining it MUST fail the connection. The client used to build its
+    WebSocketReader without passing ``compress``, so the reader defaulted to
+    ``compress=True`` and silently decompressed server frames with compression
+    off.
+    """
+    payload = b"this frame should never be decompressed by the client"
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        transport = request.transport
+        assert transport is not None
+        # Send a compressed (RSV1) frame although the handshake did not
+        # negotiate permessage-deflate.
+        transport.write(_build_rsv1_text_frame(payload))
+        # Keep the connection open until the client tears it down.
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        # Default compress=0: no permessage-deflate offered or negotiated.
+        assert ws.compress == 0
+        msg = await ws.receive()
+
+    assert msg.type is WSMsgType.ERROR, msg
+    assert isinstance(msg.data, WebSocketError)
+    assert msg.data.code == WSCloseCode.PROTOCOL_ERROR

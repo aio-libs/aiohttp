@@ -1,0 +1,1 @@
+Fixed the client decompressing frames when ``permessage-deflate`` was not negotiated -- by :user:`Dreamsorcerer`.

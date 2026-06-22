@@ -25,7 +25,9 @@ def test_read_large_binary_websocket_messages(
     queue = WebSocketDataQueue(
         BaseProtocol(event_loop), DEFAULT_CHUNK_SIZE, loop=event_loop
     )
-    reader = WebSocketReader(queue, max_msg_size=DEFAULT_CHUNK_SIZE)
+    reader = WebSocketReader(
+        queue, max_msg_size=DEFAULT_CHUNK_SIZE, compress=True, decode_text=True
+    )
 
     # PACK3 has a minimum message length of 2**16 bytes.
     message = b"x" * ((2**16) + 1)
@@ -48,7 +50,9 @@ def test_read_one_hundred_websocket_text_messages(
     queue = WebSocketDataQueue(
         BaseProtocol(event_loop), DEFAULT_CHUNK_SIZE, loop=event_loop
     )
-    reader = WebSocketReader(queue, max_msg_size=DEFAULT_CHUNK_SIZE)
+    reader = WebSocketReader(
+        queue, max_msg_size=DEFAULT_CHUNK_SIZE, compress=True, decode_text=True
+    )
     raw_message = (
         b'\x81~\x01!{"id":1,"src":"shellyplugus-c049ef8c30e4","dst":"aios-1453812500'
         b'8","result":{"name":null,"id":"shellyplugus-c049ef8c30e4","mac":"C049EF8C30E'
