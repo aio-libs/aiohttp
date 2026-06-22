@@ -615,7 +615,6 @@ def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
 async def test_parse_no_compress_frame_single(
     loop: asyncio.AbstractEventLoop, out: WebSocketDataQueue
 ) -> None:
-    parser_no_compress = PatchableWebSocketReader(out, 0, compress=False)
     parser_no_compress = PatchableWebSocketReader(
         out, 0, compress=False, decode_text=True
     )
