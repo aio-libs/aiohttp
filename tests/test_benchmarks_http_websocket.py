@@ -45,10 +45,10 @@ def test_read_one_hundred_websocket_text_messages(
     loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark reading 100 WebSocket text messages."""
-    queue = WebSocketDataQueue(BaseProtocol(loop), DEFAULT_CHUNK_SIZE, loop=loop)#
+    queue = WebSocketDataQueue(BaseProtocol(loop), DEFAULT_CHUNK_SIZE, loop=loop)  #
     reader = WebSocketReader(
         queue, max_msg_size=DEFAULT_CHUNK_SIZE, compress=True, decode_text=True
-    )#
+    )  #
     raw_message = (
         b'\x81~\x01!{"id":1,"src":"shellyplugus-c049ef8c30e4","dst":"aios-1453812500'
         b'8","result":{"name":null,"id":"shellyplugus-c049ef8c30e4","mac":"C049EF8C30E'
