@@ -18,6 +18,7 @@ from aiohttp import (
     hdrs,
     web,
 )
+from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WS_DEFLATE_TRAILING, WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.http import WebSocketError, WSCloseCode
