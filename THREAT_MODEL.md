@@ -546,7 +546,7 @@ client-side, the writer adds masks to outgoing frames.
   `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
   This is the primary mitigation for zip-bomb-style attacks against
   WebSocket peers.
-- **PR #12974** — the client created its `WebSocketReader`
+- **PR #12976** — the client created its `WebSocketReader`
   without passing `compress`, so the reader defaulted to `compress=True` and
   decompressed RSV1 frames even when PMCE was never negotiated (threat 3.3;
   RFC 6455 §5.2 requires failing such frames). Fixed by passing
