@@ -113,7 +113,7 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.1.0
+pytest==9.1.1
     # via
     #   -r requirements/test-common-base.in
     #   pytest-aiohttp
