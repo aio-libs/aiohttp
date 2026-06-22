@@ -527,7 +527,7 @@ client-side, the writer adds masks to outgoing frames.
 | :--- | :--- | :--- | :--- |
 | 3.1 | Unmasked client frames accepted | None — the reader is direction-agnostic; `web_ws.py` does not enforce client-mask either. | **Recommended hardening: Enforce RFC 6455 §5.1 mask direction in strict mode only (gated on `DEBUG`, mirroring the HTTP parser's lenient-default / strict-DEBUG asymmetry): server reader rejects frames with `has_mask == 0`, client reader rejects masked server frames, both with a `PROTOCOL_ERROR`-style close. Production default stays lenient for interop.** |
 | 3.2 | Non-cryptographic mask RNG | `partial(random.getrandbits, 32)` per writer instance. | Documented design decision: WebSocket masking exists for cache-poisoning resistance against intermediaries, not as a confidentiality primitive. The mask needs to be performant — called once per outbound frame on a hot path — and does not need to be cryptographically unpredictable. `random.getrandbits(32)` is the deliberate choice. |
-| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` ties RSV1 acceptance to the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
+| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
 | 3.8 | Fragment memory bound | `max_msg_size` enforced pre-FIN and at assembly. Default 4 MiB. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
@@ -546,6 +546,12 @@ client-side, the writer adds masks to outgoing frames.
   `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
   This is the primary mitigation for zip-bomb-style attacks against
   WebSocket peers.
+- **PR #12976** — the client created its `WebSocketReader`
+  without passing `compress`, so the reader defaulted to `compress=True` and
+  decompressed RSV1 frames even when PMCE was never negotiated (threat 3.3;
+  RFC 6455 §5.2 requires failing such frames). Fixed by passing
+  `compress=bool(compress)` in `client.py:_ws_connect` and removing the
+  `compress` / `decode_text` defaults on `WebSocketReader.__init__`.
 - No formal CVE has been published against the WebSocket framing layer to
   date.
 
