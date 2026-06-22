@@ -1621,29 +1621,6 @@ async def test_receive_json_with_orjson_style_loads(
         assert data == {"value": 42}
 
 
-def _deflate_no_header(payload: bytes) -> bytes:
-    """Compress like permessage-deflate: raw DEFLATE minus the trailing 00 00 ff ff."""
-    compressor = zlib.compressobj(
-        zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -zlib.MAX_WBITS
-    )
-    data = compressor.compress(payload) + compressor.flush(zlib.Z_SYNC_FLUSH)
-    return data.removesuffix(WS_DEFLATE_TRAILING)
-
-
-def _build_rsv1_text_frame(payload: bytes) -> bytes:
-    """Build an unmasked TEXT frame with FIN and the RSV1 (compressed) bit set."""
-    compressed = _deflate_no_header(payload)
-    first_byte = 0x80 | 0x40 | WSMsgType.TEXT.value  # FIN + RSV1 + TEXT
-    length = len(compressed)
-    if length < 126:
-        header = struct.pack("!BB", first_byte, length)
-    elif length < (1 << 16):
-        header = struct.pack("!BBH", first_byte, 126, length)
-    else:
-        header = struct.pack("!BBQ", first_byte, 127, length)
-    return header + compressed
-
-
 async def test_client_rejects_compressed_frame_without_negotiation(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -1662,9 +1639,18 @@ async def test_client_rejects_compressed_frame_without_negotiation(
         await ws.prepare(request)
         transport = request.transport
         assert transport is not None
-        # Send a compressed (RSV1) frame although the handshake did not
-        # negotiate permessage-deflate.
-        transport.write(_build_rsv1_text_frame(payload))
+        # Compress the payload the permessage-deflate way (raw DEFLATE minus the
+        # trailing 00 00 ff ff) and frame it with FIN + RSV1 set, even though the
+        # handshake never negotiated permessage-deflate.
+        compressor = zlib.compressobj(
+            zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -zlib.MAX_WBITS
+        )
+        compressed = compressor.compress(payload)
+        compressed += compressor.flush(zlib.Z_SYNC_FLUSH)
+        compressed = compressed.removesuffix(WS_DEFLATE_TRAILING)
+        first_byte = 0x80 | 0x40 | WSMsgType.TEXT.value  # FIN + RSV1 + TEXT
+        frame = struct.pack("!BB", first_byte, len(compressed)) + compressed
+        transport.write(frame)
         # Keep the connection open until the client tears it down.
         await ws.receive()
         return ws
