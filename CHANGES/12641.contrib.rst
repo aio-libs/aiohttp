@@ -1,5 +1,0 @@
-Made the ``pip`` command used by the ``Makefile`` configurable via a
-``PIP`` variable; downstream consumers can now run, for example,
-``make .develop PIP="uv pip"`` to install via ``uv`` without us
-maintaining a parallel target
--- by :user:`bdraco`.

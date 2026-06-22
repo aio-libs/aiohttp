@@ -196,8 +196,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._drop_timeout()
 
     def resume_reading(self, resume_parser: bool = True) -> None:
+        was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        self._reschedule_timeout()
+        if was_paused:
+            self._reschedule_timeout()
 
     def set_exception(
         self,
@@ -323,12 +325,14 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         # parse http messages
         try:
             messages, upgraded, tail = self._parser.feed_data(data)
-        except Exception as underlying_exc:
+        except BaseException as underlying_exc:
             if self.transport is not None:
                 # connection.release() could be called BEFORE
                 # data_received(), the transport is already
                 # closed in this case
                 self.transport.close()
+            if not isinstance(underlying_exc, Exception):
+                raise
             # should_close is True after the call
             if isinstance(underlying_exc, HttpProcessingError):
                 exc = HttpProcessingError(

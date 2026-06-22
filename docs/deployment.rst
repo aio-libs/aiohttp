@@ -192,7 +192,7 @@ Nginx+Gunicorn
 ==============
 
 aiohttp can be deployed using `Gunicorn
-<http://docs.gunicorn.org/en/latest/index.html>`_, which is based on a
+<https://gunicorn.org/>`_, which is based on a
 pre-fork worker model.  Gunicorn launches your app as worker processes
 for handling incoming requests.
 
@@ -264,10 +264,10 @@ Start Gunicorn
 --------------
 
 When `Running Gunicorn
-<http://docs.gunicorn.org/en/latest/run.html>`_, you provide the name
+<https://gunicorn.org/run/>`_, you provide the name
 of the module, i.e. *my_app_module*, and the name of the app or
 application factory, i.e. *my_web_app*, along with other `Gunicorn
-Settings <http://docs.gunicorn.org/en/latest/settings.html>`_ provided
+Settings <https://gunicorn.org/reference/settings/>`_ provided
 as command line flags or in your config file.
 
 In this case, we will use:
@@ -279,7 +279,7 @@ In this case, we will use:
 * you may also want to use the ``--workers`` flag to tell Gunicorn how
   many worker processes to use for handling requests. (See the
   documentation for recommendations on `How Many Workers?
-  <http://docs.gunicorn.org/en/latest/design.html#how-many-workers>`_)
+  <https://gunicorn.org/design/#how-many-workers>`_)
 * you may also want to use the ``--accesslog`` flag to enable the access
   log to be populated. (See :ref:`logging <gunicorn-accesslog>` for more information.)
 
@@ -390,7 +390,7 @@ More information
 ----------------
 
 See the `official documentation
-<http://docs.gunicorn.org/en/latest/deploy.html>`_ for more
+<https://gunicorn.org/deploy/>`_ for more
 information about suggested nginx configuration. You can also find out more about
 `configuring for secure https connections as well. <https://nginx.org/en/docs/http/configuring_https_servers.html>`_
 

@@ -28,6 +28,7 @@ from .client_exceptions import (
     ClientConnectorSSLError,
     ClientHttpProxyError,
     ClientProxyConnectionError,
+    InvalidUrlClientError,
     ServerFingerprintMismatch,
     UnixClientConnectorError,
     cert_errors,
@@ -42,7 +43,9 @@ from .client_reqrep import (
 )
 from .helpers import (
     _SENTINEL,
+    HIGH_LEVEL_SCHEMA_SET,
     ceil_timeout,
+    is_canonical_ipv4_address,
     is_ip_address,
     sentinel,
     set_exception,
@@ -63,13 +66,6 @@ try:
 except ImportError:  # pragma: no cover
     ssl = None  # type: ignore[assignment]
     SSLContext = object  # type: ignore[misc,assignment]
-
-EMPTY_SCHEMA_SET = frozenset({""})
-HTTP_SCHEMA_SET = frozenset({"http", "https"})
-WS_SCHEMA_SET = frozenset({"ws", "wss"})
-
-HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
-HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
 NEEDS_CLEANUP_CLOSED = (3, 13, 0) <= sys.version_info < (
     3,
@@ -1005,10 +1001,10 @@ class TCPConnector(BaseConnector):
                          - If ssl_shutdown_timeout=0: connections are aborted
                          - If ssl_shutdown_timeout>0: graceful shutdown is performed
         """
-        if self._resolver_owner:
-            await self._resolver.close()
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
         await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
+        if self._resolver_owner:
+            await self._resolver.close()
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
@@ -1046,6 +1042,11 @@ class TCPConnector(BaseConnector):
     ) -> list[ResolveResult]:
         """Resolve host and return list of addresses."""
         if is_ip_address(host):
+            # Reject legacy numeric IPv4 forms (e.g. 2130706433, 127.1) that
+            # socket would map onto an address, slipping past a connector-level
+            # policy that only sees the raw host.
+            if ":" not in host and not is_canonical_ipv4_address(host):
+                raise InvalidUrlClientError(host, "is not a canonical IPv4 address")
             return [
                 {
                     "hostname": host,
@@ -1061,6 +1062,9 @@ class TCPConnector(BaseConnector):
             if traces:
                 for trace in traces:
                     await trace.send_dns_resolvehost_start(host)
+
+            if self._closed:
+                raise ClientConnectionError("Connector is closed")
 
             res = await self._resolver.resolve(host, port, family=self._family)
 

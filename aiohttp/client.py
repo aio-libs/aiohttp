@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
@@ -69,34 +68,30 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddlewareType, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, _cached_build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
-    BaseConnector,
-    NamedPipeConnector,
-    TCPConnector,
-    UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
     _auth_header_from_netrc,
-    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     netrc_from_env,
     sentinel,
@@ -220,39 +215,6 @@ class _WSConnectOptions(TypedDict, total=False):
     max_msg_size: int
 
 
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: float | None = None
-    connect: float | None = None
-    sock_read: float | None = None
-    sock_connect: float | None = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
-
-    def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
-            raise ValueError(
-                "total timeout must be a positive number or None to disable, "
-                "got 0. Using 0 to disable timeouts is no longer supported, "
-                "use None instead."
-            )
-
-
-# 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
-
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
 IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
 
@@ -262,6 +224,31 @@ _RetType_co = TypeVar(
     covariant=True,
 )
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
+
+
+# Module-level (not a closure) so it has a stable identity for the
+# ``_cached_build_client_middlewares`` cache key.
+async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
+    connector = req._session._connector
+    assert connector is not None
+    try:
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+    except asyncio.TimeoutError as exc:
+        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+
+    assert conn.protocol is not None
+    conn.protocol.set_response_params(**req._response_params)
+    try:
+        resp = await req._send(conn)
+        try:
+            await resp.start(conn)
+        except BaseException:
+            resp.close()
+            raise
+    except BaseException:
+        conn.close()
+        raise
+    return resp
 
 
 @final
@@ -347,7 +334,7 @@ class ClientSession:
         loop = asyncio.get_running_loop()
 
         if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
+            timeout = ClientTimeout()
         if not isinstance(timeout, ClientTimeout):
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "
@@ -421,7 +408,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._retry_connection: bool = True
-        self._middlewares = middlewares
+        self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
@@ -549,10 +536,11 @@ class ClientSession:
         if proxy is None:
             proxy = self._default_proxy
 
+        resolved_proxy_headers: CIMultiDict[str] | None
         if proxy is None:
-            proxy_headers = None
+            resolved_proxy_headers = None
         else:
-            proxy_headers = self._prepare_headers(proxy_headers)
+            resolved_proxy_headers = self._prepare_headers(proxy_headers)
             try:
                 proxy = URL(proxy)
             except ValueError as e:
@@ -654,16 +642,30 @@ class ClientSession:
                     if proxy is not None:
                         proxy_ = URL(proxy)
                     elif self._trust_env:
+                        # Re-resolve per iteration; drop stale env-proxy auth so
+                        # a redirect that switches proxies can't leak credentials.
+                        resolved_proxy_headers = None
                         with suppress(LookupError):
                             proxy_, env_proxy_auth = await asyncio.to_thread(
                                 get_env_proxy_for_url, url
                             )
-                            if env_proxy_auth is not None and (
-                                proxy_headers is None
-                                or hdrs.PROXY_AUTHORIZATION not in proxy_headers
-                            ):
-                                proxy_headers = proxy_headers or CIMultiDict()
-                                proxy_headers[hdrs.PROXY_AUTHORIZATION] = env_proxy_auth
+                            if env_proxy_auth is not None:
+                                resolved_proxy_headers = CIMultiDict(
+                                    {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
+                                )
+
+                    response_params: ResponseParams = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                        "max_headers": max_headers,
+                    }
 
                     req = self._request_class(
                         method,
@@ -680,61 +682,24 @@ class ClientSession:
                         loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy_,
+                        response_params=response_params,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
-                        proxy_headers=proxy_headers,
+                        proxy_headers=resolved_proxy_headers,
                         traces=traces,
                         trust_env=self.trust_env,
                     )
 
-                    async def _connect_and_send_request(
-                        req: ClientRequest,
-                    ) -> ClientResponse:
-                        # connection timeout
-                        assert self._connector is not None
-                        try:
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
-                        except asyncio.TimeoutError as exc:
-                            raise ConnectionTimeoutError(
-                                f"Connection timeout to host {req.url}"
-                            ) from exc
-
-                        assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                            max_headers=max_headers,
-                        )
-                        try:
-                            resp = await req._send(conn)
-                            try:
-                                await resp.start(conn)
-                            except BaseException:
-                                resp.close()
-                                raise
-                        except BaseException:
-                            conn.close()
-                            raise
-                        return resp
-
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
+                        self._middlewares if middlewares is None else tuple(middlewares)
                     )
 
                     if effective_middlewares:
-                        handler = build_client_middlewares(
+                        handler = _cached_build_client_middlewares(
                             _connect_and_send_request, effective_middlewares
                         )
                     else:
@@ -1122,7 +1087,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
+            if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
@@ -1217,7 +1182,12 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            parser = WebSocketReader(
+                reader,
+                max_msg_size,
+                compress=bool(compress),
+                decode_text=decode_text,
+            )
             cb = None if heartbeat is None else ws_resp._on_data_received
             conn_proto.set_parser(parser, reader, data_received_cb=cb)
             return ws_resp

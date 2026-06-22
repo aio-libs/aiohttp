@@ -21,6 +21,7 @@ from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     _gen_default_accept_encoding,
 )
@@ -240,6 +241,16 @@ async def test_host_port_err(make_client_request: _RequestMaker) -> None:
 async def test_hostname_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_client_request("get", URL("http://:8080/"))
+
+
+@pytest.mark.parametrize("scheme", ("socks5", "socks5h"))
+async def test_proxy_scheme_err(
+    make_client_request: _RequestMaker, scheme: str
+) -> None:
+    with pytest.raises(ValueError, match=f"'{scheme}'"):
+        make_client_request(
+            "get", URL("http://py.org/"), proxy=URL(f"{scheme}://127.0.0.1:80")
+        )
 
 
 async def test_host_header_host_first(make_client_request: _RequestMaker) -> None:
@@ -1545,6 +1556,8 @@ def test_terminate_with_closed_loop(
     async def go() -> None:
         nonlocal req, resp, writer
         # Can't use make_client_request here, due to closing the loop mid-test.
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         req = ClientRequest(
             "get",
             URL("http://python.org"),
@@ -1560,7 +1573,20 @@ def test_terminate_with_closed_loop(
             expect100=False,
             response_class=ClientResponse,
             proxy=None,
-            timer=TimerNoop(),
+            response_params={
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+                "max_headers": 128,
+            },
+            timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             proxy_headers=None,
@@ -1753,6 +1779,22 @@ async def test_connection_key_without_proxy(
     )
     assert req.connection_key.proxy_headers_hash is None
     await req._close()
+
+
+async def test_connection_key_includes_server_hostname(
+    make_client_request: _RequestMaker,
+) -> None:
+    """A server_hostname override must be part of the connection reuse key."""
+    url = URL("https://127.0.0.1:8443/")
+    none_req = make_client_request("GET", url)
+    first = make_client_request("GET", url, server_hostname="first.example")
+    first_again = make_client_request("GET", url, server_hostname="first.example")
+    second = make_client_request("GET", url, server_hostname="second.example")
+
+    assert first.connection_key.server_hostname == "first.example"
+    assert first.connection_key != none_req.connection_key
+    assert first.connection_key != second.connection_key
+    assert first.connection_key == first_again.connection_key
 
 
 def test_request_info_back_compat() -> None:

@@ -124,7 +124,7 @@ class StreamWithShortenRead(Stream):
 
 
 class TestMultipartResponseWrapper:
-    def test_at_eof(self) -> None:
+    async def test_at_eof(self) -> None:
         m_resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True)
         m_stream = mock.create_autospec(MultipartReader, spec_set=True)
         wrapper = MultipartResponseWrapper(m_resp, m_stream)
@@ -292,6 +292,13 @@ class TestPartReader:
             result = await obj.read_chunk(8)
             assert b"" == result
             assert obj.at_eof()
+
+    @pytest.mark.parametrize("value", ["-1", "+5", "1_0", " 5", "0x5", "５"])
+    async def test_rejects_malformed_content_length(self, value: str) -> None:
+        h = HeadersDictProxy(CIMultiDict({"CONTENT-LENGTH": value}))
+        with Stream(b"Hello, world!\r\n--:--") as stream:
+            with pytest.raises(ValueError, match="Content-Length"):
+                aiohttp.BodyPartReader(BOUNDARY, h, stream)
 
     async def test_read_chunk_properly_counts_read_bytes(self) -> None:
         expected = b"." * 10

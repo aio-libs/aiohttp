@@ -1,5 +1,0 @@
-Switched the ``cibuildwheel`` build frontend to ``build[uv]`` so
-that ``uv`` provisions every build-isolation virtual environment
-in the wheel matrix, replacing the per-ABI ``pip`` resolve with a
-roughly sub-second ``uv`` resolve
--- by :user:`bdraco`.

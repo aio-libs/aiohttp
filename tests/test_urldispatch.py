@@ -559,7 +559,11 @@ async def test_add_static_set_options_route(router: web.UrlDispatcher) -> None:
     async def handler(request: web.Request) -> NoReturn:
         assert False
 
-    resource.set_options_route(handler)
+    route = resource.set_options_route(handler)
+    assert isinstance(route, web.ResourceRoute)
+    assert route.method == hdrs.METH_OPTIONS
+    assert route.handler is handler
+    assert route.resource is resource
     mapping, allowed_methods = await resource.resolve(
         make_mocked_request("OPTIONS", "/st/path")
     )
@@ -1062,7 +1066,7 @@ def test_static_route_user_home(router: web.UrlDispatcher) -> None:
     except ValueError:
         pytest.skip("aiohttp folder is not placed in user's HOME")
     route = router.add_static("/st", str(static_dir))
-    assert here == route.get_info()["directory"]
+    assert here.resolve() == route.get_info()["directory"]
 
 
 def test_static_route_points_to_file(router: web.UrlDispatcher) -> None:
@@ -1086,7 +1090,7 @@ async def test_405_for_resource_adapter(router: web.UrlDispatcher) -> None:
 @pytest.mark.skipif(platform.system() == "Windows", reason="Different path formats")
 async def test_static_resource_outside_traversal(router: web.UrlDispatcher) -> None:
     """Test relative path traversing outside root does not resolve."""
-    static_file = pathlib.Path(aiohttp.__file__)
+    static_file = pathlib.Path(aiohttp.__file__).resolve()
     request_path = "/st" + "/.." * (len(static_file.parts) - 2) + str(static_file)
     assert pathlib.Path(request_path).resolve() == static_file
 
@@ -1296,7 +1300,12 @@ def test_frozen_app_on_subapp(app: web.Application) -> None:
 def test_set_options_route(router: web.UrlDispatcher) -> None:
     resource = router.add_static("/static", pathlib.Path(aiohttp.__file__).parent)
     assert all(r.method != "OPTIONS" for r in resource)
-    resource.set_options_route(make_handler())
+    handler = make_handler()
+    route = resource.set_options_route(handler)
+    assert isinstance(route, web.ResourceRoute)
+    assert route.method == "OPTIONS"
+    assert route.handler is handler
+    assert route in list(resource)
     assert any(r.method == "OPTIONS" for r in resource)
 
     with pytest.raises(RuntimeError):

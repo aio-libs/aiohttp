@@ -81,7 +81,7 @@ def parse_content_disposition(
         return bool(string) and TOKEN >= set(string)
 
     def is_quoted(string: str) -> bool:
-        return string[0] == string[-1] == '"'
+        return len(string) >= 2 and string[0] == string[-1] == '"'
 
     def is_rfc5987(string: str) -> bool:
         return is_token(string) and string.count("'") == 2
@@ -283,6 +283,11 @@ class BodyPartReader:
         self._is_form_data = subtype == "form-data"
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.8
         length = None if self._is_form_data else self.headers.get(CONTENT_LENGTH, None)
+        if length is not None and not (length.isascii() and length.isdigit()):
+            # Reject sign prefixes, underscores, whitespace and non-ASCII
+            # digits that int() would otherwise accept.
+            # https://www.rfc-editor.org/rfc/rfc9110#section-8.6
+            raise ValueError(f"invalid Content-Length: {length!r}")
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
         self._unread: deque[bytes] = deque()

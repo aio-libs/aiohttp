@@ -1,7 +1,0 @@
-Switched the CI ``test`` and ``autobahn`` jobs from
-``actions/setup-python`` to ``astral-sh/setup-uv`` for installing
-interpreters, cutting the ``Setup Python`` step from 40-58s to a
-few seconds on ``macos-latest`` and ``windows-latest`` runners for
-variants not in the hosted tool-cache (notably the free-threaded
-``3.14t``)
--- by :user:`bdraco`.

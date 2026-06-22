@@ -1,4 +1,0 @@
-Added a default 120-second per-test timeout via ``pytest-timeout`` so a
-hung test surfaces by name in CI output instead of getting hidden behind
-the job-level timeout added in :pr:`12619`. The ``autobahn`` and
-benchmark jobs opt out with ``--timeout=0`` -- by :user:`bdraco`.

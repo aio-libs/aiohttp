@@ -1,0 +1,1 @@
+Upgraded ``llhttp`` to v9.4.2 -- by :user:`Dreamsorcerer`.

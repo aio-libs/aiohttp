@@ -23,7 +23,7 @@ import aiohttp
 from aiohttp import abc, client, hdrs, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientRequest, ConnectionKey
+from aiohttp.client_reqrep import ClientRequest, ClientTimeout, ConnectionKey
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
@@ -563,7 +563,10 @@ async def test_reraise_os_error(
     req_factory = mock.Mock(return_value=req)
     req._send.side_effect = err
     req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
+    req._timeout = ClientTimeout()
+    req._traces = []
     session = await create_session(request_class=req_factory)
+    req._session = session
 
     async def create_connection(
         req: object, traces: object, timeout: object
@@ -594,7 +597,10 @@ async def test_close_conn_on_error(
     req_factory = mock.Mock(return_value=req)
     req._send.side_effect = err
     req._body = mock.create_autospec(Payload, spec_set=True, instance=True)
+    req._timeout = ClientTimeout()
+    req._traces = []
     session = await create_session(request_class=req_factory)
+    req._session = session
 
     connections = []
     assert session._connector is not None
@@ -653,10 +659,13 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
+    req._timeout = ClientTimeout()
+    req._traces = []
     # BaseConnector allows all high level protocols by default
     connector = BaseConnector()
 
     session = await create_session(connector=connector, request_class=req_factory)
+    req._session = session
 
     connections = []
     assert session._connector is not None
@@ -715,10 +724,13 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     req._body = None  # No body for WebSocket upgrade requests
     req_factory = mock.Mock(return_value=req)
     req._send = mock.AsyncMock(return_value=resp)
+    req._timeout = ClientTimeout()
+    req._traces = []
     # UnixConnector allows all high level protocols by default and unix sockets
     session = await create_session(
         connector=UnixConnector(path=""), request_class=req_factory
     )
+    req._session = session
 
     connections = []
     assert session._connector is not None
@@ -1283,8 +1295,43 @@ async def test_client_session_custom_attr() -> None:
 
 async def test_client_session_timeout_default_args() -> None:
     session1 = ClientSession()
-    assert session1.timeout == client.DEFAULT_TIMEOUT
+    assert session1.timeout == client.ClientTimeout(total=5 * 60)
     await session1.close()
+
+
+def test_client_timeout_default_total() -> None:
+    assert client.ClientTimeout().total == 5 * 60
+
+
+def test_client_timeout_default_total_raised_by_sock_read() -> None:
+    # A sock_read larger than the default total should raise total to match,
+    # so the more specific timeout isn't silently capped.
+    timeout = client.ClientTimeout(sock_read=600)
+    assert timeout.total == 600
+    assert timeout.sock_read == 600
+
+
+def test_client_timeout_default_total_preserved_when_others_lower() -> None:
+    timeout = client.ClientTimeout(sock_read=30)
+    assert timeout.total == 5 * 60
+    assert timeout.sock_read == 30
+
+
+def test_client_timeout_default_total_uses_max_of_others() -> None:
+    timeout = client.ClientTimeout(connect=10, sock_connect=700, sock_read=400)
+    assert timeout.total == 700
+
+
+def test_client_timeout_explicit_total_raised_by_other() -> None:
+    # Even when total is set explicitly, it is raised to cover a larger
+    # per-stage timeout so the latter isn't silently capped.
+    timeout = client.ClientTimeout(total=10, sock_read=600)
+    assert timeout.total == 600
+
+
+def test_client_timeout_explicit_total_none_respected() -> None:
+    timeout = client.ClientTimeout(total=None, sock_read=600)
+    assert timeout.total is None
 
 
 async def test_client_session_timeout_zero(

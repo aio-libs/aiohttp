@@ -14,12 +14,14 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import Any
+from typing import TYPE_CHECKING, Any
 from unittest import mock
 from uuid import uuid4
 
+if TYPE_CHECKING:
+    import trustme
+
 import pytest
-import trustme
 from multidict import CIMultiDict
 from yarl import URL
 
@@ -30,7 +32,7 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp.client import ClientSession
+from aiohttp.client import ClientSession, ClientTimeout
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
@@ -112,6 +114,8 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
 
 @pytest.fixture
 def tls_certificate_authority() -> trustme.CA:
+    if not TYPE_CHECKING:
+        trustme = pytest.importorskip("trustme")
     return trustme.CA()
 
 
@@ -435,6 +439,8 @@ async def make_client_request() -> (
     ) -> ClientRequest:
         session = ClientSession()
         sessions.append(session)
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         default_args: ClientRequestArgs = {
             "loop": asyncio.get_running_loop(),
             "params": {},
@@ -448,7 +454,20 @@ async def make_client_request() -> (
             "expect100": False,
             "response_class": ClientResponse,
             "proxy": None,
-            "timer": TimerNoop(),
+            "response_params": {
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+                "max_headers": 128,
+            },
+            "timer": timer,
+            "timeout": timeout,
             "session": session,
             "ssl": True,
             "proxy_headers": None,

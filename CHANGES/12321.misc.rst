@@ -1,2 +1,0 @@
-Added ``cdef`` type declarations and inlined the upgrade check in the HTTP parser
--- by :user:`bdraco`.
