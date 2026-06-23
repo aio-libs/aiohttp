@@ -644,6 +644,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # method
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
+        method = method.upper()
 
         # version
         match = VERSRE.fullmatch(version)

@@ -204,6 +204,17 @@ async def test_add_route_with_add_head_shortcut(router: web.UrlDispatcher) -> No
     assert info.route.name is None
 
 
+async def test_dispatch_lowercase_method(router: web.UrlDispatcher) -> None:
+    """Lowercase wire methods normalise on the request and dispatch correctly."""
+    handler = make_handler()
+    router.add_get("/", handler)
+    req = make_mocked_request("get", "/")
+    assert req.method == "GET"
+    info = await router.resolve(req)
+    assert info is not None
+    assert handler is info.handler
+
+
 async def test_add_with_name(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/handler/to/path", handler, name="name")

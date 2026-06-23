@@ -490,6 +490,8 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
+        method = method.upper()
+
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
