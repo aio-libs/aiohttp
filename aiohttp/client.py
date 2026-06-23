@@ -587,6 +587,7 @@ class ClientSession:
             await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
+        req: ClientRequest | None = None
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
@@ -873,7 +874,7 @@ class ClientSession:
             # released when the request terminates with an error, e.g. a
             # mid-upload disconnect. Mirrors the close on the success path and
             # the redirect-abort branches; the retry path does not reach here.
-            if req._body is not None:
+            if req is not None and req._body is not None:
                 await req._body.close()
 
             for trace in traces:
