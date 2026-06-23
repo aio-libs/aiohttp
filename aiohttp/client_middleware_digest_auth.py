@@ -136,7 +136,7 @@ def parse_header_pairs(header: str) -> dict[str, str]:
     Returns:
         Dictionary mapping parameter names to their values
     """
-    pairs = {}
+    pairs: dict[str, str] = {}
     for match in _HEADER_PAIRS_PATTERN.finditer(header):
         if not (key := match.group(1).strip()):
             continue
