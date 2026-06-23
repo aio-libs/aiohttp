@@ -870,10 +870,6 @@ class ClientSession:
                 handle.cancel()
                 handle = None
 
-            # Ensure the request body Payload (and any file handles it owns) is
-            # released when the request terminates with an error, e.g. a
-            # mid-upload disconnect. Mirrors the close on the success path and
-            # the redirect-abort branches; the retry path does not reach here.
             if req is not None and req._body is not None:
                 await req._body.close()
 
