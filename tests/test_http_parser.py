@@ -577,7 +577,7 @@ def test_parse_unusual_request_line(parser) -> None:
 
 
 def test_py_parser_normalises_method_to_uppercase(
-    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
+    event_loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
     """Test Python parser canonicalises method tokens.
 
