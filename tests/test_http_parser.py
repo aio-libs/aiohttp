@@ -577,16 +577,16 @@ def test_parse_unusual_request_line(parser) -> None:
 
 
 def test_py_parser_normalises_method_to_uppercase(
-    event_loop: asyncio.AbstractEventLoop, server: Server
+    loop: asyncio.AbstractEventLoop, server: Server
 ) -> None:
     """Test Python parser canonicalises method tokens.
 
     llhttp rejects lowercase upstream, so this only applies to the Python parser.
     """
-    protocol = RequestHandler(server, loop=event_loop)
+    protocol = RequestHandler(server, loop=loop)
     parser = HttpRequestParserPy(
         protocol,
-        event_loop,
+        loop,
         2**16,
         max_line_size=8190,
         max_field_size=8190,
