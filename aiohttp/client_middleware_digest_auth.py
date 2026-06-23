@@ -138,8 +138,7 @@ def parse_header_pairs(header: str) -> dict[str, str]:
     """
     pairs: dict[str, str] = {}
     for match in _HEADER_PAIRS_PATTERN.finditer(header):
-        if not (key := match.group(1).strip()):
-            continue
+        key = match.group(1)
         quoted_val, unquoted_val = match.group(2), match.group(3)
         if quoted_val is None and unquoted_val is None:
             # Bare token with no "=value": an auth-scheme name, not a parameter.
