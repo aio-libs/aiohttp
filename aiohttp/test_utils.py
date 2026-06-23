@@ -738,7 +738,7 @@ def make_mocked_request(
     )
 
     message = RawRequestMessage(
-        method,
+        method.upper(),
         path,
         version,
         headers,
