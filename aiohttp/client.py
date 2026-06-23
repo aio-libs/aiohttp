@@ -580,6 +580,7 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
+        method = method.upper()
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         if auth is not None:
