@@ -71,7 +71,7 @@ jobs:
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@v6.0.0
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -117,7 +117,7 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@v6.0.0
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
