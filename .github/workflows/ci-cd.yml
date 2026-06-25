@@ -192,16 +192,16 @@ jobs:
         os: [ubuntu-24.04-firewall, macos-latest, windows-latest]
         experimental: [false]
         exclude:
-          - os: macos
+          - os: macos-latest
             no-extensions: 'Y'
-          - os: windows
+          - os: windows-latest
             no-extensions: 'Y'
         include:
           - pyver: pypy-3.11
             no-extensions: 'Y'
-            os: ubuntu
+            os: ubuntu-latest
             experimental: false
-          - os: ubuntu
+          - os: ubuntu-latest
             pyver: "3.14t"
             no-extensions: ''
             experimental: false
