@@ -410,7 +410,15 @@ class WebSocketReader:
                         "Received frame with non-zero reserved bits",
                     )
 
-                self._frame_fin = bool(fin)
+                # Control frames (opcode > 0x7) may be interleaved between the
+                # fragments of a data message (RFC 6455 §5.4). They must stay
+                # transparent to the message framing, so only data frames move
+                # the fin tracker that marks the start of the next message.
+                # Otherwise an interleaved ping/pong/close (always FIN) re-latches
+                # _compressed above and the following continuation gets handled as
+                # uncompressed.
+                if opcode <= 0x7:
+                    self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
                 self._payload_len_flag = length
