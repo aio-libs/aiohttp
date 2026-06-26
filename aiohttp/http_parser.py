@@ -1136,8 +1136,11 @@ class DeflateBuffer:
         # RFC1950
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
         # bits 4..7 = CINFO = 1..7 = windows size.
+        # Skip the header sniff on empty chunks: the parser can resume a paused
+        # stream by calling feed_data(b""), and we have no header byte to read.
         if (
-            not self._started_decoding
+            chunk
+            and not self._started_decoding
             and self.encoding == "deflate"
             and chunk[0] & 0xF != 8
         ):

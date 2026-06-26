@@ -1,0 +1,6 @@
+Fixed ``IndexError: string index out of range`` raised from
+``DeflateBuffer.feed_data`` when the underlying transport resumed a
+paused decoder by calling ``feed_data(b"")`` -- the deflate header
+sniff at the top of the method now short-circuits on empty chunks,
+matching the ``StreamReader.feed_data`` behaviour for empty input.
+-- by :user:`HrachShah`.

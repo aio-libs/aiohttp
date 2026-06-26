@@ -3045,6 +3045,41 @@ class TestDeflateBuffer:
 
         assert buf.at_eof()
 
+    async def test_feed_empty_chunk_before_any_data(
+        self, protocol: BaseProtocol
+    ) -> None:
+        # The parser resumes paused decoders via feed_data(b""). On the first
+        # such resume the deflate FSM sniffs chunk[0] to decide whether to
+        # enable suppress_deflate_header; an empty chunk used to raise
+        # IndexError. The empty chunk must be a no-op: no exception, decoder
+        # untouched, no bytes pushed downstream, data_available False.
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "deflate")
+
+        original_decompressor = dbuf.decompressor
+        assert dbuf.feed_data(b"") is False
+        assert dbuf.decompressor is original_decompressor
+        assert list(buf._buffer) == []
+
+    async def test_feed_empty_chunk_after_real_data(
+        self, protocol: BaseProtocol
+    ) -> None:
+        # Once the decoder is running, a follow-up empty chunk must still be a
+        # no-op: no exception, no empty bytes appended to the downstream buffer.
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "deflate")
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.decompress_sync.side_effect = [b"hello ", b""]
+        dbuf.decompressor.data_available = False
+        assert dbuf.feed_data(b"hi") is False
+        assert dbuf.feed_data(b"") is False
+        assert list(buf._buffer) == [b"hello "]
+
     @pytest.mark.skipif(platform.python_implementation() == "PyPy", reason="Broken")
     @pytest.mark.parametrize(
         "chunk_size",
