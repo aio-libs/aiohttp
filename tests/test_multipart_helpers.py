@@ -658,6 +658,7 @@ class TestParseContentDisposition:
             )
         assert disptype is None
         assert {} == params
+
     def test_disptype_with_trailing_space_before_semicolon(self) -> None:
         """OWS before first ';' must not cause disptype validation to fail.
 
@@ -674,6 +675,7 @@ class TestParseContentDisposition:
         disptype, params = parse_content_disposition("inline ")
         assert disptype == "inline"
         assert params == {}
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/
