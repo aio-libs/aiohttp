@@ -380,7 +380,9 @@ class CookieJar(AbstractCookieJar):
                 # malformed (and ignore, leaving a session cookie) would
                 # otherwise be honoured here and persist the cookie.
                 try:
-                    if not _MAX_AGE_RE.fullmatch(max_age):
+                    # A Morsel built in Python may carry an int here, so
+                    # normalise to str before the RFC check.
+                    if not _MAX_AGE_RE.fullmatch(str(max_age)):
                         raise ValueError
                     delta_seconds = int(max_age)
                     max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
