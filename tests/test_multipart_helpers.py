@@ -665,7 +665,6 @@ class TestParseContentDisposition:
         assert params == {"name": "field"}
 
     def test_disptype_with_trailing_space_no_params(self) -> None:
-        """Trailing OWS on disptype with no params is also valid."""
         disptype, params = parse_content_disposition("inline ")
         assert disptype == "inline"
         assert params == {}
