@@ -658,7 +658,22 @@ class TestParseContentDisposition:
             )
         assert disptype is None
         assert {} == params
+    def test_disptype_with_trailing_space_before_semicolon(self) -> None:
+        """OWS before first ';' must not cause disptype validation to fail.
 
+        'form-data ; name="field"' is a valid Content-Disposition value per
+        RFC 7230 BWS rules.  The disposition type should be stripped before
+        the is_token check, just as parameter keys already are.
+        """
+        disptype, params = parse_content_disposition('form-data ; name="field"')
+        assert disptype == "form-data"
+        assert params == {"name": "field"}
+
+    def test_disptype_with_trailing_space_no_params(self) -> None:
+        """Trailing OWS on disptype with no params is also valid."""
+        disptype, params = parse_content_disposition("inline ")
+        assert disptype == "inline"
+        assert params == {}
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/

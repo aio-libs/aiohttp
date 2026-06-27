@@ -103,6 +103,7 @@ def parse_content_disposition(
         return None, {}
 
     disptype, *parts = header.split(";")
+    disptype = disptype.strip()
     if not is_token(disptype):
         warnings.warn(BadContentDispositionHeader(header))
         return None, {}
