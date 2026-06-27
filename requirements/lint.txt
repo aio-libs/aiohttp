@@ -32,7 +32,7 @@ cffi==2.0.0
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-click==8.4.1
+click==8.4.2
     # via slotscheck
 cryptography==49.0.0
     # via trustme
@@ -108,7 +108,7 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.1.0
+pytest==9.1.1
     # via
     #   -r requirements/lint.in
     #   pytest-aiohttp

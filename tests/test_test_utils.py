@@ -333,6 +333,29 @@ async def test_disable_retry_persistent_connection(
     assert num_requests == 1
 
 
+async def test_retry_persistent_connection_lowercase_method(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Lowercase idempotent methods must still trigger retry."""
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        if num_requests == 1:
+            request.protocol.force_close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    client.session._retry_connection = True
+    async with client.request("get", "/") as resp:
+        assert resp.status == 200
+
+    assert num_requests == 2
+
+
 async def test_server_context_manager(app: web.Application) -> None:
     async with TestServer(app) as server:
         async with aiohttp.ClientSession() as client:

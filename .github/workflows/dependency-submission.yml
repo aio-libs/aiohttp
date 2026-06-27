@@ -23,7 +23,7 @@ jobs:
       contents: write  # Required by the Dependency submission API
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Read vendored llhttp version

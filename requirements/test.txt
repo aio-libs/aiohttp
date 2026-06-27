@@ -36,9 +36,9 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-click==8.4.1
+click==8.4.2
     # via wait-for-it
-coverage==7.14.1
+coverage==7.14.3
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -113,7 +113,7 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.1.0
+pytest==9.1.1
     # via
     #   -r requirements/test-common-base.in
     #   pytest-aiohttp

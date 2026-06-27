@@ -57,13 +57,13 @@ cfgv==3.5.0
     # via pre-commit
 charset-normalizer==3.4.7
     # via requests
-click==8.4.1
+click==8.4.2
     # via
     #   pip-tools
     #   slotscheck
     #   towncrier
     #   wait-for-it
-coverage==7.14.1
+coverage==7.14.3
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -196,7 +196,7 @@ pyproject-hooks==1.2.0
     # via
     #   build
     #   pip-tools
-pytest==9.1.0
+pytest==9.1.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common-base.in
