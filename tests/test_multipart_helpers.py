@@ -659,6 +659,16 @@ class TestParseContentDisposition:
         assert disptype is None
         assert {} == params
 
+    def test_disptype_with_trailing_space_before_semicolon(self) -> None:
+        disptype, params = parse_content_disposition('form-data ; name="field"')
+        assert disptype == "form-data"
+        assert params == {"name": "field"}
+
+    def test_disptype_with_trailing_space_no_params(self) -> None:
+        disptype, params = parse_content_disposition("inline ")
+        assert disptype == "inline"
+        assert params == {}
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/
