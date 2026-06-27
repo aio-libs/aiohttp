@@ -102,6 +102,7 @@ def parse_content_disposition(
     if not header:
         return None, {}
 
+    # https://www.rfc-editor.org/info/rfc9110/#section-5.6.6-2
     disptype, *parts = header.split(";")
     disptype = disptype.strip()
     if not is_token(disptype):
