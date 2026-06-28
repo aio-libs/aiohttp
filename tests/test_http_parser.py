@@ -1,12 +1,13 @@
 # Tests for aiohttp/protocol.py
 
 import asyncio
+import gc
 import gzip
 import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -3172,3 +3173,44 @@ def test_response_content_length_zero_no_error(response: HttpResponseParser) -> 
 
     # This should NOT raise an error
     response.feed_eof()  # Should complete without exception
+
+
+def _get_peak_memory_used(func: Callable[[], None]) -> int:
+    tracemalloc = pytest.importorskip("tracemalloc")
+
+    gc.collect()
+    tracemalloc.start()
+    try:
+        func()
+        _, peak = tracemalloc.get_traced_memory()
+        return peak
+    finally:
+        tracemalloc.stop()
+
+
+def test_long_request_line_memory_usage(parser: HttpRequestParser) -> None:
+    text = b"GET /" + (b"-" * 1_000_000) + b" HTTP/1.1\r\nHost: a\r\n\r\n"
+
+    def parse() -> None:
+        with pytest.raises(http_exceptions.LineTooLong):
+            parser.feed_data(text)
+
+    peak = _get_peak_memory_used(parse)
+
+    assert peak < 5 * 1024 * 1024
+
+
+def test_long_header_line_memory_usage(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET / HTTP/1.1\r\n"
+        b"Host: a\r\n"
+        b"X-Long-Header: " + (b"-" * 1_000_000) + b"\r\n\r\n"
+    )
+
+    def parse() -> None:
+        with pytest.raises(http_exceptions.LineTooLong):
+            parser.feed_data(text)
+
+    peak = _get_peak_memory_used(parse)
+
+    assert peak < 5 * 1024 * 1024
