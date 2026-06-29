@@ -30,7 +30,6 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
-
     def test_ows_before_semicolon_quoted(self) -> None:
         """OWS before ';' must not cause the next param to be eaten by repair logic.
 
@@ -57,7 +56,6 @@ class TestParseContentDisposition:
             )
         assert disptype == "attachment"
         assert params == {"filename": "test.txt"}
-
 
     def test_inlwithasciifilename(self) -> None:
         disptype, params = parse_content_disposition('inline; filename="foo.html"')
