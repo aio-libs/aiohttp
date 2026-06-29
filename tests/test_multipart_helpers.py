@@ -30,6 +30,35 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
+
+    def test_ows_before_semicolon_quoted(self) -> None:
+        """OWS before ';' must not cause the next param to be eaten by repair logic.
+
+        RFC 9110 §5.6.6: parameters = *( OWS ";" OWS [ parameter ] )
+        A space before the semicolon is legal OWS and must not affect parsing.
+        Regression: https://github.com/aio-libs/aiohttp/issues/13002
+        """
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
+
+    def test_ows_before_semicolon_quoted_single(self) -> None:
+        """OWS before trailing semicolon still extracts the quoted param.
+
+        The trailing ';' produces an empty segment which triggers a leniency
+        warning (existing behaviour), but the quoted value must be extracted
+        correctly rather than being discarded.
+        """
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition(
+                'attachment; filename="test.txt" ;'
+            )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt"}
+
+
     def test_inlwithasciifilename(self) -> None:
         disptype, params = parse_content_disposition('inline; filename="foo.html"')
         assert "inline" == disptype

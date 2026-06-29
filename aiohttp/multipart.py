@@ -159,6 +159,16 @@ def parse_content_disposition(
             if is_quoted(value):
                 failed = False
                 value = unescape(value[1:-1].lstrip("\\/"))
+            elif is_quoted(value.rstrip()):
+                # RFC 9110 §5.6.6 allows OWS before the ';' separator.
+                # Strip trailing whitespace so quoted-string recognition
+                # is not defeated by that legitimate OWS.  Without this,
+                # the repair heuristic below greedily consumes the next
+                # parameter as part of the value.
+                # See https://github.com/aio-libs/aiohttp/issues/13002
+                value = value.rstrip()
+                failed = False
+                value = unescape(value[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
