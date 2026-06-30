@@ -1,0 +1,1 @@
+Fixed :py:class:`~aiohttp.http_parser.DeflateBuffer` to treat an empty ``feed_data`` call as a
