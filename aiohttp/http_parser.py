@@ -293,6 +293,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._lines: list[bytes] = []
         self._tail = b""
         self._upgraded = False
+        self._pending_upgrade = False
         self._payload = None
         self._payload_parser: HttpPayloadParser | None = None
         self._payload_has_more_data = False
@@ -424,9 +425,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-                        self._upgraded = msg.upgrade and _is_supported_upgrade(
-                            msg.headers
-                        )
+                        upgraded = msg.upgrade and _is_supported_upgrade(msg.headers)
 
                         method = getattr(msg, "method", self.method)
                         # code is only present on responses
@@ -438,8 +437,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             method and method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
-                            ((length is not None and length > 0) or msg.chunked)
-                            and not self._upgraded
+                            (length is not None and length > 0) or msg.chunked
                         ):
                             payload = StreamReader(
                                 self.protocol,
@@ -465,6 +463,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
+                                # https://www.rfc-editor.org/info/rfc9110/#section-7.8-15
+                                # Defer any requested upgrade until the
+                                # complete request has been read.
+                                self._pending_upgrade = upgraded
                         elif method == METH_CONNECT:
                             assert isinstance(msg, RawRequestMessage)
                             payload = StreamReader(
@@ -511,6 +513,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
+                        elif upgraded:
+                            # No body to read, so the connection switches to
+                            # the upgraded protocol immediately.
+                            self._upgraded = True
+                            payload = EMPTY_PAYLOAD
                         else:
                             payload = EMPTY_PAYLOAD
 
@@ -568,6 +575,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 start_pos = 0
                 data_len = len(data)
                 self._payload_parser = None
+                if self._pending_upgrade:
+                    # Body fully read: the deferred upgrade takes effect and
+                    # the rest of the connection is the upgraded protocol.
+                    self._upgraded = True
+                    self._pending_upgrade = False
 
         if data and start_pos < data_len:
             data = data[start_pos:]
