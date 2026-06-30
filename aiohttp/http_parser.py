@@ -454,8 +454,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 # Defer any requested upgrade until the
                                 # complete request has been read.
                                 self._pending_upgrade = upgraded
-                            elif upgraded:
-                                self._upgraded = True
                         elif method == METH_CONNECT:
                             assert isinstance(msg, RawRequestMessage)
                             payload = StreamReader(
