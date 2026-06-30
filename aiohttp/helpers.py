@@ -489,7 +489,16 @@ def is_ip_address(host: str | None) -> bool:
         return False
     # For a host to be an ipv4 address, it must be all numeric.
     # The host must contain a colon to be an IPv6 address.
-    return ":" in host or host.replace(".", "").isdigit()
+    # ``str.isdigit()`` returns True for non-ASCII numeric characters
+    # such as superscript digits (``²``), fullwidth digits, and Arabic
+    # digits, so restrict the check to ASCII digits to avoid false
+    # positives like ``is_ip_address("\u00b2\u00b2\u00b2") == True`` for
+    # inputs that cannot actually be a valid IPv4 address.
+    if ":" in host:
+        return True
+    if not host.isascii():
+        return False
+    return host.replace(".", "").isdigit()
 
 
 def is_canonical_ipv4_address(host: str) -> bool:
