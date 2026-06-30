@@ -1,0 +1,1 @@
+Fixed :py:func:`~aiohttp.multipart.parse_content_disposition` to honour optional whitespace (OWS)

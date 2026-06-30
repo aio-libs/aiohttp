@@ -159,6 +159,14 @@ def parse_content_disposition(
             if is_quoted(value):
                 failed = False
                 value = unescape(value[1:-1].lstrip("\\/"))
+            # OWS before the next ';' separator is permitted by RFC 9110 § 5.6.6,
+            # so check for a quoted value after rstripping trailing whitespace.
+            # Without this, a filename like '"name" ' is mis-classified and
+            # falls through to the repair heuristic, which greedily swallows
+            # the next parameter.
+            elif is_quoted(value.rstrip()):
+                failed = False
+                value = unescape(value.rstrip()[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
