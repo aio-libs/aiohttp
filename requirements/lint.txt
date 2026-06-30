@@ -18,6 +18,8 @@ async-timeout==5.0.1
     # via
     #   aiohttp
     #   valkey
+atheris==3.0.0
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
