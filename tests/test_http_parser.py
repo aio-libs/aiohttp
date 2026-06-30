@@ -1538,6 +1538,54 @@ async def test_http_request_upgrade_unknown(parser: Any) -> None:
     assert await messages[0][-1].read() == b"{}"
 
 
+@pytest.mark.parametrize("chunked", (False, True), ids=("content-length", "chunked"))
+async def test_http_request_upgrade_with_body_read(
+    parser: HttpRequestParser, chunked: bool
+) -> None:
+    body_request = b"foobarbaz\r\n\r\n"
+    if chunked:
+        framing = b"Transfer-Encoding: chunked\r\n"
+        body = b"%x\r\n%s\r\n0\r\n\r\n" % (len(body_request), body_request)
+    else:
+        framing = b"Content-Length: %d\r\n" % len(body_request)
+        body = body_request
+    after = b"GET /after HTTP/1.1\r\nHost: a\r\n\r\n"
+    text = (
+        b"GET /ws HTTP/1.1\r\nHost: a\r\n"
+        b"Connection: Upgrade\r\nUpgrade: websocket\r\n"
+        + framing
+        + b"\r\n"
+        + body
+        + after
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, payload = messages[0]
+    assert msg.method == "GET"
+    assert msg.path == "/ws"
+    assert msg.upgrade
+    assert await payload.read() == body_request
+    # The connection switches protocols only after the body is fully read.
+    assert upgrade
+    assert tail == after
+
+
+def test_http_request_upgrade_empty_body_allowed(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET /ws HTTP/1.1\r\n"
+        b"Host: a\r\n"
+        b"Connection: Upgrade\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Content-Length: 0\r\n\r\n"
+        b"some raw data"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.upgrade
+    assert upgrade
+    assert tail == b"some raw data"
+
+
 @pytest.fixture
 def xfail_c_parser_url(request) -> None:
     if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
