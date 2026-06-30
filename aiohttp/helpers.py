@@ -332,7 +332,10 @@ def parse_mimetype(mimetype: str) -> MimeType:
     parts = mimetype.split(";")
     params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
-        if not item:
+        # Skip both empty segments (bare trailing semicolon) and
+        # whitespace-only segments (e.g. "text/html; " or "text/html;\t"),
+        # which are not valid MIME parameters per RFC 2045.
+        if not item.strip():
             continue
         key, _, value = item.partition("=")
         params.add(key.lower().strip(), value.strip(' "'))
