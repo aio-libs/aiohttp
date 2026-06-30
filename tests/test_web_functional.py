@@ -1847,6 +1847,57 @@ async def test_http1_pipelined_queue_resumes_after_drain(
     assert len(handled) == pipelined_requests + 1
 
 
+async def test_declined_websocket_upgrade_reads_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    body_read = b""
+
+    async def ws_handler(request: web.Request) -> web.Response:
+        nonlocal body_read
+        # Decline the upgrade; read the body as a normal handler may.
+        body_read = await request.read()
+        return web.Response(text="declined")
+
+    async def after_handler(request: web.Request) -> web.Response:
+        return web.Response(text="after")
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/after", after_handler)
+    server = await aiohttp_server(app)
+
+    body = b"FooBarBaz\r\n\r\n"
+    # Use raw connection in order to pipeline requests.
+    pipeline = (
+        (
+            b"GET /ws HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Content-Length: %d\r\n\r\n" % len(body)
+        )
+        + body
+        + b"GET /after HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    )
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(pipeline)
+        await writer.drain()
+        # The trailing request sends Connection: close, so the server closes
+        # once it has answered it -- reading to EOF gathers both responses.
+        response = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert body_read == body
+    # Both the upgrade request and the pipelined request were served.
+    assert response.count(b"HTTP/1.") == 2, response
+    assert response.count(b" 200 ") == 2, response
+
+
 @pytest.mark.parametrize("decompressed_size", [4 * 1024 * 1024, 32 * 1024 * 1024])
 async def test_unread_compressed_body_drain_is_bounded(
     aiohttp_server: AiohttpServer,

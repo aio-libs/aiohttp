@@ -322,6 +322,7 @@ cdef class HttpParser:
         set     _seen_singletons
         list    _raw_headers
         bint    _upgraded
+        bint    _pending_upgrade
         list    _messages
         bint    _more_data_available
         bint    _paused
@@ -398,6 +399,7 @@ cdef class HttpParser:
         self._response_with_body = response_with_body
         self._read_until_eof = read_until_eof
         self._upgraded = False
+        self._pending_upgrade = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
         self._lax = False
@@ -482,10 +484,15 @@ cdef class HttpParser:
                 raise BadHttpMessage("Missing 'Host' header in request.")
             h_upg = headers.get("upgrade", "")
             if (upgrade and h_upg.isascii() and h_upg.lower() in ALLOWED_UPGRADES) or self._cparser.method == cparser.HTTP_CONNECT:
-                self._upgraded = True
+                # https://www.rfc-editor.org/info/rfc9110/#section-7.8-15
+                # Defer the protocol switch until the complete request has been
+                # received.
+                self._pending_upgrade = True
         else:
             if upgrade and self._cparser.status_code == 101:
-                self._upgraded = True
+                # llhttp pauses for a 101 on its own; just mark the pending
+                # switch so feed_data returns the upgraded-protocol tail.
+                self._pending_upgrade = True
 
         # do not support old websocket spec
         if SEC_WEBSOCKET_KEY1 in headers:
@@ -644,6 +651,10 @@ cdef class HttpParser:
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
             nb = cparser.llhttp_get_error_pos(self._cparser) - base
+            if self._pending_upgrade:
+                # A supported upgrade whose request body has now been fully read.
+                self._upgraded = True
+                self._pending_upgrade = False
         elif errno is cparser.HPE_PAUSED:
             cparser.llhttp_resume(self._cparser)
             pos = cparser.llhttp_get_error_pos(self._cparser) - base
@@ -862,8 +873,6 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
-            return 2
         if not pyparser._response_with_body:
             return 1
         return 0
