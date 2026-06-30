@@ -74,6 +74,27 @@ from aiohttp.helpers import (
                 "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
             ),
         ),
+        (
+            "text/html; ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;  ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;\t",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html; charset=utf-8; ",
+            helpers.MimeType(
+                "text",
+                "html",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
