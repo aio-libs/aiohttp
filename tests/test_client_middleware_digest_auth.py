@@ -231,7 +231,8 @@ async def test_encode_uri_uses_wire_encoded_request_target(
 
 
 @pytest.mark.parametrize(
-    "algorithm", ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS"]
+    "algorithm",
+    ["MD5-SESS", "SHA-SESS", "SHA-256-SESS", "SHA-512-SESS", "SHA-512-256-SESS"],
 )
 async def test_encode_digest_with_sess_algorithms(
     digest_auth_mw: DigestAuthMiddleware,
@@ -248,6 +249,24 @@ async def test_encode_digest_with_sess_algorithms(
         "GET", URL("http://example.com/resource"), b""
     )
     assert f"algorithm={algorithm}" in header
+
+
+@pytest.mark.parametrize("algorithm", ["SHA-512-256", "SHA-512-256-SESS"])
+async def test_encode_digest_with_sha512_256_algorithms(
+    digest_auth_mw: DigestAuthMiddleware,
+    qop_challenge: DigestAuthChallenge,
+    algorithm: str,
+) -> None:
+    challenge = qop_challenge.copy()
+    challenge["algorithm"] = algorithm
+    digest_auth_mw._challenge = challenge
+
+    header = await digest_auth_mw._encode(
+        "GET", URL("http://example.com/resource"), b""
+    )
+
+    assert f"algorithm={algorithm}" in header
+    assert 'response="' in header
 
 
 async def test_encode_unsupported_algorithm(

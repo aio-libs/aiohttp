@@ -34,6 +34,10 @@ class DigestAuthChallenge(TypedDict, total=False):
     stale: str
 
 
+def _sha512_256(data: bytes) -> "hashlib._Hash":
+    return hashlib.new("sha512_256", data)
+
+
 DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
     "MD5": hashlib.md5,
     "MD5-SESS": hashlib.md5,
@@ -43,8 +47,12 @@ DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
     "SHA256-SESS": hashlib.sha256,
     "SHA-256": hashlib.sha256,
     "SHA-256-SESS": hashlib.sha256,
+    "SHA512-256": _sha512_256,
+    "SHA512-256-SESS": _sha512_256,
     "SHA512": hashlib.sha512,
     "SHA512-SESS": hashlib.sha512,
+    "SHA-512-256": _sha512_256,
+    "SHA-512-256-SESS": _sha512_256,
     "SHA-512": hashlib.sha512,
     "SHA-512-SESS": hashlib.sha512,
 }

@@ -1,0 +1,3 @@
+Added support for ``SHA-512-256`` digest authentication challenges and
+their session variant in :class:`aiohttp.DigestAuthMiddleware`
+-- by :user:`nyxst4ck`.
