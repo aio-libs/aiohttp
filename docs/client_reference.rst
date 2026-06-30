@@ -2103,15 +2103,17 @@ ClientRequest
       This method is particularly useful in middleware when you need to modify the
       request body after the request has been created but before it's sent.
 
-      :param body: The new body content. Can be:
+      :param body: The new body content.
 
-                   - ``bytes``/``bytearray``: Raw binary data
-                   - ``str``: Text data (encoded using charset from Content-Type)
-                   - :class:`FormData`: Form data encoded as multipart/form-data
-                   - :class:`Payload`: A pre-configured payload object
-                   - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
-                   - File-like object: Will be read and sent as binary data
-                   - ``None``: Clears the body
+      Accepted body values:
+
+      - ``bytes``/``bytearray``: Raw binary data
+      - ``str``: Text data (encoded using charset from Content-Type)
+      - :class:`FormData`: Form data encoded as multipart/form-data
+      - :class:`Payload`: A pre-configured payload object
+      - ``AsyncIterable[bytes]``: Async iterable of bytes chunks
+      - File-like object: Will be read and sent as binary data
+      - ``None``: Clears the body
 
       .. code-block:: python
 
@@ -2649,11 +2651,13 @@ on being called.
 
       Add one or more fields to the form.
 
-      :param fields: An iterable containing:
+      :param fields: An iterable containing fields to add.
 
-                     - :class:`io.IOBase`, e.g. a file-like object
-                     - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
-                     - :class:`tuple` or :class:`list` of length two, containing a name-value pair
+      Accepted field values:
+
+      - :class:`io.IOBase`, e.g. a file-like object
+      - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
+      - :class:`tuple` or :class:`list` of length two, containing a name-value pair
 
 Client exceptions
 -----------------

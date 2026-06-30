@@ -1,0 +1,1 @@
+Moved nested parameter details out of reference field lists to avoid awkward documentation formatting.
