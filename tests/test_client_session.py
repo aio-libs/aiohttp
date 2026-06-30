@@ -946,6 +946,35 @@ async def test_default_proxy() -> None:
     await session.close()
 
 
+async def test_default_ssl() -> None:
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(ssl=False, request_class=request_class_mock)
+
+    assert session._default_ssl is False, "`ClientSession._default_ssl` not set"
+
+    with pytest.raises(OnCall):
+        await session.get("http://example.com")
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is False
+    ), "`ClientSession._request` uses default ssl not one used in ClientSession.get"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get("http://example.com", ssl=True)
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is True
+    ), "`ClientSession._request` does not use per-request ssl"
+
+    await session.close()
+
+
 async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})

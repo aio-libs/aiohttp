@@ -283,6 +283,7 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
+        "_default_ssl",
         "_retry_connection",
         "_middlewares",
     )
@@ -317,6 +318,7 @@ class ClientSession:
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        ssl: SSLContext | bool | Fingerprint = True,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -347,6 +349,12 @@ class ClientSession:
                 "The ssl_shutdown_timeout parameter is deprecated and will be removed in aiohttp 4.0",
                 DeprecationWarning,
                 stacklevel=2,
+            )
+
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                f"got {ssl!r} instead."
             )
 
         if connector is None:
@@ -407,6 +415,7 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
+        self._default_ssl = ssl
         self._retry_connection: bool = True
         self._middlewares = tuple(middlewares)
 
@@ -472,7 +481,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -492,6 +501,8 @@ class ClientSession:
 
         method = method.upper()
 
+        if ssl is sentinel:
+            ssl = self._default_ssl
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
@@ -919,7 +930,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -994,7 +1005,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1050,6 +1061,8 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
+        if ssl is sentinel:
+            ssl = self._default_ssl
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
