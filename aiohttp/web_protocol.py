@@ -11,11 +11,17 @@ from logging import Logger
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 import yarl
+from multidict import CIMultiDict
 from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
-from .helpers import DEFAULT_CHUNK_SIZE, ceil_timeout, frozen_dataclass_decorator
+from .helpers import (
+    DEFAULT_CHUNK_SIZE,
+    HeadersDictProxy,
+    ceil_timeout,
+    frozen_dataclass_decorator,
+)
 from .http import (
     HttpProcessingError,
     HttpRequestParser,
@@ -28,7 +34,7 @@ from .http_exceptions import BadHttpMethod
 from .log import access_logger, server_logger
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .tcp_helpers import tcp_keepalive
-from .web_exceptions import HTTPException, HTTPInternalServerError
+from .web_exceptions import HTTPBadRequest, HTTPException, HTTPInternalServerError
 from .web_log import AccessLogger
 from .web_request import BaseRequest
 from .web_response import Response, StreamResponse
@@ -54,6 +60,7 @@ _RequestFactory = Callable[
         "RequestHandler[_Request]",
         AbstractStreamWriter,
         "asyncio.Task[None]",
+        HTTPBadRequest | None,
     ],
     _Request,
 ]
@@ -68,8 +75,8 @@ ERROR = RawRequestMessage(
     "UNKNOWN",
     "/",
     HttpVersion10,
-    {},  # type: ignore[arg-type]
-    {},  # type: ignore[arg-type]
+    HeadersDictProxy(CIMultiDict()),
+    (),
     True,
     None,
     False,
@@ -609,6 +616,25 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             finally:
                 self._current_request = None
         except HTTPException as exc:
+            # Uncaught parser error
+            if request._pre_handler_error is exc:
+                cause = exc.__cause__
+                if self._request_count == 1 and isinstance(cause, BadHttpMethod):
+                    # BadHttpMethod is common when a client sends non-HTTP
+                    # or encrypted traffic to an HTTP port. This is expected
+                    # to happen when connected to the public internet so we log
+                    # it at the debug level as to not fill logs with noise.
+                    self.logger.debug(
+                        "Error handling request from %s",
+                        request.remote,
+                        exc_info=cause,
+                    )
+                else:
+                    self.log_exception(
+                        "Error handling request from %s",
+                        request.remote,
+                        exc_info=cause,
+                    )
             resp = Response(
                 status=exc.status, reason=exc.reason, text=exc.text, headers=exc.headers
             )
@@ -678,11 +704,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             manager.requests_count += 1
             writer = StreamWriter(self, loop)
-            if not isinstance(message, _ErrInfo):
-                request_handler = self._request_handler
-            else:
-                # make request_factory work
-                request_handler = self._make_error_handler(message)
+            pre_handler_error: HTTPBadRequest | None = None
+            if isinstance(message, _ErrInfo):
+                pre_handler_error = HTTPBadRequest(
+                    text=message.message, content_type="text/plain"
+                )
+                pre_handler_error.__cause__ = message.exc
                 message = ERROR
 
             # Important don't hold a reference to the current task
@@ -694,10 +721,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self,
                 writer,
                 self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+                pre_handler_error,
             )
             try:
                 # a new task is used for copy context vars (#3406)
-                coro = self._handle_request(request, start, request_handler)
+                coro = self._handle_request(request, start, self._request_handler)
                 if sys.version_info >= (3, 12):
                     task = asyncio.Task(coro, loop=loop, eager_start=True)
                 else:
@@ -841,18 +869,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         Returns HTTP response with specific status code. Logs additional
         information. It always closes current connection.
         """
-        if self._request_count == 1 and isinstance(exc, BadHttpMethod):
-            # BadHttpMethod is common when a client sends non-HTTP
-            # or encrypted traffic to an HTTP port. This is expected
-            # to happen when connected to the public internet so we log
-            # it at the debug level as to not fill logs with noise.
-            self.logger.debug(
-                "Error handling request from %s", request.remote, exc_info=exc
-            )
-        else:
-            self.log_exception(
-                "Error handling request from %s", request.remote, exc_info=exc
-            )
+        self.log_exception(
+            "Error handling request from %s", request.remote, exc_info=exc
+        )
 
         # some data already got sent, connection is broken
         if request.writer.output_size > 0:
@@ -890,13 +909,3 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         resp.force_close()
 
         return resp
-
-    def _make_error_handler(
-        self, err_info: _ErrInfo
-    ) -> Callable[[BaseRequest], Awaitable[StreamResponse]]:
-        async def handler(request: BaseRequest) -> StreamResponse:
-            return self.handle_error(
-                request, err_info.status, err_info.exc, err_info.message
-            )
-
-        return handler
