@@ -245,7 +245,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
         ]
         resolver = AsyncResolver()
         try:
-            real = await resolver.resolve("localhost")
+            real = await resolver.resolve("localhost", family=socket.AF_UNSPEC)
         finally:
             await resolver.close()
 
@@ -254,14 +254,14 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
             [
                 call(
                     "localhost",
-                    family=socket.AF_INET,
+                    family=socket.AF_UNSPEC,
                     flags=socket.AI_ADDRCONFIG,
                     port=0,
                     type=socket.SOCK_STREAM,
                 ),
                 call(
                     "localhost",
-                    family=socket.AF_INET,
+                    family=socket.AF_UNSPEC,
                     flags=0,
                     port=0,
                     type=socket.SOCK_STREAM,
@@ -305,7 +305,7 @@ async def test_threaded_resolver_retries_localhost_without_addrconfig_on_windows
     resolver = ThreadedResolver()
     resolver._loop = loop
 
-    real = await resolver.resolve("localhost")
+    real = await resolver.resolve("localhost", family=socket.AF_UNSPEC)
 
     assert real[0]["host"] == "127.0.0.1"
     loop.getaddrinfo.assert_has_calls(
@@ -314,14 +314,14 @@ async def test_threaded_resolver_retries_localhost_without_addrconfig_on_windows
                 "localhost",
                 0,
                 type=socket.SOCK_STREAM,
-                family=socket.AF_INET,
+                family=socket.AF_UNSPEC,
                 flags=socket.AI_ADDRCONFIG,
             ),
             call(
                 "localhost",
                 0,
                 type=socket.SOCK_STREAM,
-                family=socket.AF_INET,
+                family=socket.AF_UNSPEC,
                 flags=0,
             ),
         ]
@@ -342,13 +342,13 @@ async def test_threaded_resolver_keeps_addrconfig_without_localhost_windows_fall
     resolver._loop = loop
 
     with pytest.raises(socket.gaierror):
-        await resolver.resolve(host)
+        await resolver.resolve(host, family=socket.AF_UNSPEC)
 
     loop.getaddrinfo.assert_called_once_with(
         host,
         0,
         type=socket.SOCK_STREAM,
-        family=socket.AF_INET,
+        family=socket.AF_UNSPEC,
         flags=socket.AI_ADDRCONFIG,
     )
 
