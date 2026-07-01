@@ -83,8 +83,8 @@ For HTTP digest authentication, use the :class:`DigestAuthMiddleware` client mid
 
 The :class:`DigestAuthMiddleware` implements HTTP Digest Authentication according to RFC 7616,
 providing a more secure alternative to Basic Authentication. It supports all
-standard hash algorithms including MD5, SHA, SHA-256, SHA-512 and their session
-variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
+standard hash algorithms including MD5, SHA, SHA-256, SHA-512, SHA-512-256 and
+their session variants, as well as both 'auth' and 'auth-int' quality of protection (qop) options.
 The middleware automatically handles the authentication flow by intercepting 401 responses
 and retrying with proper credentials.
 
