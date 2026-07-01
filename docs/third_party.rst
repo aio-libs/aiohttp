@@ -64,6 +64,9 @@ aiohttp extensions
 - `aiozipkin <https://github.com/aio-libs/aiozipkin>`_ distributed
   tracing instrumentation for `aiohttp` client and server.
 
+- `aiocache <https://github.com/aio-libs/aiocache>`_ Caching for asyncio
+  with multiple backends (framework agnostic)
+
 Database drivers
 ^^^^^^^^^^^^^^^^
 
@@ -146,8 +149,6 @@ We cannot vouch for the quality of these libraries, use them at your own risk.
 Please add your library reference here first and after some time
 ask to raise the status.
 
-- `pytest-aiohttp-client <https://github.com/sivakov512/pytest-aiohttp-client>`_
-  Pytest fixture with simpler api, payload decoding and status code assertions.
 
 - `python-proxy-headers <https://github.com/proxymesh/python-proxy-headers>`_
   provides ``aiohttp_proxy`` extension for receiving custom response headers from a proxy server
@@ -161,17 +162,8 @@ ask to raise the status.
 - `aiohttp-cache <https://github.com/cr0hn/aiohttp-cache>`_ A cache
   system for aiohttp server.
 
-- `aiocache <https://github.com/argaen/aiocache>`_ Caching for asyncio
-  with multiple backends (framework agnostic)
-
-- `gain <https://github.com/gaojiuli/gain>`_ Web crawling framework
-  based on asyncio for everyone.
-
 - `aiohttp-validate <https://github.com/dchaplinsky/aiohttp_validate>`_
   Simple library that helps you validate your API endpoints requests/responses with json schema.
-
-- `raven-aiohttp <https://github.com/getsentry/raven-aiohttp>`_ An
-  aiohttp transport for raven-python (Sentry client).
 
 - `webargs <https://github.com/sloria/webargs>`_ A friendly library
   for parsing HTTP request arguments, with built-in support for
@@ -184,14 +176,6 @@ ask to raise the status.
 
 - `aioresponses <https://github.com/pnuckowski/aioresponses>`_ a
   helper for mock/fake web requests in python aiohttp package.
-
-- `aiohttp-transmute
-  <https://github.com/toumorokoshi/aiohttp-transmute>`_ A transmute
-  implementation for aiohttp.
-
-- `aiohttp-login <https://github.com/imbolc/aiohttp-login>`_
-  Registration and authorization (including social) for aiohttp
-  applications.
 
 - `aiohttp_utils <https://github.com/sloria/aiohttp_utils>`_ Handy
   utilities for building aiohttp.web applications.
@@ -315,3 +299,6 @@ ask to raise the status.
 
 - `wireup <https://github.com/maldoinc/wireup>`_
   Performant, concise, and easy-to-use dependency injection container.
+
+- `aiointercept <https://github.com/Polandia94/aiointercept>`_
+  Mock aiohttp HTTP requests by routing them through a real aiohttp.web test server.

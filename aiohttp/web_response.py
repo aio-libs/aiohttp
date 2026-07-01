@@ -688,8 +688,10 @@ class Response(StreamResponse):
         if body is None or self._must_be_empty_body:
             await super().write_eof()
         elif isinstance(self._body, Payload):
-            await self._body.write(self._payload_writer)
-            await self._body.close()
+            try:
+                await self._body.write(self._payload_writer)
+            finally:
+                await self._body.close()
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))
@@ -706,7 +708,7 @@ class Response(StreamResponse):
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
                 if body_len != "0" or (
-                    self.status != 304 and request.method not in hdrs.METH_HEAD_ALL
+                    self.status != 304 and request.method != hdrs.METH_HEAD
                 ):
                     self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 

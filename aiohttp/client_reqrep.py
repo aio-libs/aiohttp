@@ -36,6 +36,7 @@ from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
 from .helpers import (
     _SENTINEL,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     BaseTimerContext,
     HeadersDictProxy,
     HeadersMixin,
@@ -80,6 +81,52 @@ if TYPE_CHECKING:
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+
+
+@frozen_dataclass_decorator
+class ClientTimeout:
+    total: float | None = 5 * 60  # 5 minute default timeout
+    connect: float | None = None
+    sock_read: float | None = None
+    sock_connect: float | None = None
+    ceil_threshold: float = 5
+
+    # pool_queue_timeout: Optional[float] = None
+    # dns_resolution_timeout: Optional[float] = None
+    # socket_connect_timeout: Optional[float] = None
+    # connection_acquiring_timeout: Optional[float] = None
+    # new_connection_timeout: Optional[float] = None
+    # http_header_timeout: Optional[float] = None
+    # response_body_timeout: Optional[float] = None
+
+    # to create a timeout specific for a single request, either
+    # - create a completely new one to overwrite the default
+    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
+    # to overwrite the defaults
+
+    def __post_init__(self) -> None:
+        # Ensure total is never lower than a more specific timeout, otherwise
+        # the latter would be silently capped by total and rendered useless.
+        # total=None means the user explicitly disabled the total timeout.
+        if self.total is None:
+            return
+        object.__setattr__(
+            self,
+            "total",
+            max(
+                self.total,
+                self.connect or 0,
+                self.sock_read or 0,
+                self.sock_connect or 0,
+            ),
+        )
+
+        if self.total == 0:
+            raise ValueError(
+                "total timeout must be a positive number or None to disable, "
+                "got 0. Using 0 to disable timeouts is no longer supported, "
+                "use None instead."
+            )
 
 
 def _gen_default_accept_encoding() -> str:
@@ -180,6 +227,20 @@ class ConnectionKey(NamedTuple):
     ssl: SSLContext | bool | Fingerprint
     proxy: URL | None
     proxy_headers_hash: int | None  # hash(CIMultiDict)
+    server_hostname: str | None = None
+
+
+class ResponseParams(TypedDict):
+    timer: BaseTimerContext | None
+    skip_payload: bool
+    read_until_eof: bool
+    auto_decompress: bool
+    read_timeout: float | None
+    read_bufsize: int
+    timeout_ceil_threshold: float
+    max_line_size: int
+    max_field_size: int
+    max_headers: int
 
 
 class ClientResponse(HeadersMixin):
@@ -196,6 +257,7 @@ class ClientResponse(HeadersMixin):
     _headers: HeadersDictProxy = None  # type: ignore[assignment]
     _history: tuple["ClientResponse", ...] = ()
     _raw_headers: RawHeaders = None  # type: ignore[assignment]
+    _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
     _cookies: SimpleCookie | None = None
@@ -489,6 +551,7 @@ class ClientResponse(HeadersMixin):
         # headers
         self._headers = message.headers
         self._raw_headers = message.raw_headers
+        self._upgraded = message.upgrade
 
         # payload
         self.content = payload
@@ -818,6 +881,7 @@ class ClientRequestBase:
                 self._ssl,
                 None,
                 None,
+                self.server_hostname,
             ),
         )
 
@@ -950,7 +1014,9 @@ class ClientRequestArgs(TypedDict, total=False):
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
     proxy: URL | None
+    response_params: ResponseParams
     timer: BaseTimerContext
+    timeout: ClientTimeout
     session: "ClientSession"
     ssl: SSLContext | bool | Fingerprint
     proxy_headers: CIMultiDict[str] | None
@@ -963,6 +1029,10 @@ class ClientRequest(ClientRequestBase):
     _EMPTY_BODY = payload.PAYLOAD_REGISTRY.get(b"", disposition=None)
     _body = _EMPTY_BODY
     _continue = None  # waiter future for '100 Continue' response
+    _response_params: ResponseParams = None  # type: ignore[assignment]
+    _session: "ClientSession" = None  # type: ignore[assignment]
+    _timeout = ClientTimeout()
+    _traces: list["Trace"] = ()  # type: ignore[assignment]
 
     GET_METHODS = {
         hdrs.METH_GET,
@@ -992,7 +1062,9 @@ class ClientRequest(ClientRequestBase):
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
         proxy: URL | None,
+        response_params: ResponseParams,
         timer: BaseTimerContext,
+        timeout: ClientTimeout,
         session: "ClientSession",
         ssl: SSLContext | bool | Fingerprint,
         proxy_headers: CIMultiDict[str] | None,
@@ -1016,7 +1088,9 @@ class ClientRequest(ClientRequestBase):
         self._session = session
         self.chunked = chunked
         self.response_class = response_class
+        self._response_params = response_params
         self._timer = timer
+        self._timeout = timeout
         self.server_hostname = server_hostname
         self.version = version
 
@@ -1055,6 +1129,7 @@ class ClientRequest(ClientRequestBase):
                 self._ssl,
                 self.proxy,
                 h,
+                self.server_hostname,
             ),
         )
 
@@ -1290,6 +1365,13 @@ class ClientRequest(ClientRequestBase):
             self.proxy = None
             self.proxy_headers = None
             return
+
+        if proxy.scheme not in HTTP_AND_EMPTY_SCHEMA_SET:
+            raise ValueError(
+                f"aiohttp only supports http(s) proxies (got: {proxy.scheme!r}).\n"
+                "See third-party libraries for other proxy schemes."
+            )
+
         # URL-embedded credentials on the proxy map to Proxy-Authorization.
         if proxy.raw_user or proxy.raw_password:
             auth_header = encode_basic_auth(proxy.user or "", proxy.password or "")

@@ -8,6 +8,7 @@ from multidict import MultiDict, MultiDictProxy
 
 from . import hdrs, multipart, payload
 from .helpers import guess_filename
+from .http_writer import _safe_header
 from .payload import Payload
 
 __all__ = ("FormData",)
@@ -56,12 +57,14 @@ class FormData:
         if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
             self._is_multipart = True
 
+        _safe_header(name)
         type_options: MultiDict[str] = MultiDict({"name": name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError("filename must be an instance of str. Got: %s" % filename)
         if filename is None and isinstance(value, io.IOBase):
             filename = guess_filename(value, name)
         if filename is not None:
+            _safe_header(filename)
             type_options["filename"] = filename
             self._is_multipart = True
 
@@ -71,11 +74,7 @@ class FormData:
                 raise TypeError(
                     "content_type must be an instance of str. Got: %s" % content_type
                 )
-            if "\r" in content_type or "\n" in content_type:
-                raise ValueError(
-                    "Newline or carriage return detected in headers. "
-                    "Potential header injection attack."
-                )
+            _safe_header(content_type)
             headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
 

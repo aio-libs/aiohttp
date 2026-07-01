@@ -1,6 +1,8 @@
 import asyncio
 import datetime
 import gc
+import ipaddress
+import itertools
 import sys
 import weakref
 from collections.abc import Iterator
@@ -228,6 +230,93 @@ def test_is_ip_address_invalid_type() -> None:
 
     with pytest.raises(TypeError):
         helpers.is_ip_address(object())  # type: ignore[arg-type]
+
+
+# ------------------------------- is_canonical_ipv4_address() ---------------
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "0.0.0.0",
+        "127.0.0.1",
+        "8.8.8.8",
+        "192.168.0.1",
+        "255.255.255.255",
+    ],
+)
+def test_is_canonical_ipv4_address_accepts_dotted_quad(host: str) -> None:
+    assert helpers.is_canonical_ipv4_address(host)
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "2130706433",  # decimal integer form of 127.0.0.1
+        "017700000001",  # octal form of 127.0.0.1
+        "127.1",  # short-hand form of 127.0.0.1
+        "127.0.1",  # 3-part short-hand
+        "0177.0.0.1",  # octal leading-zero octet
+        "01.2.3.4",  # octal leading-zero octet
+        "256.0.0.1",  # octet out of range
+        "999.0.0.1",  # octet out of range
+        "1.2.3.4.5",  # too many octets
+        "127.0.0.",  # trailing dot / empty octet
+        "12³.0.0.1",  # superscript digit (str.isdigit but not int)
+        "１２７.0.0.1",  # full-width digits
+        "0xa.0.0.0",  # hex octet
+        " 127.0.0.1",  # leading whitespace
+        "127.0.0.1 ",  # trailing whitespace
+        "example.com",  # domain name
+        "",  # empty
+    ],
+)
+def test_is_canonical_ipv4_address_rejects_non_canonical(host: str) -> None:
+    assert not helpers.is_canonical_ipv4_address(host)
+
+
+def _ipaddress_accepts_ipv4(host: str) -> bool:
+    """Oracle: does the stdlib accept ``host`` as a canonical IPv4 address?"""
+    try:
+        ipaddress.IPv4Address(host)
+    except ipaddress.AddressValueError:
+        return False
+    return True
+
+
+def test_is_canonical_ipv4_address_matches_stdlib() -> None:
+    """Prove equivalence with ``ipaddress.IPv4Address`` over a broad corpus.
+
+    The helper is a fast hand-rolled substitute for the stdlib parser; this
+    exhaustively cross-checks the two agree on every combination of a set of
+    octet-like tokens covering the known edge cases (leading zeros, out of
+    range, empty, unicode digits, wrong octet count).
+    """
+    tokens = [
+        "0",
+        "1",
+        "9",
+        "10",
+        "99",
+        "255",
+        "256",
+        "999",
+        "00",
+        "01",
+        "0177",
+        "1234",
+        "",
+        "a",
+        "0x1",
+        "１",  # full-width 1
+        "1²",  # trailing superscript
+    ]
+    for count in range(1, 5):
+        for parts in itertools.product(tokens, repeat=count):
+            host = ".".join(parts)
+            assert helpers.is_canonical_ipv4_address(host) == _ipaddress_accepts_ipv4(
+                host
+            ), host
 
 
 # ----------------------------------- TimeoutHandle -------------------
@@ -1074,6 +1163,8 @@ def test_method_must_be_empty_body() -> None:
     assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
     assert "CONNECT" not in EMPTY_BODY_METHODS
+    # Callers are expected to pass already-normalised (uppercase) methods.
+    assert "head" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:

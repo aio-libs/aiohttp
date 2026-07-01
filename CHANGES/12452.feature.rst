@@ -1,2 +1,0 @@
-Added :attr:`~aiohttp.ClientResponse.output_size` and
-:attr:`~aiohttp.ClientResponse.upload_complete` -- by :user:`Dreamsorcerer`.

@@ -36,6 +36,7 @@ backoff
 backend
 backends
 backport
+backported
 Backport
 Backporting
 backports
@@ -77,6 +78,7 @@ cmd
 codecov
 codebase
 codec
+codspeed
 Codings
 committer
 committers
@@ -99,6 +101,7 @@ Cython
 Cythonize
 cythonized
 de
+decompressor
 deduplicate
 defs
 Dependabot
@@ -145,6 +148,7 @@ github
 google
 gunicorn
 gunicorn’s
+gzip
 gzipped
 hackish
 highlevel
@@ -249,6 +253,7 @@ peername
 performant
 pickleable
 ping
+pipelined
 pipelining
 pluggable
 plugin
@@ -317,6 +322,7 @@ seekable
 sendfile
 serializable
 serializer
+severities
 shourtcuts
 skipuntil
 Skyscanner
@@ -358,6 +364,7 @@ toolbar
 toplevel
 towncrier
 tp
+triages
 tuples
 UI
 un

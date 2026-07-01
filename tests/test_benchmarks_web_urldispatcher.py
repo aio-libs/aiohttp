@@ -6,18 +6,23 @@ import pathlib
 import random
 import string
 from pathlib import Path
-from typing import NoReturn, cast
+from typing import TYPE_CHECKING, NoReturn, cast
 from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
-from pytest_codspeed import BenchmarkFixture
 from yarl import URL
 
 import aiohttp
 from aiohttp import web
 from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http import HttpVersion, RawRequestMessage
+
+if TYPE_CHECKING:
+    from pytest_codspeed import BenchmarkFixture
+else:
+    pytest_codspeed = pytest.importorskip("pytest_codspeed")
+    BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
 @pytest.fixture

@@ -112,11 +112,18 @@ NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 EMPTY_BODY_STATUS_CODES = frozenset((204, 304, *range(100, 200)))
 # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
 # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
-EMPTY_BODY_METHODS = hdrs.METH_HEAD_ALL
+EMPTY_BODY_METHODS = frozenset({hdrs.METH_HEAD})
 
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
+
+
+EMPTY_SCHEMA_SET = frozenset({""})
+HTTP_SCHEMA_SET = frozenset({"http", "https"})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
 
 CHAR = {chr(i) for i in range(0, 128)}
@@ -483,6 +490,28 @@ def is_ip_address(host: str | None) -> bool:
     # For a host to be an ipv4 address, it must be all numeric.
     # The host must contain a colon to be an IPv6 address.
     return ":" in host or host.replace(".", "").isdigit()
+
+
+def is_canonical_ipv4_address(host: str) -> bool:
+    """Check if host is a canonical dotted-quad IPv4 address.
+
+    Rejects the legacy numeric forms that ``socket`` still accepts and
+    maps onto an address, e.g. ``2130706433``, ``017700000001``, ``127.1``.
+    """
+    parts = host.split(".")
+    if len(parts) != 4:
+        return False
+    for part in parts:
+        # Each octet must be 1-3 ASCII digits; reject unicode digits
+        # (which ``str.isdigit`` accepts but ``int`` may not), octal
+        # leading zeros, and values above 255.
+        if not (1 <= len(part) <= 3) or not part.isascii() or not part.isdigit():
+            return False
+        if part[0] == "0" and len(part) != 1:
+            return False
+        if int(part) > 255:
+            return False
+    return True
 
 
 _cached_current_datetime: int | None = None
@@ -1135,7 +1164,7 @@ def must_be_empty_body(method: str, code: int) -> bool:
     return (
         code in EMPTY_BODY_STATUS_CODES
         or method in EMPTY_BODY_METHODS
-        or (200 <= code < 300 and method in hdrs.METH_CONNECT_ALL)
+        or (200 <= code < 300 and method == hdrs.METH_CONNECT)
     )
 
 
@@ -1147,5 +1176,5 @@ def should_remove_content_length(method: str, code: int) -> bool:
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
     return code in EMPTY_BODY_STATUS_CODES or (
-        200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
+        200 <= code < 300 and method == hdrs.METH_CONNECT
     )

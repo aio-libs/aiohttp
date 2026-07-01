@@ -1,6 +1,7 @@
 import asyncio
 from unittest import mock
 
+import pytest
 from multidict import CIMultiDict
 from pytest_mock import MockerFixture
 from yarl import URL
@@ -167,6 +168,34 @@ async def test_unexpected_exception_during_data_received() -> None:
             proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd")
 
     assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_base_exception_during_data_received_closes_transport() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+
+    class PatchableHttpResponseParser(http.HttpResponseParser):
+        """Subclass of HttpResponseParser to make it patchable."""
+
+    with mock.patch(
+        "aiohttp.client_proto.HttpResponseParser", PatchableHttpResponseParser
+    ):
+        transport = mock.create_autospec(
+            asyncio.Transport, spec_set=True, instance=True
+        )
+        proto.connection_made(transport)
+        proto.set_response_params(read_until_eof=True)
+        # Prime the parser so feed_data has been called once with valid data.
+        proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nab")
+        transport.close.reset_mock()
+
+        with mock.patch.object(
+            proto._parser, "feed_data", side_effect=asyncio.CancelledError
+        ):
+            with pytest.raises(asyncio.CancelledError):
+                proto.data_received(b"more")
+
+        assert transport.close.called
 
 
 async def test_client_protocol_readuntil_eof() -> None:
@@ -358,3 +387,43 @@ async def test_abort_without_transport() -> None:
         # Should not raise and should still clean up
         assert proto._exception is None
         mock_drop_timeout.assert_not_called()
+
+
+@pytest.mark.parametrize(
+    ("connection", "expected"),
+    [(b"upgrade, keep-alive", True), (b"keep-alive", False)],
+)
+async def test_response_start_records_upgrade(
+    connection: bytes, expected: bool
+) -> None:
+    """ClientResponse.start() preserves the parser's Connection upgrade flag."""
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+    conn = mock.Mock(protocol=proto)
+    proto.set_response_params(read_until_eof=True)
+    proto.data_received(
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: " + connection + b"\r\n\r\n"
+    )
+
+    url = URL("http://ws-upgrade.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=mock.Mock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=mock.Mock(),
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    await response.start(conn)
+    assert response._upgraded is expected
+    response.close()

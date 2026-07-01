@@ -266,6 +266,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         response_with_body: bool = True,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
+        max_msg_queue_size: int = 0,
     ) -> None:
         self.protocol = protocol
         self.loop = loop
@@ -282,12 +283,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._lines: list[bytes] = []
         self._tail = b""
         self._upgraded = False
+        self._pending_upgrade = False
         self._payload = None
         self._payload_parser: HttpPayloadParser | None = None
         self._payload_has_more_data = False
         self._auto_decompress = auto_decompress
         self._limit = limit
         self._headers_parser = HeadersParser(max_field_size, self.lax)
+        # Stop emitting messages once this many are queued unconsumed (0 = off).
+        self._max_msg_queue_size = max_msg_queue_size
+        self._msg_in_flight = 0
 
     @abc.abstractmethod
     def parse_message(self, lines: list[bytes]) -> _MsgT: ...
@@ -298,6 +303,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
     def pause_reading(self) -> None:
         assert self._payload_parser is not None
         self._payload_parser.pause_reading()
+
+    def message_consumed(self) -> None:
+        """Protocol drained a queued message; free a slot for parsing."""
+        if self._msg_in_flight > 0:
+            self._msg_in_flight -= 1
 
     def feed_eof(self) -> _MsgT | None:
         if self._payload_parser is not None:
@@ -340,6 +350,15 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             # read HTTP message (request/response line + headers), \r\n\r\n
             # and split by lines
             if self._payload_parser is None and not self._upgraded:
+                if (
+                    self._max_msg_queue_size
+                    and self._msg_in_flight >= self._max_msg_queue_size
+                ):
+                    # Queue full: buffer the rest and stop. Safe pause point;
+                    # any preceding body is consumed before the next request
+                    # line. Resumes via feed_data(b"") when the queue drains.
+                    self._tail = data[start_pos:]
+                    break
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
                 if pos == start_pos and not self._lines:
@@ -393,9 +412,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         if SEC_WEBSOCKET_KEY1 in msg.headers:
                             raise InvalidHeader(SEC_WEBSOCKET_KEY1)
 
-                        self._upgraded = msg.upgrade and _is_supported_upgrade(
-                            msg.headers
-                        )
+                        upgraded = msg.upgrade and _is_supported_upgrade(msg.headers)
 
                         method = getattr(msg, "method", self.method)
                         # code is only present on responses
@@ -407,8 +424,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             method and method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
-                            ((length is not None and length > 0) or msg.chunked)
-                            and not self._upgraded
+                            (length is not None and length > 0) or msg.chunked
                         ):
                             payload = StreamReader(
                                 self.protocol,
@@ -434,6 +450,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
+                                # https://www.rfc-editor.org/info/rfc9110/#section-7.8-15
+                                # Defer any requested upgrade until the
+                                # complete request has been read.
+                                self._pending_upgrade = upgraded
                         elif method == METH_CONNECT:
                             assert isinstance(msg, RawRequestMessage)
                             payload = StreamReader(
@@ -480,10 +500,17 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
+                        elif upgraded:
+                            # No body to read, so the connection switches to
+                            # the upgraded protocol immediately.
+                            self._upgraded = True
+                            payload = EMPTY_PAYLOAD
                         else:
                             payload = EMPTY_PAYLOAD
 
                         messages.append((msg, payload))
+                        if self._max_msg_queue_size:
+                            self._msg_in_flight += 1
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
@@ -535,6 +562,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 start_pos = 0
                 data_len = len(data)
                 self._payload_parser = None
+                if self._pending_upgrade:
+                    # Body fully read: the deferred upgrade takes effect and
+                    # the rest of the connection is the upgraded protocol.
+                    self._upgraded = True
+                    self._pending_upgrade = False
 
         if data and start_pos < data_len:
             data = data[start_pos:]
@@ -624,6 +656,7 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         # method
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
+        method = method.upper()
 
         # version
         match = VERSRE.fullmatch(version)
@@ -853,6 +886,7 @@ class HttpPayloadParser:
         elif length is not None:
             self._type = ParseState.PARSE_LENGTH
             self._length = length
+            self._length_expected = length
             if self._length == 0:
                 real_payload.feed_eof()
                 self.done = True
@@ -874,8 +908,10 @@ class HttpPayloadParser:
             self.done = True
             self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
+            received = self._length_expected - self._length
             raise ContentLengthError(
-                "Not enough data to satisfy content length header."
+                f"Not enough data to satisfy content length header "
+                f"(received {received} of {self._length_expected} bytes)."
             )
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
@@ -934,6 +970,10 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
                     pos = chunk.find(SEP)
                     if pos >= 0:
+                        # Only chunk-size lines reach here; trailers enforce
+                        # _max_field_size separately in PARSE_TRAILERS below.
+                        if pos > self._max_line_size:
+                            raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
                         i = chunk.find(CHUNK_EXT, 0, pos)
                         if i >= 0:
                             size_b = chunk[:i]  # strip chunk-extensions

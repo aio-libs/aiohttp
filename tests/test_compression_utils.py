@@ -1,5 +1,6 @@
 """Tests for compression utils."""
 
+import gzip
 import sys
 
 import pytest
@@ -86,4 +87,39 @@ def test_zstd_multi_frame_max_length_exhausted_preserves_unused_data() -> None:
     result1 = d.decompress_sync(frame1 + frame2, max_length=4)
     assert result1 == b"AAAA"
     result2 = d.decompress_sync(frame3)
+    assert result2 == b"BBBBCCCC"
+
+
+def test_zlib_gzip_multi_member_unlimited() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    member1 = gzip.compress(b"AAAA")
+    member2 = gzip.compress(b"BBBB")
+    result = d.decompress_sync(member1 + member2)
+    assert result == b"AAAABBBB"
+
+
+def test_zlib_gzip_multi_member_max_length_partial() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    member1 = gzip.compress(b"AAAA")
+    member2 = gzip.compress(b"BBBB")
+    result = d.decompress_sync(member1 + member2, max_length=6)
+    assert result == b"AAAABB"
+
+
+def test_zlib_gzip_multi_member_max_length_exhausted() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    member1 = gzip.compress(b"AAAA")
+    member2 = gzip.compress(b"BBBB")
+    result = d.decompress_sync(member1 + member2, max_length=4)
+    assert result == b"AAAA"
+
+
+def test_zlib_gzip_multi_member_max_length_exhausted_preserves_unused_data() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    member1 = gzip.compress(b"AAAA")
+    member2 = gzip.compress(b"BBBB")
+    member3 = gzip.compress(b"CCCC")
+    result1 = d.decompress_sync(member1 + member2, max_length=4)
+    assert result1 == b"AAAA"
+    result2 = d.decompress_sync(member3)
     assert result2 == b"BBBBCCCC"

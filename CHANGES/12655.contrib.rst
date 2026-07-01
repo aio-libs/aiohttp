@@ -1,4 +1,0 @@
-Switched the armv7l wheel builds onto GitHub's hosted ARM runners. The
-32-bit ARM build still runs under QEMU, but the host is now aarch64
-rather than x86_64, so the emulation overhead drops sharply
--- by :user:`bdraco`.

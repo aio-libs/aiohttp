@@ -1,7 +1,0 @@
-Restricted the ``isal`` test dependency to CPython, since
-``isal`` 1.8.0 stopped publishing PyPy wheels and the source
-build requires ``nasm``, which is not available on the CI
-runners. The ``parametrize_zlib_backend`` fixture already
-calls ``pytest.importorskip``, so PyPy continues to exercise
-the ``zlib`` and ``zlib_ng`` backends with no further
-changes -- by :user:`bdraco`.

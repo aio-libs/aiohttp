@@ -4,7 +4,9 @@ import json
 import pathlib
 import socket
 import sys
+import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
+from contextlib import suppress
 from typing import NoReturn
 from unittest import mock
 
@@ -27,14 +29,18 @@ from aiohttp import (
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
-from aiohttp.helpers import HeadersDictProxy
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.streams import StreamReader
 from aiohttp.typedefs import Handler, Middleware
-from aiohttp.web_protocol import RequestHandler
+from aiohttp.web_protocol import MAX_MSG_QUEUE_SIZE, RequestHandler
 
 try:
     import brotlicffi as brotli
 except ImportError:
-    import brotli
+    try:
+        import brotli
+    except ImportError:
+        brotli = None
 
 try:
     import ssl
@@ -1156,6 +1162,7 @@ async def test_response_with_precompressed_body(
     resp.release()
 
 
+@pytest.mark.skipif(brotli is None, reason="brotli not available")
 async def test_response_with_precompressed_body_brotli(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -1708,6 +1715,246 @@ async def test_response_prepared_with_clone(aiohttp_client: AiohttpClient) -> No
     assert 200 == resp.status
 
     resp.release()
+
+
+async def test_http1_pipelined_requests_are_count_limited(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Requests pipelined behind a busy handler must not grow unbounded.
+
+    A client can keep one handler active and pipeline many complete requests
+    behind it; the per-connection queue stays bounded by MAX_MSG_QUEUE_SIZE.
+    """
+    pipelined_requests = 500
+    slow_handler_started = asyncio.Event()
+    queue_observed = asyncio.Event()
+    max_queued = 0
+    data_received = RequestHandler.data_received
+
+    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
+        nonlocal max_queued
+        data_received(self, data)
+        if self._request_in_progress and self._messages:
+            max_queued = max(max_queued, len(self._messages))
+            queue_observed.set()
+
+    monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
+
+    async def slow_handler(request: web.Request) -> web.Response:
+        slow_handler_started.set()
+        await asyncio.sleep(0.5)
+        return web.Response(text="slow")
+
+    async def fast_handler(request: web.Request) -> NoReturn:
+        # The pipelined requests are only counted, never handled: the test
+        # closes the connection while the slow handler still holds the loop.
+        assert False
+
+    app = web.Application()
+    app.router.add_get("/slow", slow_handler)
+    app.router.add_get("/x", fast_handler)
+    server = await aiohttp_server(app)
+
+    def raw_get(path: str) -> bytes:
+        return (
+            f"GET {path} HTTP/1.1\r\nHost: localhost\r\n"
+            "Connection: keep-alive\r\n\r\n"
+        ).encode("ascii")
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(raw_get("/slow"))
+        await writer.drain()
+        await asyncio.wait_for(slow_handler_started.wait(), 1)
+
+        writer.write(raw_get("/x") * pipelined_requests)
+        await writer.drain()
+        await asyncio.wait_for(queue_observed.wait(), 1)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    # Tight lower bound also catches over-aggressive pausing (e.g. clamping to 1).
+    assert MAX_MSG_QUEUE_SIZE // 2 < max_queued <= MAX_MSG_QUEUE_SIZE
+
+
+async def test_http1_pipelined_queue_resumes_after_drain(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A paused pipeline queue resumes reading once handlers drain it.
+
+    Once enough requests are pipelined behind a busy handler to fill the queue,
+    reading is paused; as the handlers drain the queue past the low-water mark
+    reading must resume so the remaining buffered requests are still served.
+    """
+    # Several times the limit so the queue refills and re-pauses while draining.
+    pipelined_requests = MAX_MSG_QUEUE_SIZE * 3
+    first_started = asyncio.Event()
+    release_first = asyncio.Event()
+    resumed = asyncio.Event()
+    handled: list[str] = []
+    all_handled = asyncio.Event()
+
+    resume = RequestHandler._resume_msg_queue_reading
+
+    def observe_resume(self: RequestHandler[web.Request]) -> None:
+        resume(self)
+        resumed.set()
+
+    monkeypatch.setattr(RequestHandler, "_resume_msg_queue_reading", observe_resume)
+
+    async def handler(request: web.Request) -> web.Response:
+        if request.path == "/first":
+            first_started.set()
+            await release_first.wait()
+        handled.append(request.path)
+        if len(handled) == pipelined_requests + 1:
+            all_handled.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    def raw_get(path: str) -> bytes:
+        return (
+            f"GET {path} HTTP/1.1\r\nHost: localhost\r\n"
+            "Connection: keep-alive\r\n\r\n"
+        ).encode("ascii")
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(raw_get("/first"))
+        await writer.drain()
+        await asyncio.wait_for(first_started.wait(), 1)
+
+        writer.write(b"".join(raw_get(f"/r{i}") for i in range(pipelined_requests)))
+        await writer.drain()
+
+        # Let the busy handler finish so the queue drains and reading resumes.
+        release_first.set()
+        await asyncio.wait_for(resumed.wait(), 5)
+        # Every pipelined request is still served only if reading resumed.
+        await asyncio.wait_for(all_handled.wait(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert len(handled) == pipelined_requests + 1
+
+
+async def test_declined_websocket_upgrade_reads_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    body_read = b""
+
+    async def ws_handler(request: web.Request) -> web.Response:
+        nonlocal body_read
+        # Decline the upgrade; read the body as a normal handler may.
+        body_read = await request.read()
+        return web.Response(text="declined")
+
+    async def after_handler(request: web.Request) -> web.Response:
+        return web.Response(text="after")
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/after", after_handler)
+    server = await aiohttp_server(app)
+
+    body = b"FooBarBaz\r\n\r\n"
+    # Use raw connection in order to pipeline requests.
+    pipeline = (
+        (
+            b"GET /ws HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Content-Length: %d\r\n\r\n" % len(body)
+        )
+        + body
+        + b"GET /after HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    )
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(pipeline)
+        await writer.drain()
+        # The trailing request sends Connection: close, so the server closes
+        # once it has answered it -- reading to EOF gathers both responses.
+        response = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert body_read == body
+    # Both the upgrade request and the pipelined request were served.
+    assert response.count(b"HTTP/1.") == 2, response
+    assert response.count(b" 200 ") == 2, response
+
+
+@pytest.mark.parametrize("decompressed_size", [4 * 1024 * 1024, 32 * 1024 * 1024])
+async def test_unread_compressed_body_drain_is_bounded(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+    decompressed_size: int,
+) -> None:
+    """Draining an unread compressed body stays bounded by the read buffer.
+
+    A handler that rejects before reading still drains the payload during
+    lingering close; a small compressed body must not force a large transient
+    allocation (a deflate-bomb style DoS).
+    """
+    drain_reads: list[int] = []
+    drained = asyncio.Event()
+    readany = StreamReader.readany
+
+    async def record_readany(self: StreamReader) -> bytes:
+        data = await readany(self)
+        assert data
+        drain_reads.append(len(data))
+        drained.set()
+        return data
+
+    monkeypatch.setattr(StreamReader, "readany", record_readany)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=401)
+
+    app = web.Application(client_max_size=1024)
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    body = zlib.compress(b"a" * decompressed_size)
+    assert len(body) < decompressed_size
+    head = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: localhost\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"Content-Length: %d\r\n"
+        b"Connection: keep-alive\r\n\r\n"
+    ) % len(body)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(head + body)
+        await writer.drain()
+        status_line = await asyncio.wait_for(reader.readline(), 5)
+        assert status_line.startswith(b"HTTP/1.1 401 ")
+        await asyncio.wait_for(drained.wait(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    # Bounded by the buffer, not the decompressed size.
+    assert max(drain_reads) <= 3 * DEFAULT_CHUNK_SIZE
+    assert max(drain_reads) < decompressed_size
 
 
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:

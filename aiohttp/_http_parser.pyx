@@ -322,11 +322,15 @@ cdef class HttpParser:
         set     _seen_singletons
         list    _raw_headers
         bint    _upgraded
+        bint    _pending_upgrade
         list    _messages
         bint    _more_data_available
         bint    _paused
+        Py_ssize_t _msg_in_flight
+        Py_ssize_t _max_msg_queue_size
         bint    _eof_pending
         object  _payload
+        unsigned long long _content_length_expected
         bint    _payload_error
         object  _payload_exception
         object  _last_error
@@ -360,11 +364,13 @@ cdef class HttpParser:
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
         bint auto_decompress=True,
+        Py_ssize_t max_msg_queue_size=0,
     ):
         cparser.llhttp_settings_init(self._csettings)
         cparser.llhttp_init(self._cparser, mode, self._csettings)
         self._cparser.data = <void*>self
         self._cparser.content_length = 0
+        self._content_length_expected = 0
 
         self.protocol = protocol
         self._loop = loop
@@ -373,6 +379,8 @@ cdef class HttpParser:
         self._buf = bytearray()
         self._more_data_available = False
         self._paused = False
+        self._msg_in_flight = 0
+        self._max_msg_queue_size = max_msg_queue_size
         self._eof_pending = False
         self._payload = None
         self._payload_error = 0
@@ -391,6 +399,7 @@ cdef class HttpParser:
         self._response_with_body = response_with_body
         self._read_until_eof = read_until_eof
         self._upgraded = False
+        self._pending_upgrade = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
         self._lax = False
@@ -475,10 +484,15 @@ cdef class HttpParser:
                 raise BadHttpMessage("Missing 'Host' header in request.")
             h_upg = headers.get("upgrade", "")
             if (upgrade and h_upg.isascii() and h_upg.lower() in ALLOWED_UPGRADES) or self._cparser.method == cparser.HTTP_CONNECT:
-                self._upgraded = True
+                # https://www.rfc-editor.org/info/rfc9110/#section-7.8-15
+                # Defer the protocol switch until the complete request has been
+                # received.
+                self._pending_upgrade = True
         else:
             if upgrade and self._cparser.status_code == 101:
-                self._upgraded = True
+                # llhttp pauses for a 101 on its own; just mark the pending
+                # switch so feed_data returns the upgraded-protocol tail.
+                self._pending_upgrade = True
 
         # do not support old websocket spec
         if SEC_WEBSOCKET_KEY1 in headers:
@@ -520,6 +534,7 @@ cdef class HttpParser:
             payload = EMPTY_PAYLOAD
 
         self._payload = payload
+        self._content_length_expected = self._cparser.content_length
         if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
 
@@ -555,6 +570,11 @@ cdef class HttpParser:
         assert self._payload is not None
         self._paused = True
 
+    def message_consumed(self):
+        # Protocol drained a queued message; free a slot for parsing.
+        if self._msg_in_flight > 0:
+            self._msg_in_flight -= 1
+
     def feed_eof(self):
         cdef bytes desc
 
@@ -563,8 +583,10 @@ cdef class HttpParser:
                 raise TransferEncodingError(
                     "Not enough data to satisfy transfer length header.")
             elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
+                received = self._content_length_expected - self._cparser.content_length
                 raise ContentLengthError(
-                    "Not enough data to satisfy content length header.")
+                    f"Not enough data to satisfy content length header "
+                    f"(received {received} of {self._content_length_expected} bytes).")
             elif cparser.llhttp_get_errno(self._cparser) != cparser.HPE_OK:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
@@ -629,6 +651,10 @@ cdef class HttpParser:
         if errno is cparser.HPE_PAUSED_UPGRADE:
             cparser.llhttp_resume_after_upgrade(self._cparser)
             nb = cparser.llhttp_get_error_pos(self._cparser) - base
+            if self._pending_upgrade:
+                # A supported upgrade whose request body has now been fully read.
+                self._upgraded = True
+                self._pending_upgrade = False
         elif errno is cparser.HPE_PAUSED:
             cparser.llhttp_resume(self._cparser)
             pos = cparser.llhttp_get_error_pos(self._cparser) - base
@@ -675,12 +701,12 @@ cdef class HttpRequestParser(HttpParser):
         size_t max_line_size=8190, size_t max_headers=128,
         size_t max_field_size=8190, payload_exception=None,
         bint response_with_body=True, bint read_until_eof=False,
-        bint auto_decompress=True,
+        bint auto_decompress=True, Py_ssize_t max_msg_queue_size=0,
     ):
         self._init(cparser.HTTP_REQUEST, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
-                   auto_decompress)
+                   auto_decompress, max_msg_queue_size)
 
     cdef object _on_status_complete(self):
         cdef int idx1, idx2
@@ -776,7 +802,7 @@ cdef int cb_on_url(cparser.llhttp_t* parser,
                    const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             status = pyparser._buf + at[:length]
             raise LineTooLong(status[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
@@ -791,7 +817,7 @@ cdef int cb_on_status(cparser.llhttp_t* parser,
                       const char *at, size_t length) except -1:
     cdef HttpParser pyparser = <HttpParser>parser.data
     try:
-        if length > pyparser._max_line_size:
+        if len(pyparser._buf) + length > pyparser._max_line_size:
             reason = pyparser._buf + at[:length]
             raise LineTooLong(reason[:100] + b"...", pyparser._max_line_size)
         extend(pyparser._buf, at, length)
@@ -847,8 +873,6 @@ cdef int cb_on_headers_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
-        if pyparser._upgraded or pyparser._cparser.method == cparser.HTTP_CONNECT:
-            return 2
         if not pyparser._response_with_body:
             return 1
         return 0
@@ -889,6 +913,12 @@ cdef int cb_on_message_complete(cparser.llhttp_t* parser) except -1:
         pyparser._last_error = exc
         return -1
     else:
+        if pyparser._max_msg_queue_size:
+            pyparser._msg_in_flight += 1
+            if pyparser._msg_in_flight >= pyparser._max_msg_queue_size:
+                # Queue full: pause llhttp between messages. feed_data() buffers
+                # the remainder as tail; resumes once the queue drains.
+                return cparser.HPE_PAUSED
         return 0
 
 
@@ -932,6 +962,8 @@ cdef parser_error_from_errno(cparser.llhttp_t* parser, data, pointer):
                  cparser.HPE_INVALID_TRANSFER_ENCODING}:
         return BadHttpMessage(err_msg)
     elif errno == cparser.HPE_INVALID_METHOD:
+        if data.startswith(b"\x16\x03"):
+            return BadHttpMethod(error="Received HTTPS traffic on an HTTP port")
         return BadHttpMethod(error=err_msg)
     elif errno in {cparser.HPE_INVALID_STATUS,
                    cparser.HPE_INVALID_VERSION,

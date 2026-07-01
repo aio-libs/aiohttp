@@ -1,6 +1,7 @@
 """Http related parsers and protocol."""
 
 import asyncio
+import re
 import sys
 from typing import (  # noqa
     TYPE_CHECKING,
@@ -363,10 +364,15 @@ class StreamWriter(AbstractStreamWriter):
             await protocol._drain_helper()
 
 
+# https://www.rfc-editor.org/info/rfc9110/#section-5.5-5
+# https://www.rfc-editor.org/info/rfc9112/#section-4-3
+_FORBIDDEN_HEADER_CHARS_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
+
+
 def _safe_header(string: str) -> str:
-    if "\r" in string or "\n" in string or "\x00" in string:
+    if _FORBIDDEN_HEADER_CHARS_RE.search(string) is not None:
         raise ValueError(
-            "Newline, carriage return, or null byte detected in headers. "
+            "Forbidden control character detected in headers. "
             "Potential header injection attack."
         )
     return string

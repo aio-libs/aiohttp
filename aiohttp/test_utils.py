@@ -606,16 +606,19 @@ def make_mocked_request(
         raw_hdrs = ()
 
     chunked = "chunked" in headers.get(hdrs.TRANSFER_ENCODING, "").lower()
+    upgrade = headers.get(hdrs.CONNECTION, "").lower() == "upgrade" and bool(
+        headers.get(hdrs.UPGRADE)
+    )
 
     message = RawRequestMessage(
-        method,
+        method.upper(),
         path,
         version,
         headers,
         raw_hdrs,
         closing,
         None,
-        False,
+        upgrade,
         chunked,
         URL(path),
     )

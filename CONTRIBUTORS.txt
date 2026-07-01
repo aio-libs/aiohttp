@@ -57,6 +57,7 @@ Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Ashutosh Kumar Singh
 Austin Scola
 Bai Haoran
 Ben Bader
@@ -152,6 +153,7 @@ Gary Wilson Jr.
 Gene Hoffman
 Gennady Andreyev
 Georges Dubus
+goingforstudying-ctrl
 Greg Holt
 Gregory Haynes
 Grigoriy Soldatov
@@ -286,6 +288,7 @@ Moss Collum
 Mun Gwan-gyeong
 Navid Sheikhol
 Nicolas Braem
+Night Cityblade
 Nikolay Kim
 Nikolay Novik
 Nikolay Tiunov
@@ -316,6 +319,7 @@ Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
+Puneet Dixit
 Qiao Han
 Rafael Viotti
 Rahul Nahata
@@ -339,6 +343,7 @@ Sebastian Hanula
 Sebastian Hüther
 Sebastien Geffroy
 SeongSoo Cho
+Sergei Grachev
 Sergey Ninua
 Sergey Skripnick
 Serhii Charykov
@@ -423,6 +428,7 @@ Ye Cao
 Yegor Roganov
 Yifei Kong
 Young-Ho Cha
+Yuri Sukhov
 Yuriy Shatrov
 Yury Novikov
 Yury Pliner

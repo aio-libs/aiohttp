@@ -1,6 +1,6 @@
 name: Clear needs-info/pr-unfinished on activity
 on:
-  pull_request:
+  pull_request_target:
     types: [synchronize, review_requested]
   issue_comment:
     types: [created]
@@ -10,6 +10,9 @@ on:
 jobs:
   clear-pr-unfinished:
     runs-on: ubuntu-latest
+    if: >-
+      github.event_name != 'issue_comment' ||
+      !contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR"]'), github.event.comment.author_association)
     permissions:
       id-token: write
       issues: write

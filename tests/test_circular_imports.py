@@ -85,6 +85,9 @@ def _discover_path_importables(
         )
 
 
+@pytest.mark.skipif(
+    sys.platform in ("android", "ios"), reason="subprocess not supported"
+)
 @pytest.mark.parametrize(
     "import_path",
     _mark_aiohttp_worker_for_skipping(_find_all_importables(aiohttp)),
