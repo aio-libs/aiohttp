@@ -1,0 +1,1 @@
+Added an ``ssl`` parameter to :py:class:`~aiohttp.ClientSession` allowing a default SSL configuration to be applied to all requests -- by :user:`NIK-TIGER-BILL`.
