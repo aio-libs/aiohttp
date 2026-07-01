@@ -208,7 +208,7 @@ class _WSConnectOptions(TypedDict, total=False):
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
@@ -481,7 +481,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
-        ssl: SSLContext | bool | Fingerprint = sentinel,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -930,7 +930,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = sentinel,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1005,7 +1005,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = sentinel,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
