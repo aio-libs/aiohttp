@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.web.BaseRequest` emitting a ``DeprecationWarning`` about its own ``_transport_sockname`` attribute by adding it to ``BaseRequest.ATTRS`` -- by :user:`uttam12331`.

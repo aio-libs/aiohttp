@@ -1281,3 +1281,14 @@ def test_etag_headers(header, header_attr, header_val, expected) -> None:
 def test_datetime_headers(header, header_attr, header_val, expected) -> None:
     req = make_mocked_request("GET", "/", headers={header: header_val})
     assert getattr(req, header_attr) == expected
+
+
+def test_transport_sockname_in_attrs() -> None:
+    """Ensure _transport_sockname is listed in BaseRequest.ATTRS.
+
+    Without this, aiohttp emits a DeprecationWarning about its own code when
+    running with PYTHONASYNCIODEBUG=1 (issue #13029).
+    """
+    from aiohttp.web import BaseRequest
+
+    assert "_transport_sockname" in BaseRequest.ATTRS
