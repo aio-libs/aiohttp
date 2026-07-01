@@ -12,7 +12,7 @@ aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.5.0
+ast-serialize==0.6.0
     # via mypy
 async-timeout==5.0.1
     # via
@@ -62,7 +62,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0
     # via -r requirements/lint.in
-librt==0.11.0
+librt==0.12.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
