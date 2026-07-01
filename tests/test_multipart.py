@@ -26,6 +26,7 @@ from aiohttp.multipart import (
     BodyPartReaderPayload,
     MultipartReader,
     MultipartResponseWrapper,
+    parse_content_disposition,
 )
 from aiohttp.streams import StreamReader
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
@@ -679,6 +680,31 @@ class TestPartReader:
         )
         part = aiohttp.BodyPartReader(BOUNDARY, h, mock.Mock())
         assert "foo.html" == part.filename
+
+    async def test_parse_content_disposition_ows_before_semicolon(self) -> None:
+        # https://github.com/aio-libs/aiohttp/issues/13002
+        # OWS before the next ';' separator is permitted by RFC 9110 § 5.6.6.
+        # A quoted value followed by OWS must not be mis-classified and must
+        # not greedily consume the following parameter.
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
+
+        # Tab as OWS too.
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt"\t; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
+
+        # No OWS - baseline still works.
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt"; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
 
     async def test_reading_long_part(self) -> None:
         size = 2 * DEFAULT_CHUNK_SIZE
