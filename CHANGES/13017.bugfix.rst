@@ -1,0 +1,3 @@
+Tightened :func:`aiohttp.helpers.is_ip_address` so it no longer reports
+non-ASCII digit-only strings (e.g. superscript digits ``²²²``, fullwidth
+digits, Arabic-Indic digits) as IPv4 addresses -- by :user:`HrachShah`.

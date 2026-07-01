@@ -232,6 +232,29 @@ def test_is_ip_address_invalid_type() -> None:
         helpers.is_ip_address(object())  # type: ignore[arg-type]
 
 
+@pytest.mark.parametrize(
+    "host",
+    [
+        "²²²",  # superscript digits
+        "foo²",  # mixed ascii + non-ascii digit
+        "١٢٣",  # arabic-indic digits
+        "foo١",  # mixed ascii + arabic-indic digit
+        "𝟏𝟐𝟑",  # mathematical bold digits
+        "foo𝟏",  # mixed ascii + mathematical bold digit
+    ],
+)
+def test_is_ip_address_rejects_non_ascii_digit_hosts(host: str) -> None:
+    """Hosts that contain non-ASCII numeric characters cannot be a valid
+    IPv4 or IPv6 address and must not be treated as one.  ``str.isdigit``
+    returns True for many non-ASCII characters (e.g. superscript digits,
+    Arabic digits, fullwidth digits), so the heuristic in
+    ``is_ip_address`` previously returned True for hosts that socket
+    could never resolve, which then leaked into cookie domain matching
+    and skipped cookie storage for non-IP hosts.
+    """
+    assert not helpers.is_ip_address(host)
+
+
 # ------------------------------- is_canonical_ipv4_address() ---------------
 
 
