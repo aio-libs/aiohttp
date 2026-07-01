@@ -857,15 +857,15 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
 
 
 def test_te_header_non_ascii(parser: HttpRequestParser) -> None:
-    # K = Kelvin sign, not valid ascii.
-    text = "GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunKed\r\n\r\n"
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunKed\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text.encode())
 
 
 def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
-    # K = Kelvin sign, not valid ascii.
-    text = "GET /test HTTP/1.1\r\nHost: a\r\nUpgrade: websocKet\r\n\r\n"
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nHost: a\r\nUpgrade: websocKet\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text.encode())
     assert not upgrade
 
@@ -3029,6 +3029,27 @@ class TestDeflateBuffer:
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx")
         assert [b"line"] == list(buf._buffer)
+
+    async def test_feed_data_empty(self, protocol: BaseProtocol) -> None:
+        """feed_data(b"") must not raise even on a fresh deflate stream.
+
+        The chunked-transfer decoder calls feed_data(b"") to give a paused
+        decoder another chance to make progress. The CM-byte sniff in
+        feed_data would previously read chunk[0] on an empty chunk and raise
+        IndexError. Regression test for #12994.
+        """
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "deflate")
+
+        # Should be a no-op, returning False (no more data).
+        assert dbuf.feed_data(b"") is False
+        # No bytes pushed to the downstream stream.
+        assert list(buf._buffer) == []
+        # Decoder was not switched to suppress_deflate_header by the empty
+        # chunk.
+        assert dbuf._started_decoding is False
 
     async def test_feed_data_err(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
