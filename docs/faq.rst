@@ -263,6 +263,72 @@ enable compression in NGINX (you are deploying aiohttp behind reverse
 proxy, right?).
 
 
+How do I enable Kernel TLS, and should I do it?
+-----------------------------------------------
+
+Kernel TLS (KTLS) allows aiohttp to move encryption and decryption of
+TLS traffic from user space to the kernel. It was added to the Linux kernel in
+4.13, but full support for TLS 1.3 and modern ciphers is available only
+since 5.1.
+
+KTLS will be beneficial if you run an HTTPS server that often returns
+:class:`~aiohttp.web.FileResponse` objects or you have a high-end NIC that can
+offload TLS encryption. For ordinary
+dynamic responses, small files, or deployments behind a TLS-terminating reverse
+proxy, it is unlikely to help and may actually slightly degrade performance.
+
+KTLS is supported through the ``aiofastnet`` package, which is installed as
+part of the ``speedups`` extra.
+
+To enable KTLS, check the following:
+
+* Verify that ``aiofastnet`` is installed and was able to locate OpenSSL
+  dynamic libraries:
+
+  .. code-block:: bash
+
+      python -c "import aiofastnet; print(aiofastnet.OPENSSL_DYN_LIBS)"
+
+  This should not print ``None``. For example:
+
+  .. code-block:: bash
+
+      OpenSSLDynLibs(libssl='/usr/lib/libssl.so.3', libcrypto='/usr/lib/libcrypto.so.3')
+
+  KTLS requires a Python build that is dynamically linked against OpenSSL.
+  This is generally true for system Python installations, Conda distributions,
+  ``pyenv``, and ``actions/setup-python`` in GitHub Actions, but not for
+  Python installations managed by ``uv``.
+
+* Your Linux kernel version is 5.1 or newer.
+
+* Make sure the Linux ``tls`` kernel module is loaded::
+
+    sudo modprobe tls
+
+* Make sure the ``ssl.OP_ENABLE_KTLS`` option is enabled in ``SSLContext``
+  (available since Python 3.12)::
+
+    sslcontext.options |= ssl.OP_ENABLE_KTLS
+
+* Make sure Python is using OpenSSL 3.0 or newer. OpenSSL should have been
+  built on a machine whose Linux headers are new enough. OpenSSL needs Linux
+  headers at least 4.13.0 to build the transmit path; older headers make it
+  skip KTLS support. Typically, Python is using the system OpenSSL on Linux,
+  but sometimes distributions ship their own OpenSSL. The following commands
+  will help identify the OpenSSL version and which ``libssl`` and ``libcrypto``
+  are being used by the ``ssl`` module::
+
+    python -c "import ssl; print(ssl.OPENSSL_VERSION)"
+    ldd "$(python -c 'import _ssl; print(_ssl.__file__)')"
+
+
+If ``ssl.OP_ENABLE_KTLS`` was requested in ``sslcontext``, but ``aiofastnet``
+could not enable KTLS, it will log a warning suggesting the possible reason.
+
+After enabling it, run your own benchmarks and verify that KTLS actually
+speeds things up in your case.
+
 How do I manage a ClientSession within a web server?
 ----------------------------------------------------
 
