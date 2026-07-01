@@ -1,0 +1,3 @@
+Fixed ``parse_content_disposition`` incorrectly consuming the next parameter
+when a quoted value was followed by optional whitespace (OWS) before the ``;``
+separator -- by :user:`JSap0914`.
