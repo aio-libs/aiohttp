@@ -83,6 +83,34 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
     assert result == expected
 
 
+@pytest.mark.parametrize(
+    "mimetype",
+    [
+        "text/html; ",
+        "text/html;  ",
+        "text/html;\t",
+        "text/html; \t \t",
+        "text/html; charset=utf-8; ",
+        "text/html; charset=utf-8;  \t",
+    ],
+)
+def test_parse_mimetype_skips_whitespace_only_segments(
+    mimetype: str,
+) -> None:
+    """Whitespace-only segments after a semicolon are not valid MIME
+    parameters (RFC 2045) and should be ignored, not parsed as an empty
+    parameter key. Regression test for #13009.
+    """
+    result = helpers.parse_mimetype(mimetype)
+
+    # No spurious empty-key parameter.
+    assert "" not in result.parameters
+    if "charset" in mimetype:
+        assert result.parameters == MultiDictProxy(MultiDict({"charset": "utf-8"}))
+    else:
+        assert result.parameters == MultiDictProxy(MultiDict())
+
+
 # ------------------- parse_content_type ------------------------------
 
 

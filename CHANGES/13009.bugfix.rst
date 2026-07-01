@@ -1,0 +1,1 @@
+Fixed :py:meth:`~aiohttp.helpers.parse_mimetype` ignoring whitespace-only segments after semicolons -- by :user:`HrachShah`.
