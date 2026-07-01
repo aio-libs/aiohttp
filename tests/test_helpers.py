@@ -74,6 +74,38 @@ from aiohttp.helpers import (
                 "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
             ),
         ),
+        (
+            # Trailing semicolon followed by whitespace is not a parameter
+            # (RFC 2045: a parameter is key=value, never blank).  The
+            # pre-fix code split on ';' and only skipped segments that
+            # were *strictly* empty, so a trailing ' ' or '\t' was treated
+            # as a real key="" parameter and polluted the result.
+            "application/json; ",
+            helpers.MimeType(
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict()),
+            ),
+        ),
+        (
+            "application/json;\t",
+            helpers.MimeType(
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict()),
+            ),
+        ),
+        (
+            "application/json; charset=utf-8; ",
+            helpers.MimeType(
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
