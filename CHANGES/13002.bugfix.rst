@@ -1,0 +1,13 @@
+Fixed :py:func:`~aiohttp.multipart.parse_content_disposition` to tolerate
+optional whitespace (OWS) between a quoted parameter value and the next
+semicolon separator -- by :user:`HrachShah`.
+
+Previously, a Content-Disposition header like
+``attachment; filename="test.txt" ; name="field"`` was parsed as
+``{'filename': 'test.txt" ; name="field'}`` because the trailing space
+after the closing quote made :py:func:`~aiohttp.multipart.is_quoted` return
+``False``, falling through to the semicolon-repair heuristic that greedily
+consumed the next parameter as part of the filename. RFC 9110 §5.6.6
+explicitly permits OWS around the ``;`` delimiter, so the quoted value is
+now recognised after stripping trailing whitespace and the following
+parameter is parsed independently.
