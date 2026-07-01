@@ -269,7 +269,7 @@ How do I enable Kernel TLS, and should I do it?
 Kernel TLS (KTLS) allows aiohttp to move encryption and decryption of
 TLS traffic from user space to the kernel. It was added to the Linux kernel in
 4.13, but full support for TLS 1.3 and modern ciphers is available only
-since 5.19.
+since 5.1.
 
 KTLS will be beneficial if you run an HTTPS server that often returns
 :class:`~aiohttp.web.FileResponse` objects or you have a high-end NIC that can
@@ -280,24 +280,27 @@ proxy, it is unlikely to help and may actually slightly degrade performance.
 KTLS is supported through the ``aiofastnet`` package, which is installed as
 part of the ``speedups`` extra.
 
-To enable KTLS, you have to do and check the following:
+To enable KTLS, check the following:
 
-* Verify that ``aiofastnet`` is installed and can be imported.
+* Verify that ``aiofastnet`` is installed and was able to locate OpenSSL
+  dynamic libraries:
 
-  Currently, ``aiofastnet`` works only with CPython distributions that are
-  dynamically linked against OpenSSL. This is generally true for system Python
-  installations, Conda distributions, ``pyenv``, and
-  ``actions/setup-python`` in GitHub Actions, but not for Python installations
-  managed by ``uv``.
+  .. code-block:: bash
 
-  .. code-block:: python
+      python -c "import aiofastnet; print(aiofastnet.OPENSSL_DYN_LIBS)"
 
-      try:
-          import aiofastnet
-      except ImportError:
-          aiofastnet = None
+  This should not print ``None``. For example:
 
-* You Linux kernel version is 5.19 or newer
+  .. code-block:: bash
+
+      OpenSSLDynLibs(libssl='/usr/lib/libssl.so.3', libcrypto='/usr/lib/libcrypto.so.3')
+
+  KTLS requires a Python build that is dynamically linked against OpenSSL.
+  This is generally true for system Python installations, Conda distributions,
+  ``pyenv``, and ``actions/setup-python`` in GitHub Actions, but not for
+  Python installations managed by ``uv``.
+
+* Your Linux kernel version is 5.1 or newer.
 
 * Make sure the Linux ``tls`` kernel module is loaded::
 
@@ -312,7 +315,7 @@ To enable KTLS, you have to do and check the following:
   built on a machine whose Linux headers are new enough. OpenSSL needs Linux
   headers at least 4.13.0 to build the transmit path; older headers make it
   skip KTLS support. Typically, Python is using the system OpenSSL on Linux,
-  but some times distributions ship their own OpenSSL. The following commands
+  but sometimes distributions ship their own OpenSSL. The following commands
   will help identify the OpenSSL version and which ``libssl`` and ``libcrypto``
   are being used by the ``ssl`` module::
 
