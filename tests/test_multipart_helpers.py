@@ -126,7 +126,7 @@ class TestParseContentDisposition:
     def test_attwithquotedfilenameows(self) -> None:
         # https://github.com/aio-libs/aiohttp/issues/13002
         # OWS between a quoted value and the next `;` must be tolerated
-        # (RFC 9110 ง5.6.6).
+        # (RFC 9110 ยง5.6.6).
         disptype, params = parse_content_disposition(
             'attachment; filename="test.txt" ; name="field"'
         )
