@@ -1,0 +1,3 @@
+Ignored a cookie ``Max-Age`` that is not a plain ``"-"`` prefixed sequence of
+digits (e.g. ``+1000``, ``1_000``), which a bare ``int()`` would otherwise
+honour, per :rfc:`6265#section-5.2.2` -- by :user:`dxbjavid`.
