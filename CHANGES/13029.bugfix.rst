@@ -1,0 +1,5 @@
+Fixed a spurious ``DeprecationWarning: Setting custom BaseRequest._transport_sockname
+attribute is discouraged`` raised by aiohttp's own request construction in development
+mode. The :py:class:`~aiohttp.web_request.BaseRequest` constructor sets
+``_transport_sockname`` from the protocol, but the attribute was not listed in
+``BaseRequest.ATTRS``, so the ``__setattr__`` guard raised the warning.

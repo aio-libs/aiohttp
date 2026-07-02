@@ -132,6 +132,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             "_loop",
             "_transport_sslcontext",
             "_transport_peername",
+            "_transport_sockname",
         ]
     )
     _post: MultiDictProxy[_Post] | None = None

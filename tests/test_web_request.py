@@ -3,6 +3,7 @@ import datetime
 import logging
 import sys
 import time
+import warnings
 from collections.abc import Iterator, MutableMapping
 from typing import Any
 from unittest import mock
@@ -165,6 +166,19 @@ def test_host_with_no_transport_sockname() -> None:
     transport.get_extra_info.return_value = None
     req = make_mocked_request("GET", "/", transport=transport)
     assert req.host == ""
+
+
+def test_construct_base_request_with_transport_exposing_sockname() -> None:
+    """Constructing a BaseRequest with a transport that exposes a sockname
+    does not trigger a DeprecationWarning."""
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = lambda key: (
+        ("127.0.0.1", 80) if key == "sockname" else None
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        req = make_mocked_request("GET", "/", transport=transport)
+    assert req.host == "127.0.0.1"
 
 
 def test_doubleslashes() -> None:
