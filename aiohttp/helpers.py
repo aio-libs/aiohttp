@@ -332,7 +332,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
     parts = mimetype.split(";")
     params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
-        if not item.strip():
+        if not item:
             continue
         key, _, value = item.partition("=")
         params.add(key.lower().strip(), value.strip(' "'))
