@@ -1,0 +1,8 @@
+Fixed :py:func:`~aiohttp.helpers.parse_mimetype` to skip whitespace-only
+segments after a semicolon -- by :user:`HrachShah`.
+
+Previously, a trailing semicolon followed by only whitespace
+(``"text/html; "``) was treated as a parameter and produced a spurious
+empty-key entry (``{'': ''}``) in the parsed :class:`~multidict.MultiDict`.
+Whitespace-only segments are not valid MIME parameters per RFC 2045 and
+should be ignored the same way a bare trailing semicolon is.

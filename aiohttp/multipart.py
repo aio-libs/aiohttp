@@ -155,10 +155,20 @@ def parse_content_disposition(
                 continue
 
         else:
+            # RFC 9110 §5.6.6 permits optional whitespace (OWS) around the
+            # value, so a quoted-string may be followed by OWS before the
+            # next `;`. Strip that OWS before deciding whether the value is
+            # a quoted-string. Without this, a value like `"foo" ;` fails
+            # is_quoted() (last char is a space) and falls into the
+            # semicolon-repair branch below, which then greedily consumes
+            # the next parameter as part of the filename.
             failed = True
             if is_quoted(value):
                 failed = False
                 value = unescape(value[1:-1].lstrip("\\/"))
+            elif is_quoted(value.rstrip()):
+                failed = False
+                value = unescape(value.rstrip()[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:

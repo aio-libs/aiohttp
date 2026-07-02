@@ -123,6 +123,23 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {"filename": "foo.html"} == params
 
+    def test_attwithquotedfilenameows(self) -> None:
+        # https://github.com/aio-libs/aiohttp/issues/13002
+        # OWS between a quoted value and the next `;` must be tolerated
+        # (RFC 9110 §5.6.6).
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt", "name": "field"} == params
+
+    def test_attwithquotedfilenameowstabs(self) -> None:
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt"\t;\tname="field"'
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt", "name": "field"} == params
+
     def test_attwithasciifilenamenq(self) -> None:
         disptype, params = parse_content_disposition("attachment; filename=foo.html")
         assert "attachment" == disptype
