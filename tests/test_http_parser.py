@@ -834,15 +834,15 @@ def test_request_chunked(parser: HttpRequestParser) -> None:
 
 
 def test_te_header_non_ascii(parser: HttpRequestParser) -> None:
-    # K = Kelvin sign, not valid ascii.
-    text = "GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunKed\r\n\r\n"
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunKed\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text.encode())
 
 
 def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
-    # K = Kelvin sign, not valid ascii.
-    text = "GET /test HTTP/1.1\r\nHost: a\r\nUpgrade: websocKet\r\n\r\n"
+    # K = Kelvin sign, not valid ascii.
+    text = "GET /test HTTP/1.1\r\nHost: a\r\nUpgrade: websocKet\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text.encode())
     assert not upgrade
 
@@ -2971,6 +2971,28 @@ class TestDeflateBuffer:
             # Should be more than 4 bytes to trigger deflate FSM error.
             # Should start with b'x', otherwise code switch mocked decoder.
             dbuf.feed_data(b"xsomedata")
+
+    async def test_feed_empty_data(self, protocol: BaseProtocol) -> None:
+        """Resuming a paused decoder via feed_data(b"") must not raise.
+
+        The chunked transfer-encoding decoder can call feed_data(b"") to give
+        the decoder another chance to make progress after a pause. With an
+        empty chunk the CM-byte sniff of the RFC 1950 zlib header has nothing
+        to read, so feed_data must skip the sniff and return the current
+        "data available" state without raising IndexError.
+        """
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "deflate")
+
+        dbuf.decompressor = mock.Mock()
+        dbuf.decompressor.decompress_sync.return_value = b""
+        dbuf.decompressor.data_available = False
+
+        # The fix: empty input must not raise IndexError on the CM-byte sniff.
+        assert dbuf.feed_data(b"") is False
+        # decompress_sync was called once with the empty bytes (max_length
+        # depends on the StreamReader's low-water mark and is not asserted).
+        dbuf.decompressor.decompress_sync.assert_called_once()
 
     async def test_feed_eof(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())

@@ -1137,7 +1137,8 @@ class DeflateBuffer:
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
         # bits 4..7 = CINFO = 1..7 = windows size.
         if (
-            not self._started_decoding
+            chunk
+            and not self._started_decoding
             and self.encoding == "deflate"
             and chunk[0] & 0xF != 8
         ):

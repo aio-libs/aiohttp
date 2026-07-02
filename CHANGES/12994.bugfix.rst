@@ -1,0 +1,3 @@
+Short-circuit :py:meth:`~aiohttp.StreamReader.feed_data` on the ``DeflateBuffer`` decoder
+when an empty chunk is fed during a resume from pause so the CM-byte sniff of the
+RFC 1950 zlib header does not raise :py:exc:`IndexError` -- by :user:`HrachShah`.
