@@ -1,7 +1,8 @@
-from http.cookies import SimpleCookie
 import json
+from http.cookies import SimpleCookie
+from typing import Any, List, NamedTuple, Optional, Tuple
+
 from multidict import CIMultiDict
-from typing import List, Tuple, Optional, NamedTuple, Any
 
 from ..http_writer import HttpVersion2
 
@@ -32,7 +33,7 @@ class Http2Response:
         self._cookies: Optional[SimpleCookie] = None
 
         # HTTP version pseudo-attribute (aiohttp expects a namedtuple-like object)
-        #self.version = NamedTuple("HttpVersion", major=int, minor=int)(2, 0)
+        # self.version = NamedTuple("HttpVersion", major=int, minor=int)(2, 0)
         self.version = HttpVersion2
 
         # not implemented

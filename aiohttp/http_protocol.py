@@ -39,14 +39,20 @@ class HttpDispatcherProtocol(asyncio.Protocol):
         self._handler.connection_made(transport)
 
     def __getattribute__(self, name):
-        if not name.startswith("__") and name not in {"connection_made", "__getattribute__", "_handler", "_transport", "_loop"}:
+        if not name.startswith("__") and name not in {
+            "connection_made",
+            "__getattribute__",
+            "_handler",
+            "_transport",
+            "_loop",
+        }:
             return getattr(self._handler, name)
         return super().__getattribute__(name)
-    
+
     def __setattr__(self, name, value):
         if name not in {"_handler", "_transport", "_loop"}:
             return self._handler.__setattr__(name, value)
         return super().__setattr__(name, value)
-    
+
     def __delattr__(self, name):
         return self._handler.__delattr__(name)

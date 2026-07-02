@@ -1,9 +1,9 @@
 import asyncio
 from enum import IntEnum
-from typing import List, Tuple, Optional
+from typing import List, Optional, Tuple
 
-from .settings import Setting
 from .errors import ProtocolError
+from .settings import Setting
 
 
 # ----------------------------------------------------------------------
@@ -78,7 +78,10 @@ class Stream:
         self.closed_event = asyncio.Event()
 
     def transition(self, new_state: StreamState) -> None:
-        if new_state not in VALID_TRANSITIONS[self.state] and new_state != StreamState.CLOSED:
+        if (
+            new_state not in VALID_TRANSITIONS[self.state]
+            and new_state != StreamState.CLOSED
+        ):
             raise ProtocolError(
                 f"Invalid stream state transition {self.state.name} -> {new_state.name}"
             )

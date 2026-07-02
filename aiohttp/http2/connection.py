@@ -25,25 +25,25 @@ Usage:
 """
 
 import asyncio
-import struct
 import logging
-from enum import IntEnum, IntFlag, auto
+import struct
 from collections import defaultdict
-from typing import Optional, Dict, Set, Tuple, List, Any, Union
+from enum import IntEnum, IntFlag, auto
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
-from hpack import Encoder, Decoder
+from hpack import Decoder, Encoder
 
+from .response import Http2Response
 from .settings import (
     DEFAULT_SETTINGS,
-    Setting,
-    FrameType,
     FlagData,
     FlagHeaders,
-    FlagSettings,
     FlagPing,
+    FlagSettings,
+    FrameType,
+    Setting,
 )
 from .stream import Stream, StreamState
-from .response import Http2Response
 
 # ----------------------------------------------------------------------
 # Logging – plaintext wire‑format emission for debugging
@@ -461,7 +461,6 @@ class Http2Connection:
                     self._close_stream(stream)
                 # else: error
 
-
             self._send_frame(
                 FrameType.DATA,
                 flags,
@@ -540,7 +539,9 @@ class Http2Connection:
         """Perform graceful shutdown."""
         if not self._goaway_sent:
             # GOAWAY could be sent before we create the first stream
-            self._send_goaway(self._last_stream_id or max(0, self.next_stream_id - 2), 0)
+            self._send_goaway(
+                self._last_stream_id or max(0, self.next_stream_id - 2), 0
+            )
         # Wait a moment for GOAWAY to be sent, then close transport
         self._transport.close()
 
@@ -625,7 +626,7 @@ class Http2Protocol(asyncio.Protocol):
     async def send(
         self,
         method: str,
-        url: Any,          # yarl.URL or str (but the protocol expects a URL object later)
+        url: Any,  # yarl.URL or str (but the protocol expects a URL object later)
         headers: List[Tuple[str, str]],
         body: Optional[bytes] = None,
     ) -> Http2Response:

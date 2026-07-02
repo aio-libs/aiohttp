@@ -9,29 +9,29 @@ Categories:
 """
 
 import asyncio
-import struct
-import json
 import gzip
-from typing import List, Tuple, Optional
-from unittest.mock import MagicMock, AsyncMock, patch
+import json
+import struct
+from typing import List, Optional, Tuple
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from hpack import Encoder, Decoder
+from hpack import Decoder, Encoder
 
 import aiohttp
+from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.errors import ProtocolError
-from aiohttp.http2.stream import Stream, StreamState
+from aiohttp.http2.response import Http2Response
 from aiohttp.http2.settings import (
     DEFAULT_SETTINGS,
-    Setting,
-    FrameType,
-    FlagSettings,
-    FlagHeaders,
     FlagData,
+    FlagHeaders,
     FlagPing,
+    FlagSettings,
+    FrameType,
+    Setting,
 )
-from aiohttp.http2.response import Http2Response
-from aiohttp.http2.connection import Http2Connection, Http2Protocol
+from aiohttp.http2.stream import Stream, StreamState
 
 
 # ----------------------------------------------------------------------
@@ -40,6 +40,7 @@ from aiohttp.http2.connection import Http2Connection, Http2Protocol
 def url_mock(path="/"):
     """Create a simple URL-like object expected by the implementation."""
     return type("URL", (), {"scheme": "https", "host": "example.com", "path": path})
+
 
 # ----------------------------------------------------------------------
 # Fixtures
@@ -65,7 +66,7 @@ def event_loop():
 
 
 @pytest.fixture
-#async def connection(mock_transport, event_loop):
+# async def connection(mock_transport, event_loop):
 async def connection(mock_transport):
     """Set up Http2Connection with mock transport, send preface, and clear write log."""
     event_loop = asyncio.get_running_loop()
@@ -77,7 +78,7 @@ async def connection(mock_transport):
 
 
 @pytest.fixture
-#async def protocol(mock_transport, event_loop):
+# async def protocol(mock_transport, event_loop):
 async def protocol(mock_transport):
     """Create Http2Protocol and simulate connection_made."""
     event_loop = asyncio.get_running_loop()
@@ -262,8 +263,7 @@ class TestProtocolCompliance:
         # Should trigger WINDOW_UPDATE when below threshold (32768)
         # Because initial window is 65535 and we just consumed 5, still above threshold
         assert not any(
-            b"WINDOW_UPDATE" in call.args[0]
-            for call in transport.write.call_args_list
+            b"WINDOW_UPDATE" in call.args[0] for call in transport.write.call_args_list
         )
 
         # Send more data to drop below 32768
