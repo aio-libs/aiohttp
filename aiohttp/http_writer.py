@@ -3,7 +3,7 @@
 import asyncio
 import re
 import sys
-from typing import (  # noqa
+from typing import (
     TYPE_CHECKING,
     Any,
     Awaitable,
@@ -44,6 +44,7 @@ class HttpVersion(NamedTuple):
 
 HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
+HttpVersion2 = HttpVersion(2, 0)
 
 
 _T_OnChunkSent = Optional[

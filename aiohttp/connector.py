@@ -51,6 +51,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http_protocol import HttpDispatcherProtocol
 from .log import client_logger
 from .resolver import DefaultResolver
 
@@ -292,7 +293,7 @@ class BaseConnector:
         ] = defaultdict(OrderedDict)
 
         self._loop = loop
-        self._factory = functools.partial(ResponseHandler, loop=loop)
+        self._factory = functools.partial(HttpDispatcherProtocol, loop=loop)
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: asyncio.TimerHandle | None = None
@@ -856,7 +857,12 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.verify_mode = ssl.CERT_NONE
         sslcontext.options |= ssl.OP_NO_COMPRESSION
         sslcontext.set_default_verify_paths()
-    sslcontext.set_alpn_protocols(("http/1.1",))
+    sslcontext.set_alpn_protocols(
+        (
+            "h2",
+            "http/1.1",
+        )
+    )
     return sslcontext
 
 
@@ -1495,7 +1501,6 @@ class TCPConnector(BaseConnector):
                     bad_peer = sock.getpeername()
                     aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer)
                     continue
-
             return transp, proto
         assert last_exc is not None
         raise last_exc

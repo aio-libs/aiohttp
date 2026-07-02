@@ -236,18 +236,34 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
 
-    assert conn.protocol is not None
-    conn.protocol.set_response_params(**req._response_params)
+    resp = None
+    started = False
     try:
-        resp = await req._send(conn)
-        try:
+        assert conn.protocol is not None
+
+        ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
+        alpn_protocol = (
+            ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
+        )
+
+        # backwards compatibility
+        if alpn_protocol == "h2":
+            resp = await conn.protocol.send(
+                req.method, req.url, list(req.headers.items()), b""
+            )
+        else:
+            conn.protocol.set_response_params(**req._response_params)
+            resp = await req._send(conn)
             await resp.start(conn)
-        except BaseException:
+        # h3 not implemented
+
+        started = True
+    finally:
+        if resp is not None and not started:
             resp.close()
-            raise
-    except BaseException:
-        conn.close()
-        raise
+            conn.close()
+        if resp is None:
+            conn.close()
     return resp
 
 
