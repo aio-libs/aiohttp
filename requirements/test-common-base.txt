@@ -4,7 +4,7 @@
 #
 #    pip-compile --output-file=requirements/test-common-base.txt --strip-extras --unsafe-package=aiohttp requirements/test-common-base.in
 #
-aiohappyeyeballs==2.6.2
+aiohappyeyeballs==2.7.1
     # via aiohttp
 aiosignal==1.4.0
     # via aiohttp
