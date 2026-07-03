@@ -1,0 +1,1 @@
+Fixed :py:func:`~aiohttp.helpers.parse_mimetype` inserting a spurious empty-key

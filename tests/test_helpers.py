@@ -83,6 +83,33 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
     assert result == expected
 
 
+@pytest.mark.parametrize(
+    "mimetype",
+    [
+        "text/html; ",
+        "text/html;  ",
+        "text/html;\t",
+        "text/html; \t",
+        "text/html; charset=utf-8; ",
+        "text/html; charset=utf-8;\t\t",
+    ],
+)
+def test_parse_mimetype_skips_whitespace_only_segments(
+    mimetype: str,
+) -> None:
+    # https://github.com/aio-libs/aiohttp/issues/13009
+    # A trailing ';' followed by whitespace (e.g. 'text/html; ') was being
+    # treated as a parameter with an empty key, producing {'': ''} in the
+    # parsed parameters. RFC 2045 says whitespace-only segments after a ';'
+    # are not valid parameters; a bare trailing ';' was already skipped
+    # because it becomes an empty string, but 'text/html; ' was truthy
+    # and slipped through.
+    result = helpers.parse_mimetype(mimetype)
+    assert "" not in result.parameters
+    if "charset=utf-8" in mimetype:
+        assert result.parameters.get("charset") == "utf-8"
+
+
 # ------------------- parse_content_type ------------------------------
 
 
