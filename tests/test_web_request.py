@@ -167,6 +167,29 @@ def test_host_with_no_transport_sockname() -> None:
     assert req.host == ""
 
 
+def test_request_init_allows_transport_sockname_assignment() -> None:
+    message = make_mocked_request("GET", "/")._message
+    payload = mock.Mock()
+    payload_writer = mock.Mock()
+    task = mock.Mock()
+    loop = mock.Mock()
+    protocol = mock.Mock()
+    protocol.ssl_context = None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 8080)
+
+    req = BaseRequest(
+        message,
+        payload,
+        protocol,
+        payload_writer,
+        task,
+        loop,
+    )
+
+    assert req._transport_sockname == ("127.0.0.1", 8080)
+
+
 def test_doubleslashes() -> None:
     # NB: //foo/bar is an absolute URL with foo netloc and /bar path
     req = make_mocked_request("GET", "/bar//foo/")

@@ -1,0 +1,3 @@
+Fixed a deprecation warning during request initialization by allowing
+``BaseRequest`` to assign ``_transport_sockname``.
+-- by :user:`nightcityblade`.
