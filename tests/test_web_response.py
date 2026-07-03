@@ -339,6 +339,17 @@ def test_last_modified_datetime() -> None:
     assert resp.last_modified == dt
 
 
+def test_last_modified_datetime_rounds_like_timestamp() -> None:
+    resp = StreamResponse()
+
+    dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 1000, datetime.timezone.utc)
+    resp.last_modified = dt
+
+    assert resp.last_modified == datetime.datetime(
+        2001, 2, 3, 4, 5, 7, tzinfo=datetime.timezone.utc
+    )
+
+
 def test_last_modified_reset() -> None:
     resp = StreamResponse()
 

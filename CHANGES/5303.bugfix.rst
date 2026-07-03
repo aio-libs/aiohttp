@@ -1,0 +1,3 @@
+Aligned ``StreamResponse.last_modified`` datetime handling with the timestamp
+path so sub-second values round up consistently.
+-- by :user:`nightcityblade`.
