@@ -302,6 +302,14 @@ def test_last_modified_datetime() -> None:
     assert resp.last_modified == dt
 
 
+def test_last_modified_datetime_naive_warns() -> None:
+    resp = web.StreamResponse()
+
+    naive_dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0)
+    with pytest.warns(DeprecationWarning, match="naive datetime"):
+        resp.last_modified = naive_dt
+
+
 def test_last_modified_reset() -> None:
     resp = web.StreamResponse()
 

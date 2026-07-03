@@ -1,0 +1,4 @@
+Deprecated passing a naive :class:`datetime.datetime` to
+:attr:`~aiohttp.web.StreamResponse.last_modified`. Use a timezone-aware
+datetime instead, e.g. ``datetime.now(datetime.timezone.utc)`` -- by
+:user:`amitmishra11`.

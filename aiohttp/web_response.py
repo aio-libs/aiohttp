@@ -267,6 +267,14 @@ class StreamResponse(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
             )
         elif isinstance(value, datetime.datetime):
+            if value.tzinfo is None:
+                warnings.warn(
+                    "Passing a naive datetime to last_modified is deprecated. "
+                    "Use a timezone-aware datetime instead, e.g. "
+                    "datetime.now(datetime.timezone.utc).",
+                    DeprecationWarning,
+                    stacklevel=2,
+                )
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple()
             )
