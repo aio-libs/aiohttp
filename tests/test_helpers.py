@@ -70,9 +70,7 @@ from aiohttp.helpers import (
         ),
         (
             "text/plain;",
-            helpers.MimeType(
-                "text", "plain", "", MultiDictProxy(MultiDict())
-            ),
+            helpers.MimeType("text", "plain", "", MultiDictProxy(MultiDict())),
         ),
     ],
 )
