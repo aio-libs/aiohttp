@@ -182,12 +182,13 @@ class FetchClientProtocol(ResponseHandler):
             options["body"] = body
         options.update(self._fetch_options)
         if IS_EMSCRIPTEN:  # pragma: no cover
-            from js import AbortController, Headers  # noqa: I900
+            from js import AbortController  # noqa: I900
             from pyodide.ffi import to_js  # noqa: I900
 
             self._abort_controller = AbortController.new()
             options["signal"] = self._abort_controller.signal
-            options["headers"] = Headers.new(options["headers"])
+            # An array of [name, value] arrays is a valid HeadersInit.
+            options["headers"] = to_js(options["headers"])
             if body:
                 options["body"] = to_js(body)
         return options

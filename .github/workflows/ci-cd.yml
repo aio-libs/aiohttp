@@ -372,6 +372,66 @@ jobs:
         # Currently only Android supports colored output. See https://github.com/python/cpython/issues/150932 for iOS.
         CIBW_TEST_COMMAND: python -m pytest ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
 
+  test-pyodide:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Test (pyodide, ${{ matrix.pyver }})
+    runs-on: ubuntu-latest
+    needs: gen_llhttp
+    env:
+      # Must be a version supported by the pinned cibuildwheel below.
+      PYODIDE_VERSION: 0.29.3
+    strategy:
+      matrix:
+        pyver: ["cp313"]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: Setup Python ${{ matrix.pyver }}
+      id: python-install
+      # important: do not use system python
+      env:
+        UV_PYTHON_PREFERENCE: only-managed
+      uses: astral-sh/setup-uv@v8.2.0
+      with:
+        python-version: ${{ matrix.pyver }}
+        activate-environment: true
+        enable-cache: true
+    - name: Install build tooling and cython
+      run: |
+        uv pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v8
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Install cibuildwheel
+      run: uv pip install cibuildwheel==3.4.1
+    - name: Build wheel
+      # See the comment in test-mobile about unsetting GITHUB_ACTIONS.
+      run: env -u GITHUB_ACTIONS cibuildwheel --output-dir dist
+      env:
+        CIBW_BUILD: ${{ matrix.pyver }}-*
+        CIBW_PLATFORM: pyodide
+        CIBW_PYODIDE_VERSION: ${{ env.PYODIDE_VERSION }}
+    - name: Download Pyodide distribution
+      uses: pyodide/pyodide-actions/download-pyodide@v2
+      with:
+        version: ${{ env.PYODIDE_VERSION }}
+        to: pyodide-dist
+    - name: Install test dependencies
+      # aiohttp itself is needed on the host because tests/conftest.py
+      # imports it; the pure-Python build is sufficient.
+      run: AIOHTTP_NO_EXTENSIONS=1 uv pip install -e . pytest-pyodide==0.59.2 pytest pytest-aiohttp pytest-timeout coverage
+    - name: Run tests in Pyodide (Node.js)
+      run: python -m pytest tests/test_pyodide.py --rt node --dist-dir=./pyodide-dist
+
   autobahn:
     permissions:
       contents: read # to fetch code (actions/checkout)
@@ -556,6 +616,7 @@ jobs:
     - lint
     - test
     - test-mobile
+    - test-pyodide
     - autobahn
 
     runs-on: ubuntu-latest

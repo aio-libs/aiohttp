@@ -124,6 +124,7 @@ DoS
 downstreams
 Dup
 elasticsearch
+Emscripten
 encodings
 env
 environ
@@ -272,6 +273,7 @@ py
 pydantic
 pyenv
 pyflakes
+Pyodide
 pypa
 PyPI
 pyright
@@ -401,6 +403,7 @@ waituntil
 wakeup
 wakeups
 webapp
+WebAssembly
 websocket
 websocket’s
 websockets

@@ -9,6 +9,7 @@ live in ``tests/test_pyodide.py``.
 
 import asyncio
 import json
+import sys
 from typing import Any, NoReturn, Union
 
 import pytest
@@ -291,6 +292,7 @@ async def test_concurrent_requests() -> None:
     assert len(fetch.calls) == 10
 
 
+@pytest.mark.skipif(sys.platform == "emscripten", reason="fetch() exists here")
 def test_requires_fetch_outside_emscripten() -> None:
     with pytest.raises(RuntimeError, match="Emscripten"):
         FetchConnector()
