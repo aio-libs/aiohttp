@@ -291,7 +291,7 @@ class ClientResponse(HeadersMixin):
         session: "ClientSession | None",
         request_headers: CIMultiDict[str],
         original_url: URL,
-        stream_writer: AbstractStreamWriter,
+        stream_writer: AbstractStreamWriter | None = None,
         **kwargs: object,
     ) -> None:
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -307,7 +307,7 @@ class ClientResponse(HeadersMixin):
         self._real_url = url
         self._url = url.with_fragment(None) if url.raw_fragment else url
         if writer is None:  # Request already sent
-            self._output_size = stream_writer.output_size
+            self._output_size = stream_writer.output_size if stream_writer is not None else 0
         else:
             self._stream_writer = stream_writer
             self._writer = writer
