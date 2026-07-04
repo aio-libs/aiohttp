@@ -1,6 +1,6 @@
 import json
 from http.cookies import SimpleCookie
-from typing import Any, List, NamedTuple, Optional, Tuple
+from typing import Any, List, Optional, Tuple
 
 from multidict import CIMultiDict
 
@@ -41,7 +41,7 @@ class Http2Response:
         self.connection = None
 
         # Connection back-reference (set by the protocol)
-        self._connection: Optional["Http2Protocol"] = None
+        self._connection = None
 
     # ----------------------------------------------------------------
     # Body access (synchronous: entire body is already in memory)

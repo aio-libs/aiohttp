@@ -1,7 +1,4 @@
 """
-aiohttp.http2.protocol
-======================
-
 Complete HTTP/2 client implementation (RFC 7540) for asyncio.
 
 This module provides:
@@ -27,9 +24,7 @@ Usage:
 import asyncio
 import logging
 import struct
-from collections import defaultdict
-from enum import IntEnum, IntFlag, auto
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from hpack import Decoder, Encoder
 
@@ -51,7 +46,7 @@ from .stream import Stream, StreamState
 logger = logging.getLogger("aiohttp.http2.connection")
 logger.setLevel(logging.DEBUG)
 
-FRAME_HEADER_LENGTH = 9  # 9 octects
+FRAME_HEADER_LENGTH = 9  # 9 octets
 STREAM_ID_MASK = 0x7FFFFFFF  # to avoid setting the reserved bit to 1
 
 
@@ -175,15 +170,17 @@ class Http2Connection:
             self._handle_data_frame(flags, stream_id, payload)
         elif frame_type == FrameType.HEADERS:
             self._handle_headers_frame(flags, stream_id, payload)
-        elif frame_type == FrameType.PRIORITY:
+        elif frame_type in {
+            FrameType.PRIORITY,
+            FrameType.PUSH_PROMISE,
+            FrameType.CONTINUATION,
+        }:
+            logger.warning("%d frame ignored (not implemented)", frame_type)
             self._handle_priority_frame(stream_id, payload)
         elif frame_type == FrameType.RST_STREAM:
             self._handle_rst_stream_frame(flags, stream_id, payload)
         elif frame_type == FrameType.SETTINGS:
             self._handle_settings_frame(flags, stream_id, payload)
-        elif frame_type == FrameType.PUSH_PROMISE:
-            # Client cannot receive push promises -- ignore or GOAWAY
-            logger.warning("Received PUSH_PROMISE; ignoring (no push support)")
         elif frame_type == FrameType.PING:
             self._handle_ping_frame(flags, stream_id, payload)
         elif frame_type == FrameType.GOAWAY:
@@ -193,7 +190,7 @@ class Http2Connection:
         elif frame_type == FrameType.CONTINUATION:
             self._handle_continuation_frame(flags, stream_id, payload)
         else:
-            logger.warning(f"Ignoring unknown frame type {frame_type}")
+            logger.warning("Ignoring unknown frame type %d", frame_type)
 
     # ---------- Individual frame handlers ----------
     def _handle_data_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
@@ -223,7 +220,7 @@ class Http2Connection:
     def _handle_headers_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
         if flags & FlagHeaders.PRIORITY:
             # Exclusive flag + stream dependency + weight
-            priority_data = payload[:5]
+            # exclude priority data
             payload = payload[5:]
 
         # Decode headers with HPACK
@@ -265,9 +262,7 @@ class Http2Connection:
     def _handle_settings_frame(
         self, flags: int, stream_id: int, payload: bytes
     ) -> None:
-        """
-        Process SETTINGS frame (6.5)
-        """
+        """Process SETTINGS frame (6.5)"""
         if flags & FlagSettings.ACK:
             logger.debug("Received SETTINGS ACK")
             return  # Our settings were acknowledged

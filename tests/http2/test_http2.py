@@ -13,17 +13,14 @@ import gzip
 import json
 import struct
 from typing import List, Optional, Tuple
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-from hpack import Decoder, Encoder
+from hpack import Encoder
 
 import aiohttp
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
-from aiohttp.http2.errors import ProtocolError
-from aiohttp.http2.response import Http2Response
 from aiohttp.http2.settings import (
-    DEFAULT_SETTINGS,
     FlagData,
     FlagHeaders,
     FlagPing,
@@ -31,7 +28,7 @@ from aiohttp.http2.settings import (
     FrameType,
     Setting,
 )
-from aiohttp.http2.stream import Stream, StreamState
+from aiohttp.http2.stream import StreamState
 
 
 # ----------------------------------------------------------------------
@@ -167,34 +164,13 @@ def build_ping(ack: bool = False, opaque: bytes = b"\x00" * 8) -> bytes:
     return frame_header(8, FrameType.PING, flags, 0) + opaque
 
 
-# ----------------------------------------------------------------------
-# Integration tests (skipped by default)
-# ----------------------------------------------------------------------
-@pytest.mark.skip(reason="Requires internet connection and httpbin")
+
 @pytest.mark.asyncio
-async def test_integration_httpbin_get():
-    """Real HTTP/2 request to httpbin.org (requires a server supporting h2)."""
-    async with aiohttp.ClientSession() as session:
-        # Force HTTP/2 if possible; this test assumes the connector is configured
-        # to use Http2Protocol when ALPN negotiates h2.
-        async with session.get("https://httpbin.org/get") as resp:
-            assert resp.status == 200
-            data = await resp.json()
-            assert "headers" in data
-
-
-@pytest.mark.skip(reason="Requires internet connection and httpbin")
-@pytest.mark.asyncio
-async def test_integration_httpbin_post():
-    import aiohttp
-
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            "https://httpbin.org/post", json={"key": "value"}
-        ) as resp:
-            assert resp.status == 200
-            data = await resp.json()
-            assert data["json"] == {"key": "value"}
+async def test_incomplete_frame(connection):
+    connection, _ = connection
+    frame = b"111111111"
+    connection.data_received(frame)
+    assert connection._frame_buffer == frame
 
 
 # ======================================================================
@@ -431,7 +407,7 @@ class TestMiscellaneous:
         """Pending create_stream futures are cancelled on connection loss."""
         conn, _ = connection
         conn.max_concurrent_streams = 1
-        s1 = await conn.create_stream()
+        await conn.create_stream()
         # Queue a second stream
         fut = asyncio.ensure_future(conn.create_stream())
         await asyncio.sleep(0.01)
@@ -474,11 +450,6 @@ class TestHighLevelInterface:
         task = asyncio.create_task(do_request())
         # Let it run until it creates a stream and sends HEADERS
         await asyncio.sleep(0.01)
-        # Now simulate server response
-        # Find the stream ID from the HEADERS frame written
-        write_calls = [call[0][0] for call in transport.write.call_args_list]
-        # The HEADERS frame will contain stream ID (first client stream = 1)
-        # Construct response HEADERS + DATA
         headers = [(":status", "200"), ("content-type", "application/json")]
         body = b'{"key": "value"}'
         resp_frame = build_headers_frame(

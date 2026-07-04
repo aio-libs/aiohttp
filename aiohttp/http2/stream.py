@@ -58,7 +58,7 @@ class Stream:
         "closed_event",
     )
 
-    def __init__(self, stream_id: int, conn: "Http2Connection", loop) -> None:
+    def __init__(self, stream_id: int, conn, loop) -> None:
         self.stream_id = stream_id
         self.state = StreamState.IDLE
         self.conn = conn
