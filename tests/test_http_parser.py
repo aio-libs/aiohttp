@@ -3141,6 +3141,7 @@ class TestDeflateBuffer:
         assert dbuf.size == 0
         # And feeding real data afterwards still works.
         import zlib
+
         payload = b"hello world " * 100
         compressed = zlib.compress(payload)
         while dbuf.feed_data(compressed):
