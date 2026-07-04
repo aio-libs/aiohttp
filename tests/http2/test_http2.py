@@ -164,7 +164,6 @@ def build_ping(ack: bool = False, opaque: bytes = b"\x00" * 8) -> bytes:
     return frame_header(8, FrameType.PING, flags, 0) + opaque
 
 
-
 @pytest.mark.asyncio
 async def test_incomplete_frame(connection):
     connection, _ = connection
