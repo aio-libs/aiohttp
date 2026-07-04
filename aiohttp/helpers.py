@@ -334,8 +334,21 @@ def parse_mimetype(mimetype: str) -> MimeType:
     for item in parts[1:]:
         if not item:
             continue
-        key, _, value = item.partition("=")
-        params.add(key.lower().strip(), value.strip(' "'))
+        # Per RFC 9110 section 5.6.5 a parameter is `token "=" token` (or quoted-string)
+        # and both sides must be non-empty. A bare `;` (already skipped by the
+        # empty check above) or a `;=value` / `key=` token (empty key) is not a
+        # valid parameter. Skip it instead of producing `{"": "value"}` which
+        # downstream callers like StringPayload read with `.get("charset")` and
+        # silently get an empty key back, defaulting to utf-8 without warning.
+        key, sep, value = item.partition("=")
+        if not sep:
+            # `text/html; charset` is also malformed (no '='). Skip the segment
+            # rather than treating the whole token as a key with empty value.
+            continue
+        key = key.strip()
+        if not key:
+            continue
+        params.add(key.lower(), value.strip(' "'))
 
     fulltype = parts[0].strip().lower()
     if fulltype == "*":

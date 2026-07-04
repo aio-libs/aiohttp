@@ -69,9 +69,9 @@ from aiohttp.helpers import (
             helpers.MimeType("application", "rss", "xml", MultiDictProxy(MultiDict())),
         ),
         (
-            "text/plain;base64",
+            "text/plain;",
             helpers.MimeType(
-                "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
+                "text", "plain", "", MultiDictProxy(MultiDict())
             ),
         ),
     ],
@@ -81,6 +81,14 @@ def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
 
     assert isinstance(result, helpers.MimeType)
     assert result == expected
+
+
+def test_parse_mimetype_skips_empty_param_key_and_missing_equals() -> None:
+    # Trailing `;` should not insert a `''` key into the params dict
+    # and the real parameter before it should still parse.
+    result = helpers.parse_mimetype("application/json; charset=utf-8;")
+    assert "" not in result.parameters
+    assert result.parameters.get("charset") == "utf-8"
 
 
 # ------------------- parse_content_type ------------------------------
