@@ -1,0 +1,3 @@
+Guard :py:meth:`~aiohttp.http_parser.DeflateBuffer.feed_data` against empty input
+so the chunked-transfer decoder can resume a paused deflate stream without
+``IndexError`` being raised by the RFC 1950 CM-byte header sniff.

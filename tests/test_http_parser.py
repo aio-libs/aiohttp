@@ -3116,11 +3116,42 @@ class TestDeflateBuffer:
 
         assert buf.at_eof()
 
+    async def test_empty_chunk_is_noop(self, protocol: BaseProtocol) -> None:
+        """Regression test for https://github.com/aio-libs/aiohttp/issues/12994
+
+        feed_data(b"") is used to resume a paused decoder. Before the
+        fix it raised IndexError because the RFC 1950 CM-byte sniff read
+        chunk[0] on the empty input. The fix guards the sniff so empty
+        input falls through to the normal decompress path; the downstream
+        ``decompress_sync(b"")`` is a no-op and the resume loop's
+        ``data_available`` flag still drives termination.
+        """
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "deflate")
+        # Before any data is fed, _started_decoding is False so the
+        # CM-byte sniff runs and would IndexError on an empty chunk.
+        assert dbuf._started_decoding is False
+        # No exception, returns False (no more data).
+        assert dbuf.feed_data(b"") is False
+        # No bytes were pushed downstream.
+        assert list(buf._buffer) == []
+        # The buffer's compressed-bytes counter was not bumped.
+        assert dbuf.size == 0
+        # And feeding real data afterwards still works.
+        import zlib
+        payload = b"hello world " * 100
+        compressed = zlib.compress(payload)
+        while dbuf.feed_data(compressed):
+            compressed = b""
+        dbuf.feed_eof()
+        assert b"".join(buf._buffer) == payload
+
     @pytest.mark.skipif(platform.python_implementation() == "PyPy", reason="Broken")
     @pytest.mark.parametrize(
         "chunk_size",
-        [1024, 2**14, 2**16],  # 1KB, 16KB, 64KB
-        ids=["1KB", "16KB", "64KB"],
+        [1, 1024, 16 * 1024, 64 * 1024],
     )
     async def test_streaming_decompress_large_payload(
         self, protocol: BaseProtocol, chunk_size: int

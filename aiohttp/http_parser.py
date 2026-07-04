@@ -1149,8 +1149,14 @@ class DeflateBuffer:
         # RFC1950
         # bits 0..3 = CM = 0b1000 = 8 = "deflate"
         # bits 4..7 = CINFO = 1..7 = windows size.
+        # The empty-chunk sniff guard is for issue #12994: HttpRequestParser and
+        # HttpResponseParser resume a paused decoder with ``feed_data(b"")`` and
+        # the CM-byte read below would raise ``IndexError`` on the empty input.
+        # Falling through to ``decompress_sync(b"")`` is a no-op and the resume
+        # loop's ``self.decompressor.data_available`` flag still drives termination.
         if (
-            not self._started_decoding
+            chunk
+            and not self._started_decoding
             and self.encoding == "deflate"
             and chunk[0] & 0xF != 8
         ):
