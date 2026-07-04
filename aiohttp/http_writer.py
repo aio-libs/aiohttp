@@ -5,11 +5,9 @@ import re
 import sys
 from typing import (
     TYPE_CHECKING,
-    Any,
     Awaitable,
     Callable,
     Iterable,
-    List,
     NamedTuple,
     Optional,
     Union,

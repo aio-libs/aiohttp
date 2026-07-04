@@ -1,5 +1,5 @@
 """
-Test suite for aiohttp.http2.protocol
+Test suite for aiohttp.http2
 
 Categories:
 - integration: against a real httpbin server (skipped, requires network)
@@ -18,7 +18,6 @@ from unittest.mock import MagicMock
 import pytest
 from hpack import Encoder
 
-import aiohttp
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.settings import (
     FlagData,
