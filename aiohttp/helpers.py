@@ -848,7 +848,12 @@ class HeadersMixin:
     def content_length(self) -> int | None:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
-        return None if content_length is None else int(content_length)
+        if content_length is None:
+            return None
+        try:
+            return int(content_length)
+        except ValueError:
+            raise ValueError(f"invalid Content-Length value: {content_length!r}")
 
 
 def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:

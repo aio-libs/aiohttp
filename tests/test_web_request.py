@@ -242,6 +242,24 @@ def test_content_length() -> None:
     assert 123 == req.content_length
 
 
+def test_content_length_non_numeric_raises_value_error() -> None:
+    req = make_mocked_request(
+        "Get", "/", CIMultiDict([("CONTENT-LENGTH", "abc")])
+    )
+
+    with pytest.raises(ValueError, match=r"invalid Content-Length value: 'abc'"):
+        req.content_length
+
+
+def test_content_length_empty_raises_value_error() -> None:
+    req = make_mocked_request(
+        "Get", "/", CIMultiDict([("CONTENT-LENGTH", "")])
+    )
+
+    with pytest.raises(ValueError, match=r"invalid Content-Length value: ''"):
+        req.content_length
+
+
 def test_range_to_slice_head() -> None:
     req = make_mocked_request(
         "GET", "/", headers=CIMultiDict([("RANGE", "bytes=0-499")])

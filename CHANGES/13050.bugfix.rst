@@ -1,0 +1,4 @@
+Surfaced a clear ``ValueError`` from :attr:`~aiohttp.helpers.HeadersMixin.content_length`
+when the ``Content-Length`` header is set to a non-integer or empty value, instead of
+leaking the underlying ``int()`` parser error which made the offending value invisible
+to callers -- by :user:`HrachShah`.
