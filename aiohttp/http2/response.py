@@ -1,8 +1,12 @@
 import json
 from http.cookies import SimpleCookie
-from typing import Any, List, Optional, Tuple
+from typing import Any, Iterable, List, Optional, Tuple
 
+from hpack import HeaderTuple
 from multidict import CIMultiDict
+
+from aiohttp.client_exceptions import ClientResponseError
+from aiohttp.client_reqrep import RequestInfo
 
 from ..http_writer import HttpVersion2
 
@@ -12,31 +16,32 @@ class Http2Response:
 
     def __init__(
         self,
-        headers: List[Tuple[str, str]],
+        headers: Iterable[HeaderTuple] | Iterable[Tuple[str, str]],
         body: bytes,
         *,
         method: Optional[str] = None,
         url: Optional[Any] = None,
     ) -> None:
-        self.reason = ""  # HTTP/2 doesn't carry a reason phrase
-        self._body = body
-        self.url = url
-        self.method = method
-        self.history: List[Any] = []  # for redirects
+        self.reason: str = ""  # HTTP/2 doesn't carry a reason phrase
+        self._body: bytes = body
+        self.url: Optional[Any] = url
+        self.method: Optional[str] = method
+        # redirects
+        self._history: List["Http2Response"] = []
 
-        # Headers as case-insensitive multi-dict (mimics aiohttp's CIMultiDict)
-        self.headers: CIMultiDict = CIMultiDict(headers)
+        # Headers as case-insensitive multi-dict
+        self.headers: CIMultiDict[str] = CIMultiDict(headers)  # type: ignore[arg-type]
         # no status error implies a server side error
-        self.status = int(self.headers.get(":status", 500))
+        self.status: int = int(self.headers.get(":status", 500))
 
         # Cookie jar integration
         self._cookies: Optional[SimpleCookie] = None
 
-        # HTTP version pseudo-attribute (aiohttp expects a namedtuple-like object)
+        # HTTP version pseudo-attribute
         self.version = HttpVersion2
 
-        self._raw_cookie_headers = None
-        self.connection = None
+        self._raw_cookie_headers: Optional[List[Tuple[str, str]]] = None
+        self.connection: Optional[Any] = None
 
     # ----------------------------------------------------------------
     # Body access (synchronous: entire body is already in memory)
@@ -46,14 +51,14 @@ class Http2Response:
         return self._body
 
     @property
-    def body(self):
+    def body(self) -> bytes:
         return self._body
 
     async def text(self, encoding: str = "utf-8") -> str:
         """Decode the body to a string."""
         return self._body.decode(encoding)
 
-    async def json(self, **kwargs) -> Any:
+    async def json(self, **kwargs: Any) -> Any:
         """Parse JSON body."""
         return json.loads(self._body, **kwargs)
 
@@ -65,7 +70,6 @@ class Http2Response:
         """Parse 'Set-Cookie' headers and return a SimpleCookie."""
         if self._cookies is None:
             self._cookies = SimpleCookie()
-            # self.headers is a CIMultiDict – use getall() to obtain all values
             for raw in self.headers.getall("set-cookie", []):
                 self._cookies.load(raw)
         return self._cookies
@@ -81,11 +85,11 @@ class Http2Response:
     def raise_for_status(self) -> None:
         """Raise an HTTPError for 4xx/5xx responses."""
         if not self.ok:
-            from aiohttp.client_exceptions import ClientResponseError
-
             raise ClientResponseError(
-                request_info=None,  # simplified
-                history=self.history,
+                request_info=RequestInfo(
+                    url=self.url, method=self.method, headers=self.headers  # type: ignore[arg-type]
+                ),
+                history=self._history,  # type: ignore[arg-type]
                 status=self.status,
                 message=f"{self.status}, message='{self.reason}'",
                 headers=self.headers,
@@ -95,23 +99,20 @@ class Http2Response:
     # Connection release (stream-level cleanup)
     # ----------------------------------------------------------------
     def release(self) -> None:
-        """Release the HTTP/2 stream back to the connection.
-
-        In HTTP/2 the stream is already closed once the full response is
-        received. This method is a no-op but required for aiohttp
-        compatibility.
-        """
+        """Release the HTTP/2 stream back to the connection."""
         pass  # nothing to do; the stream has ended
 
-    def close(self):
+    def close(self) -> None:
         if self.connection:
             self.connection.close()
 
     # ----------------------------------------------------------------
-    # Context manager support (optional, often used with 'async with')
+    # Context manager support
     # ----------------------------------------------------------------
-    async def __aenter__(self):
+    async def __aenter__(self) -> "Http2Response":
         return self
 
-    async def __aexit__(self, exc_type, exc, tb):
+    async def __aexit__(
+        self, exc_type: Optional[type], exc: Optional[BaseException], tb: Any
+    ) -> None:
         pass

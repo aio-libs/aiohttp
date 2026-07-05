@@ -1,4 +1,5 @@
 from enum import IntEnum, IntFlag
+from typing import Dict
 
 
 # ----------------------------------------------------------------------
@@ -45,20 +46,15 @@ class Setting(IntEnum):
     INITIAL_WINDOW_SIZE = 0x4
     MAX_FRAME_SIZE = 0x5
     MAX_HEADER_LIST_SIZE = 0x6
-    # this is mostly for web sockets
-    # via proxies
-    # which is not supported to the date
     SETTINGS_ENABLE_CONNECT_PROTOCOL = 0x8
-    # does nothing as we don't implement this deprecated
-    # implementation
     NO_RFC7540_PRIORITIES = 0x9
 
 
 # Default values (RFC 7540, 6.5.2)
-DEFAULT_SETTINGS = {
+DEFAULT_SETTINGS: Dict[Setting, int] = {
     Setting.HEADER_TABLE_SIZE: 4096,
     Setting.ENABLE_PUSH: 1,
-    Setting.MAX_CONCURRENT_STREAMS: 2**32 - 1,  # effectively unlimited
+    Setting.MAX_CONCURRENT_STREAMS: 2**32 - 1,
     Setting.INITIAL_WINDOW_SIZE: 65535,
     Setting.MAX_FRAME_SIZE: 16384,
     Setting.MAX_HEADER_LIST_SIZE: 2**32 - 1,

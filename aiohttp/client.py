@@ -243,6 +243,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
 
     assert conn.protocol is not None
+    assert conn.protocol.transport is not None
 
     ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
     alpn_protocol = ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
@@ -251,12 +252,12 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     started = False
 
     if alpn_protocol == "h2" and not connector._conns[conn._key]:
-        connector._conns[conn._key] = deque([(conn._protocol, time.monotonic())])
+        connector._conns[conn._key] = deque([(conn.protocol, time.monotonic())])
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
             body = await req.body.as_bytes()
-            resp = await conn.protocol.send(
+            resp = await conn.protocol.send(  # type: ignore[attr-defined]
                 req.method,
                 req.url,
                 list(req.headers.items()),

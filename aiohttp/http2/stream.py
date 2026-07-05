@@ -1,9 +1,14 @@
 import asyncio
 from enum import IntEnum
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, Iterable, Optional, Set, Tuple
+
+from hpack import HeaderTuple
 
 from .errors import ProtocolError
 from .settings import Setting
+
+if TYPE_CHECKING:
+    from .connection import Http2Connection
 
 
 # ----------------------------------------------------------------------
@@ -20,8 +25,7 @@ class StreamState(IntEnum):
 
 
 # Valid transitions (RFC 7540 Figure 2)
-# Added missing RESERVED_REMOTE from IDLE
-VALID_TRANSITIONS = {
+VALID_TRANSITIONS: Dict[StreamState, Set[StreamState]] = {
     StreamState.IDLE: {
         StreamState.OPEN,
         StreamState.RESERVED_LOCAL,
@@ -32,7 +36,7 @@ VALID_TRANSITIONS = {
     StreamState.OPEN: {StreamState.HALF_CLOSED_LOCAL, StreamState.HALF_CLOSED_REMOTE},
     StreamState.HALF_CLOSED_LOCAL: {StreamState.CLOSED},
     StreamState.HALF_CLOSED_REMOTE: {StreamState.CLOSED},
-    StreamState.CLOSED: set(),  # terminal state
+    StreamState.CLOSED: set(),
 }
 
 
@@ -52,30 +56,33 @@ class Stream:
         "outbound_window",
         "inbound_window",
         "response_future",
-        "request_body",
         "response_headers",
         "response_data",
         "closed_event",
     )
 
-    def __init__(self, stream_id: int, conn, loop) -> None:
+    def __init__(
+        self, stream_id: int, conn: "Http2Connection", loop: asyncio.AbstractEventLoop
+    ) -> None:
         self.stream_id = stream_id
         self.state = StreamState.IDLE
         self.conn = conn
 
-        # Flow‑control windows (stream‑level only; session window managed by connection)
-        self.outbound_window = conn.remote_settings[Setting.INITIAL_WINDOW_SIZE]
-        self.inbound_window = conn.local_settings[Setting.INITIAL_WINDOW_SIZE]
+        # Flow‑control windows (stream‑level only)
+        self.outbound_window: int = conn.remote_settings[Setting.INITIAL_WINDOW_SIZE]
+        self.inbound_window: int = conn.local_settings[Setting.INITIAL_WINDOW_SIZE]
 
         self.response_future: asyncio.Future[
-            Tuple[int, List[Tuple[str, str]], bytes]
+            Tuple[int, Iterable[HeaderTuple] | Iterable[Tuple[str, str]], bytes]
         ] = loop.create_future()
 
-        self.response_headers: Optional[List[Tuple[str, str]]] = None
-        self.response_data = bytearray()
+        self.response_headers: Optional[
+            Iterable[HeaderTuple] | Iterable[Tuple[str, str]]
+        ] = None
+        self.response_data: bytearray = bytearray()
 
         # Event notified when the stream enters CLOSED state
-        self.closed_event = asyncio.Event()
+        self.closed_event: asyncio.Event = asyncio.Event()
 
     def transition(self, new_state: StreamState) -> None:
         if (
@@ -90,8 +97,7 @@ class Stream:
             self.closed_event.set()
 
     # ------------------------------------------------------------------
-    # Data and header reception – state transitions are now **conditional**
-    # on the current state, matching RFC 7540/9113 exactly.
+    # Data and header reception
     # ------------------------------------------------------------------
     def receive_data(self, data: bytes, end_stream: bool) -> None:
         """Process incoming DATA frame payload."""
@@ -99,12 +105,11 @@ class Stream:
         self.response_data.extend(data)
 
         if end_stream:
-            # Correct transition depending on current state
             if self.state == StreamState.OPEN:
                 self.transition(StreamState.HALF_CLOSED_REMOTE)
             elif self.state == StreamState.HALF_CLOSED_LOCAL:
                 self.transition(StreamState.CLOSED)
-                self.conn._close_stream(self)  # clean up connection map
+                self.conn._close_stream(self)
             else:
                 raise ProtocolError(
                     f"Unexpected stream state {self.state.name} for END_STREAM"
@@ -112,14 +117,18 @@ class Stream:
 
             self.maybe_deliver_response()
 
-    def maybe_deliver_response(self):
+    def maybe_deliver_response(self) -> None:
         # Deliver the full response once headers have been received
         if self.response_headers is not None and not self.response_future.done():
             self.response_future.set_result(
                 (self.stream_id, self.response_headers, bytes(self.response_data))
             )
 
-    def receive_headers(self, headers: List[Tuple[str, str]], end_stream: bool) -> None:
+    def receive_headers(
+        self,
+        headers: Iterable[HeaderTuple] | Iterable[Tuple[str, str]],
+        end_stream: bool,
+    ) -> None:
         """Process incoming HEADERS frame payload."""
         self.response_headers = headers
 
@@ -134,5 +143,3 @@ class Stream:
                     f"Unexpected stream state {self.state.name} for END_STREAM on headers"
                 )
             self.maybe_deliver_response()
-
-        # else: stream remains in OPEN (or HALF_CLOSED_LOCAL), headers stored for later delivery.

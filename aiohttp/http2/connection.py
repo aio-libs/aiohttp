@@ -71,36 +71,40 @@ class Http2Connection:
         self._loop = loop
 
         # HPACK
-        self.hpack_encoder = Encoder()
-        self.hpack_decoder = Decoder()
+        self.hpack_encoder: Encoder = Encoder()
+        self.hpack_decoder: Decoder = Decoder()
 
         # Settings
         self.remote_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
         self.local_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
 
         # Flow control
-        self.session_outbound_window = 65535  # initial flow control (RFC 7540, 6.9.1)
-        self.session_inbound_window = 65535
-        self._flow_control_updated = asyncio.Event()
+        self.session_outbound_window: int = (
+            65535  # initial flow control (RFC 7540, 6.9.1)
+        )
+        self.session_inbound_window: int = 65535
+        self._flow_control_updated: asyncio.Event = asyncio.Event()
         self._flow_control_updated.set()  # initially writable
 
         # Streams
         self.streams: Dict[int, Stream] = {}
-        self.next_stream_id = 1  # client streams are odd
-        self.max_concurrent_streams = DEFAULT_SETTINGS[Setting.MAX_CONCURRENT_STREAMS]
+        self.next_stream_id: int = 1  # client streams are odd
+        self.max_concurrent_streams: int = DEFAULT_SETTINGS[
+            Setting.MAX_CONCURRENT_STREAMS
+        ]
         self._pending_streams: List[asyncio.Future[Stream]] = []
-        self._last_peer_stream_id = (
+        self._last_peer_stream_id: int = (
             0  # highest server‑initiated stream (even, unused for client)
         )
 
         # Frame buffers
-        self._frame_buffer = bytearray()
+        self._frame_buffer: bytearray = bytearray()
 
         # GOAWAY state
-        self._goaway_received = False
-        self._goaway_sent = False
-        self._last_stream_id = 0
-        self._error_code = 0
+        self._goaway_received: bool = False
+        self._goaway_sent: bool = False
+        self._last_stream_id: int = 0
+        self._error_code: int = 0
 
         # Closed streams cleanup
         self._closed_streams: Set[int] = set()
@@ -112,8 +116,6 @@ class Http2Connection:
         # Consume complete frames while enough bytes for the header exist
         while len(self._frame_buffer) >= FRAME_HEADER_LENGTH:
             # Parse 24-bit length, 8-bit type, 8-bit flags, 32-bit stream ID
-            # (RFC 9113 4.1)
-            # "!I H B B"
             length = (
                 self._frame_buffer[0] << 16
                 | self._frame_buffer[1] << 8
@@ -132,7 +134,7 @@ class Http2Connection:
             del self._frame_buffer[: FRAME_HEADER_LENGTH + length]
 
             # invalid frames cause a value error
-            if frame_type_val <= 9 and frame_type_val >= 0:
+            if 0 <= frame_type_val <= 9:
                 logger.debug(
                     "<- %s stream=%d flags=0x%02x len=%d",
                     FrameType(frame_type_val).name,
@@ -321,7 +323,10 @@ class Http2Connection:
         self._last_stream_id = last_stream_id
         self._error_code = error_code
         logger.info(
-            f"GOAWAY received: last_stream={last_stream_id}, error={error_code}, extra={extra}"
+            "GOAWAY received: last_stream=%d, error=%d, extra=%s",
+            last_stream_id,
+            error_code,
+            extra.decode(),
         )
         # Cancel streams with higher IDs
         for sid, stream in list(self.streams.items()):
@@ -354,11 +359,13 @@ class Http2Connection:
 
     # -------------------- Frame sending helpers --------------------
     def _send_frame(
-        self, frame_type: FrameType, flags: int, stream_id: int, payload: bytes = b""
+        self,
+        frame_type: FrameType,
+        flags: int,
+        stream_id: int,
+        payload: bytes = b"",
     ) -> None:
         length = len(payload) & 0x00FFFFFF  # 24 bits -> 3 bytes
-        # header = struct.pack("!I H B B", length, frame_type, flags, stream_id)
-
         header = struct.pack("!I", length)[
             1:
         ] + struct.pack(  # drop the first (most‑significant) byte → 3 bytes
@@ -420,7 +427,7 @@ class Http2Connection:
         if len(self.streams) < self.max_concurrent_streams:
             return self._create_stream_internal()
         # Queue the request
-        fut = self._loop.create_future()
+        fut: asyncio.Future[Stream] = self._loop.create_future()
         self._pending_streams.append(fut)
         return await fut
 
@@ -474,7 +481,7 @@ class Http2Connection:
         self,
         stream: Stream,
         method: str,
-        url: str,
+        url: Any,  # Usually a yarl.URL, but abstracted for mocking
         headers: List[Tuple[str, str]],
         body: Optional[bytes] = None,
     ) -> None:
@@ -486,8 +493,6 @@ class Http2Connection:
             (":scheme", url.scheme),
             (":authority", url.host),
         ]
-        # 8.2. HTTP Fields
-        # Field names MUST be converted to lowercase when constructing an HTTP/2 message.
         req_headers.extend([(h[0].lower(), h[1]) for h in headers])
 
         hdrs = self.hpack_encoder.encode(req_headers)
@@ -512,7 +517,6 @@ class Http2Connection:
         self._transport.write(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 
         # Send initial SETTINGS (our preferences)
-        # We can advertise supported settings, e.g., enable push = 0
         settings_payload = struct.pack(
             "!H I", Setting.ENABLE_PUSH, 0  # disable server push
         )
@@ -554,12 +558,12 @@ class Http2Protocol(asyncio.Protocol):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
         self._connection: Optional[Http2Connection] = None
-        self._closed_future = loop.create_future()  # resolves when connection closes
+        self._closed_future: asyncio.Future[None] = loop.create_future()
         self.transport: Optional[asyncio.Transport] = None
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = transport  # type: ignore[assignment]
-        self._connection = Http2Connection(self.transport, self._loop)
+        self._connection = Http2Connection(self.transport, self._loop)  # type: ignore[arg-type]
         self._connection.initiate_connection()
 
     def data_received(self, data: bytes) -> None:
@@ -586,7 +590,7 @@ class Http2Protocol(asyncio.Protocol):
         return self._connection.is_connected() if self._connection else False
 
     @property
-    def closed(self) -> asyncio.Future:
+    def closed(self) -> asyncio.Future[None]:
         return self._closed_future
 
     # Public API for creating streams
@@ -595,34 +599,18 @@ class Http2Protocol(asyncio.Protocol):
             raise RuntimeError("Connection not established")
         return await self._connection.create_stream()
 
-    def send_request(
-        self,
-        stream: Stream,
-        method: str,
-        url: str,
-        headers: List[Tuple[str, str]],
-        body: Optional[bytes] = None,
-    ) -> None:
-        if self._connection is None:
-            raise RuntimeError("Connection not established")
-        self._connection.send_request(stream, method, url, headers, body)
-
     async def send(
         self,
         method: str,
-        url: Any,  # yarl.URL or str (but the protocol expects a URL object later)
+        url: Any,
         headers: List[Tuple[str, str]],
         body: Optional[bytes] = None,
     ) -> Http2Response:
-        """Send an HTTP/2 request and return a compatible response.
-
-        The response object will carry `url`, `method`, and `_connection`
-        so that aiohttp’s `ClientSession._request` can work without modification.
-        """
+        """Send an HTTP/2 request and return a compatible response."""
         if self._connection is None:
             raise RuntimeError("Connection not established")
 
-        # Obtain a stream from the pool (blocks only if concurrency limit reached)
+        # Obtain a stream from the pool
         stream = await self._connection.create_stream()
 
         await self._connection.send_request(stream, method, url, headers, body)
@@ -630,7 +618,6 @@ class Http2Protocol(asyncio.Protocol):
         # Wait for the response future to be set by the stream when complete
         _, resp_headers, resp_body = await stream.response_future
 
-        # Build the full response object
         response = Http2Response(
             headers=resp_headers,
             body=resp_body,

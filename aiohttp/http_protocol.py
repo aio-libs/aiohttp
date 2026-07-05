@@ -1,6 +1,5 @@
-# aiohttp/http_protocol.py (new file)
 import asyncio
-from typing import Optional
+from typing import Any, Optional
 
 from .client_proto import ResponseHandler
 from .http2.connection import Http2Protocol
@@ -24,8 +23,8 @@ class HttpDispatcherProtocol(asyncio.Protocol):
         self._transport = transport  # type: ignore[assignment]
 
         # Determine ALPN after TLS is established
-        ssl_object = transport.get_extra_info("ssl_object")
-        alpn_protocol = (
+        ssl_object: Any = transport.get_extra_info("ssl_object")
+        alpn_protocol: str = (
             ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
         )
 
@@ -38,7 +37,7 @@ class HttpDispatcherProtocol(asyncio.Protocol):
         # all incoming data and callbacks.
         self._handler.connection_made(transport)
 
-    def __getattribute__(self, name):
+    def __getattribute__(self, name: str) -> Any:
         if not name.startswith("__") and name not in {
             "connection_made",
             "__getattribute__",
@@ -49,10 +48,10 @@ class HttpDispatcherProtocol(asyncio.Protocol):
             return getattr(self._handler, name)
         return super().__getattribute__(name)
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: Any) -> None:
         if name not in {"_handler", "_transport", "_loop"}:
             return self._handler.__setattr__(name, value)
         return super().__setattr__(name, value)
 
-    def __delattr__(self, name):
+    def __delattr__(self, name: str) -> None:
         return self._handler.__delattr__(name)

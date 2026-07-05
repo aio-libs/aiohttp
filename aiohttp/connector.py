@@ -1415,7 +1415,8 @@ class TCPConnector(BaseConnector):
                 tls_transport
             )  # Kick the state machine of the new TLS protocol
 
-        return tls_transport, tls_proto
+        # HACK use the correct type
+        return tls_transport, tls_proto  # type: ignore[return-value]
 
     def _convert_hosts_to_addr_infos(
         self, hosts: list[ResolveResult]
@@ -1638,7 +1639,7 @@ class UnixConnector(BaseConnector):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return proto
+        return proto  # type: ignore[return-value]
 
 
 class NamedPipeConnector(BaseConnector):
