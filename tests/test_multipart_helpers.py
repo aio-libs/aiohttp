@@ -441,7 +441,7 @@ class TestParseContentDisposition:
             "attachment; filename*=UTF-8''foo-a%cc%88.html"
         )
         assert "attachment" == disptype
-        assert {"filename*": "foo-ä.html"} == params
+        assert {"filename*": "foo-ä.html"} == params
 
     @pytest.mark.skip("should raise decoding error: %82 is invalid for latin1")
     def test_attwithfn2231utf8_bad(self) -> None:
@@ -658,6 +658,63 @@ class TestParseContentDisposition:
             )
         assert disptype is None
         assert {} == params
+
+    def test_ows_after_quoted_value_single_space(self) -> None:
+        """OWS before a parameter separator is permitted by RFC 9110 § 5.6.6.
+
+        A single space between a quoted value and the next ``;`` must not
+        cause the parser to fall through to the broken semicolon-repair
+        heuristic that would otherwise consume the next parameter into the
+        filename.
+        """
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt", "name": "field"} == params
+
+    def test_ows_after_quoted_value_multiple_spaces(self) -> None:
+        """Multiple spaces of OWS after a quoted value are accepted."""
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt"   ; name="field"'
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt", "name": "field"} == params
+
+    def test_ows_after_quoted_value_tab(self) -> None:
+        """A tab is also OWS and is accepted after a quoted value."""
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt"\t;\tname="field"'
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt", "name": "field"} == params
+
+    def test_ows_after_quoted_value_no_following_param(self) -> None:
+        """Trailing OWS after the last quoted value (no following param) still works."""
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" '
+        )
+        assert "attachment" == disptype
+        assert {"filename": "test.txt"} == params
+
+    def test_ows_after_quoted_value_does_not_swallow_next_param(self) -> None:
+        """Regression guard: greedy repair must not consume the next param.
+
+        Pre-fix, ``is_quoted('"test.txt" ')`` is False, so the parser falls
+        through to ``_value = value + ';' + parts[0]`` and recognises the
+        concatenated string as a single quoted-string, swallowing
+        ``name="field"`` into the filename.
+        """
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        # The next parameter must appear as its own entry, not be merged
+        # into the filename value.
+        assert "name" in params
+        assert params["name"] == "field"
+        # And the filename must not contain any portion of the next param.
+        assert '"' not in params["filename"]
+        assert ";" not in params["filename"]
 
 
 class TestContentDispositionFilename:

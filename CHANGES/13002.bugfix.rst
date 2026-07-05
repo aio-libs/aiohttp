@@ -1,0 +1,1 @@
+Stopped the optional whitespace before a parameter separator in :py:func:`~aiohttp.multipart.parse_content_disposition` from being absorbed into the preceding quoted-string value, so headers like ``attachment; filename="x.txt" ; name="y"`` are now parsed as two parameters instead of swallowing ``name="y"`` into the filename -- by :user:`HrachShah`.

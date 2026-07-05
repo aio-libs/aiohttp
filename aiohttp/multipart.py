@@ -157,6 +157,11 @@ def parse_content_disposition(
             if is_quoted(value):
                 failed = False
                 value = unescape(value[1:-1].lstrip("\\/"))
+            elif is_quoted(value.rstrip()):
+                # OWS after a quoted value is permitted (RFC 7230 / 9110).
+                # Strip the trailing OWS before validating as a quoted string.
+                failed = False
+                value = unescape(value.rstrip()[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
