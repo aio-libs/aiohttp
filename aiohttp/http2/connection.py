@@ -213,6 +213,7 @@ class Http2Connection:
 
         # Update session flow control
         self.session_inbound_window -= len(data)
+        # hardcoded values
         if self.session_inbound_window < 32768:
             self._send_window_update(0, 65535 - self.session_inbound_window)
             self.session_inbound_window = 65535
@@ -283,6 +284,9 @@ class Http2Connection:
         # Parse key‑value pairs
         for i in range(0, len(payload), 6):
             identifier, value = struct.unpack("!H I", payload[i : i + 6])
+            if identifier < 0 or identifier > 9:
+                logger.warning("Unknown setting identifier %d", identifier)
+                continue
             setting = Setting(identifier)
             old_value = self.remote_settings.get(setting, value)
             self.remote_settings[setting] = value
@@ -486,14 +490,32 @@ class Http2Connection:
         body: Optional[bytes] = None,
     ) -> None:
         """Send HEADERS and optional DATA frames for a stream."""
+        # :path needs the query as well
+        path_and_query = url.path
+        if url.query:
+            path_and_query += "?" + url.raw_query_string
+
         # Build pseudo‑headers
         req_headers = [
             (":method", method),
-            (":path", url.path),
+            (":path", path_and_query),
             (":scheme", url.scheme),
             (":authority", url.host),
         ]
-        req_headers.extend([(h[0].lower(), h[1]) for h in headers])
+
+        for name, value in headers:
+            lname = name.lower()
+            # HTTP/2 forbids connection-specific headers and the Host header
+            if lname in (
+                "host",
+                "connection",
+                "keep-alive",
+                "proxy-connection",
+                "transfer-encoding",
+                "upgrade",
+            ):
+                continue
+            req_headers.append((lname, value))
 
         hdrs = self.hpack_encoder.encode(req_headers)
         end_stream = body is None or len(body) == 0

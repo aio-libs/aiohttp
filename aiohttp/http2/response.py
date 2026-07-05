@@ -8,6 +8,7 @@ from multidict import CIMultiDict
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import RequestInfo
 
+from ..compression_utils import ZLibDecompressor
 from ..http_writer import HttpVersion2
 
 
@@ -22,6 +23,13 @@ class Http2Response:
         method: Optional[str] = None,
         url: Optional[Any] = None,
     ) -> None:
+        # Headers as case-insensitive multi-dict
+        self.headers: CIMultiDict[str] = CIMultiDict(headers)  # type: ignore[arg-type]
+        encoding = self.headers.get("content-encoding", None)
+        if encoding in {"gzip", "deflate"}:
+            comp = ZLibDecompressor(encoding=encoding)
+            body = comp.decompress_sync(body)
+
         self.reason: str = ""  # HTTP/2 doesn't carry a reason phrase
         self._body: bytes = body
         self.url: Optional[Any] = url
@@ -29,8 +37,6 @@ class Http2Response:
         # redirects
         self._history: List["Http2Response"] = []
 
-        # Headers as case-insensitive multi-dict
-        self.headers: CIMultiDict[str] = CIMultiDict(headers)  # type: ignore[arg-type]
         # no status error implies a server side error
         self.status: int = int(self.headers.get(":status", 500))
 
@@ -40,7 +46,9 @@ class Http2Response:
         # HTTP version pseudo-attribute
         self.version = HttpVersion2
 
-        self._raw_cookie_headers: Optional[List[Tuple[str, str]]] = None
+        self._raw_cookie_headers: Optional[List[str]] = self.headers.getall(
+            "set-cookie", []
+        )
         self.connection: Optional[Any] = None
 
     # ----------------------------------------------------------------

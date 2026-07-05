@@ -59,6 +59,7 @@ class Stream:
         "response_headers",
         "response_data",
         "closed_event",
+        "_inbound_window_initial",
     )
 
     def __init__(
@@ -71,6 +72,8 @@ class Stream:
         # Flow‑control windows (stream‑level only)
         self.outbound_window: int = conn.remote_settings[Setting.INITIAL_WINDOW_SIZE]
         self.inbound_window: int = conn.local_settings[Setting.INITIAL_WINDOW_SIZE]
+        # Store the initial inbound window for refilling without hard-coded values
+        self._inbound_window_initial: int = self.inbound_window
 
         self.response_future: asyncio.Future[
             Tuple[int, Iterable[HeaderTuple] | Iterable[Tuple[str, str]], bytes]
@@ -103,6 +106,13 @@ class Stream:
         """Process incoming DATA frame payload."""
         self.inbound_window -= len(data)
         self.response_data.extend(data)
+
+        # --- stream-level flow control refill ---
+        if self.inbound_window < self._inbound_window_initial // 2:
+            increment = self._inbound_window_initial - self.inbound_window
+            self.inbound_window = self._inbound_window_initial
+            # Use the connection’s helper to send the WINDOW_UPDATE frame
+            self.conn._send_window_update(self.stream_id, increment)
 
         if end_stream:
             if self.state == StreamState.OPEN:

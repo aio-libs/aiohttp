@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import os
 import random
 import socket
 import sys
@@ -863,12 +864,11 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.verify_mode = ssl.CERT_NONE
         sslcontext.options |= ssl.OP_NO_COMPRESSION
         sslcontext.set_default_verify_paths()
-    sslcontext.set_alpn_protocols(
-        (
-            "h2",
-            "http/1.1",
-        )
-    )
+
+    protocols = ["http/1.1"]
+    if os.getenv("AIOHTTP_ENABLE_EXPERIMENTAL_PROTOCOLS", False):
+        protocols += ["h2"]
+    sslcontext.set_alpn_protocols(tuple(protocols))
     return sslcontext
 
 

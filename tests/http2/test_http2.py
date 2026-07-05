@@ -39,7 +39,7 @@ from aiohttp.http2.stream import StreamState
 # ----------------------------------------------------------------------
 def url_mock(path: str = "/") -> Any:
     """Create a simple URL-like object expected by the implementation."""
-    return type("URL", (), {"scheme": "https", "host": "example.com", "path": path})
+    return type("URL", (), {"scheme": "https", "host": "example.com", "path": path, "query": None})
 
 
 # ----------------------------------------------------------------------
@@ -767,8 +767,7 @@ class TestHighLevelInterface:
         )
         proto.data_received(frames)
         resp = await task
-        assert resp.body == raw_data
-        # Higher layer (aiohttp) will handle decompression
+        assert resp.body == b"uncompressed"
 
     @pytest.mark.asyncio
     async def test_multiple_requests_concurrently(
