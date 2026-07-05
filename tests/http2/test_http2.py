@@ -39,7 +39,11 @@ from aiohttp.http2.stream import StreamState
 # ----------------------------------------------------------------------
 def url_mock(path: str = "/") -> Any:
     """Create a simple URL-like object expected by the implementation."""
-    return type("URL", (), {"scheme": "https", "host": "example.com", "path": path, "query": None})
+    return type(
+        "URL",
+        (),
+        {"scheme": "https", "host": "example.com", "path": path, "query": None},
+    )
 
 
 # ----------------------------------------------------------------------
