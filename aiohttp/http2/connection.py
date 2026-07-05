@@ -149,7 +149,7 @@ class Http2Connection:
 
     def eof_received(self) -> bool:
         logger.debug("EOF received from server")
-        self._transport.close()
+        self.close()
         return False
 
     def connection_lost(self, exc: Optional[Exception]) -> None:
@@ -236,7 +236,7 @@ class Http2Connection:
         stream = self.streams.get(stream_id)
 
         if stream is None:
-            logger.error("Unknown stream_id: %d", stream)
+            logger.error("Unknown stream_id: %d", stream_id)
         else:
             stream.receive_headers(headers, end_stream)
 
@@ -532,25 +532,14 @@ class Http2Connection:
     # -------------------- Shutdown --------------------
     def close(self) -> None:
         """Perform graceful shutdown."""
-        if not self._goaway_sent:
-            # GOAWAY could be sent before we create the first stream
-            self._send_goaway(
-                self._last_stream_id or max(0, self.next_stream_id - 2), 0
-            )
-        # Wait a moment for GOAWAY to be sent, then close transport
         self._transport.close()
 
-    # Compatibility methods for aiohttp connector
     @property
     def should_close(self) -> bool:
         return self._goaway_sent or self._goaway_received
 
     def is_connected(self) -> bool:
         return not self._transport.is_closing()
-
-    @property
-    def closed(self) -> asyncio.Future:
-        return self._loop.create_future()  # XXX not properly implemented
 
 
 # ----------------------------------------------------------------------
@@ -636,9 +625,6 @@ class Http2Protocol(asyncio.Protocol):
         # Obtain a stream from the pool (blocks only if concurrency limit reached)
         stream = await self._connection.create_stream()
 
-        # The internal connection still expects a URL object with .host, .path etc.
-        # Here we assume `url` is a yarl.URL (the session always passes a yarl.URL).
-        # If you receive a string, convert it: url = URL(url)
         await self._connection.send_request(stream, method, url, headers, body)
 
         # Wait for the response future to be set by the stream when complete
@@ -658,3 +644,6 @@ class Http2Protocol(asyncio.Protocol):
         if self._connection:
             self._connection.close()
         self.transport = None
+
+    def abort(self) -> None:
+        self.close()

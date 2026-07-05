@@ -33,15 +33,10 @@ class Http2Response:
         self._cookies: Optional[SimpleCookie] = None
 
         # HTTP version pseudo-attribute (aiohttp expects a namedtuple-like object)
-        # self.version = NamedTuple("HttpVersion", major=int, minor=int)(2, 0)
         self.version = HttpVersion2
 
-        # not implemented
         self._raw_cookie_headers = None
         self.connection = None
-
-        # Connection back-reference (set by the protocol)
-        self._connection = None
 
     # ----------------------------------------------------------------
     # Body access (synchronous: entire body is already in memory)
@@ -99,7 +94,7 @@ class Http2Response:
     # ----------------------------------------------------------------
     # Connection release (stream-level cleanup)
     # ----------------------------------------------------------------
-    async def release(self) -> None:
+    def release(self) -> None:
         """Release the HTTP/2 stream back to the connection.
 
         In HTTP/2 the stream is already closed once the full response is
@@ -109,7 +104,8 @@ class Http2Response:
         pass  # nothing to do; the stream has ended
 
     def close(self):
-        pass
+        if self.connection:
+            self.connection.close()
 
     # ----------------------------------------------------------------
     # Context manager support (optional, often used with 'async with')

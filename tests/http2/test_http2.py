@@ -19,6 +19,8 @@ import pytest
 from hpack import Encoder
 
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
+from aiohttp.http2.errors import ProtocolError
+from aiohttp.http2.response import Http2Response
 from aiohttp.http2.settings import (
     FlagData,
     FlagHeaders,
@@ -352,6 +354,212 @@ class TestProtocolCompliance:
         )
         assert rst or goaway
 
+    @pytest.mark.asyncio
+    async def test_data_frame_with_padding(self, connection):
+        """Cover DATA frame with PADDED flag."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        # padded data: pad length 1, data 'x', zero padding byte
+        frame = build_data_frame(stream.stream_id, b"x", pad=True)
+        conn.data_received(frame)
+        assert stream.response_data == b"x"
+
+    @pytest.mark.asyncio
+    async def test_headers_frame_with_priority(self, connection):
+        """Cover HEADERS frame with PRIORITY flag."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        # priority block: exclusive (1 byte) + dependency (4 bytes) + weight (1 byte)
+        priority_data = b"\x00\x00\x00\x00\x10"
+        headers = [(":status", "200")]
+        frame = build_headers_frame(
+            stream.stream_id,
+            headers,
+            end_headers=True,
+            end_stream=True,
+            priority=priority_data,
+        )
+        conn.data_received(frame)
+        assert stream.response_future.done()
+        assert stream.response_headers is not None
+
+    @pytest.mark.asyncio
+    async def test_rst_stream_for_unknown_stream(self, connection):
+        """RST_STREAM on an unknown stream ID is silently ignored."""
+        conn, _ = connection
+        frame = build_rst_stream(999, error_code=0)
+        conn.data_received(frame)  # must not raise
+
+    @pytest.mark.asyncio
+    async def test_rst_stream_when_future_done(self, connection):
+        """RST_STREAM when response future already completed (else branch of line 256)."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        stream.response_future.set_result((stream.stream_id, [], b""))
+        frame = build_rst_stream(stream.stream_id, error_code=0)
+        conn.data_received(frame)
+        assert stream.state == StreamState.CLOSED
+
+    @pytest.mark.asyncio
+    async def test_receive_settings_ack(self, connection):
+        """Receive SETTINGS ACK (should be a no‑op)."""
+        conn, _ = connection
+        frame = build_settings_frame(ack=True)
+        conn.data_received(frame)  # no crash
+
+    @pytest.mark.asyncio
+    async def test_settings_on_nonzero_stream(self, connection, mock_transport):
+        """SETTINGS frame on stream_id != 0 triggers GOAWAY."""
+        conn, transport = connection
+        frame = frame_header(0, FrameType.SETTINGS, 0, 5)  # stream 5
+        conn.data_received(frame)
+        assert any(
+            call[0][0][3:4] == FrameType.GOAWAY.to_bytes(1, "big")
+            for call in transport.write.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_settings_invalid_payload_length(self, connection, mock_transport):
+        """SETTINGS payload not a multiple of 6 triggers protocol error."""
+        conn, transport = connection
+        payload = b"\x00\x01\x02"  # 3 bytes
+        frame = frame_header(len(payload), FrameType.SETTINGS, 0, 0) + payload
+        conn.data_received(frame)
+        assert any(
+            call[0][0][3:4] == FrameType.GOAWAY.to_bytes(1, "big")
+            for call in transport.write.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_settings_initial_window_size_update(self, connection):
+        """INITIAL_WINDOW_SIZE setting updates stream windows."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        old_window = stream.outbound_window
+        frame = build_settings_frame([(Setting.INITIAL_WINDOW_SIZE, 131072)])
+        conn.data_received(frame)
+        assert stream.outbound_window == old_window + (131072 - 65535)
+
+    @pytest.mark.asyncio
+    async def test_settings_header_table_size(self, connection):
+        """HEADER_TABLE_SIZE setting is processed."""
+        conn, _ = connection
+        frame = build_settings_frame([(Setting.HEADER_TABLE_SIZE, 4096)])
+        conn.data_received(frame)
+        # internal effect on encoder, just confirm no crash
+
+    @pytest.mark.asyncio
+    async def test_ping_on_nonzero_stream(self, connection, mock_transport):
+        """PING on non‑zero stream triggers GOAWAY."""
+        conn, transport = connection
+        frame = frame_header(8, FrameType.PING, 0, 1) + b"\x00" * 8
+        conn.data_received(frame)
+        assert any(
+            call[0][0][3:4] == FrameType.GOAWAY.to_bytes(1, "big")
+            for call in transport.write.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_receive_ping_ack(self, connection):
+        """Receiving a PING ACK is logged and does not cause another response."""
+        conn, _ = connection
+        frame = build_ping(ack=True, opaque=b"12345678")
+        conn.data_received(frame)  # no crash, no additional PING sent
+
+    @pytest.mark.asyncio
+    async def test_goaway_when_future_already_done(self, connection):
+        """GOAWAY should not fail when a stream's future is already complete."""
+        conn, _ = connection
+        s1 = await conn.create_stream()
+        s3 = await conn.create_stream()
+        s1.state = s3.state = StreamState.OPEN
+        s1.response_future.set_result((s1.stream_id, [], b""))
+        frame = build_goaway(last_stream_id=1, error_code=0)
+        conn.data_received(frame)
+        assert s1.stream_id in conn.streams
+        assert s3.stream_id not in conn.streams
+
+    @pytest.mark.asyncio
+    async def test_window_update_for_unknown_stream(self, connection):
+        """WINDOW_UPDATE on unknown stream must be ignored (no crash)."""
+        conn, _ = connection
+        frame = build_window_update(123, 100)
+        conn.data_received(frame)
+        assert conn.session_outbound_window == 65535  # unchanged
+
+    @pytest.mark.asyncio
+    async def test_continuation_frame_ignored(self, connection):
+        """CONTINUATION frame is ignored with a warning."""
+        conn, _ = connection
+        frame = frame_header(0, FrameType.CONTINUATION, 0, 1)
+        conn.data_received(frame)  # no crash
+
+    @pytest.mark.asyncio
+    async def test_unknown_frame_type_ignored(self, connection):
+        """Unknown frame type (>9) is ignored."""
+        conn, _ = connection
+        frame = frame_header(0, 0x1A, 0, 0)
+        conn.data_received(frame)  # no crash
+
+    @pytest.mark.asyncio
+    async def test_send_data_end_stream_last_chunk(self, connection, mock_transport):
+        """send_data with end_stream=True sets END_STREAM on the last chunk."""
+        conn, transport = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        conn.session_outbound_window = 100
+        stream.outbound_window = 100
+        await conn.send_data(stream, b"x" * 10, end_stream=True)
+        data_frames = [
+            call[0][0]
+            for call in transport.write.call_args_list
+            if FrameType.DATA.to_bytes(1, "big") in call[0][0]
+        ]
+        assert len(data_frames) == 1
+        assert data_frames[0][4] & FlagData.END_STREAM
+
+    @pytest.mark.asyncio
+    async def test_send_request_with_body(self, connection, mock_transport):
+        """send_request with body sends HEADERS (no END_STREAM) followed by DATA."""
+        conn, transport = connection
+        stream = await conn.create_stream()
+        await conn.send_request(stream, "POST", url_mock("/"), [], body=b"hello")
+        sent = [
+            FrameType(call[0][0][3]).name
+            for call in transport.write.call_args_list
+            if call[0][0][3] in (FrameType.HEADERS, FrameType.DATA)
+        ]
+        assert sent == ["HEADERS", "DATA"]
+
+    @pytest.mark.asyncio
+    async def test_create_stream_after_goaway(self, connection):
+        """create_stream raises ConnectionError when GOAWAY has been sent."""
+        conn, _ = connection
+        conn._goaway_sent = True
+        with pytest.raises(ConnectionError):
+            await conn.create_stream()
+
+    @pytest.mark.asyncio
+    async def test_maybe_unblock_streams_done_future(self, connection):
+        """_maybe_unblock_streams skips futures that are already done."""
+        conn, _ = connection
+        fut = conn._loop.create_future()
+        fut.set_result(None)
+        conn._pending_streams.append(fut)
+        conn._maybe_unblock_streams()
+        assert len(conn.streams) == 0  # no new stream created
+
+    @pytest.mark.asyncio
+    async def test_connection_lost_done_futures(self, connection):
+        """connection_lost must handle streams whose futures are already done."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.response_future.set_result((stream.stream_id, [], b""))
+        conn.connection_lost(None)  # no exception
+
 
 # ----------------------------------------------------------------------
 # 2. Miscellaneous tests (race conditions, deadlocks, edge cases)
@@ -427,6 +635,13 @@ class TestMiscellaneous:
         assert stream.response_future.done()
         with pytest.raises(RuntimeError):
             stream.response_future.result()
+
+    @pytest.mark.asyncio
+    async def test_data_received_without_connection(self, protocol):
+        """Http2Protocol.data_received is a no‑op before connection_made."""
+        proto, _ = protocol
+        proto._connection = None
+        proto.data_received(b"anything")  # must not raise
 
 
 # ----------------------------------------------------------------------
@@ -506,3 +721,131 @@ class TestHighLevelInterface:
         r1, r2 = await asyncio.gather(*tasks)
         assert r1.status == 200
         assert r2.status == 201
+
+    @pytest.mark.asyncio
+    async def test_response_all_methods(self):
+        """Cover Http2Response.read, .text, .json, .cookies, .raise_for_status, .release, .close, context manager."""
+        headers = [
+            (":status", "200"),
+            ("set-cookie", "a=b"),
+            ("content-type", "application/json"),
+        ]
+        body = b'{"ok":true}'
+        resp = Http2Response(headers, body, method="GET", url=url_mock("/"))
+        assert resp.status == 200
+        assert await resp.read() == body
+        assert await resp.text() == '{"ok":true}'
+        assert await resp.json() == {"ok": True}
+        assert "a" in resp.cookies
+        resp.raise_for_status()  # 200 is ok
+        resp.release()
+        resp.close()
+        async with resp:
+            pass
+
+    @pytest.mark.asyncio
+    async def test_response_raise_for_status_error(self):
+        """Http2Response.raise_for_status raises for 4xx."""
+        headers = [(":status", "404")]
+        resp = Http2Response(headers, b"", method="GET", url=url_mock("/"))
+        from aiohttp.client_exceptions import ClientResponseError
+
+        with pytest.raises(ClientResponseError):
+            resp.raise_for_status()
+
+    @pytest.mark.asyncio
+    async def test_send_with_body_through_protocol(self, protocol, mock_transport):
+        """Full send() with a body completes successfully."""
+        proto, transport = protocol
+        url = url_mock("/upload")
+        task = asyncio.create_task(proto.send("POST", url, [], body=b"data"))
+        await asyncio.sleep(0.01)
+        resp_frame = build_headers_frame(1, [(":status", "200")], end_stream=True)
+        proto.data_received(resp_frame)
+        response = await task
+        assert response.status == 200
+
+
+class TestStreamStateMachine:
+    @pytest.mark.asyncio
+    async def test_invalid_transition_raises(self, connection):
+        """Invalid state transition raises ProtocolError."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        with pytest.raises(ProtocolError):
+            stream.transition(StreamState.RESERVED_LOCAL)
+
+    @pytest.mark.asyncio
+    async def test_receive_data_end_stream_half_closed_local(self, connection):
+        """DATA END_STREAM when HALF_CLOSED_LOCAL -> CLOSED and stream removed."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.HALF_CLOSED_LOCAL
+        stream.response_headers = [(":status", "200")]
+        stream.receive_data(b"body", end_stream=True)
+        assert stream.state == StreamState.CLOSED
+        assert stream.stream_id not in conn.streams
+
+    @pytest.mark.asyncio
+    async def test_receive_data_end_stream_invalid_state(self, connection):
+        """DATA END_STREAM in CLOSED state raises ProtocolError."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.CLOSED
+        with pytest.raises(ProtocolError):
+            stream.receive_data(b"x", end_stream=True)
+
+    @pytest.mark.asyncio
+    async def test_receive_headers_end_stream_half_closed_local(self, connection):
+        """HEADERS END_STREAM when HALF_CLOSED_LOCAL -> CLOSED and stream removed."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.HALF_CLOSED_LOCAL
+        stream.receive_headers([(":status", "200")], end_stream=True)
+        assert stream.state == StreamState.CLOSED
+        assert stream.stream_id not in conn.streams
+
+    @pytest.mark.asyncio
+    async def test_receive_headers_end_stream_invalid_state(self, connection):
+        """HEADERS END_STREAM in CLOSED state raises ProtocolError."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.CLOSED
+        with pytest.raises(ProtocolError):
+            stream.receive_headers([(":status", "200")], end_stream=True)
+
+    @pytest.mark.asyncio
+    async def test_data_stream_before_headers(self, connection):
+        """DATA before headers does NOT set future until headers arrive."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        # double end stream is invalid
+        stream.receive_data(b"body", end_stream=False)
+        assert not stream.response_future.done()
+        stream.receive_headers([(":status", "200")], end_stream=True)
+        assert stream.response_future.done()
+        _, headers, body = stream.response_future.result()
+        assert body == b"body"
+
+    @pytest.mark.asyncio
+    async def test_future_already_done_data_end_stream(self, connection):
+        """receive_data with END_STREAM does not double‑set an already done future."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        stream.response_headers = [(":status", "200")]
+        stream.response_future.set_result(
+            (stream.stream_id, stream.response_headers, b"")
+        )
+        stream.receive_data(b"more", end_stream=True)  # no exception
+
+    @pytest.mark.asyncio
+    async def test_future_already_done_headers_end_stream(self, connection):
+        """receive_headers with END_STREAM does not double‑set an already done future."""
+        conn, _ = connection
+        stream = await conn.create_stream()
+        stream.state = StreamState.OPEN
+        stream.response_future.set_result((stream.stream_id, [], b""))
+        stream.receive_headers([(":status", "200")], end_stream=True)  # no exception

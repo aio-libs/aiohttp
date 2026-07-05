@@ -110,11 +110,14 @@ class Stream:
                     f"Unexpected stream state {self.state.name} for END_STREAM"
                 )
 
-            # Deliver the full response once headers have been received
-            if self.response_headers is not None and not self.response_future.done():
-                self.response_future.set_result(
-                    (self.stream_id, self.response_headers, bytes(self.response_data))
-                )
+            self.maybe_deliver_response()
+
+    def maybe_deliver_response(self):
+        # Deliver the full response once headers have been received
+        if self.response_headers is not None and not self.response_future.done():
+            self.response_future.set_result(
+                (self.stream_id, self.response_headers, bytes(self.response_data))
+            )
 
     def receive_headers(self, headers: List[Tuple[str, str]], end_stream: bool) -> None:
         """Process incoming HEADERS frame payload."""
@@ -130,6 +133,6 @@ class Stream:
                 raise ProtocolError(
                     f"Unexpected stream state {self.state.name} for END_STREAM on headers"
                 )
-            # The response is complete (no body)
-            self.response_future.set_result((self.stream_id, headers, b""))
+            self.maybe_deliver_response()
+
         # else: stream remains in OPEN (or HALF_CLOSED_LOCAL), headers stored for later delivery.

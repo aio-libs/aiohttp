@@ -7,8 +7,10 @@ import hashlib
 import json
 import os
 import sys
+import time
 import traceback
 import warnings
+from collections import deque
 from collections.abc import (
     Awaitable,
     Callable,
@@ -232,25 +234,37 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
     try:
-        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+        async with connector.sem:
+            # at most just one
+            conn = await connector.connect(
+                req, traces=req._traces, timeout=req._timeout
+            )
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
 
+    assert conn.protocol is not None
+
+    ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
+    alpn_protocol = ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
+
     resp = None
     started = False
+
+    if alpn_protocol == "h2" and not connector._conns[conn._key]:
+        connector._conns[conn._key] = deque([(conn._protocol, time.monotonic())])
     try:
-        assert conn.protocol is not None
-
-        ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
-        alpn_protocol = (
-            ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
-        )
-
         # backwards compatibility
         if alpn_protocol == "h2":
+            body = await req.body.as_bytes()
             resp = await conn.protocol.send(
-                req.method, req.url, list(req.headers.items()), b""
+                req.method,
+                req.url,
+                list(req.headers.items()),
+                body,
             )
+
+            # we are done with the connection
+            conn._protocol = None
         else:
             conn.protocol.set_response_params(**req._response_params)
             resp = await req._send(conn)

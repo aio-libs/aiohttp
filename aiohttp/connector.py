@@ -320,6 +320,12 @@ class BaseConnector:
         self._placeholder_future.set_result(None)
         self._cleanup_closed()
 
+        # Semaphore for HTTP/2 connections
+        # avoids duplicate connections to the
+        # same host
+        # (HTTP/2 doesn't need connection pooling to send multiple requests)
+        self.sem = asyncio.Semaphore(1)
+
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
             return
