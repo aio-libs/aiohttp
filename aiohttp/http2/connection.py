@@ -143,11 +143,7 @@ class Http2Connection:
                     length,
                 )
 
-            try:
-                self._dispatch_frame(frame_type_val, flags, stream_id, payload)
-            except ConnectionError as exc:
-                logger.error("Frame dispatch error: %s", exc, exc_info=True)
-                self._protocol_error()
+            self._dispatch_frame(frame_type_val, flags, stream_id, payload)
 
     def eof_received(self) -> bool:
         logger.debug("EOF received from server")
@@ -189,8 +185,6 @@ class Http2Connection:
             self._handle_goaway_frame(flags, stream_id, payload)
         elif frame_type == FrameType.WINDOW_UPDATE:
             self._handle_window_update_frame(flags, stream_id, payload)
-        elif frame_type == FrameType.CONTINUATION:
-            self._handle_continuation_frame(flags, stream_id, payload)
         else:
             logger.warning("Ignoring unknown frame type %d", frame_type)
 
@@ -354,12 +348,6 @@ class Http2Connection:
                 stream.outbound_window += increment
         # Wake up any writer waiting for flow control
         self._flow_control_updated.set()
-
-    def _handle_continuation_frame(
-        self, flags: int, stream_id: int, payload: bytes
-    ) -> None:
-        # Not implemented; would require accumulating headers across frames.
-        logger.warning("CONTINUATION frame ignored (not implemented)")
 
     # -------------------- Frame sending helpers --------------------
     def _send_frame(
@@ -614,12 +602,6 @@ class Http2Protocol(asyncio.Protocol):
     @property
     def closed(self) -> asyncio.Future[None]:
         return self._closed_future
-
-    # Public API for creating streams
-    async def create_stream(self) -> Stream:
-        if self._connection is None:
-            raise RuntimeError("Connection not established")
-        return await self._connection.create_stream()
 
     async def send(
         self,

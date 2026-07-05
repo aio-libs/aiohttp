@@ -1130,3 +1130,225 @@ class TestIncomingResponses:
         resp = await task
         with pytest.raises(aiohttp.ClientResponseError):
             resp.raise_for_status()
+
+
+# ----------------------------------------------------------------------
+# Additional tests for full coverage of missing paths
+# ----------------------------------------------------------------------
+
+
+class TestConnectionEdgeCases:
+    @pytest.mark.asyncio
+    async def test_eof_received_calls_close(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """EOF triggers connection close."""
+        conn, transport = connection
+        result = conn.eof_received()
+        assert result is False
+        transport.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_protocol_eof_received(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """Http2Protocol.eof_received delegates to connection and returns False."""
+        proto, transport = protocol
+        # connection is established
+        assert proto._connection is not None
+        result = proto.eof_received()
+        assert result is False
+        # transport.close should be called via conn.eof_received -> conn.close()
+        transport.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_data_frame_unknown_stream_above_last_peer(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """DATA frame for unknown stream_id > _last_peer_stream_id sends RST_STREAM."""
+        conn, transport = connection
+        # last_peer_stream_id is initially 0
+        unknown_id = 5  # > 0
+        frame = build_data_frame(unknown_id, b"x", end_stream=False)
+        conn.data_received(frame)
+        # Should have sent RST_STREAM with PROTOCOL_ERROR (1)
+        rst_frames = [
+            call.args[0]
+            for call in transport.write.call_args_list
+            if FrameType.RST_STREAM.to_bytes(1, "big") in call.args[0]
+        ]
+        assert len(rst_frames) == 1
+        payload = rst_frames[0][9:]  # after 9-byte header
+        error_code = struct.unpack("!I", payload)[0]
+        assert error_code == 1  # PROTOCOL_ERROR
+
+    @pytest.mark.asyncio
+    async def test_data_frame_unknown_stream_not_above_last_peer(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """DATA frame for unknown stream_id <= _last_peer_stream_id is ignored."""
+        conn, transport = connection
+        # artificially raise last_peer_stream_id
+        conn._last_peer_stream_id = 10
+        frame = build_data_frame(5, b"x", end_stream=False)
+        conn.data_received(frame)
+        # No RST_STREAM sent
+        assert not any(
+            FrameType.RST_STREAM.to_bytes(1, "big") in call.args[0]
+            for call in transport.write.call_args_list
+        )
+
+    @pytest.mark.asyncio
+    async def test_send_data_end_stream_when_half_closed_remote(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """When stream is HALF_CLOSED_REMOTE, final DATA with END_STREAM closes it."""
+        conn, transport = connection
+        stream = await conn.create_stream()
+        # Simulate remote half-close
+        stream.state = StreamState.HALF_CLOSED_REMOTE
+        conn.session_outbound_window = 1000
+        stream.outbound_window = 1000
+        await conn.send_data(stream, b"done", end_stream=True)
+        # Stream should be CLOSED and removed
+        assert stream.state == StreamState.CLOSED
+        assert stream.stream_id not in conn.streams
+
+    @pytest.mark.asyncio
+    async def test_connection_lost_cancels_open_streams(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """connection_lost sets ConnectionError on all unfinished streams."""
+        conn, _ = connection
+        s1 = await conn.create_stream()
+        s2 = await conn.create_stream()
+        s1.state = s2.state = StreamState.OPEN
+        # Both futures not done
+        conn.connection_lost(ConnectionError("test"))
+        assert s1.response_future.exception() is not None
+        assert s2.response_future.exception() is not None
+        # Also check pending streams cleared
+        assert len(conn._pending_streams) == 0
+
+    @pytest.mark.asyncio
+    async def test_connection_lost_clears_pending_futures(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """Pending create_stream futures are cancelled on connection loss."""
+        conn, _ = connection
+        conn.max_concurrent_streams = 1
+        await conn.create_stream()  # fills one slot
+        fut = asyncio.ensure_future(conn.create_stream())
+        await asyncio.sleep(0.01)
+        assert not fut.done()
+        conn.connection_lost(ConnectionError("test"))
+        await asyncio.sleep(0.01)
+        assert fut.done()
+        with pytest.raises(ConnectionError):
+            fut.result()
+
+    @pytest.mark.asyncio
+    async def test_close_transport(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """close() calls transport.close()."""
+        conn, transport = connection
+        conn.close()
+        transport.close.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_should_close_reflects_goaway(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """should_close returns True if GOAWAY sent or received."""
+        conn, _ = connection
+        assert not conn.should_close
+        conn._goaway_received = True
+        assert conn.should_close
+
+    @pytest.mark.asyncio
+    async def test_is_connected(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """is_connected mirrors transport.is_closing()."""
+        conn, transport = connection
+        assert conn.is_connected() is True
+        transport.is_closing.return_value = True
+        assert conn.is_connected() is False
+
+    @pytest.mark.asyncio
+    async def test_protocol_close_and_abort(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """Http2Protocol.close() and abort() propagate to transport."""
+        proto, transport = protocol
+        proto.close()
+        transport.close.assert_called_once()
+        # abort is same as close
+        proto.abort()
+        assert transport.close.call_count == 2
+
+    @pytest.mark.asyncio
+    async def test_protocol_should_close_no_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """should_close returns False when connection is None."""
+        proto, _ = protocol
+        proto._connection = None
+        assert not proto.should_close
+
+    @pytest.mark.asyncio
+    async def test_protocol_is_connected_no_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """is_connected returns False when connection is None."""
+        proto, _ = protocol
+        proto._connection = None
+        assert not proto.is_connected()
+
+    @pytest.mark.asyncio
+    async def test_initiate_connection_sends_preface_and_settings(
+        self, mock_transport: MagicMock
+    ) -> None:
+        """initiate_connection writes HTTP/2 preface and initial SETTINGS."""
+        loop = asyncio.get_running_loop()
+        conn = Http2Connection(mock_transport, loop)
+        conn.initiate_connection()
+        written = b"".join(call.args[0] for call in mock_transport.write.call_args_list)
+        assert b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in written
+        assert FrameType.SETTINGS.to_bytes(1, "big") in written
+
+    @pytest.mark.asyncio
+    async def test_create_stream_protocol_raises_without_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """Http2Protocol.create_stream raises RuntimeError if no connection."""
+        proto, _ = protocol
+        proto._connection = None
+        with pytest.raises(RuntimeError):
+            await proto.send("get", "", [])
+
+    @pytest.mark.asyncio
+    async def test_send_protocol_raises_without_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """Http2Protocol.send raises RuntimeError if no connection."""
+        proto, _ = protocol
+        proto._connection = None
+        with pytest.raises(RuntimeError):
+            await proto.send("GET", url_mock(), [])
+
+    @pytest.mark.asyncio
+    async def test_send_data_flow_control_releases_waiters(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """After a send, if window space remains, _flow_control_updated is set."""
+        conn, transport = connection
+        stream = await conn.create_stream()
+        conn.session_outbound_window = 100
+        stream.outbound_window = 100
+        # set event cleared before wait
+        conn._flow_control_updated.clear()
+        await conn.send_data(stream, b"x" * 10, end_stream=False)
+        # After send, there is still window space, so event should be set
+        assert conn._flow_control_updated.is_set()
