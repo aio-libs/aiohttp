@@ -74,6 +74,33 @@ from aiohttp.helpers import (
                 "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
             ),
         ),
+        (
+            "application/json; ",
+            helpers.MimeType(
+                "application", "json", "", MultiDictProxy(MultiDict())
+            ),
+        ),
+        (
+            "application/json;  ",
+            helpers.MimeType(
+                "application", "json", "", MultiDictProxy(MultiDict())
+            ),
+        ),
+        (
+            "application/json;\t",
+            helpers.MimeType(
+                "application", "json", "", MultiDictProxy(MultiDict())
+            ),
+        ),
+        (
+            "application/json; charset=utf-8; ",
+            helpers.MimeType(
+                "application",
+                "json",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:

@@ -1,0 +1,1 @@
+Skipped whitespace-only segments after a semicolon in :py:func:`~aiohttp.helpers.parse_mimetype` so that stray ``; ``, ``;  ``, and ``;\t`` no longer pollute the parameter dict with a spurious empty key -- by :user:`HrachShah`.
