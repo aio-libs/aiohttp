@@ -15,15 +15,16 @@ from typing import List, Tuple
 from unittest.mock import MagicMock, patch
 
 import pytest
-import aiohttp
-from aiohttp.connector import TCPConnector
 from test_http2 import (
     Http2Protocol,
-    build_headers_frame,
     build_data_frame,
     build_goaway,
+    build_headers_frame,
 )
-from aiohttp.http2.settings import FrameType, FlagHeaders, FlagData
+
+import aiohttp
+from aiohttp.connector import TCPConnector
+from aiohttp.http2.settings import FlagData, FlagHeaders, FrameType
 
 
 # ----------------------------------------------------------------------
