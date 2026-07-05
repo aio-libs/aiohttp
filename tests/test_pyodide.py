@@ -78,9 +78,13 @@ class _EchoHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         body = self._read_body()
+        # Strip CR/LF before echoing the request's content type back in a
+        # header (response splitting; also keeps CodeQL happy).
+        content_type = self.headers.get("Content-Type", "application/octet-stream")
+        content_type = content_type.replace("\r", "").replace("\n", "")
         self._respond(
             body,
-            self.headers.get("Content-Type", "application/octet-stream"),
+            content_type,
             extra_headers=(("X-Request-Method", "POST"),),
         )
 

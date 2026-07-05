@@ -11,11 +11,13 @@ import asyncio
 import json
 import sys
 from typing import Any, NoReturn, Union
+from unittest import mock
 
 import pytest
+from yarl import URL
 
 import aiohttp
-from aiohttp.pyodide import FetchConnector
+from aiohttp.pyodide import FetchClientProtocol, FetchConnector, _FetchTransport
 
 
 class StubArrayBuffer:
@@ -264,11 +266,11 @@ async def test_total_timeout_cancels_fetch() -> None:
 
     async def hanging_fetch(url: str, **options: Any) -> NoReturn:
         try:
-            await asyncio.sleep(3600)
+            while True:
+                await asyncio.sleep(3600)
         except asyncio.CancelledError:
             cancelled.set()
             raise
-        raise AssertionError("unreachable")
 
     async with aiohttp.ClientSession(
         connector=FetchConnector(fetch=hanging_fetch),
@@ -292,7 +294,72 @@ async def test_concurrent_requests() -> None:
     assert len(fetch.calls) == 10
 
 
+async def test_large_body_pauses_request_stream() -> None:
+    """A body larger than the request parser's buffer exercises flow control."""
+    big = b"x" * 200_000
+    fetch = StubFetch()
+    async with aiohttp.ClientSession(connector=FetchConnector(fetch=fetch)) as session:
+        await session.post("http://example.com/", data=big)
+
+    assert bytes(fetch.last_options["body"]) == big
+
+
+async def test_response_headers_without_get_set_cookie() -> None:
+    """Runtimes without Headers.getSetCookie() still work (without cookies)."""
+    fetch = StubFetch(
+        StubJsResponse(headers=[("content-type", "text/plain")], body=b"ok")  # type: ignore[arg-type]
+    )
+    async with aiohttp.ClientSession(connector=FetchConnector(fetch=fetch)) as session:
+        async with session.get("http://example.com/") as resp:
+            assert await resp.read() == b"ok"
+
+
+async def test_transport_close_aborts_fetch() -> None:
+    """Closing the connection aborts the in-flight fetch()."""
+    request = mock.Mock()
+    request.url = URL("http://example.com/")
+    protocol = FetchClientProtocol(
+        asyncio.get_running_loop(), request, fetch=StubFetch(), fetch_options={}
+    )
+    controller = mock.Mock()
+    protocol._abort_controller = controller
+    protocol._fetch_task = asyncio.ensure_future(asyncio.sleep(3600))
+    transport = protocol.transport
+    assert transport is not None
+    assert not transport.is_closing()
+    transport.abort()
+    transport.close()  # Second close is a no-op.
+    assert transport.is_closing()
+    assert controller.abort.called
+    await asyncio.sleep(0)
+    assert protocol._fetch_task.cancelled()
+
+
+def test_transport_writelines() -> None:
+    written: list[bytes] = []
+    protocol = mock.Mock()
+    protocol._request_bytes_received = written.append
+    transport = _FetchTransport(protocol)
+    transport.writelines([b"a", bytearray(b"b"), memoryview(b"c")])
+    assert written == [b"abc"]
+
+
 @pytest.mark.skipif(sys.platform == "emscripten", reason="fetch() exists here")
 def test_requires_fetch_outside_emscripten() -> None:
     with pytest.raises(RuntimeError, match="Emscripten"):
         FetchConnector()
+
+
+@pytest.mark.skipif(sys.platform == "emscripten", reason="patches the platform")
+async def test_default_connector_selected_by_platform(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Under Emscripten, ClientSession defaults to FetchConnector.
+
+    Off-platform the constructor raises because the fetch() API is missing,
+    which is enough to prove the selection logic without a WebAssembly
+    runtime; real construction is covered in tests/test_pyodide.py.
+    """
+    monkeypatch.setattr(sys, "platform", "emscripten")
+    with pytest.raises(RuntimeError, match="Emscripten"):
+        aiohttp.ClientSession()
