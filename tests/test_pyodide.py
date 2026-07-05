@@ -87,7 +87,7 @@ class _EchoHandler(BaseHTTPRequestHandler):
     def do_PUT(self) -> None:
         self._respond(self._read_body(), extra_headers=(("X-Request-Method", "PUT"),))
 
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
+    def log_message(self, format: str, *args: object) -> None:
         pass  # Silence per-request stderr noise.
 
 
