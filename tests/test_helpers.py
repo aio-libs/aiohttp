@@ -76,21 +76,15 @@ from aiohttp.helpers import (
         ),
         (
             "application/json; ",
-            helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict())
-            ),
+            helpers.MimeType("application", "json", "", MultiDictProxy(MultiDict())),
         ),
         (
             "application/json;  ",
-            helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict())
-            ),
+            helpers.MimeType("application", "json", "", MultiDictProxy(MultiDict())),
         ),
         (
             "application/json;\t",
-            helpers.MimeType(
-                "application", "json", "", MultiDictProxy(MultiDict())
-            ),
+            helpers.MimeType("application", "json", "", MultiDictProxy(MultiDict())),
         ),
         (
             "application/json; charset=utf-8; ",
