@@ -74,6 +74,31 @@ from aiohttp.helpers import (
                 "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
             ),
         ),
+        # Whitespace-only segments after a semicolon should not produce a
+        # spurious empty-key parameter (issue #13009). RFC 2045 treats a
+        # whitespace-only segment after `;` the same as a missing one: there
+        # is no parameter, only a delimiter.
+        (
+            "text/html; ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;  ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;\t",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html; charset=utf-8; ",
+            helpers.MimeType(
+                "text",
+                "html",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
