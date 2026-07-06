@@ -1009,7 +1009,7 @@ async def h2_client() -> Any:  # returns a generator of (session, transport, pro
         yield session, transport, protocol_instance
 
 
-CEASE = build_goaway(0, 1)
+# if it's a real URL it hangs (missing mock?)
 URL = "https://127.3.3.3"
 
 

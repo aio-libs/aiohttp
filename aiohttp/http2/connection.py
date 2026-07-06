@@ -44,7 +44,7 @@ from .stream import Stream, StreamState
 # Logging – plaintext wire‑format emission for debugging
 # ----------------------------------------------------------------------
 logger = logging.getLogger("aiohttp.http2.connection")
-logger.setLevel(logging.DEBUG)
+# logger.setLevel(logging.DEBUG)
 
 FRAME_HEADER_LENGTH = 9  # 9 octets
 STREAM_ID_MASK = 0x7FFFFFFF  # to avoid setting the reserved bit to 1
@@ -174,7 +174,6 @@ class Http2Connection:
             FrameType.CONTINUATION,
         }:
             logger.warning("%d frame ignored (not implemented)", frame_type)
-            self._handle_priority_frame(stream_id, payload)
         elif frame_type == FrameType.RST_STREAM:
             self._handle_rst_stream_frame(flags, stream_id, payload)
         elif frame_type == FrameType.SETTINGS:
@@ -202,6 +201,7 @@ class Http2Connection:
             pad_length = payload[0]
             pos = 1
 
+        # padding might be too long
         data = payload[pos : len(payload) - pad_length]
         end_stream = bool(flags & FlagData.END_STREAM)
 
@@ -223,7 +223,7 @@ class Http2Connection:
         # Decode headers with HPACK
         try:
             headers = self.hpack_decoder.decode(payload)
-        except Exception as exc:
+        except Exception as exc:  # too general?
             logger.error(f"HPACK decode error: {exc}")
             self._send_rst_stream(stream_id, 1)  # PROTOCOL_ERROR
             return
@@ -236,10 +236,6 @@ class Http2Connection:
             logger.error("Unknown stream_id: %d", stream_id)
         else:
             stream.receive_headers(headers, end_stream)
-
-    def _handle_priority_frame(self, stream_id: int, payload: bytes) -> None:
-        # it's deprecated in the most recent RFC
-        pass
 
     def _handle_rst_stream_frame(
         self, flags: int, stream_id: int, payload: bytes
@@ -288,10 +284,11 @@ class Http2Connection:
 
             # React to certain settings
             if setting == Setting.INITIAL_WINDOW_SIZE and value != old_value:
+                # might become negative
+                # send WINDOW_UPDATE
                 delta = value - old_value
                 for s in self.streams.values():
                     s.outbound_window += delta
-                # self.session_outbound_window += delta
             elif setting == Setting.MAX_CONCURRENT_STREAMS:
                 self.max_concurrent_streams = value
                 self._maybe_unblock_streams()
@@ -334,6 +331,7 @@ class Http2Connection:
                         ConnectionError("GOAWAY received")
                     )
                 self._close_stream(stream)
+        # clear pending streams?
 
     def _handle_window_update_frame(
         self, flags: int, stream_id: int, payload: bytes
@@ -523,7 +521,7 @@ class Http2Connection:
     # -------------------- Connection lifecycle --------------------
     def initiate_connection(self) -> None:
         """Send the connection preface and initial SETTINGS."""
-        # Connection preface (RFC 7540 §3.5)
+        # Connection preface (RFC 7540, 3.5)
         self._transport.write(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 
         # Send initial SETTINGS (our preferences)
