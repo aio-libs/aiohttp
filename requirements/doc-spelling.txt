@@ -10,11 +10,11 @@ alabaster==1.0.0
     # via sphinx
 babel==2.18.0
     # via sphinx
-certifi==2026.5.20
+certifi==2026.6.17
     # via requests
 charset-normalizer==3.4.7
     # via requests
-click==8.4.1
+click==8.4.2
     # via towncrier
 docutils==0.21.2
     # via

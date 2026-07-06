@@ -643,6 +643,32 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    def test_empty_param_value_no_crash(self) -> None:
+        """Empty param value (e.g. filename=) must not raise IndexError."""
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition("attachment; filename=")
+        assert disptype is None
+        assert {} == params
+
+    def test_empty_param_value_multiple(self) -> None:
+        """Multiple params where one has empty value must not raise IndexError."""
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition(
+                "attachment; name=foo; filename="
+            )
+        assert disptype is None
+        assert {} == params
+
+    def test_disptype_with_trailing_space_before_semicolon(self) -> None:
+        disptype, params = parse_content_disposition('form-data ; name="field"')
+        assert disptype == "form-data"
+        assert params == {"name": "field"}
+
+    def test_disptype_with_trailing_space_no_params(self) -> None:
+        disptype, params = parse_content_disposition("inline ")
+        assert disptype == "inline"
+        assert params == {}
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/

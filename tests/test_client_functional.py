@@ -1255,6 +1255,61 @@ async def test_read_timeout_on_write(aiohttp_client: AiohttpClient) -> None:
     assert result == b"foo"
 
 
+async def test_sock_read_timeout_not_rearmed_on_pooled_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    # Reading the buffered body of a completed response must not re-arm the
+    # sock_read timeout on a connection that has already been released to the
+    # keep-alive pool. Otherwise the timer fires while the connection sits idle
+    # in the pool, stamps SocketTimeoutError on it, and the next request that
+    # reuses it fails immediately (with no real read having stalled).
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response({"ok": True})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    timeout = aiohttp.ClientTimeout(total=30, sock_read=0.1)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        await resp.read()
+
+    assert client.session.connector is not None
+    pooled = next(iter(client.session.connector._conns.values()))
+    proto = pooled[0][0]
+    # The pooled connection must carry no read-timeout handle, otherwise
+    # it could trigger an exception on the next request.
+    assert proto._read_timeout_handle is None
+    assert proto.exception() is None
+
+    # The connection is still reusable.
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.json() == {"ok": True}
+
+    assert next(iter(client.session.connector._conns.values()))[0][0] is proto
+
+
+async def test_request_exception_cleanup_with_no_total_timeout(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    # With total=None, the timer handle is None; the exception-cleanup branch
+    # in _request must handle that path (regression coverage for `if handle:`).
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=500)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    timeout = aiohttp.ClientTimeout(total=None)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/", raise_for_status=True)
+
+
 async def test_timeout_on_reading_data(
     aiohttp_client: AiohttpClient, mocker: MockerFixture
 ) -> None:

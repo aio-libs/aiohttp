@@ -1,0 +1,3 @@
+Fixed ``IndexError: string index out of range`` in ``parse_content_disposition``
+when a header parameter has an empty value (e.g. ``filename=``).
+-- by :user:`JSap0914`.

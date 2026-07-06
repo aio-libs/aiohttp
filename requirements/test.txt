@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.2
+aiohappyeyeballs==2.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -16,7 +16,7 @@ aiosignal==1.4.0
     #   aiohttp
 annotated-types==0.7.0
     # via pydantic
-ast-serialize==0.5.0
+ast-serialize==0.6.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -36,13 +36,13 @@ cffi==2.0.0
     # via
     #   cryptography
     #   pycares
-click==8.4.1
+click==8.4.2
     # via wait-for-it
-coverage==7.14.1
+coverage==7.15.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==48.0.1
+cryptography==49.0.0
     # via trustme
 exceptiongroup==1.3.1
     # via pytest
@@ -67,7 +67,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
-librt==0.11.0
+librt==0.12.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
@@ -113,7 +113,7 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
-pytest==9.0.3
+pytest==9.1.1
     # via
     #   -r requirements/test-common-base.in
     #   pytest-aiohttp

@@ -1163,6 +1163,8 @@ def test_method_must_be_empty_body() -> None:
     assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
     assert "CONNECT" not in EMPTY_BODY_METHODS
+    # Callers are expected to pass already-normalised (uppercase) methods.
+    assert "head" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
