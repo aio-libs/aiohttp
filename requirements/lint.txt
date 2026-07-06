@@ -22,8 +22,6 @@ cffi==2.0.0
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-click==8.4.2
-    # via slotscheck
 cryptography==49.0.0
     # via trustme
 distlib==0.4.3
@@ -103,7 +101,7 @@ rich==15.0.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
-slotscheck==0.20.0
+slotscheck==0.20.1
     # via -r requirements/lint.in
 tomli==2.4.1
     # via
