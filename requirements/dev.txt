@@ -60,7 +60,6 @@ charset-normalizer==3.4.7
 click==8.4.2
     # via
     #   pip-tools
-    #   slotscheck
     #   towncrier
     #   wait-for-it
 coverage==7.15.0
@@ -250,7 +249,7 @@ setuptools-git==1.2
     # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
-slotscheck==0.20.0
+slotscheck==0.20.1
     # via -r requirements/lint.in
 snowballstemmer==3.1.1
     # via sphinx
