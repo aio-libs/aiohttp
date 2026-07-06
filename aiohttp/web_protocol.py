@@ -616,7 +616,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         except HTTPException as exc:
             # Uncaught parser error
             if request._pre_handler_error is exc:
-                self.log_exception(
+                self.logger.warning(
                     "Error handling request from %s",
                     request.remote,
                     exc_info=exc.__cause__,

@@ -770,6 +770,7 @@ async def test_parser_error_middleware_suppresses_log(
     assert status_line.startswith(b"HTTP/1.0 204 ")
     logger.exception.assert_not_called()
     logger.debug.assert_not_called()
+    logger.warning.assert_not_called()
 
 
 async def test_parser_error_propagated_is_logged(
@@ -782,9 +783,9 @@ async def test_parser_error_propagated_is_logged(
     async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
         await _read_response(reader)
 
-    # garbage triggers BadHttpMethod on the first request; default debug log.
-    assert logger.debug.called
-    assert "Error handling request" in logger.debug.call_args.args[0]
+    # garbage triggers BadHttpMethod; logged at warning level by default.
+    assert logger.warning.called
+    assert "Error handling request" in logger.warning.call_args.args[0]
 
 
 async def test_parser_error_on_response_prepare_fires(

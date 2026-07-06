@@ -666,12 +666,46 @@ Produced output::
    Middleware 1 finished
 
 Middlewares also run for responses synthesized from malformed HTTP
-requests (HTTP 400). For these requests
-:attr:`~aiohttp.abc.AbstractMatchInfo.http_exception` is an
-:exc:`HTTPBadRequest` instance and its ``__cause__`` exposes the
-underlying parser exception. As long as an exception doesn't
-propagate out of a middleware, it can modify every response sent
-from the server.
+requests (HTTP 400). For such a request
+:attr:`~aiohttp.web.BaseRequest.pre_handler_error` is set to the
+:exc:`HTTPBadRequest` that the handler raises, and its ``__cause__``
+holds the underlying parser exception. As long as an exception doesn't
+propagate out of a middleware, the middleware can modify -- or replace
+-- every response the server sends.
+
+.. versionchanged:: 4.0
+
+   Malformed requests are now dispatched through the middleware chain.
+
+A middleware can use this to customise how malformed requests are
+logged. By default aiohttp logs every parser error at the ``warning``
+level; the middleware below changes it to a ``debug`` level::
+
+    async def log_debug_parser_errors_middleware(
+        request: web.Request,
+        handler: Callable[[web.Request], Awaitable[web.StreamResponse]],
+    ) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPException as exc:
+            if request.pre_handler_error is None:
+                raise  # A normal HTTP error from the app, not a parser error.
+
+            request.protocol.logger.debug(
+                "Error handling request from %s",
+                # Or for reverse proxy with trusted header:
+                # request.headers.get("X-Forwarded-For")
+                request.remote,
+                exc_info=exc.__cause__,
+            )
+            # Returning a response (rather than re-raising) suppresses
+            # aiohttp's own error logging with the call above.
+            return web.Response(
+                status=exc.status,
+                reason=exc.reason,
+                text=exc.text,
+                headers=exc.headers,
+            )
 
 Request Body Stream Consumption
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
