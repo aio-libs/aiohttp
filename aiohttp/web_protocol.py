@@ -241,7 +241,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         )
         super().__init__(loop, parser)
 
-        # _request_count is the number of requests processed with the same connection.
         self._request_count = 0
         self._keepalive = False
         self._current_request: _Request | None = None
@@ -619,7 +618,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # Uncaught parser error
             if request._pre_handler_error is exc:
                 cause = exc.__cause__
-                if self._request_count == 1 and isinstance(cause, BadHttpMethod):
+                if (
+                    self._manager
+                    and self._manager.requests_count == 1
+                    and isinstance(exc, BadHttpMethod)
+                ):
                     # BadHttpMethod is common when a client sends non-HTTP
                     # or encrypted traffic to an HTTP port. This is expected
                     # to happen when connected to the public internet so we log
