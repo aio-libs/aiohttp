@@ -159,6 +159,15 @@ def parse_content_disposition(
             if is_quoted(value):
                 failed = False
                 value = unescape(value[1:-1].lstrip("\\/"))
+            elif is_quoted(value.rstrip()):
+                # RFC 9110 section 5.6.6 permits optional whitespace (OWS)
+                # between a quoted parameter value and the next semicolon
+                # separator. Without this rstrip check, is_quoted('"x" ')
+                # returns False (the last char is a space) and the parser
+                # falls into the semicolon-repair branch, which greedily
+                # merges the next parameter into the filename.
+                failed = False
+                value = unescape(value.rstrip()[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:

@@ -1,0 +1,1 @@
+Tolerated optional whitespace (OWS) between a quoted parameter value and the next semicolon in :py:func:`~aiohttp.multipart.parse_content_disposition`, so headers like ``attachment; filename="test.txt" ; name="field"`` no longer trip the repair heuristic and silently consume the next parameter into the filename -- by :user:`HrachShah`.

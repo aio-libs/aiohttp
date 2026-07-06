@@ -669,6 +669,40 @@ class TestParseContentDisposition:
         assert disptype == "inline"
         assert params == {}
 
+    # RFC 9110 section 5.6.6 permits optional whitespace (OWS) between a
+    # quoted-string parameter value and the next semicolon. The previous
+    # parser rejected those headers with a BadContentDispositionHeader
+    # warning and returned (None, {}), and in the specific case where a
+    # later parameter existed, the parser's "semicolon-repair" branch
+    # greedily merged it into the preceding quoted value.
+    def test_ows_after_quoted_value_then_next_param(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; name="x" ; foo=bar'
+        )
+        assert disptype == "form-data"
+        assert params == {"name": "x", "foo": "bar"}
+
+    def test_ows_after_quoted_filename_then_next_param(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; filename="hello.txt" ; name="x"'
+        )
+        assert disptype == "form-data"
+        assert params == {"filename": "hello.txt", "name": "x"}
+
+    def test_ows_after_quoted_filename_no_next_param(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; filename="hello.txt" '
+        )
+        assert disptype == "form-data"
+        assert params == {"filename": "hello.txt"}
+
+    def test_tab_ows_after_quoted_value_then_next_param(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; name="x"\t; foo=bar'
+        )
+        assert disptype == "form-data"
+        assert params == {"name": "x", "foo": "bar"}
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/
