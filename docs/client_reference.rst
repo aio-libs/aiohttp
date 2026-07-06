@@ -1634,6 +1634,13 @@ Response object
 
       Do nothing for success responses (less than 400).
 
+   .. method:: content()
+      :async:
+
+      Read response's body and return it as :class:`bytes`.
+
+      :return bytes: read *BODY*
+
    .. method:: text(encoding=None)
       :async:
 

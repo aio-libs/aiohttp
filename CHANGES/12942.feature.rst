@@ -1,0 +1,1 @@
+Added :py:meth:`~aiohttp.ClientResponse.content` to return the response body as :class:`bytes`, mirroring the cached-after-read behaviour of :py:meth:`~aiohttp.ClientResponse.text` and :py:meth:`~aiohttp.ClientResponse.json` -- by :user:`HrachShah`.

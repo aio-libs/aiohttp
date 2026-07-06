@@ -464,6 +464,29 @@ async def test_text(session: ClientSession) -> None:
     assert response._connection is None
 
 
+async def test_content(session: ClientSession) -> None:
+    url = URL("http://def-cl-resp.org")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=asyncio.get_running_loop(),
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    response._body = b"data"
+
+    res = await response.content()
+    assert res == b"data"
+
+
 async def test_text_bad_encoding(session: ClientSession) -> None:
     loop = asyncio.get_running_loop()
     url = URL("http://def-cl-resp.org")

@@ -697,6 +697,18 @@ class ClientResponse(HeadersMixin):
             await self._wait_released()  # Underlying connection released
         return self._body
 
+    async def content(self) -> bytes | None:
+        """Read response payload and return it as bytes.
+
+        Reads the full response body if it has not been read yet
+        and returns it. After the first call, the body is cached on
+        the response and subsequent calls return the same bytes
+        without re-reading the stream. Returns :py:const:`None` if the
+        body is empty.
+        """
+        await self.read()
+        return self._body
+
     def get_encoding(self) -> str:
         ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
         mimetype = parse_mimetype(ctype)
