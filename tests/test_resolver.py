@@ -275,7 +275,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_no_hosts_in_getaddrinfo(
     loop: asyncio.AbstractEventLoop,
-)
+) -> None:
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result([])
         resolver = AsyncResolver()
