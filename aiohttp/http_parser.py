@@ -1157,19 +1157,20 @@ class DeflateBuffer:
         self.size += size
         self.out.total_compressed_bytes = self.size
 
-        # RFC1950
-        # bits 0..3 = CM = 0b1000 = 8 = "deflate"
-        # bits 4..7 = CINFO = 1..7 = windows size.
-        if (
-            not self._started_decoding
-            and self.encoding == "deflate"
-            and chunk[0] & 0xF != 8
-        ):
-            # Change the decoder to decompress incorrectly compressed data
-            # Actually we should issue a warning about non-RFC-compliant data.
-            self.decompressor = ZLibDecompressor(
-                encoding=self.encoding, suppress_deflate_header=True
-            )
+        # Inspect the first real byte once to choose the decompressor. An empty
+        # chunk (e.g. a chunk-size line arriving without body bytes) has no
+        # header to sniff, so skip it and wait for the first data byte.
+        if not self._started_decoding and chunk:
+            # RFC1950
+            # bits 0..3 = CM = 0b1000 = 8 = "deflate"
+            # bits 4..7 = CINFO = 1..7 = windows size.
+            if self.encoding == "deflate" and chunk[0] & 0xF != 8:
+                # Change the decoder to decompress incorrectly compressed data
+                # Actually we should issue a warning about non-RFC-compliant data.
+                self.decompressor = ZLibDecompressor(
+                    encoding=self.encoding, suppress_deflate_header=True
+                )
+            self._started_decoding = True
 
         low_water = self.out._low_water
         max_length = (
@@ -1181,8 +1182,6 @@ class DeflateBuffer:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
             )
-
-        self._started_decoding = True
 
         if chunk:
             self.out.feed_data(chunk, len(chunk))
