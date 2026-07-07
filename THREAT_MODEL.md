@@ -697,11 +697,3 @@ boundary at which user-supplied strings can become wire bytes.
   the main request parser's strictness per RFC 9110 §8.6.
 
 These are all currently in place; this section assumes no regression.
-
-**Open questions.**
-
-1. Should `MultipartReader` accept a `max_nesting_depth` parameter to fail
-   cleanly on deeply nested input (threat 4.3)?
-2. Should aiohttp expose an opt-in `safe_filename()` helper, or improve
-   filename docstrings, to nudge applications away from path-traversal
-   pitfalls (threat 4.6)?
