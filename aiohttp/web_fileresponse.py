@@ -184,6 +184,15 @@ class FileResponse(StreamResponse):
         if not file_path:
             return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
 
+        # Record the file's mtime as the Last-Modified header (and parsed
+        # value) once, so the comparisons below use the same second-precision
+        # value the client sees in the response header. The setter rounds
+        # fractional seconds towards -infinity, matching the datetime branch
+        # of StreamResponse.last_modified.
+        self.last_modified = st.st_mtime
+        file_last_modified = self.last_modified
+        assert file_last_modified is not None
+
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
         # https://www.rfc-editor.org/rfc/rfc9110#section-13.1.1-2
@@ -195,7 +204,7 @@ class FileResponse(StreamResponse):
         if (
             (unmodsince := request.if_unmodified_since) is not None
             and ifmatch is None
-            and st.st_mtime > unmodsince.timestamp()
+            and file_last_modified > unmodsince
         ):
             return _FileResponseResult.PRE_CONDITION_FAILED, None, st, file_encoding
 
@@ -208,7 +217,7 @@ class FileResponse(StreamResponse):
         if (
             (modsince := request.if_modified_since) is not None
             and ifnonematch is None
-            and st.st_mtime <= modsince.timestamp()
+            and file_last_modified <= modsince
         ):
             return _FileResponseResult.NOT_MODIFIED, None, st, file_encoding
 
@@ -267,9 +276,14 @@ class FileResponse(StreamResponse):
             return await self._precondition_failed(request)
 
         if response_result is _FileResponseResult.NOT_MODIFIED:
+            # self.last_modified was already set inside _make_response so
+            # the 304 response carries the same Last-Modified value the
+            # client received in the original 200.
+            assert self.last_modified is not None
             etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-            last_modified = st.st_mtime
-            return await self._not_modified(request, etag_value, last_modified)
+            return await self._not_modified(
+                request, etag_value, self.last_modified
+            )
 
         assert fobj is not None
         try:

@@ -3,5 +3,14 @@ Unix timestamp towards negative infinity when setting it from a ``float`` or
 ``int``, matching the behavior of the ``datetime`` branch (which uses
 ``utctimetuple`` and discards the microsecond component). The previous
 implementation used :func:`math.ceil`, which produced a different second than
-the equivalent :class:`~datetime.datetime` with the same value --
-by :user:`HrachShah`.
+the equivalent :class:`~datetime.datetime` with the same value.
+
+:py:class:`~aiohttp.web.FileResponse` now records the file's mtime as
+``self.last_modified`` before comparing against ``If-Modified-Since`` /
+``If-Unmodified-Since``, so the second-precision value used for the
+comparison is the same one the client receives in the ``Last-Modified``
+header. Previously, a file with a fractional mtime could be served a
+``200`` on the second request even when the client sent back the
+``Last-Modified`` value from the first response -- the comparison used
+the raw ``st.st_mtime`` float while the header carried the rounded value.
+-- by :user:`HrachShah`.

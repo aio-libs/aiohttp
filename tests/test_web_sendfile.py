@@ -25,6 +25,7 @@ def test_using_gzip_if_header_present_and_file_available(
     gz_filepath = mock.create_autospec(Path, spec_set=True)
     gz_filepath.lstat.return_value.st_size = 1024
     gz_filepath.lstat.return_value.st_mtime_ns = 1603733507222449291
+    gz_filepath.lstat.return_value.st_mtime = 1603733507.0
     gz_filepath.lstat.return_value.st_mode = MOCK_MODE
 
     filepath = mock.create_autospec(Path, spec_set=True)
@@ -49,6 +50,7 @@ def test_gzip_if_header_not_present_and_file_available(
     gz_filepath = mock.create_autospec(Path, spec_set=True)
     gz_filepath.lstat.return_value.st_size = 1024
     gz_filepath.lstat.return_value.st_mtime_ns = 1603733507222449291
+    gz_filepath.lstat.return_value.st_mtime = 1603733507.0
     gz_filepath.lstat.return_value.st_mode = MOCK_MODE
 
     filepath = mock.create_autospec(Path, spec_set=True)
@@ -56,6 +58,7 @@ def test_gzip_if_header_not_present_and_file_available(
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
+    filepath.stat.return_value.st_mtime = 1603733507.0
     filepath.stat.return_value.st_mode = MOCK_MODE
 
     file_sender = FileResponse(filepath)
@@ -81,6 +84,7 @@ def test_gzip_if_header_not_present_and_file_not_available(
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
+    filepath.stat.return_value.st_mtime = 1603733507.0
     filepath.stat.return_value.st_mode = MOCK_MODE
 
     file_sender = FileResponse(filepath)
@@ -108,6 +112,7 @@ def test_gzip_if_header_present_and_file_not_available(
     filepath.with_suffix.return_value = gz_filepath
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
+    filepath.stat.return_value.st_mtime = 1603733507.0
     filepath.stat.return_value.st_mode = MOCK_MODE
 
     file_sender = FileResponse(filepath)
@@ -127,6 +132,7 @@ def test_status_controlled_by_user(event_loop: asyncio.AbstractEventLoop) -> Non
     filepath.name = "logo.png"
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
+    filepath.stat.return_value.st_mtime = 1603733507.0
     filepath.stat.return_value.st_mode = MOCK_MODE
 
     file_sender = FileResponse(filepath, status=203)
@@ -148,6 +154,7 @@ async def test_file_response_sends_headers_immediately() -> None:
     filepath.name = "logo.png"
     filepath.stat.return_value.st_size = 1024
     filepath.stat.return_value.st_mtime_ns = 1603733507222449291
+    filepath.stat.return_value.st_mtime = 1603733507.0
     filepath.stat.return_value.st_mode = MOCK_MODE
 
     file_sender = FileResponse(filepath)
