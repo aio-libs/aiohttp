@@ -7,15 +7,14 @@ Adam Cooper
 Adam Horacek
 Adam Mills
 Adrian Krupa
-Adrián Chaves
+Adri谩n Chaves
 Ahmed Tahri
 Alan Bogarin
 Alan Tse
 Alec Hanefeld
-Alejandro Gómez
+Alejandro G贸mez
 Aleksandr Danshyn
 Aleksey Kutepov
-Alex Grönholm
 Alex Hayes
 Alex Key
 Alex Khomchenko
@@ -34,7 +33,6 @@ Alexey Nikitin
 Alexey Popravka
 Alexey Stavrov
 Alexey Stepanov
-Almaz Salakhov
 Amin Etesamian
 Amit Tulshyan
 Amy Boyle
@@ -53,10 +51,10 @@ Antoine Pietri
 Anton Kasyanov
 Anton Zhdan-Pushkin
 Arcadiy Ivanov
-Arie Bovenberg
 Arseny Timoniq
 Artem Yushkovskiy
 Arthur Darcet
+Ashutosh Kumar Singh
 Austin Scola
 Bai Haoran
 Ben Bader
@@ -67,7 +65,6 @@ Ben Timby
 Benedikt Reinartz
 Bob Haddleton
 Boris Feld
-Borys Vorona
 Boyi Chen
 Br1an67
 Brett Cannon
@@ -92,17 +89,15 @@ Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
 Cong Xu
-Damien Nadé
+Damien Nad茅
 Dan King
 Dan Xu
-Daniel García
+Daniel Garc铆a
 Daniel Golding
 Daniel Grossmann-Kavanagh
 Daniel Nelson
-Daniele Trifirò
 Danny Song
 David Bibb
-David Dzhalaev
 David Michael Brown
 Denilson Amorim
 Denis Matiychuk
@@ -126,20 +121,18 @@ Earle Lowe
 Eduard Iskandarov
 Eli Ribble
 Elizabeth Leddy
-Emil Melnikov
 Enrique Saez
 Eric Sheng
 Erich Healy
 Erik Peterson
 Eugene Chernyshov
-Eugene Ershov
 Eugene Naydenov
 Eugene Nikolaiev
 Eugene Tolmachev
 Evan Kepner
 Evert Lammerts
 Felix Yan
-Fernanda Guimarães
+Fernanda Guimar茫es
 FichteFoll
 Florian Scheffler
 Franek Magiera
@@ -152,13 +145,14 @@ Gary Wilson Jr.
 Gene Hoffman
 Gennady Andreyev
 Georges Dubus
+goingforstudying-ctrl
 Greg Holt
 Gregory Haynes
 Grigoriy Soldatov
 Guillaume Leurquin
 Gus Goulart
 Gustavo Carneiro
-Günther Jena
+G眉nther Jena
 Hans Adema
 Harmon Y.
 Harry Liu
@@ -206,7 +200,7 @@ Joel Watts
 John Feusi
 John Parton
 Jon Nabozny
-Jonas Krüger Svensson
+Jonas Kr眉ger Svensson
 Jonas Obrist
 Jonathan Ballet
 Jonathan Wright
@@ -237,17 +231,17 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
-Lars P. Søndergaard
+Lars P. S酶ndergaard
 Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
-Loïc Lajeanne
+Lo茂c Lajeanne
 Lu Gong
 Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
-Lénárd Szolnoki
+L茅n谩rd Szolnoki
 Makc Belousow
 Manuel Miranda
 Marat Sharafutdinov
@@ -262,8 +256,8 @@ Martijn Pieters
 Martin Melka
 Martin Richard
 Martin Sucha
-Mathias Fröjdman
-Mathieu Dugré
+Mathias Fr枚jdman
+Mathieu Dugr茅
 Matt VanEseltine
 Matthew Go
 Matthias Marquardt
@@ -273,7 +267,7 @@ Matvey Tingaev
 Meet Mangukiya
 Meshya
 Michael Ihnatenko
-Michał Górny
+Micha艂 G贸rny
 Mikhail Burshteyn
 Mikhail Kashkin
 Mikhail Lukyanchenko
@@ -286,14 +280,15 @@ Moss Collum
 Mun Gwan-gyeong
 Navid Sheikhol
 Nicolas Braem
+Night Cityblade
 Nikolay Kim
 Nikolay Novik
 Nikolay Tiunov
-Nándor Mátravölgyi
+N谩ndor M谩trav枚lgyi
 Oisin Aylward
 Olaf Conradi
-Oleg Höfling
 Omkar Kabde
+oppnc
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -303,12 +298,12 @@ Patrick Lee
 Pau Freixes
 Paul Colomiets
 Paul J. Dorn
-Paulius Šileikis
+Paulius 艩ileikis
 Paulus Schoutsen
 Pavel Kamaev
 Pavel Polyakov
 Pavel Sapezhko
-Pavol Vargovčík
+Pavol Vargov膷铆k
 Pawel Kowalski
 Pawel Miech
 Pepe Osca
@@ -316,11 +311,12 @@ Phebe Polk
 Philipp A.
 Pierre-Louis Peeters
 Pieter van Beek
+Puneet Dixit
 Qiao Han
 Rafael Viotti
 Rahul Nahata
 Raphael Bialon
-Raúl Cumplido
+Ra煤l Cumplido
 Required Field
 Robert Lu
 Robert Nikolich
@@ -336,19 +332,18 @@ Samuel Gaist
 Sean Hunt
 Sebastian Acuna
 Sebastian Hanula
-Sebastian Hüther
+Sebastian H眉ther
 Sebastien Geffroy
 SeongSoo Cho
+Sergei Grachev
 Sergey Ninua
 Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
-Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
 Sin-Woo Bang
-Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
 Stefan Tjarks
@@ -385,10 +380,9 @@ Vasyl Baran
 Viacheslav Greshilov
 Victor Collod
 Victor Kovtun
-Victor Makarov
 Vikas Kawadia
 Viktor Danyliuk
-Ville Skyttä
+Ville Skytt盲
 Vincent Maillol
 Vitalik Verhovodov
 Vitaly Haritonsky
@@ -402,7 +396,7 @@ Vladimir Vinogradenko
 Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
-Vojtěch Boček
+Vojt臎ch Bo膷ek
 W. Trevor King
 Wei Lin
 Weiwei Wang
@@ -418,7 +412,7 @@ Xi Rui
 Xiang Li
 Yang Zhou
 Yannick Koechlin
-Yannick Péroux
+Yannick P茅roux
 Ye Cao
 Yegor Roganov
 Yifei Kong
@@ -432,7 +426,7 @@ Yuval Ofir
 Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
-Zlatan Sičanica
-Łukasz Setla
-Марк Коренберг
-Семён Марьясин
+Zlatan Si膷anica
+艁ukasz Setla
+袦邪褉泻 袣芯褉械薪斜械褉谐
+小械屑褢薪 袦邪褉褜褟褋懈薪
