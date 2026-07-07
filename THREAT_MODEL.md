@@ -313,6 +313,17 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   Werkzeug emit duplicate `Content-Type` / `Server`); fix disables the
   check on the response parser (lax mode) while keeping it on the
   request parser (strict).
+- **GHSA-63hw-fmq6-xxg2 (CVE-2026-54277)** (3.14.1) — the
+  Cython / llhttp request parser failed to enforce `max_line_size`
+  when a single request or header line arrived across multiple TCP
+  segments, letting an attacker stream an oversized line in small
+  fragments to exhaust memory.
+- **GHSA-4fvr-rgm6-gqmc (CVE-2026-54273)** (3.14.1) — no cap
+  on the number of HTTP/1 pipelined requests queued on a single
+  connection; the `_messages` deque in `web_protocol.RequestHandler`
+  could grow without bound. Memory was previously bounded only
+  transitively by `read_bufsize` ([§5.7](#57-server-connection-lifecycle) threat 7.4);
+  the fix adds an explicit pipeline-count cap.
 
 These are all currently in place; this section assumes no regression.
 
@@ -546,20 +557,143 @@ client-side, the writer adds masks to outgoing frames.
   `max_msg_size + 1` and rejects with `MESSAGE_TOO_BIG` (1009) on overflow.
   This is the primary mitigation for zip-bomb-style attacks against
   WebSocket peers.
+- **GHSA-xcgm-r5h9-7989 (CVE-2026-54274)** (3.14.1) — a peer could
+  send large WebSocket frames with incomplete payloads, bypassing the
+  per-frame memory limit because the buffer grew before the
+  `max_msg_size` check fired against the (still-unknown) final size.
+  Fixed by accounting for the in-flight buffer in the cap.
 - **PR #12976** — the client created its `WebSocketReader`
   without passing `compress`, so the reader defaulted to `compress=True` and
   decompressed RSV1 frames even when PMCE was never negotiated (threat 3.3;
   RFC 6455 §5.2 requires failing such frames). Fixed by passing
   `compress=bool(compress)` in `client.py:_ws_connect` and removing the
   `compress` / `decode_text` defaults on `WebSocketReader.__init__`.
-- No formal CVE has been published against the WebSocket framing layer to
-  date.
 
-**Open questions.**
+---
 
-1. Should server-side reader reject unmasked frames (and client-side reject
-   masked ones) per RFC 6455 §5.1? (Threat 3.1 — recommended.)
-2. Is the PRNG mask source (`random.getrandbits`) sufficient, or should it be
-   migrated to `secrets`/`os.urandom`? (Threat 3.2.)
-3. For long-lived WebSocket sessions, is there a use case for *forcing*
-   `no_context_takeover` defaults to limit memory growth? (Threat 3.10.)
+### 5.4. Multipart parsing & encoding
+
+**Scope.** Parsing of incoming `multipart/*` bodies (`MultipartReader`,
+`BodyPartReader`) and construction of outgoing multipart bodies
+(`MultipartWriter`, `FormData`). This includes boundary handling, per-part
+header parsing, `Content-Disposition` extraction, `Content-Transfer-Encoding`
+decoding, charset detection, and the `Request.post()` path that wraps
+`multipart/form-data`. Out of scope: the underlying compression codecs ([§5.5](#55-compression-codecs)),
+streams/payloads ([§5.6](#56-streams--payloads)), and the connection-level read/write timeouts that
+back-stop slow drips ([§5.7](#57-server-connection-lifecycle)).
+
+**Components covered.**
+
+- `aiohttp/multipart.py` — `MultipartReader`, `BodyPartReader`,
+  `MultipartWriter`, `parse_content_disposition`,
+  `content_disposition_filename`.
+- `aiohttp/formdata.py` — `FormData` builder.
+- `aiohttp/web_request.py` — `Request.post()`, `Request.multipart()`.
+- `aiohttp/payload.py` — multipart payload wrapping (overlap with [§5.6](#56-streams--payloads)).
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted body]) --> Reader[MultipartReader]
+  Reader --> Parts[BodyPartReader per part]
+  Parts -->|headers, name, filename| App([User handler])
+  Parts -->|streamed body| App
+  Reader -. nested .-> Reader
+
+  AppOut([User code]) --> FD[FormData] --> Writer[MultipartWriter]
+  Writer --> WireOut([Outbound body])
+```
+
+The reader's input is fully attacker-controlled on the server side and
+upstream-controlled on the client side. Per-part values surfaced to user
+code (`headers`, `name`, `filename`, body bytes) are all untrusted. The
+writer's input is trusted in the threat-model sense, but `FormData` is the
+boundary at which user-supplied strings can become wire bytes.
+
+**Assets at risk (chunk-specific).**
+
+- **Process memory** — number of parts, per-part body size, recursion depth
+  for nested multipart.
+- **Filesystem safety in user code** — `filename` round-trips from wire to
+  application without sanitisation.
+- **Outbound framing integrity** — boundary uniqueness, header validity in
+  `FormData.add_field`.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 4.1 | Boundary parameter parsing | T | Malformed boundary parameter (oversized, missing, or containing bytes outside the RFC 2046 §5.1.1 safe set — digits, letters, and a small punctuation set) could enable multipart parser confusion or smuggling. | Low |
+| 4.2 | Number of parts per body | D | A peer submits a body packed with many tiny parts (e.g. ten thousand 100-byte parts inside a 1 MiB body). Each part allocates a `BodyPartReader` plus header dict, so the live-Python-object footprint is far larger than the on-wire byte count. `client_max_size` caps the wire bytes but not the per-part allocation amplification. | Low |
+| 4.3 | Nested multipart recursion | D | `MultipartReader.next()` recurses into nested multiparts without a depth cap; deeply nested input can hit `RecursionError`. `Request.post()` short-circuits this by rejecting any nested multipart it sees, but the bare API does not. | Medium |
+| 4.4 | Per-part header block size | D | A peer submits a part with an oversized header block (very long field values, or hundreds of headers per part) to drive memory growth at parse time, multiplied across many parts. | Low |
+| 4.5 | Per-part body size | D | A peer submits a single part with a body that grows arbitrarily large before any framing boundary — if size checking happens only after buffering the whole part, memory blows up before the cap fires. | Low |
+| 4.6 | `Content-Disposition` filename | T / I | Filename is parsed (incl. RFC 2231 `filename*=`) and returned verbatim to the application. Path-traversal strings (`../`), absolute paths, NUL/CR/LF all reach user code unsanitised. | Medium |
+| 4.7 | `Content-Disposition` name | T | Field name returned verbatim. CR/LF in a part's `name` doesn't cross the framing boundary (the multipart parser delimits parts by boundary, not by CR/LF in field names), but downstream loggers / dashboards may misrender. | Low |
+| 4.8 | `_charset_` magic form field | T | An attacker can include a form field named `_charset_` whose value retroactively becomes the *default charset* used to decode subsequent text fields (`multipart.py:MultipartReader.next _charset_ form handling`). Surprising behaviour; documented in the standard. | Low |
+| 4.9 | `Content-Transfer-Encoding` (base64 / quoted-printable) | T / D | A peer sets `Content-Transfer-Encoding: base64` (or `quoted-printable`) and submits malformed encoded data — the decoder raises mid-stream and the partially-decoded part is surfaced to the handler with an exception. | Low |
+| 4.10 | `Content-Encoding` (gzip/deflate within a part) | D | A peer submits a multipart part with `Content-Encoding: gzip` (or `deflate`) carrying a zip-bomb payload — a small compressed body that expands to a vastly larger decoded body, driving memory exhaustion in the receiving handler. | Low |
+| 4.11 | `MultipartWriter` boundary collision | T | If a part body contains a byte sequence matching the boundary string, the writer emits it as-is — a receiver parsing the multipart will see a fake part break early. Negligible against the default `uuid.uuid4().hex` boundary, but real if user code supplies a short or predictable one. | Low |
+| 4.12 | `FormData.add_field` argument injection | T | When user code opts into `FormData(quote_fields=False)`, attacker-controlled `name` or `filename` reach the outbound `Content-Disposition` value with only `\` / `"` escaped. CR/LF/NUL would let an attacker inject extra disposition parameters or a fake-part break-out; `add_field` now rejects these bytes in `name`, `filename`, and `content_type` so the opt-out path is also defended. | Low–Med |
+| 4.13 | Per-part header injection via `headers=` | T | Caller-supplied headers passed via `MultipartWriter.append(headers=...)` or `Payload(headers=...)` reach the wire through `Payload._binary_headers`, which serialises `f"{k}: {v}\r\n"` without CR/LF/NUL validation. An attacker-influenced header value can inject extra part headers or break out into a fake part. Distinct from 4.12, which only covers the `name` / `filename` parameters of `add_field`. | Medium |
+| 4.14 | `Request.post()` temp-file lifetime | I / D | Uploaded files are streamed to `tempfile.TemporaryFile()` and lifetime is bound to the `FileField` object. If user code drops the field reference without reading or closing, garbage collection eventually closes the temp file. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 4.1 | Boundary parameter | 70-char cap; missing-boundary raises; HTTP header layer ([§5.1](#51-http1-parser)) catches CR/LF/NUL. | None. |
+| 4.2 | Many small parts | `client_max_size` caps total bytes. | Documented design decision: rely on `client_max_size` rather than introducing a `max_parts` knob. **User**: operators sensitive to live-object count should reduce `client_max_size`. |
+| 4.3 | Nested-multipart recursion | `Request.post()` rejects any nested multipart with `ValueError` ("To decode nested multipart you need to use custom reader") (`web_request.py:BaseRequest.post`). | **Direct `MultipartReader` users get unlimited recursion. Add a `max_nesting_depth` parameter (default e.g. 10) to fail cleanly before `RecursionError`.** |
+| 4.4 | Per-part headers bounded | `max_field_size` / `max_headers` plumbed since 5fe9dfb64 (Mar 2026). | None. |
+| 4.5 | Per-part body bounded | Per-iteration size check since 9cc4b917c (Mar 2026). | None. |
+| 4.6 | Filename path traversal | None; verbatim return is the documented behaviour. | **User**: sanitise `BodyPartReader.filename` before opening / saving / reflecting (strip path components, control bytes, known-bad sequences). |
+| 4.7 | Field-name pass-through | None. | **User**: `request.post()` keys come from attacker-controlled `name` parameters; do not feed them directly to filesystem / DB / template paths. |
+| 4.8 | `_charset_` magic field | Behaviour follows the HTML5 spec for multipart form charset selection. | **Document the surprising behaviour: an attacker who can post any field can change how subsequent fields are decoded.** **User**: if your form-handling code makes decisions based on string content, be aware that the decode charset is attacker-influenceable. |
+| 4.9 | CTE decoding | `BodyPartReader._decode_content_transfer` dispatches to `base64.b64decode` / `binascii.a2b_qp` / pass-through for `binary`/`8bit`/`7bit`, and raises `RuntimeError` on any other token. Both decoders raise on malformed input; decoded output is still subject to the per-part `client_max_size` cap. For base64, `BodyPartReader.read_chunk` extends each chunk read until its base64-significant character count is a multiple of 4, so mid-quartet splits cannot silently corrupt the decoded output. | None. |
+| 4.10 | Content-Encoding decompression | Per-chunk `max_decompress_size`, per-part `client_max_size` cap. | Inherits the [§5.5](#55-compression-codecs) caveat about backend `max_length` honouring. |
+| 4.11 | Outbound boundary collision | UUID4-hex default; HMAC-grade entropy means collision with random body bytes is statistically negligible. | **User**: callers supplying their own boundary must use a random, sufficiently long value. |
+| 4.12 | `FormData` argument injection | `add_field` runs `name`, `filename`, and `content_type` through `_safe_header` (`http_writer.py:_safe_header`), rejecting `\r` / `\n` / `\x00`. `name` / `filename` are additionally percent-encoded by `content_disposition_header` (`helpers.py:content_disposition_header`) when `quote_fields=True` (default), so the `add_field` check is what closes the `quote_fields=False` opt-out path. | None. |
+| 4.13 | Per-part header injection | `Payload._binary_headers` (`payload.py:_binary_headers`) now applies `_safe_header` to every name and value, raising `ValueError` if CR / LF / NUL is present before any byte reaches the wire. Covers all paths that mutate the headers dict (constructor, direct assignment, `set_content_disposition`). | None. |
+| 4.14 | Temp-file lifetime | `tempfile.TemporaryFile()` is unlinked at creation on POSIX; closing the FD (whether explicit or via GC) reclaims the disk. | **User**: explicitly close `FileField`s you don't intend to consume to release the temp file promptly under high load. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-5m98-qgg9-wh84 (CVE-2024-30251)** (3.9.4) — infinite loop in multipart
+  `_read_chunk_from_length` on a malformed POST body.
+- **GHSA-jj3x-wxrx-4x23 (CVE-2025-69227)** (3.13.3) — `Request.post()` entered
+  an infinite loop on malformed bodies when `PYTHONOPTIMIZE` stripped `assert`
+  statements (asserts were doing real control-flow work in the
+  multipart reader). Fixed by replacing the assertions with explicit
+  checks. Code audit follow-up: any other `assert` used for control
+  flow should be identified and removed.
+- **GHSA-6jhg-hg63-jvvf (CVE-2025-69228)** (3.13.3) — DoS via large
+  `Request.post()` payloads.
+- **GHSA-2vrm-gr82-f7m5 (CVE-2026-34514)** (3.13.4) —
+  `FormData.add_field` rejects CR/LF in `content_type` (header
+  injection on outbound multipart).
+- **GHSA-m5qp-6w8w-w647 (CVE-2026-34516)** (3.13.4) — `MultipartReader`
+  now honours `max_field_size` and `max_headers` from the underlying
+  protocol, plugging an unbounded per-part header memory growth path.
+- **GHSA-3wq7-rqq7-wx6j (CVE-2026-34517)** (3.13.4) — `Request.post()` enforces
+  `client_max_size` during iteration rather than after buffering,
+  plugging a memory-blow-up on large form fields.
+- **GHSA-m6qw-4cw2-hm4m (CVE-2026-50269)** (3.14.0) —
+  `Payload._binary_headers` now rejects CR / LF / NUL in any per-part
+  header name or value via `_safe_header`, closing the outbound
+  multipart header-injection path through `MultipartWriter.append(headers=...)`
+  and `Payload(headers=...)` that the main HTTP writer's `_safe_header`
+  check did not cover (threat 4.13).
+- **PR #12721** (3.14.0) — companion to GHSA-m6qw-4cw2-hm4m:
+  `FormData.add_field` now rejects CR / LF / NUL in `name` and
+  `filename` (in addition to the previous `content_type` check), so the
+  `quote_fields=False` opt-out path can no longer be used to inject
+  extra `Content-Disposition` parameters or a fake-part break-out
+  (threat 4.12).
+- **PR #12794** (3.14.1) — precautionary hardening:
+  multipart body parts whose `Content-Length` header is not a plain
+  decimal sequence (e.g. `+5`, `-1`, `1_0`) are now rejected, matching
+  the main request parser's strictness per RFC 9110 §8.6.
+
+These are all currently in place; this section assumes no regression.
