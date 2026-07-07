@@ -677,7 +677,7 @@ propagate out of a middleware, the middleware can modify -- or replace
 
    Malformed requests are now dispatched through the middleware chain.
 
-A middleware can use this to customise how malformed requests are
+A middleware can use this to change how malformed requests are
 logged. By default aiohttp logs every parser error at the ``warning``
 level; the middleware below changes it to a ``debug`` level::
 
