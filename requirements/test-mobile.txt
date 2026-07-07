@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiohappyeyeballs==2.6.2
+aiohappyeyeballs==2.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -28,13 +28,13 @@ backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_v
     # via -r requirements/runtime-deps.in
 brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-cffi==2.0.0 ; sys_platform != "android" and sys_platform != "ios"
+cffi==2.1.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
 click==8.4.2
     # via wait-for-it
-coverage==7.14.3
+coverage==7.15.0
     # via pytest-cov
 exceptiongroup==1.3.1
     # via pytest
