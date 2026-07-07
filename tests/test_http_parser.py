@@ -1402,6 +1402,37 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
     assert result == original
 
 
+async def test_compressed_chunked_split_chunk_size_line(
+    response: HttpResponseParser,
+) -> None:
+    """First chunk-size line arrives in a feed that carries no body bytes.
+
+    Regression test for an ``IndexError`` in the pure-Python parser: the
+    chunked parser fed an empty chunk to ``DeflateBuffer`` before any data
+    had been decoded, and the deflate header sniff indexed ``chunk[0]`` on it.
+    """
+    original = b"Hello, world! " * 4
+    compressed = zlib.compress(original)
+    size_line = hex(len(compressed))[2:].encode() + b"\r\n"
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers)
+    payload = msgs[0][-1]
+    # The chunk-size line lands with no body bytes in the same feed, so the
+    # parser transitions into the chunk body with an empty buffer.
+    response.feed_data(size_line)
+    response.feed_data(compressed + b"\r\n0\r\n\r\n")
+
+    result = await payload.read()
+    assert result == original
+    assert payload.exception() is None
+
+
 async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
     """Test read-until-eof + compressed with pause."""
     # Must be large enough to exceed high water mark.
