@@ -52,27 +52,23 @@ DigestFunctions: dict[str, Callable[[bytes], "hashlib._Hash"]] = {
 
 # Compile the regex pattern once at module level for performance
 _HEADER_PAIRS_PATTERN = re.compile(
-    r'(?:^|\s|,\s*)(\w+)\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
+    r'(?:^|\s|,\s*)(\w+)(?:\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+)))?'
     if sys.version_info < (3, 11)
-    else r'(?:^|\s|,\s*)((?>\w+))\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+))'
-    # +------------|--------|--|-|-|--|----|------|----|--||-----|-> Match valid start/sep
-    #              +--------|--|-|-|--|----|------|----|--||-----|-> alphanumeric key (atomic
-    #                       |  | | |  |    |      |    |  ||     |   group reduces backtracking)
-    #                       +--|-|-|--|----|------|----|--||-----|-> maybe whitespace
-    #                          | | |  |    |      |    |  ||     |
-    #                          +-|-|--|----|------|----|--||-----|-> = (delimiter)
-    #                            +-|--|----|------|----|--||-----|-> maybe whitespace
-    #                              |  |    |      |    |  ||     |
-    #                              +--|----|------|----|--||-----|-> group quoted or unquoted
-    #                                 |    |      |    |  ||     |
-    #                                 +----|------|----|--||-----|-> if quoted...
-    #                                      +------|----|--||-----|-> anything but " or \
-    #                                             +----|--||-----|-> escaped characters allowed
-    #                                                  +--||-----|-> or can be empty string
-    #                                                     ||     |
-    #                                                     +|-----|-> if unquoted...
-    #                                                      +-----|-> anything but , or <space>
-    #                                                            +-> at least one char req'd
+    else r'(?:^|\s|,\s*)((?>\w+))(?:\s*=\s*(?:"((?:[^"\\]|\\.)*)"|([^\s,]+)))?'
+    # +------------|--------|--|--||--|--|----|------|---|---||-----|-> Match valid start/sep
+    #              +--------|--|--||--|--|----|------|---|---||-----|-> alphanumeric key (atomic group reduces backtracking)
+    #                       +--|--||--|--|----|------|---|---||-----|-> optional value; absent => bare auth-scheme token
+    #                          +--||--|--|----|------|---|---||-----|-> maybe whitespace
+    #                             +|--|--|----|------|---|---||-----|-> = (delimiter)
+    #                              +--|--|----|------|---|---||-----|-> maybe whitespace
+    #                                 +--|----|------|---|---||-----|-> group quoted or unquoted
+    #                                    +----|------|---|---||-----|-> if quoted...
+    #                                         +------|---|---||-----|-> anything but " or \
+    #                                                +---|---||-----|-> escaped characters allowed
+    #                                                    +---||-----|-> or can be empty string
+    #                                                        +|-----|-> if unquoted...
+    #                                                         +-----|-> anything but , or <space>
+    #                                                               +-> at least one char req'd
 )
 
 
@@ -117,11 +113,16 @@ def unescape_quotes(value: str) -> str:
 
 def parse_header_pairs(header: str) -> dict[str, str]:
     """
-    Parse key-value pairs from WWW-Authenticate or similar HTTP headers.
+    Parse key-value pairs from the first challenge of a WWW-Authenticate header.
 
     This function handles the complex format of WWW-Authenticate header values,
     supporting both quoted and unquoted values, proper handling of commas in
     quoted values, and whitespace variations per RFC 7616.
+
+    A single header may carry several challenges
+    (https://www.rfc-editor.org/rfc/rfc7235#section-4.1). Parsing
+    stops at the next auth-scheme token so a later challenge's parameters cannot
+    overwrite the first challenge's values; a leading scheme token is skipped.
 
     Examples of supported formats:
       - key1="value1", key2=value2
@@ -135,11 +136,21 @@ def parse_header_pairs(header: str) -> dict[str, str]:
     Returns:
         Dictionary mapping parameter names to their values
     """
-    return {
-        stripped_key: unescape_quotes(quoted_val) if quoted_val else unquoted_val
-        for key, quoted_val, unquoted_val in _HEADER_PAIRS_PATTERN.findall(header)
-        if (stripped_key := key.strip())
-    }
+    pairs: dict[str, str] = {}
+    for match in _HEADER_PAIRS_PATTERN.finditer(header):
+        key = match.group(1)
+        quoted_val, unquoted_val = match.group(2), match.group(3)
+        if quoted_val is None and unquoted_val is None:
+            # Bare token with no "=value": an auth-scheme name, not a parameter.
+            # Skip a leading scheme; once parameters exist, a new scheme marks
+            # the start of the next challenge, so stop here.
+            if pairs:
+                break
+            continue
+        pairs[key] = (
+            unescape_quotes(quoted_val) if quoted_val is not None else unquoted_val
+        )
+    return pairs
 
 
 class DigestAuthMiddleware:
