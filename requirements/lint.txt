@@ -162,7 +162,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.5.1
+virtualenv==21.6.0
     # via pre-commit
 yarl==1.24.2
     # via aiohttp
