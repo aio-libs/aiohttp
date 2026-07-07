@@ -281,9 +281,7 @@ class FileResponse(StreamResponse):
             # client received in the original 200.
             assert self.last_modified is not None
             etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
-            return await self._not_modified(
-                request, etag_value, self.last_modified
-            )
+            return await self._not_modified(request, etag_value, self.last_modified)
 
         assert fobj is not None
         try:
