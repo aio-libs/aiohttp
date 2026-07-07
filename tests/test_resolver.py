@@ -5,7 +5,7 @@ import socket
 from collections.abc import Awaitable, Callable, Collection, Generator
 from ipaddress import ip_address
 from typing import Any, NamedTuple
-from unittest.mock import Mock, create_autospec, patch
+from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 
 import pytest
 
@@ -235,6 +235,44 @@ async def test_async_resolver_negative_lookup(loop: asyncio.AbstractEventLoop) -
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("aiohttp.resolver._IS_WINDOWS", True)
+    with patch("aiodns.DNSResolver") as mock:
+        mock().getaddrinfo.side_effect = [
+            aiodns.error.DNSError(1, "addrconfig failed"),
+            fake_aiodns_getaddrinfo_ipv4_result(["127.0.0.1"]),
+        ]
+        resolver = AsyncResolver()
+        try:
+            real = await resolver.resolve("localhost", family=socket.AF_UNSPEC)
+        finally:
+            await resolver.close()
+
+        assert real[0]["host"] == "127.0.0.1"
+        mock().getaddrinfo.assert_has_calls(
+            [
+                call(
+                    "localhost",
+                    family=socket.AF_UNSPEC,
+                    flags=socket.AI_ADDRCONFIG,
+                    port=0,
+                    type=socket.SOCK_STREAM,
+                ),
+                call(
+                    "localhost",
+                    family=socket.AF_UNSPEC,
+                    flags=0,
+                    port=0,
+                    type=socket.SOCK_STREAM,
+                ),
+            ]
+        )
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_no_hosts_in_getaddrinfo(
     loop: asyncio.AbstractEventLoop,
 ) -> None:
@@ -253,6 +291,68 @@ async def test_threaded_resolver_positive_lookup() -> None:
     real = await resolver.resolve("www.python.org")
     assert real[0]["hostname"] == "www.python.org"
     ipaddress.ip_address(real[0]["host"])
+
+
+async def test_threaded_resolver_retries_localhost_without_addrconfig_on_windows(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("aiohttp.resolver._IS_WINDOWS", True)
+    loop = Mock()
+    loop.getaddrinfo = AsyncMock(
+        side_effect=[
+            socket.gaierror(),
+            [(socket.AF_INET, None, socket.SOCK_STREAM, None, ("127.0.0.1", 0))],
+        ]
+    )
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+
+    real = await resolver.resolve("localhost", family=socket.AF_UNSPEC)
+
+    assert real[0]["host"] == "127.0.0.1"
+    loop.getaddrinfo.assert_has_calls(
+        [
+            call(
+                "localhost",
+                0,
+                type=socket.SOCK_STREAM,
+                family=socket.AF_UNSPEC,
+                flags=socket.AI_ADDRCONFIG,
+            ),
+            call(
+                "localhost",
+                0,
+                type=socket.SOCK_STREAM,
+                family=socket.AF_UNSPEC,
+                flags=0,
+            ),
+        ]
+    )
+
+
+@pytest.mark.parametrize(
+    ("host", "is_windows"),
+    (("localhost", False), ("www.python.org", True)),
+)
+async def test_threaded_resolver_keeps_addrconfig_without_localhost_windows_fallback(
+    host: str, is_windows: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr("aiohttp.resolver._IS_WINDOWS", is_windows)
+    loop = Mock()
+    loop.getaddrinfo = AsyncMock(side_effect=socket.gaierror())
+    resolver = ThreadedResolver()
+    resolver._loop = loop
+
+    with pytest.raises(socket.gaierror):
+        await resolver.resolve(host, family=socket.AF_UNSPEC)
+
+    loop.getaddrinfo.assert_called_once_with(
+        host,
+        0,
+        type=socket.SOCK_STREAM,
+        family=socket.AF_UNSPEC,
+        flags=socket.AI_ADDRCONFIG,
+    )
 
 
 async def test_threaded_resolver_positive_ipv6_link_local_lookup() -> None:

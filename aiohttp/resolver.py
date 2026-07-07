@@ -1,5 +1,6 @@
 import asyncio
 import socket
+import sys
 import weakref
 from typing import Any, Final, Optional
 
@@ -22,6 +23,11 @@ _NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
 _AI_ADDRCONFIG = socket.AI_ADDRCONFIG
 if hasattr(socket, "AI_MASK"):
     _AI_ADDRCONFIG &= socket.AI_MASK
+_IS_WINDOWS = sys.platform == "win32"
+
+
+def _is_windows_localhost(host: str) -> bool:
+    return _IS_WINDOWS and host.rstrip(".").casefold() == "localhost"
 
 
 class ThreadedResolver(AbstractResolver):
@@ -37,13 +43,24 @@ class ThreadedResolver(AbstractResolver):
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> list[ResolveResult]:
-        infos = await self._loop.getaddrinfo(
-            host,
-            port,
-            type=socket.SOCK_STREAM,
-            family=family,
-            flags=_AI_ADDRCONFIG,
-        )
+        try:
+            infos = await self._loop.getaddrinfo(
+                host,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=_AI_ADDRCONFIG,
+            )
+        except socket.gaierror:
+            if not _is_windows_localhost(host):
+                raise
+            infos = await self._loop.getaddrinfo(
+                host,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=0,
+            )
 
         hosts: list[ResolveResult] = []
         for family, _, proto, _, address in infos:
@@ -114,13 +131,24 @@ class AsyncResolver(AbstractResolver):
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> list[ResolveResult]:
         try:
-            resp = await self._resolver.getaddrinfo(
-                host,
-                port=port,
-                type=socket.SOCK_STREAM,
-                family=family,
-                flags=_AI_ADDRCONFIG,
-            )
+            try:
+                resp = await self._resolver.getaddrinfo(
+                    host,
+                    port=port,
+                    type=socket.SOCK_STREAM,
+                    family=family,
+                    flags=_AI_ADDRCONFIG,
+                )
+            except aiodns.error.DNSError:
+                if not _is_windows_localhost(host):
+                    raise
+                resp = await self._resolver.getaddrinfo(
+                    host,
+                    port=port,
+                    type=socket.SOCK_STREAM,
+                    family=family,
+                    flags=0,
+                )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
             raise OSError(None, msg) from exc
