@@ -154,9 +154,10 @@ def parse_content_disposition(
 
         else:
             failed = True
-            if is_quoted(value):
+            rstripped = value.rstrip()
+            if is_quoted(rstripped):
                 failed = False
-                value = unescape(value[1:-1].lstrip("\\/"))
+                value = unescape(rstripped[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
