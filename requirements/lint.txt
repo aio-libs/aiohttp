@@ -26,7 +26,7 @@ backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3
     # via -r requirements/lint.in
 blockbuster==1.5.26
     # via -r requirements/lint.in
-cffi==2.0.0
+cffi==2.1.0
     # via
     #   cryptography
     #   pycares

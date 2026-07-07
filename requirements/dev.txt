@@ -49,7 +49,7 @@ build==1.5.0
     # via pip-tools
 certifi==2026.6.17
     # via requests
-cffi==2.0.0
+cffi==2.1.0
     # via
     #   cryptography
     #   pycares

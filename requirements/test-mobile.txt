@@ -28,7 +28,7 @@ backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_v
     # via -r requirements/runtime-deps.in
 brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-cffi==2.0.0 ; sys_platform != "android" and sys_platform != "ios"
+cffi==2.1.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
