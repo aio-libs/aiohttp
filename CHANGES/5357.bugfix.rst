@@ -1,0 +1,3 @@
+Fixed resolving ``localhost`` on Windows to fall back without ``AI_ADDRCONFIG``
+when the first lookup fails, so ``localhost`` still works without an active
+network.
