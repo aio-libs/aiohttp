@@ -5534,6 +5534,62 @@ async def test_invalid_redirect_origin_closes_payload(
     ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
 
 
+async def test_request_body_closed_on_server_disconnect() -> None:
+    async def drop(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        # Slam the connection shut without sending a response.
+        writer.close()
+
+    server = await asyncio.start_server(drop, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    payload = MockedBytesPayload(b"x" * 1024)
+    try:
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientError):
+                await session.post(f"http://127.0.0.1:{port}/", data=payload)
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called after a mid-upload disconnect"
+
+
+async def test_request_body_closed_on_cancellation() -> None:
+    accepted = asyncio.Event()
+
+    async def stall(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        accepted.set()
+        try:
+            await reader.read()  # wait for client EOF; never respond
+        finally:
+            writer.close()
+
+    server = await asyncio.start_server(stall, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    payload = MockedBytesPayload(b"y" * 1024)
+    try:
+        async with aiohttp.ClientSession() as session:
+            task = asyncio.create_task(
+                session.post(f"http://127.0.0.1:{port}/", data=payload)
+            )
+            await accepted.wait()
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert payload.close_called, "Payload.close() was not called after cancellation"
+
+
+async def test_request_error_before_body_created_does_not_mask() -> None:
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(InvalidUrlClientError):
+            await session.get("http:///path")
+
+
 async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
     """Test real-world cookie scenario similar to Amazon."""
 
