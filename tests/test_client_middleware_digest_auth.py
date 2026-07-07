@@ -121,6 +121,18 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "", "nonce": "abc", "qop": "auth"},
         ),
+        # Multi-scheme header: a second challenge (Basic) in the same
+        # WWW-Authenticate value must not overwrite the Digest realm/nonce.
+        # https://www.rfc-editor.org/rfc/rfc7235#section-4.1
+        (
+            401,
+            {
+                "www-authenticate": 'Digest realm="protected", nonce="n1", '
+                'qop="auth", Basic realm="other"'
+            },
+            True,
+            {"realm": "protected", "nonce": "n1", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
@@ -469,6 +481,18 @@ async def test_digest_response_exact_match(
         ),
         # Empty header
         ("", {}),
+        # Multi-scheme header: parsing stops at the next auth-scheme so a later
+        # challenge cannot overwrite the first's values.
+        # https://www.rfc-editor.org/rfc/rfc7235#section-4.1
+        (
+            'realm="protected", nonce="n1", qop="auth", Basic realm="other"',
+            {"realm": "protected", "nonce": "n1", "qop": "auth"},
+        ),
+        # Multi-scheme header including the leading scheme token
+        (
+            'Digest realm="protected", nonce="n1", Basic realm="other"',
+            {"realm": "protected", "nonce": "n1"},
+        ),
     ],
     ids=[
         "fully_quoted_header",
@@ -480,6 +504,8 @@ async def test_digest_response_exact_match(
         "escaped_quotes",
         "single_quotes_as_regular_chars",
         "empty_header",
+        "multi_scheme_second_challenge_ignored",
+        "multi_scheme_with_leading_scheme",
     ],
 )
 def test_parse_header_pairs(header: str, expected_result: dict[str, str]) -> None:
@@ -1631,5 +1657,6 @@ def test_regex_performance() -> None:
         f"Regex took {elapsed * 1000:.1f}ms, "
         f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
-    # This example shouldn't produce a match either.
-    assert not matches
+    # The lone run of word characters matches as a bare auth-scheme token
+    # with empty value groups, so it never becomes a key=value pair.
+    assert all(not quoted and not unquoted for _, quoted, unquoted in matches)
