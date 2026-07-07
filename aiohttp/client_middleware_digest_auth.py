@@ -445,21 +445,23 @@ class DigestAuthMiddleware:
 
         # Update protection space based on domain parameter or default to origin
         origin = response.url.origin()
+        self._protection_space = []
 
         if domain := self._challenge.get("domain"):
             # Parse space-separated list of URIs
-            self._protection_space = []
             for uri in domain.split():
                 # Remove quotes if present
                 uri = uri.strip('"')
+                if not uri:
+                    continue
                 if uri.startswith("/"):
                     # Path-absolute, relative to origin
                     self._protection_space.append(str(origin.join(URL(uri))))
                 else:
                     # Absolute URI
                     self._protection_space.append(str(URL(uri)))
-        else:
-            # No domain specified, protection space is entire origin
+
+        if not self._protection_space:
             self._protection_space = [str(origin)]
 
         # Return True only if we found at least one challenge parameter
