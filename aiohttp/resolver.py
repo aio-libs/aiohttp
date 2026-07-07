@@ -1,7 +1,8 @@
 import asyncio
 import socket
+import sys
 import weakref
-from typing import Any, Optional
+from typing import Any, Final, Optional
 
 from .abc import AbstractResolver, ResolveResult
 
@@ -12,7 +13,7 @@ try:
     import aiodns
 
     aiodns_default = hasattr(aiodns.DNSResolver, "getaddrinfo")
-except ImportError:
+except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     aiodns_default = False
 
@@ -22,6 +23,11 @@ _NAME_SOCKET_FLAGS = socket.NI_NUMERICHOST | socket.NI_NUMERICSERV
 _AI_ADDRCONFIG = socket.AI_ADDRCONFIG
 if hasattr(socket, "AI_MASK"):
     _AI_ADDRCONFIG &= socket.AI_MASK
+_IS_WINDOWS = sys.platform == "win32"
+
+
+def _is_windows_localhost(host: str) -> bool:
+    return _IS_WINDOWS and host.rstrip(".").casefold() == "localhost"
 
 
 class ThreadedResolver(AbstractResolver):
@@ -31,19 +37,30 @@ class ThreadedResolver(AbstractResolver):
     concurrent.futures.ThreadPoolExecutor is used by default.
     """
 
-    def __init__(self) -> None:
-        self._loop = asyncio.get_running_loop()
+    def __init__(self, loop: asyncio.AbstractEventLoop | None = None) -> None:
+        self._loop = loop or asyncio.get_running_loop()
 
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> list[ResolveResult]:
-        infos = await self._loop.getaddrinfo(
-            host,
-            port,
-            type=socket.SOCK_STREAM,
-            family=family,
-            flags=_AI_ADDRCONFIG,
-        )
+        try:
+            infos = await self._loop.getaddrinfo(
+                host,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=_AI_ADDRCONFIG,
+            )
+        except socket.gaierror:
+            if not _is_windows_localhost(host):
+                raise
+            infos = await self._loop.getaddrinfo(
+                host,
+                port,
+                type=socket.SOCK_STREAM,
+                family=family,
+                flags=0,
+            )
 
         hosts: list[ResolveResult] = []
         for family, _, proto, _, address in infos:
@@ -85,11 +102,16 @@ class ThreadedResolver(AbstractResolver):
 class AsyncResolver(AbstractResolver):
     """Use the `aiodns` package to make asynchronous DNS lookups"""
 
-    def __init__(self, *args: Any, **kwargs: Any) -> None:
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop | None = None,
+        *args: Any,
+        **kwargs: Any,
+    ) -> None:
         if aiodns is None:
             raise RuntimeError("Resolver requires aiodns library")
 
-        self._loop = asyncio.get_running_loop()
+        self._loop = loop or asyncio.get_running_loop()
         self._manager: _DNSResolverManager | None = None
         # If custom args are provided, create a dedicated resolver instance
         # This means each AsyncResolver with custom args gets its own
@@ -101,17 +123,32 @@ class AsyncResolver(AbstractResolver):
         self._manager = _DNSResolverManager()
         self._resolver = self._manager.get_resolver(self, self._loop)
 
+        if not hasattr(self._resolver, "gethostbyname"):
+            # aiodns 1.1 is not available, fallback to DNSResolver.query
+            self.resolve = self._resolve_with_query  # type: ignore
+
     async def resolve(
         self, host: str, port: int = 0, family: socket.AddressFamily = socket.AF_INET
     ) -> list[ResolveResult]:
         try:
-            resp = await self._resolver.getaddrinfo(
-                host,
-                port=port,
-                type=socket.SOCK_STREAM,
-                family=family,
-                flags=_AI_ADDRCONFIG,
-            )
+            try:
+                resp = await self._resolver.getaddrinfo(
+                    host,
+                    port=port,
+                    type=socket.SOCK_STREAM,
+                    family=family,
+                    flags=_AI_ADDRCONFIG,
+                )
+            except aiodns.error.DNSError:
+                if not _is_windows_localhost(host):
+                    raise
+                resp = await self._resolver.getaddrinfo(
+                    host,
+                    port=port,
+                    type=socket.SOCK_STREAM,
+                    family=family,
+                    flags=0,
+                )
         except aiodns.error.DNSError as exc:
             msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
             raise OSError(None, msg) from exc
@@ -144,6 +181,35 @@ class AsyncResolver(AbstractResolver):
                     proto=0,
                     flags=_NUMERIC_SOCKET_FLAGS,
                 )
+            )
+
+        if not hosts:
+            raise OSError(None, "DNS lookup failed")
+
+        return hosts
+
+    async def _resolve_with_query(
+        self, host: str, port: int = 0, family: int = socket.AF_INET
+    ) -> list[dict[str, Any]]:
+        qtype: Final = "AAAA" if family == socket.AF_INET6 else "A"
+
+        try:
+            resp = await self._resolver.query(host, qtype)
+        except aiodns.error.DNSError as exc:
+            msg = exc.args[1] if len(exc.args) >= 1 else "DNS lookup failed"
+            raise OSError(None, msg) from exc
+
+        hosts = []
+        for rr in resp:
+            hosts.append(
+                {
+                    "hostname": host,
+                    "host": rr.host,
+                    "port": port,
+                    "family": family,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
             )
 
         if not hosts:
