@@ -453,7 +453,7 @@ async def test_normalize_path_redirects_method_not_allowed(
     # method), so normalize_path_middleware should still try alternate paths:
     # POST /foo has no POST route, but POST /foo/ does.
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application(middlewares=[web.normalize_path_middleware()])
     app.router.add_get("/foo", handler)
