@@ -10,7 +10,7 @@ ast-serialize==0.6.0
     # via mypy
 blockbuster==1.5.26
     # via -r requirements/test-common.in
-cffi==2.0.0
+cffi==2.1.0
     # via cryptography
 click==8.4.2
     # via wait-for-it

@@ -24,7 +24,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-cffi==2.0.0
+cffi==2.1.0
     # via
     #   cryptography
     #   pycares
