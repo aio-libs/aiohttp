@@ -1,0 +1,7 @@
+Fixed :py:attr:`~aiohttp.web.StreamResponse.last_modified` to round a fractional
+Unix timestamp towards negative infinity when setting it from a ``float`` or
+``int``, matching the behavior of the ``datetime`` branch (which uses
+``utctimetuple`` and discards the microsecond component). The previous
+implementation used :func:`math.ceil`, which produced a different second than
+the equivalent :class:`~datetime.datetime` with the same value --
+by :user:`HrachShah`.

@@ -294,6 +294,26 @@ def test_last_modified_timestamp() -> None:
     assert resp.last_modified == dt
 
 
+def test_last_modified_timestamp_fractional_truncates() -> None:
+    """A fractional Unix timestamp must round towards -infinity, matching
+    the datetime branch (which uses ``utctimetuple`` and discards
+    microseconds). The previous ``math.ceil`` implementation rounded up
+    and produced a different second than the equivalent ``datetime``.
+    """
+    resp = web.StreamResponse()
+
+    ts = 1606895462.4
+    expected_dt = datetime.datetime(
+        2020, 12, 2, 7, 51, 2, 0, datetime.timezone.utc
+    )
+
+    resp.last_modified = ts
+    assert resp.last_modified == expected_dt
+    assert resp.last_modified == datetime.datetime.fromtimestamp(
+        ts, tz=datetime.timezone.utc
+    ).replace(microsecond=0)
+
+
 def test_last_modified_datetime() -> None:
     resp = web.StreamResponse()
 
