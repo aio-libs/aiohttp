@@ -303,9 +303,7 @@ def test_last_modified_timestamp_fractional_truncates() -> None:
     resp = web.StreamResponse()
 
     ts = 1606895462.4
-    expected_dt = datetime.datetime(
-        2020, 12, 2, 7, 51, 2, 0, datetime.timezone.utc
-    )
+    expected_dt = datetime.datetime(2020, 12, 2, 7, 51, 2, 0, datetime.timezone.utc)
 
     resp.last_modified = ts
     assert resp.last_modified == expected_dt
