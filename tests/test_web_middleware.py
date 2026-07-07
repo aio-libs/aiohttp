@@ -446,6 +446,25 @@ async def test_normalize_path_skips_parser_error(
     assert head.startswith(b"HTTP/1.0 400 ")
 
 
+async def test_normalize_path_redirects_method_not_allowed(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    # A 405 is a routing failure (the path matched a resource, but not for this
+    # method), so normalize_path_middleware should still try alternate paths:
+    # POST /foo has no POST route, but POST /foo/ does.
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application(middlewares=[web.normalize_path_middleware()])
+    app.router.add_get("/foo", handler)
+    app.router.add_post("/foo/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.post("/foo", allow_redirects=False)
+    assert resp.status == 308
+    assert resp.headers["Location"] == "/foo/"
+
+
 async def test_bug_3669(aiohttp_client: AiohttpClient) -> None:
     async def paymethod(request: web.Request) -> NoReturn:
         assert False
