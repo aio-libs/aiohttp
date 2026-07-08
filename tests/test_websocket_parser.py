@@ -307,7 +307,7 @@ def test_close_frame_invalid_2(
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
-@pytest.mark.parametrize("code", [5000, 9999, 65535])
+@pytest.mark.parametrize("code", (5000, 9999, 65535))
 def test_close_frame_invalid_code_above_range(
     parser: PatchableWebSocketReader, code: int
 ) -> None:
