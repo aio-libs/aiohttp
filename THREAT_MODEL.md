@@ -774,21 +774,19 @@ backend selection, async offload) and (b) cross-backend quirk handling.
 - **GHSA-6mq8-rvhq-8wgg (CVE-2025-69223)** (3.13.3)
   — decompression DoS hardening. `DeflateBuffer.feed_data` calls the
   underlying decompressor with a strict per-call `max_length` (initial
-  cap `DEFAULT_MAX_DECOMPRESS_SIZE = 2**25`, i.e. 32 MiB per
-  `decompress()` call) and applies a post-decompress size check;
-  `feed_eof` asserts that `flush()` produces no residual bytes. This
-  is the primary mitigation for zip-bomb attacks against the HTTP
+  cap 32 MiB per `decompress()` call) and applies a post-decompress size
+  check; `feed_eof` asserts that `flush()` produces no residual bytes.
+  This is the primary mitigation for zip-bomb attacks against the HTTP
   body, multipart, and WebSocket auto-decompress paths, and
   cross-cuts every chunk that uses compression ([§5.3](#53-websocket-framing--per-message-deflate), [§5.4](#54-multipart-parsing--encoding), [§5.6](#56-streams--payloads), [§5.9](#59-server-requestresponse-objects), [§5.12](#512-client-api--request-lifecycle)).
 - **PR #11966** (3.14.0) — follow-up refinement on top of previous fix:
   valid but highly-compressed payloads that expanded past 32 MiB in
   a single `decompress()` call were being rejected outright by the
   initial fix, breaking legitimate traffic. #11966 tightens the
-  per-call cap from 32 MiB to 256 KiB (`DEFAULT_MAX_DECOMPRESS_SIZE`,
-  matching the asyncio socket receive buffer) but wraps the
-  decompress in a loop, so a valid stream is reassembled from many
-  256 KiB chunks rather than rejected. Also codifies the
-  isal-specific "no further data" workaround in
+  per-call cap from 32 MiB to 256 KiB (matching the asyncio socket
+  receive buffer) but wraps the decompress in a loop, so a valid stream
+  is reassembled from many 256 KiB chunks rather than rejected. Also
+  codifies the isal-specific "no further data" workaround in
   `ZLibDecompressor.decompress_sync`.
 - **GHSA-g3cq-j2xw-wf74 (CVE-2026-54278)** (3.14.1) — when a
   handler did not consume the request body, the connection-cleanup path
