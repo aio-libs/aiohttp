@@ -1,0 +1,6 @@
+Fixed ``BaseRequest.text()`` and ``BaseRequest.post()`` (the
+``application/x-www-form-urlencoded`` branch) to raise
+``HTTPUnsupportedMediaType`` (HTTP 415) when the request body is not valid
+for the declared charset, instead of leaking a bare ``UnicodeDecodeError``.
+A missing-charset body with invalid UTF-8 bytes was previously a 500.
+-- by :user:`HrachShah`.

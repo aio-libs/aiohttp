@@ -930,6 +930,53 @@ async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) 
     assert err.value.status_code == 415
 
 
+async def test_request_text_raises_415_for_invalid_utf8_bytes(
+    protocol: BaseProtocol,
+) -> None:
+    """A body that is not valid for the declared charset must surface as 415.
+
+    Regression for #13099: ``BaseRequest.text()`` and ``BaseRequest.post()``
+    only caught ``LookupError`` (the unknown-charset case from #3562) and let
+    ``UnicodeDecodeError`` (bytes that fail the declared codec) bubble out
+    as a bare 500. Both cases describe the same underlying problem - the
+    client sent a body that the server cannot interpret as text - and
+    should both surface as ``HTTPUnsupportedMediaType``.
+    """
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    # 0xFF is not a valid start byte in UTF-8.
+    payload.feed_data(b"\xff\xfe\xfd")
+    payload.feed_eof()
+    req = make_mocked_request("POST", "/", payload=payload)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
+
+
+async def test_request_post_urlencoded_raises_415_for_invalid_utf8_bytes(
+    protocol: BaseProtocol,
+) -> None:
+    """The urlencoded branch of ``post()`` must mirror the ``text()`` fix.
+
+    Same shape as :func:`test_request_text_raises_415_for_invalid_utf8_bytes`
+    but exercising the ``parse_qsl`` path so the body is not consumed before
+    the decode fails.
+    """
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(b"a=1&b=\xff")
+    payload.feed_eof()
+    headers = {"Content-Type": "application/x-www-form-urlencoded"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.post()
+    assert err.value.status_code == 415
+
+
 async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
