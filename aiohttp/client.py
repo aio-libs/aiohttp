@@ -251,8 +251,14 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     resp = None
     started = False
 
-    if alpn_protocol == "h2" and not connector._conns[conn._key]:
-        connector._conns[conn._key] = deque([(conn.protocol, time.monotonic())])
+    if alpn_protocol == "h2":
+        # release immediately to allow reuse
+        connector._release(conn._key, conn._protocol, should_close=False)
+        # the protocol corresponding to the connection
+        # remains (i.e., the count per host is always 1 for h2)
+        # This is the number of TCP connections not the number of
+        # streams
+        connector._acquired.add(conn._protocol)
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
@@ -264,7 +270,9 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
                 body,
             )
 
-            # we are done with the connection
+            # release again to clear the protocol from _acquired if required
+            connector._release(conn._key, conn._protocol, should_close=False)
+            # we still have to null the protocol since we didn't close the connection
             conn._protocol = None
         else:
             conn.protocol.set_response_params(**req._response_params)
