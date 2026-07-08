@@ -697,3 +697,110 @@ boundary at which user-supplied strings can become wire bytes.
   the main request parser's strictness per RFC 9110 §8.6.
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.5. Compression codecs
+
+**Scope.** The compression abstractions used across the library:
+`ZLibCompressor` / `ZLibDecompressor` for gzip / deflate, and the
+optional brotli and zstd decompressors. Out of scope: per-caller usage
+specifics (PMCE in [§5.3](#53-websocket-framing--per-message-deflate), multipart per-part Content-Encoding in [§5.4](#54-multipart-parsing--encoding),
+HTTP body decompression in [§5.6](#56-streams--payloads) / [§5.9](#59-server-requestresponse-objects) / [§5.12](#512-client-api--request-lifecycle)). This section focuses
+on what the *codec wrapper itself* guarantees and where its sharp edges
+are.
+
+**Components covered.**
+
+- `aiohttp/compression_utils.py` — `ZLibBackend`, `ZLibBackendWrapper`,
+  `ZLibCompressor`, `ZLibDecompressor`, `BrotliDecompressor`,
+  `ZSTDDecompressor`, `set_zlib_backend`.
+- Callers (referenced for trust-boundary discussion):
+  `aiohttp/http_parser.py` (`DeflateBuffer`, `HttpPayloadParser`),
+  `aiohttp/_websocket/reader_py.py` (PMCE inflate),
+  `aiohttp/_websocket/writer.py` (PMCE deflate),
+  `aiohttp/multipart.py` (per-part decompression),
+  `aiohttp/web_response.py` (response compression).
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted compressed bytes]) --> Decomp[ZLibDecompressor / BrotliDecompressor / ZSTDDecompressor]
+  Decomp -->|max_length-bounded chunk| App([Caller buffer])
+  AppSrc([Caller body]) --> Comp[ZLibCompressor]
+  Comp -->|wire bytes| WireOut([Outbound])
+```
+
+The decompressors take attacker-controlled compressed input on the server
+ingress and client response paths. The compressors take in-process
+caller bodies and emit wire bytes. The wrappers themselves are thin
+adapters around the underlying libraries (`zlib` / `brotli` /
+`zstandard`); their job is (a) policy uniformity (`max_length`,
+backend selection, async offload) and (b) cross-backend quirk handling.
+
+**Assets at risk (chunk-specific).**
+
+- **Memory boundedness of decompression** — a small compressed input
+  cannot expand to an unbounded output buffer.
+- **Compressor state integrity** — async cancellation cannot leave the
+  compressor in a state that produces invalid wire bytes downstream.
+- **Backend equivalence** — swapping `zlib` for `isal_zlib` (or another
+  ZLibBackendProtocol implementation) does not silently weaken any of
+  the above guarantees.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb (gzip / deflate / brotli / zstd) | D | A small compressed input can decompress to a large output buffer if the per-call `max_length` is not enforced or the per-stream cap is not applied across calls. | High |
+| 5.2 | `DeflateBuffer.feed_data` cap formula | D | `max_length = max(self._max_decompress_size, low_water)` (`http_parser.py:DeflateBuffer.feed_data`) means an application that sets a high StreamReader low-water mark *raises* the per-call decompress cap above the parser's intended bound. `low_water` is application-controlled, not attacker-controlled. | Low |
+| 5.3 | Backend swap (`set_zlib_backend`) | T | Setting an alternative backend (e.g. `isal_zlib`) at module load can subtly change `max_length` semantics. aiohttp has worked around isal's "no further data" detection (`compression_utils.py:ZLibDecompressor.decompress_sync`); other backends would need similar handling. | Low–Med |
+| 5.4 | Async offload of compression | D / R | Compression of payloads ≥ 4096 bytes is offloaded to the default executor (`compression_utils.py:ZLibDecompressor.decompress`); blocking compression of a huge body could starve the executor pool. | Low |
+| 5.5 | Cancellation mid-`compress()` | T | If a compression awaitable is cancelled, the compressor's internal state is corrupted and subsequent calls will produce invalid output. Caller must serialise compress calls under a lock or close the connection. | Medium |
+| 5.6 | gzip CRC / size mismatch | T | Truncated streams and CRC failures are detected by the underlying library and surface as `ContentEncodingError`; trailing garbage *after* a valid gzip checksum is not flagged (zlib stops at the checksum). | Low |
+| 5.7 | Optional backends not installed | I | If `brotli` / `brotlicffi` / `zstandard` is not installed, `Accept-Encoding` advertises only the available codecs; the decompressor would not be reachable. Not a confidentiality issue but worth documenting. | Low |
+| 5.8 | Error message disclosure | I | `ContentEncodingError("Can not decode content-encoding: %s" % self.encoding)` only reveals the user-supplied encoding name, no internal state. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb | All decompressors accept a `max_length` parameter and refuse to produce more than that many bytes per call. Per-stream caps are applied by callers (`HttpPayloadParser` in [§5.6](#56-streams--payloads), `BodyPartReader` in [§5.4](#54-multipart-parsing--encoding), `WebSocketReader` in [§5.3](#53-websocket-framing--per-message-deflate)), each with their own bound (default `DEFAULT_CHUNK_SIZE = 256 KiB`, `helpers.py:COOKIE_MAX_LENGTH`). The early-2026 hardening (PR #11966 / #12299) raised the chunk size from 64 KiB to 256 KiB and reworked the loop to call `decompress()` with a strict `max_length` per chunk, so a runaway decompressor terminates within one chunk's worth of output (`compression_utils.py:ZLibDecompressor.decompress_sync`). The acknowledged caveat: some backends (notably `isal_zlib`) can overshoot `max_length` by a single zlib block before the next call rejects further data. | Maintain regression tests for both backends. The post-decompress per-stream cap (caller-side) is the load-bearing defence; codec-level `max_length` is best-effort. |
+| 5.2 | `max_length` formula in `DeflateBuffer` | Documented design decision: `max(max_decompress_size, low_water)` is intentional so that decompression produces enough output to satisfy a StreamReader whose low-water mark exceeds the codec cap, avoiding a stall. Because `low_water` is application-controlled, the formula is not attacker-reachable. | Document the sharp edge: an application that ratchets up `low_water` (e.g. for throughput tuning) effectively also ratchets up the per-decompress-call output budget. No code change. |
+| 5.3 | Backend swap | `ZLibBackendWrapper.data_available` and the `_last_empty` flag work around isal's lack of "no further data" detection. The wrapper's signatures (`ZLibCompressObjProtocol` / `ZLibDecompressObjProtocol` in `compression_utils.py`) define the protocol any alternative backend must satisfy. | If a third backend is added, gate it on the same parity tests used for stdlib `zlib` and `isal_zlib`. Consider documenting the `ZLibBackendProtocol` contract more loudly. |
+| 5.4 | Async offload starvation | The 4096-byte threshold (`compression_utils.py:ZLibDecompressor.decompress`) is a heuristic designed to amortise the executor-submit cost. Default-executor saturation is mitigated by the small per-task work item. | Document the threshold. **User**: operators with many concurrent large-body compressions may need to tune `loop.set_default_executor`. |
+| 5.5 | Cancellation hazard | Comments in `compress()` (`compression_utils.py:ZLibCompressor.compress`) note that cancelling mid-call corrupts compressor state. Callers serialise via the connection-level write lock or by ensuring compress is not concurrent with itself. | Document explicitly: any aiohttp-internal call site that can be cancelled mid-compress must close the connection on cancellation. Audit call sites for compliance. |
+| 5.6 | CRC / trailing garbage | zlib raises on CRC mismatch; aiohttp surfaces as `ContentEncodingError`. Trailing garbage after a valid gzip checksum is silently dropped — same behaviour as upstream `zlib`. | **User**: do not rely on aiohttp to flag trailing data after a valid gzip checksum. |
+| 5.7 | Optional codec missing | `HAS_BROTLI`, `HAS_ZSTD` flags gate the optional codecs. Server-side Accept-Encoding negotiation only offers what's installed. | None. |
+| 5.8 | Error disclosure | Generic message; no internal state. | None. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-6mq8-rvhq-8wgg** (PR #11966 / #12299, early 2026) — decompression DoS hardening for HTTP-body and WebSocket auto-decompress paths:
+  - Raised `DEFAULT_CHUNK_SIZE` from 64 KiB to 256 KiB
+    (`helpers.py:COOKIE_MAX_LENGTH`).
+  - Reworked `DeflateBuffer.feed_data` to call the underlying
+    decompressor with a strict per-chunk `max_length`
+    (`http_parser.py:DeflateBuffer.feed_data`).
+  - Ensured `feed_eof` does not lazily produce a flood of decompressed
+    bytes (`http_parser.py:DeflateBuffer.feed_eof` — assert that `flush()` returns
+    no data, with a comment calling out the zip-bomb rationale).
+  - Worked around `isal_zlib`'s "no further data" detection quirk
+    (`compression_utils.py:ZLibDecompressor.decompress_sync`).
+
+These cross-cut every chunk that uses compression ([§5.3](#53-websocket-framing--per-message-deflate), [§5.4](#54-multipart-parsing--encoding), [§5.6](#56-streams--payloads),
+[§5.9](#59-server-requestresponse-objects), [§5.12](#512-client-api--request-lifecycle)); this is the single pass that hardened them all together.
+
+- **GHSA-g3cq-j2xw-wf74 (CVE-2026-54278)** (3.14.1, Jun 2026) — when a
+  handler did not consume the request body, the connection-cleanup path
+  decompressed the entire compressed body into memory in a single
+  one-shot call, bypassing the `client_max_size` cap that normally
+  fires during streaming `Request.read()`. A small compressed body could
+  expand to a large in-memory buffer before any cap took effect.
+
+**Open questions.**
+
+1. Is the cancellation hazard on `ZLibCompressor.compress()` (threat 5.5)
+   adequately covered by the existing connection-write-lock pattern at
+   every call site, or is there an unaudited path?
