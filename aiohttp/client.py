@@ -208,7 +208,7 @@ class _WSConnectOptions(TypedDict, total=False):
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    ssl: SSLContext | bool | Fingerprint | _SENTINEL
+    ssl: SSLContext | bool | Fingerprint
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
