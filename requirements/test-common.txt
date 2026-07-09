@@ -50,7 +50,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
-librt==0.12.0
+librt==0.13.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich

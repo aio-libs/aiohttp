@@ -12,6 +12,7 @@ from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .typedefs import PathLike
 from .web_app import Application
+from .web_exceptions import HTTPBadRequest
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest, Request
@@ -481,6 +482,7 @@ class AppRunner(BaseRunner[Request]):
         protocol: RequestHandler[Request],
         writer: AbstractStreamWriter,
         task: "asyncio.Task[None]",
+        pre_handler_error: HTTPBadRequest | None,
         _cls: type[Request] = Request,
     ) -> Request:
         loop = asyncio.get_running_loop()
@@ -492,6 +494,7 @@ class AppRunner(BaseRunner[Request]):
             task,
             loop,
             client_max_size=self.app._client_max_size,
+            pre_handler_error=pre_handler_error,
         )
 
     async def _cleanup_server(self) -> None:

@@ -121,6 +121,18 @@ def mock_md5_digest() -> Generator[mock.MagicMock, None, None]:
             True,
             {"realm": "", "nonce": "abc", "qop": "auth"},
         ),
+        # Multi-scheme header: a second challenge (Basic) in the same
+        # WWW-Authenticate value must not overwrite the Digest realm/nonce.
+        # https://www.rfc-editor.org/rfc/rfc7235#section-4.1
+        (
+            401,
+            {
+                "www-authenticate": 'Digest realm="protected", nonce="n1", '
+                'qop="auth", Basic realm="other"'
+            },
+            True,
+            {"realm": "protected", "nonce": "n1", "qop": "auth"},
+        ),
         # Non-401 status
         (200, {}, False, {}),  # No challenge should be set
     ],
@@ -469,6 +481,18 @@ async def test_digest_response_exact_match(
         ),
         # Empty header
         ("", {}),
+        # Multi-scheme header: parsing stops at the next auth-scheme so a later
+        # challenge cannot overwrite the first's values.
+        # https://www.rfc-editor.org/rfc/rfc7235#section-4.1
+        (
+            'realm="protected", nonce="n1", qop="auth", Basic realm="other"',
+            {"realm": "protected", "nonce": "n1", "qop": "auth"},
+        ),
+        # Multi-scheme header including the leading scheme token
+        (
+            'Digest realm="protected", nonce="n1", Basic realm="other"',
+            {"realm": "protected", "nonce": "n1"},
+        ),
     ],
     ids=[
         "fully_quoted_header",
@@ -480,6 +504,8 @@ async def test_digest_response_exact_match(
         "escaped_quotes",
         "single_quotes_as_regular_chars",
         "empty_header",
+        "multi_scheme_second_challenge_ignored",
+        "multi_scheme_with_leading_scheme",
     ],
 )
 def test_parse_header_pairs(header: str, expected_result: dict[str, str]) -> None:
@@ -1497,6 +1523,74 @@ def test_in_protection_space_multiple_spaces(
     assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is False
 
 
+@pytest.mark.parametrize(
+    "domain_value",
+    (r'"\""', '"'),
+    ids=("quoted_escaped_quote", "bare_quote"),
+)
+def test_authenticate_domain_only_quote_does_not_poison_protection_space(
+    digest_auth_mw: DigestAuthMiddleware,
+    domain_value: str,
+) -> None:
+    response = mock.create_autospec(ClientResponse, spec_set=True, instance=True)
+    response.status = 401
+    response.url = URL("http://example.com/resource")
+    response.headers = {
+        "www-authenticate": f'Digest realm="test", nonce="abc", domain={domain_value}'
+    }
+
+    assert digest_auth_mw._authenticate(response) is True
+    assert digest_auth_mw._challenge["domain"] == '"'
+    assert digest_auth_mw._protection_space == ["http://example.com"]
+    assert "" not in digest_auth_mw._protection_space
+    # Must not raise IndexError and must still scope to the anchor origin.
+    assert digest_auth_mw._in_protection_space(URL("http://example.com/other")) is True
+    assert digest_auth_mw._in_protection_space(URL("http://other.com/x")) is False
+
+
+async def test_double_quote_domain_does_not_break_future_requests(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """End-to-end regression for a ``domain`` directive of just a double quote.
+
+    The first request triggers the challenge and authenticates on retry. Before
+    the fix, the bogus ``domain`` left an empty string in the protection space,
+    so the next request's preemptive-auth check raised ``IndexError``.
+    """
+    digest_auth_mw = DigestAuthMiddleware("user", "pass", preemptive=True)
+    auth_headers: list[str | None] = []
+
+    async def handler(request: Request) -> Response:
+        auth_headers.append(request.headers.get(hdrs.AUTHORIZATION))
+        if request.headers.get(hdrs.AUTHORIZATION) is None:
+            challenge = (
+                'Digest realm="test", nonce="abc123", qop="auth", '
+                'algorithm=MD5, domain="\\""'
+            )
+            return Response(
+                status=401,
+                headers={"WWW-Authenticate": challenge},
+                text="Unauthorized",
+            )
+        return Response(text="OK")
+
+    app = Application()
+    app.router.add_get("/path1", handler)
+    app.router.add_get("/path2", handler)
+    server = await aiohttp_server(app)
+
+    async with ClientSession(middlewares=(digest_auth_mw,)) as session:
+        async with session.get(server.make_url("/path1")) as resp:
+            assert resp.status == 200
+        # Previously raised IndexError inside the preemptive-auth check.
+        async with session.get(server.make_url("/path2")) as resp:
+            assert resp.status == 200
+
+    assert auth_headers[0] is None  # First request: no auth, gets challenge
+    assert auth_headers[1] is not None  # Retry carries the digest response
+    assert auth_headers[2] is not None  # Second request: preemptive auth
+
+
 async def test_case_sensitive_algorithm_server(
     aiohttp_server: AiohttpServer,
 ) -> None:
@@ -1563,5 +1657,6 @@ def test_regex_performance() -> None:
         f"Regex took {elapsed * 1000:.1f}ms, "
         f"expected <{REGEX_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
     )
-    # This example shouldn't produce a match either.
-    assert not matches
+    # The lone run of word characters matches as a bare auth-scheme token
+    # with empty value groups, so it never becomes a key=value pair.
+    assert all(not quoted and not unquoted for _, quoted, unquoted in matches)

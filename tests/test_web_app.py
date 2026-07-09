@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import sys
 from collections.abc import AsyncIterator, Callable, Iterator
 from contextlib import asynccontextmanager
@@ -6,9 +7,10 @@ from typing import NoReturn
 from unittest import mock
 
 import pytest
-from pytest_aiohttp import AiohttpClient
+from pytest_aiohttp import AiohttpClient, AiohttpServer
 
-from aiohttp import log, web
+from aiohttp import hdrs, log, web
+from aiohttp.http_exceptions import HttpProcessingError
 from aiohttp.typedefs import Handler
 
 
@@ -649,3 +651,160 @@ def test_forbid_changing_frozen_app() -> None:
 def test_app_boolean() -> None:
     app = web.Application()
     assert app
+
+
+async def _read_response(
+    reader: asyncio.StreamReader,
+) -> tuple[bytes, dict[str, str], bytes]:
+    head = b""
+    while b"\r\n\r\n" not in head:
+        chunk = await reader.read(4096)
+        assert chunk, "connection closed before headers complete"
+        head += chunk
+    header_block, _, body = head.partition(b"\r\n\r\n")
+    status_line, *header_lines = header_block.split(b"\r\n")
+    headers = {}
+    for line in header_lines:
+        name, _, value = line.partition(b":")
+        headers[name.decode().strip().lower()] = value.decode().strip()
+    return status_line, headers, body
+
+
+@asynccontextmanager
+async def _raw_request(
+    host: str, port: int, payload: bytes
+) -> AsyncIterator[asyncio.StreamReader]:
+    reader, writer = await asyncio.open_connection(host, port)
+    try:
+        writer.write(payload)
+        await writer.drain()
+        yield reader
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+async def test_parser_error_passes_through_middleware(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def server_header(
+        request: web.Request, handler: Handler
+    ) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPException as exc:
+            exc.headers[hdrs.SERVER] = "custom"
+            raise
+
+    app = web.Application(middlewares=[server_header])
+    server = await aiohttp_server(app)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        status_line, headers, _ = await _read_response(reader)
+        assert await reader.read() == b""
+
+    assert status_line.startswith(b"HTTP/1.0 400 ")
+    assert headers["server"] == "custom"
+
+
+async def test_parser_error_middleware_can_catch(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    captured: list[BaseException | None] = []
+
+    async def catcher(request: web.Request, handler: Handler) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPBadRequest as exc:
+            captured.append(exc.__cause__)
+            return web.Response(status=418, text="teapot")
+
+    app = web.Application(middlewares=[catcher])
+    server = await aiohttp_server(app)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        status_line, _, body = await _read_response(reader)
+        body += await reader.read()
+
+    assert status_line.startswith(b"HTTP/1.0 418 ")
+    assert body.endswith(b"teapot")
+    assert len(captured) == 1
+    assert isinstance(captured[0], HttpProcessingError)
+
+
+async def test_parser_error_match_info_exposes_http_exception(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    seen: list[web.HTTPException | None] = []
+
+    async def inspector(request: web.Request, handler: Handler) -> web.StreamResponse:
+        seen.append(request.match_info.http_exception)
+        return await handler(request)
+
+    app = web.Application(middlewares=[inspector])
+    server = await aiohttp_server(app)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        await _read_response(reader)
+
+    assert len(seen) == 1
+    assert isinstance(seen[0], web.HTTPBadRequest)
+
+
+async def test_parser_error_middleware_suppresses_log(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def swallow(request: web.Request, handler: Handler) -> web.StreamResponse:
+        try:
+            return await handler(request)
+        except web.HTTPBadRequest:
+            return web.Response(status=204)
+
+    logger = mock.create_autospec(logging.Logger, spec_set=True, instance=True)
+    app = web.Application(middlewares=[swallow])
+    server = await aiohttp_server(app, logger=logger)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        status_line, _, _ = await _read_response(reader)
+
+    assert status_line.startswith(b"HTTP/1.0 204 ")
+    logger.exception.assert_not_called()
+    logger.debug.assert_not_called()
+    logger.warning.assert_not_called()
+
+
+async def test_parser_error_propagated_is_logged(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    logger = mock.create_autospec(logging.Logger, spec_set=True, instance=True)
+    app = web.Application()
+    server = await aiohttp_server(app, logger=logger)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        await _read_response(reader)
+
+    # garbage triggers BadHttpMethod; logged at warning level by default.
+    assert logger.warning.called
+    assert "Error handling request" in logger.warning.call_args.args[0]
+
+
+async def test_parser_error_on_response_prepare_fires(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    fired = False
+
+    async def hook(request: web.Request, response: web.StreamResponse) -> None:
+        nonlocal fired
+        fired = True
+        response.headers[hdrs.SERVER] = "from-signal"
+
+    app = web.Application()
+    app.on_response_prepare.append(hook)
+    server = await aiohttp_server(app)
+
+    async with _raw_request(server.host, server.port, b"garbage\r\n\r\n") as reader:
+        status_line, headers, _ = await _read_response(reader)
+
+    assert status_line.startswith(b"HTTP/1.0 400 ")
+    assert fired
+    assert headers["server"] == "from-signal"

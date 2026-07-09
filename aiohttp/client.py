@@ -587,6 +587,7 @@ class ClientSession:
             await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
+        req: ClientRequest | None = None
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
@@ -868,6 +869,9 @@ class ClientSession:
             if handle:
                 handle.cancel()
                 handle = None
+
+            if req is not None and req._body is not None:
+                await req._body.close()
 
             for trace in traces:
                 await trace.send_request_exception(
