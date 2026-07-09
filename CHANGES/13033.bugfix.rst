@@ -1,0 +1,2 @@
+Fixed :py:func:`~aiohttp.helpers.parse_mimetype` splitting quoted parameter values on
+``;`` -- by :user:`hrach-shah`.

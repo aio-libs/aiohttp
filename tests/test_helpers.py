@@ -95,6 +95,48 @@ from aiohttp.helpers import (
                 MultiDictProxy(MultiDict({"charset": "utf-8"})),
             ),
         ),
+        (
+            'multipart/form-data; boundary="abc;def"; charset=utf-8',
+            helpers.MimeType(
+                "multipart",
+                "form-data",
+                "",
+                MultiDictProxy(
+                    MultiDict({"boundary": "abc;def", "charset": "utf-8"})
+                ),
+            ),
+        ),
+        (
+            'text/html; foo="bar;baz"; qux=quux',
+            helpers.MimeType(
+                "text",
+                "html",
+                "",
+                MultiDictProxy(
+                    MultiDict({"foo": "bar;baz", "qux": "quux"})
+                ),
+            ),
+        ),
+        (
+            'text/html; charset="utf-8"',
+            helpers.MimeType(
+                "text",
+                "html",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
+            ),
+        ),
+        (
+            'image/svg+xml; charset="utf-8"; profile="x"',
+            helpers.MimeType(
+                "image",
+                "svg",
+                "xml",
+                MultiDictProxy(
+                    MultiDict({"charset": "utf-8", "profile": "x"})
+                ),
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:

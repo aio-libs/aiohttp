@@ -329,15 +329,49 @@ def parse_mimetype(mimetype: str) -> MimeType:
             type="", subtype="", suffix="", parameters=MultiDictProxy(MultiDict())
         )
 
-    parts = mimetype.split(";")
+    # Split off the main media type (everything before the first ';').
+    # Walk the parameter segment char-by-char so quoted values that
+    # contain ';' (e.g. ``boundary="abc;def"``) are not split apart.
     params: MultiDict[str] = MultiDict()
-    for item in parts[1:]:
-        if not item.strip():
-            continue
-        key, _, value = item.partition("=")
-        params.add(key.lower().strip(), value.strip(' "'))
+    n = len(mimetype)
+    i = mimetype.find(";")
+    if i != -1:
+        head_end = i
+        i += 1
+        while i < n:
+            # Skip whitespace before each parameter.
+            while i < n and mimetype[i] in " \t":
+                i += 1
+            if i >= n:
+                break
+            # Find the end of the parameter value, respecting
+            # double-quoted strings (which may contain ';' or '\\').
+            start = i
+            in_quotes = False
+            while i < n:
+                ch = mimetype[i]
+                if ch == '"':
+                    in_quotes = not in_quotes
+                elif ch == ";" and not in_quotes:
+                    break
+                i += 1
+            item = mimetype[start:i]
+            if item.strip():
+                key, sep, value = item.partition("=")
+                if sep:
+                    params.add(key.lower().strip(), value.strip(' "'))
+                else:
+                    # Bare attribute (e.g. "text/plain;base64") — value is the
+                    # boolean-flag style empty value, matching the prior
+                    # split(';') behaviour.
+                    params.add(key.lower().strip(), "")
+            # Skip the ';' that terminated this parameter.
+            if i < n and mimetype[i] == ";":
+                i += 1
+    else:
+        head_end = n
 
-    fulltype = parts[0].strip().lower()
+    fulltype = mimetype[:head_end].strip().lower()
     if fulltype == "*":
         fulltype = "*/*"
 
