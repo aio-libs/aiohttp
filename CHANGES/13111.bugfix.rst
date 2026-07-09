@@ -1,0 +1,4 @@
+Fixed ``DigestAuthMiddleware`` leaving backslashes unescaped in quoted
+``Authorization`` header values, which corrupted logins such as
+``WORKGROUP\user`` and let a challenge value ending in a backslash escape its
+own closing quote -- by :user:`arshsmith1`.
