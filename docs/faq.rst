@@ -298,8 +298,6 @@ To enable KTLS, check the following:
   ``pyenv``, and ``actions/setup-python`` in GitHub Actions, but not for
   Python installations managed by ``uv``.
 
-* Your Linux kernel version is 5.1 or newer.
-
 * Make sure the Linux ``tls`` kernel module is loaded::
 
     sudo modprobe tls
