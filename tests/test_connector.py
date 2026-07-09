@@ -4780,3 +4780,66 @@ async def test_tcp_connector_close_race_condition() -> None:
     # After close, new resolves should raise ClientConnectionError
     with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
         await connector._resolve_host("localhost", 80)
+
+
+async def test_create_connection_uses_loop_when_aiofastnet_missing() -> None:
+    loop = mock.Mock()
+    loop.create_connection = mock.AsyncMock(return_value=(mock.Mock(), mock.Mock()))
+    protocol_factory = mock.Mock()
+    sock = mock.Mock()
+
+    with mock.patch.object(connector_module, "aiofastnet", None):
+        result = await connector_module.create_connection(
+            loop,
+            protocol_factory,
+            ssl=None,
+            sock=sock,
+            server_hostname="example.com",
+            ssl_shutdown_timeout=1.0,
+        )
+
+    assert result is loop.create_connection.return_value
+    expected_kwargs = {
+        "ssl": None,
+        "sock": sock,
+        "server_hostname": "example.com",
+    }
+    if sys.version_info >= (3, 11):
+        expected_kwargs["ssl_shutdown_timeout"] = 1.0
+    loop.create_connection.assert_awaited_once_with(
+        protocol_factory,
+        **expected_kwargs,
+    )
+
+
+async def test_start_tls_uses_loop_when_aiofastnet_missing() -> None:
+    loop = mock.Mock()
+    loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
+    transport = mock.Mock()
+    protocol = mock.Mock()
+    sslcontext = ssl.create_default_context()
+
+    with mock.patch.object(connector_module, "aiofastnet", None):
+        result = await connector_module.start_tls(
+            loop,
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname="example.com",
+            ssl_handshake_timeout=1.0,
+            ssl_shutdown_timeout=2.0,
+        )
+
+    assert result is loop.start_tls.return_value
+    expected_kwargs = {
+        "server_hostname": "example.com",
+        "ssl_handshake_timeout": 1.0,
+    }
+    if sys.version_info >= (3, 11):
+        expected_kwargs["ssl_shutdown_timeout"] = 2.0
+    loop.start_tls.assert_awaited_once_with(
+        transport,
+        protocol,
+        sslcontext,
+        **expected_kwargs,
+    )
