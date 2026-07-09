@@ -172,6 +172,3 @@ yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/lint.in
-
-# The following packages are considered to be unsafe in a requirements file:
-# aiohttp
