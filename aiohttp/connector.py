@@ -1372,10 +1372,6 @@ class TCPConnector(BaseConnector):
         if type(underlying_transport).__module__.startswith("uvloop"):
             return
 
-        # Check if aiofastnet is being used, which supports TLS in TLS
-        if aiofastnet is not None:
-            return
-
         # Support in asyncio was added in Python 3.11 (bpo-44011)
         asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(
             underlying_transport,
@@ -1386,6 +1382,10 @@ class TCPConnector(BaseConnector):
         if asyncio_supports_tls_in_tls:
             return
 
+        # Check if aiofastnet is being used, which supports TLS in TLS
+        if aiofastnet is not None:
+            return
+        
         warnings.warn(
             "An HTTPS request is being sent through an HTTPS proxy. "
             "This support for TLS in TLS is known to be disabled "
