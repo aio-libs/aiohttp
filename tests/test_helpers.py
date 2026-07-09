@@ -101,9 +101,7 @@ from aiohttp.helpers import (
                 "multipart",
                 "form-data",
                 "",
-                MultiDictProxy(
-                    MultiDict({"boundary": "abc;def", "charset": "utf-8"})
-                ),
+                MultiDictProxy(MultiDict({"boundary": "abc;def", "charset": "utf-8"})),
             ),
         ),
         (
@@ -112,9 +110,7 @@ from aiohttp.helpers import (
                 "text",
                 "html",
                 "",
-                MultiDictProxy(
-                    MultiDict({"foo": "bar;baz", "qux": "quux"})
-                ),
+                MultiDictProxy(MultiDict({"foo": "bar;baz", "qux": "quux"})),
             ),
         ),
         (
@@ -132,9 +128,7 @@ from aiohttp.helpers import (
                 "image",
                 "svg",
                 "xml",
-                MultiDictProxy(
-                    MultiDict({"charset": "utf-8", "profile": "x"})
-                ),
+                MultiDictProxy(MultiDict({"charset": "utf-8", "profile": "x"})),
             ),
         ),
     ],
