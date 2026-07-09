@@ -110,8 +110,9 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # Allow lock.acquire calls to prevent these false positives
         bb.functions["threading.Lock.acquire"].deactivate()
 
-        # aiofastnet is using sendfile on a non-blocking socket.
-        # blockbuster triggers anyway. Seems like a false positive
+        # aiofastnet uses os.sendfile only on non-blocking sockets.
+        # aiofastnet transports set non-blocking flag for all received socket objects.
+        # blockbuster triggers anyway.
         bb.functions["os.sendfile"].deactivate()
         yield
 
