@@ -551,6 +551,33 @@ async def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
+async def test_escaping_backslash_in_auth_header() -> None:
+    """A backslash in a quoted value must be escaped, not left to escape the quote."""
+    # WORKGROUP\user is a common Windows-style login; a challenge value ending in
+    # a backslash is attacker-controlled (realm/nonce/opaque come from the server).
+    auth = DigestAuthMiddleware("WORKGROUP\\user", "pass")
+    auth._challenge = DigestAuthChallenge(
+        realm="realm\\",
+        nonce="abc",
+        algorithm="MD5",
+        opaque="op\\aque",
+    )
+
+    header = await auth._encode("GET", URL("http://example.com/path"), b"")
+
+    # Backslashes are doubled so the closing quote is not swallowed.
+    assert 'username="WORKGROUP\\\\user"' in header
+    assert 'realm="realm\\\\"' in header
+    assert 'opaque="op\\\\aque"' in header
+    # Every quoted field must still be closed by a lone quote followed by ", " or EOL.
+    for field in ("username", "realm", "nonce", "opaque"):
+        params = parse_header_pairs(header[len("Digest ") :])
+        assert field in params
+    assert params["username"] == "WORKGROUP\\user"
+    assert params["realm"] == "realm\\"
+    assert params["opaque"] == "op\\aque"
+
+
 async def test_template_based_header_construction(
     auth_mw_with_challenge: DigestAuthMiddleware,
     mock_sha1_digest: mock.MagicMock,
@@ -624,7 +651,10 @@ async def test_template_based_header_construction(
         ),
         ('""', '\\"\\"', "Just double quotes"),
         ('"', '\\"', "Single double quote"),
-        ('already\\"escaped', 'already\\\\"escaped', "Already escaped quotes"),
+        ('already\\"escaped', 'already\\\\\\"escaped', "Already escaped quotes"),
+        ("WORKGROUP\\user", "WORKGROUP\\\\user", "Backslash in value"),
+        ("trail\\", "trail\\\\", "Trailing backslash"),
+        ('a\\b"c', 'a\\\\b\\"c', "Backslash and quote"),
     ],
 )
 def test_quote_escaping_functions(
