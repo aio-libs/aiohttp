@@ -1386,7 +1386,7 @@ class TCPConnector(BaseConnector):
         if aiofastnet is not None:
             return
 
-        warnings.warn( # type: ignore[unreachable]
+        warnings.warn(  # type: ignore[unreachable]
             "An HTTPS request is being sent through an HTTPS proxy. "
             "This support for TLS in TLS is known to be disabled "
             "in the stdlib asyncio. This is why you'll probably see "
