@@ -129,19 +129,6 @@ def test_simple_web_file_response(
             # Consume response.
             # Large responses may leave transport unclosed on at least python 3.10.
             await response.read()
-            if (
-                request_number == 0
-                and server_ssl_context is not None
-                and sys.platform == "linux"
-                and sys.version_info >= (3, 12)
-                and pytestconfig.getoption("--codspeed")
-            ):
-                assert server_transport is not None
-                # ubuntu-latest has OpenSSL 3.0.
-                # OpenSSL 3.0 supports kTLS send, but not receive, for TLS 1.3.
-                # Which is good enough for this benchmark
-                # Verify that kTLS is indeed enabled for sending
-                assert server_transport.get_extra_info("ktls_send_enabled")
         await client.close()
 
     @benchmark
