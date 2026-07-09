@@ -63,13 +63,7 @@ else:
                 return resp
 
 
-try:
-    import aiofastnet
-except ImportError:
-    aiofastnet = None  # type: ignore[assignment]
-
-
-ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11) or aiofastnet is not None
+ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 
 @pytest.fixture
@@ -223,6 +217,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     )
 
     with (
+        mock.patch.object(aiohttp.connector, "aiofastnet", None),
         pytest.warns(
             RuntimeWarning,
             match=expected_warning_text,
