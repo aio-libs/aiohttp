@@ -311,13 +311,10 @@ To enable KTLS, check the following:
 
     sslcontext.options |= ssl.OP_ENABLE_KTLS
 
-* Make sure Python is using OpenSSL 3.0 or newer. OpenSSL should have been
-  built on a machine whose Linux headers are new enough. OpenSSL needs Linux
-  headers at least 4.13.0 to build the transmit path; older headers make it
-  skip KTLS support. Typically, Python is using the system OpenSSL on Linux,
-  but sometimes distributions ship their own OpenSSL. The following commands
-  will help identify the OpenSSL version and which ``libssl`` and ``libcrypto``
-  are being used by the ``ssl`` module::
+* Make sure Python is using OpenSSL 3.0 or newer. Typically, Python is using
+  the system OpenSSL on Linux, but sometimes distributions ship their own
+  OpenSSL. The following commands will help identify the OpenSSL version
+  and which ``libssl`` and ``libcrypto`` are being used by the ``ssl`` module::
 
     python -c "import ssl; print(ssl.OPENSSL_VERSION)"
     ldd "$(python -c 'import _ssl; print(_ssl.__file__)')"
