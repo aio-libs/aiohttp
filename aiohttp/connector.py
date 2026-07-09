@@ -1385,7 +1385,7 @@ class TCPConnector(BaseConnector):
         # Check if aiofastnet is being used, which supports TLS in TLS
         if aiofastnet is not None:
             return
-        
+
         warnings.warn(
             "An HTTPS request is being sent through an HTTPS proxy. "
             "This support for TLS in TLS is known to be disabled "
