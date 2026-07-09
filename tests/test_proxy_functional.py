@@ -29,7 +29,6 @@ else:
     proxy = pytest.importorskip("proxy")
 
 
-
 class _ResponseArgs(TypedDict):
     status: int
     headers: dict[str, str] | None
