@@ -4799,7 +4799,7 @@ async def test_create_connection_uses_loop_when_aiofastnet_missing() -> None:
         )
 
     assert result is loop.create_connection.return_value
-    expected_kwargs = {
+    expected_kwargs: dict[str, Any] = {
         "ssl": None,
         "sock": sock,
         "server_hostname": "example.com",
@@ -4831,7 +4831,7 @@ async def test_start_tls_uses_loop_when_aiofastnet_missing() -> None:
         )
 
     assert result is loop.start_tls.return_value
-    expected_kwargs = {
+    expected_kwargs: dict[str, Any] = {
         "server_hostname": "example.com",
         "ssl_handshake_timeout": 1.0,
     }
