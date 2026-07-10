@@ -1377,7 +1377,7 @@ class TCPConnector(BaseConnector):
             return
 
         # Support in asyncio was added in Python 3.11 (bpo-44011)
-        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr( # type: ignore[unreachable]
+        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(  # type: ignore[unreachable]
             underlying_transport,
             "_start_tls_compatible",
             False,
