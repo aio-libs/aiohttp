@@ -283,9 +283,9 @@ def test_close_frame(out: WebSocketDataQueue, parser: PatchableWebSocketReader) 
 def test_close_frame_info(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(True, WSMsgType.CLOSE, b"0112345", 0)
+    parser._handle_frame(True, WSMsgType.CLOSE, b"\x03\xe912345", 0)
     res = out._buffer[0]
-    assert res == (WSMessage(WSMsgType.CLOSE, 12337, "12345"), 0)
+    assert res == (WSMessage(WSMsgType.CLOSE, 1001, "12345"), 0)
 
 
 def test_close_frame_invalid(
@@ -300,6 +300,18 @@ def test_close_frame_invalid_2(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     data = build_close_frame(code=1)
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+@pytest.mark.parametrize("code", (5000, 9999, 65535))
+def test_close_frame_invalid_code_above_range(
+    parser: PatchableWebSocketReader, code: int
+) -> None:
+    data = build_close_frame(code=code)
 
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
