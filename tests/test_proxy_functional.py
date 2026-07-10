@@ -5,7 +5,7 @@ import platform
 import ssl
 import sys
 from collections.abc import Awaitable, Callable, Iterator
-from contextlib import suppress, ExitStack
+from contextlib import ExitStack, suppress
 from re import match as match_regex
 from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
@@ -273,7 +273,9 @@ async def test_uvloop_secure_https_proxy(
     try:
         with ExitStack() as stack:
             if not use_aiofastnet:
-                stack.enter_context(mock.patch.object(aiohttp.connector, "aiofastnet", None))
+                stack.enter_context(
+                    mock.patch.object(aiohttp.connector, "aiofastnet", None)
+                )
 
             async with sess.get(
                 url, proxy=secure_proxy_url, ssl=client_ssl_ctx
