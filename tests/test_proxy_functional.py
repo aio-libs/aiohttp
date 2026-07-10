@@ -7,7 +7,7 @@ import sys
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import suppress
 from re import match as match_regex
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
 
@@ -28,6 +28,8 @@ if TYPE_CHECKING:
 else:
     proxy = pytest.importorskip("proxy")
 
+ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
+
 
 class _ResponseArgs(TypedDict):
     status: int
@@ -47,6 +49,7 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
     ) -> ClientResponse: ...
 
 else:
+    from typing import Any
 
     async def get_request(
         method: str = "GET",
@@ -61,9 +64,6 @@ else:
         ) as client:
             async with client.request(method, url, **kwargs) as resp:
                 return resp
-
-
-ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 
 @pytest.fixture
