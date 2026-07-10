@@ -570,8 +570,8 @@ async def test_escaping_backslash_in_auth_header() -> None:
     assert 'realm="realm\\\\"' in header
     assert 'opaque="op\\\\aque"' in header
     # Every quoted field must still be closed by a lone quote followed by ", " or EOL.
+    params = parse_header_pairs(header[len("Digest ") :])
     for field in ("username", "realm", "nonce", "opaque"):
-        params = parse_header_pairs(header[len("Digest ") :])
         assert field in params
     assert params["username"] == "WORKGROUP\\user"
     assert params["realm"] == "realm\\"
