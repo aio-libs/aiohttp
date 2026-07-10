@@ -268,11 +268,13 @@ async def test_uvloop_secure_https_proxy(
     conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
     try:
-        async with sess.get(
-            url, proxy=secure_proxy_url, ssl=client_ssl_ctx
-        ) as response:
-            assert response.status == 200
-            assert await response.text() == payload
+        # Disable aiofastnet for better test coverage in connector.py
+        with mock.patch.object(aiohttp.connector, "aiofastnet", None):
+            async with sess.get(
+                url, proxy=secure_proxy_url, ssl=client_ssl_ctx
+            ) as response:
+                assert response.status == 200
+                assert await response.text() == payload
     finally:
         await sess.close()
         await conn.close()
