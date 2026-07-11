@@ -352,6 +352,24 @@ async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
     assert conn.closed
 
 
+async def test_close_logs_closed_waiter_exception(key: ConnectionKey) -> None:
+    exc = RuntimeError("close failed")
+
+    proto = mock.create_autospec(ResponseHandler, instance=True)
+    proto.closed = asyncio.get_running_loop().create_future()
+    proto.closed.set_exception(exc)
+
+    conn = aiohttp.BaseConnector()
+    conn._conns[key] = deque([(proto, 0)])
+
+    with mock.patch.object(connector_module.client_logger, "debug") as debug:
+        await conn.close()
+
+    proto.close.assert_called_once()
+    debug.assert_called_once_with("Error while closing connector: " + repr(exc))
+    assert conn.closed
+
+
 async def test_get(key: ConnectionKey) -> None:
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector()
