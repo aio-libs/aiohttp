@@ -362,7 +362,7 @@ async def test_close_logs_closed_waiter_exception(key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector()
     conn._conns[key] = deque([(proto, 0)])
 
-    with mock.patch.object(connector_module.client_logger, "debug") as debug: # type: ignore[attr-defined]
+    with mock.patch.object(connector_module.client_logger, "debug") as debug:  # type: ignore[attr-defined]
         await conn.close()
 
     proto.close.assert_called_once()
