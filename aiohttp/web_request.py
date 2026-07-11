@@ -667,6 +667,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             return bytes_body.decode(encoding)
         except LookupError:
             raise HTTPUnsupportedMediaType()
+        except UnicodeDecodeError:
+            raise HTTPUnsupportedMediaType()
 
     async def json(
         self,
@@ -791,6 +793,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 try:
                     query = bytes_query.decode(charset)
                 except LookupError:
+                    raise HTTPUnsupportedMediaType()
+                except UnicodeDecodeError:
                     raise HTTPUnsupportedMediaType()
                 out.extend(
                     parse_qsl(qs=query, keep_blank_values=True, encoding=charset)
