@@ -1,0 +1,4 @@
+Caught ``UnicodeDecodeError`` in ``BaseRequest.text()`` and the
+``application/x-www-form-urlencoded`` branch of ``BaseRequest.post()``
+and re-raised as ``HTTPUnsupportedMediaType`` (415), matching the
+existing behavior for invalid charset names -- by :user:`muhamedfazalps`.
