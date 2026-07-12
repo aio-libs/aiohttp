@@ -141,6 +141,26 @@ def test_date_parsing() -> None:
     # Invalid time
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
 
+    # Day-of-month outside the 1-31 range, or matching no real calendar date
+    # (Feb 30/31, Apr 31, etc., and Feb 29 in a non-leap year): must NOT
+    # silently normalise via calendar.timegm to the next valid date.
+    assert parse_func("Thu, 30 Feb 2023 12:00:00 GMT") is None
+    assert parse_func("Fri, 31 Feb 2023 12:00:00 GMT") is None
+    assert parse_func("Mon, 31 Apr 2023 12:00:00 GMT") is None
+    assert parse_func("Mon, 31 Jun 2023 12:00:00 GMT") is None
+    assert parse_func("Mon, 31 Sep 2023 12:00:00 GMT") is None
+    assert parse_func("Mon, 31 Nov 2023 12:00:00 GMT") is None
+    assert parse_func("Wed, 29 Feb 2023 12:00:00 GMT") is None
+    assert parse_func("Sun, 15 Jan 2023 12:30:60 GMT") is None
+    assert parse_func("Sun, 15 Jan 2023 24:00:00 GMT") is None
+    assert parse_func("Mon, 0 Jan 2023 12:00:00 GMT") is None
+    assert parse_func("Mon, 32 Jan 2023 12:00:00 GMT") is None
+    # Feb 29 2024 is a real leap-year date and must still parse cleanly.
+    assert (
+        parse_func("Thu, 29 Feb 2024 12:00:00 GMT")
+        == datetime.datetime(2024, 2, 29, 12, 0, 0, tzinfo=utc).timestamp()
+    )
+
 
 def test_domain_matching() -> None:
     test_func = CookieJar._is_domain_match
