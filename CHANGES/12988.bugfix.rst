@@ -1,1 +1,1 @@
-Stopped resetting the WebSocket per-message compression state when a control frame is interleaved between the fragments of a compressed message, which left continuation frames undecompressed -- by :user:`arshsmith1`.
+Fixed control frames breaking fragmented WebSocket messages -- by :user:`arshsmith1`.
