@@ -4,6 +4,8 @@ updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     schedule:
@@ -26,6 +28,8 @@ updates:
   # Maintain dependencies for GitHub Actions aiohttp backport
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     target-branch: "3.15"
@@ -50,6 +54,8 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/tests/autobahn/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     schedule:
@@ -57,6 +63,8 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/tests/autobahn/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     target-branch: "3.15"
