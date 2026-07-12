@@ -101,7 +101,7 @@ tomli==2.4.1
     #   pytest
 trustme==1.2.1 ; platform_machine != "i686"
     # via -r requirements/test-common.in
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   cryptography
     #   exceptiongroup
