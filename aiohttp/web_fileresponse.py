@@ -154,7 +154,7 @@ class FileResponse(StreamResponse):
             if aiofastnet is not None:
                 await aiofastnet.sendfile(loop, transport, fobj, offset, count)
             else:
-                await loop.sendfile(transport, fobj, offset, count)  # type: ignore[unreachable]
+                await loop.sendfile(transport, fobj, offset, count)
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

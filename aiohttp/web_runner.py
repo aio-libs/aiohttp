@@ -53,7 +53,7 @@ async def create_server(
             reuse_port=reuse_port,
         )
     else:
-        return await loop.create_server(  # type: ignore[unreachable]
+        return await loop.create_server(
             protocol_factory,
             host,
             port,
