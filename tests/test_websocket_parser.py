@@ -598,7 +598,9 @@ def test_compressed_continuation_with_ping(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     # A control frame may be interleaved between the fragments of a data
-    # message (RFC 6455 §5.4). The continuation must still be decompressed.
+    # A control frame may be interleaved between the fragments of a data
+    # message. The continuation must still be decompressed.
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
     message = b"hello compressed world " * 4
     compressobj = ZLibBackend.compressobj(wbits=-9)
     compressed = compressobj.compress(message)
