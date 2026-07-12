@@ -356,7 +356,9 @@ async def test_close_with_proto_closed_none(key: ConnectionKey) -> None:
     assert conn.closed
 
 
-async def test_close_logs_closed_waiter_exception(loop: asyncio.AbstractEventLoop, key: ConnectionKey) -> None:
+async def test_close_logs_closed_waiter_exception(
+    loop: asyncio.AbstractEventLoop, key: ConnectionKey
+) -> None:
     exc = RuntimeError("close failed")
 
     proto = mock.create_autospec(ResponseHandler, instance=True)
@@ -4014,7 +4016,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
     first_conn = next(iter(conn._conns.values()))[0][0]
 
     assert first_conn.transport is not None
-    _sslcontext=first_conn.transport.get_extra_info("sslcontext")
+    _sslcontext = first_conn.transport.get_extra_info("sslcontext")
     assert _sslcontext is client_ssl_ctx
     r.close()
 

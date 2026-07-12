@@ -3,7 +3,7 @@
 import asyncio
 import ssl
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Iterator, Callable, Awaitable, Any, TypedDict
+from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, TypedDict
 
 import pytest
 from yarl import URL
