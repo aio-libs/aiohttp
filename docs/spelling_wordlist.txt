@@ -4,6 +4,7 @@ ABI
 addons
 aiodns
 aioes
+aiofastnet
 aiohttp
 aiohttpdemo
 aiohttp’s
@@ -81,6 +82,7 @@ codspeed
 Codings
 committer
 committers
+Conda
 config
 Config
 configs
@@ -184,6 +186,7 @@ keepalive
 keepalived
 keepalives
 keepaliving
+KTLS
 kib
 KiB
 kwarg
@@ -229,6 +232,7 @@ namedtuple
 nameservers
 namespace
 netrc
+NIC
 nginx
 Nginx
 Nikolay
@@ -238,6 +242,7 @@ nowait
 OAuth
 Online
 optimizations
+OpenSSL
 orjson
 os
 outcoming

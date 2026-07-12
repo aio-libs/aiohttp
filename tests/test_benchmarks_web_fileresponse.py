@@ -3,20 +3,79 @@
 import asyncio
 import os
 import pathlib
+import ssl
+import sys
+from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, TypedDict
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp import ClientResponse, web
 from aiohttp.pytest_plugin import AiohttpClient, ConnectionType
+from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
+) -> Iterator[
+    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
+]:
+    # TODO: Remove this fixture when async benchmarks are working.
+    clients = []
+
+    async def go(
+        __param: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+        **kwargs: Any,
+    ) -> TestClient[web.Request, web.Application]:
+        server_kwargs = dict(server_kwargs or {})
+        server_ssl_context = server_kwargs.pop("ssl", None)
+        server = TestServer(__param, **server_kwargs)
+        client = aiohttp_client_cls(server, **kwargs)
+
+        await server.start_server(ssl=server_ssl_context)
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
+
+
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
+
+
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
 @dataclass(frozen=True)
@@ -45,10 +104,19 @@ def test_simple_web_file_response(
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
     benchmark_file: BenchmarkFile,
+    pytestconfig: pytest.Config,
 ) -> None:
-    """Benchmark simple web.FileResponse."""
+    """Benchmark creating 100 simple web.FileResponse."""
+    server_ssl_context = conn_type.s_kwargs.get("ssl")
+    if server_ssl_context is not None:
+        if sys.version_info >= (3, 12):
+            server_ssl_context.options |= ssl.OP_ENABLE_KTLS
+
+    server_transport: asyncio.Transport | None = None
 
     async def handler(request: web.Request) -> web.FileResponse:
+        nonlocal server_transport
+        server_transport = request.transport
         return web.FileResponse(path=benchmark_file.path)
 
     app = web.Application()

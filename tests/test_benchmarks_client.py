@@ -1,19 +1,96 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
-from typing import TYPE_CHECKING
+import ssl
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Iterator, Callable, Awaitable, Any, TypedDict
 
 import pytest
 from yarl import URL
 
 from aiohttp import hdrs, request, web
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, ConnectionType
+from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
+
+
+@pytest.fixture
+def aiohttp_client_sync(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Iterator[
+    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
+]:
+    clients = []
+
+    async def go(
+        app: web.Application,
+        *,
+        server_kwargs: dict[str, Any] | None = None,
+    ) -> TestClient[web.Request, web.Application]:
+        server = TestServer(app)
+        client = TestClient(server)
+        await server.start_server(**(server_kwargs or {}))
+        clients.append(client)
+        return client
+
+    yield go
+
+    while clients:
+        event_loop.run_until_complete(clients.pop().close())
+
+
+class _ConnArgs(TypedDict, total=False):
+    ssl: ssl.SSLContext
+
+
+@dataclass(frozen=True)
+class ConnectionType:
+    s_kwargs: _ConnArgs
+    c_kwargs: _ConnArgs
+
+
+@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
+def conn_type(
+    request: pytest.FixtureRequest,
+    ssl_ctx: ssl.SSLContext,
+    client_ssl_ctx: ssl.SSLContext,
+) -> ConnectionType:
+    if request.param == "ssl":
+        return ConnectionType(
+            s_kwargs={"ssl": ssl_ctx},
+            c_kwargs={"ssl": client_ssl_ctx},
+        )
+    return ConnectionType(s_kwargs={}, c_kwargs={})
+
+
+@pytest.fixture
+def aiohttp_server_sync(
+    event_loop: asyncio.AbstractEventLoop,
+) -> Iterator[AiohttpServer]:
+    # TODO: Remove this fixture when async benchmarks are supported.
+    servers = []
+
+    async def go(
+        app: web.Application,
+        *,
+        host: str = "127.0.0.1",
+        port: int | None = None,
+        **kwargs: Any,
+    ) -> TestServer:
+        server = TestServer(app, host=host, port=port)
+        await server.start_server(**kwargs)
+        servers.append(server)
+        return server
+
+    yield go
+
+    while servers:
+        event_loop.run_until_complete(servers.pop().close())
 
 
 def test_one_hundred_simple_get_requests(
