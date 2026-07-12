@@ -309,7 +309,7 @@ trustme==1.2.1 ; platform_machine != "i686"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-typing-extensions==4.15.0 ; python_version < "3.13"
+typing-extensions==4.16.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
