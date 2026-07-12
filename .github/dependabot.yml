@@ -4,6 +4,8 @@ updates:
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     schedule:
@@ -12,6 +14,9 @@ updates:
   # Maintain dependencies for Python
   - package-ecosystem: "pip"
     directory: "/"
+    versioning-strategy: "increase-if-necessary"
+    cooldown:
+      default-days: 3
     allow:
       - dependency-type: "all"
     labels:
@@ -23,6 +28,8 @@ updates:
   # Maintain dependencies for GitHub Actions aiohttp backport
   - package-ecosystem: "github-actions"
     directory: "/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     target-branch: "3.14"
@@ -33,6 +40,9 @@ updates:
   # Maintain dependencies for Python aiohttp backport
   - package-ecosystem: "pip"
     directory: "/"
+    versioning-strategy: "increase-if-necessary"
+    cooldown:
+      default-days: 3
     allow:
       - dependency-type: "all"
     labels:
@@ -44,6 +54,8 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/tests/autobahn/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     schedule:
@@ -51,6 +63,8 @@ updates:
 
   - package-ecosystem: "docker"
     directory: "/tests/autobahn/"
+    cooldown:
+      default-days: 3
     labels:
       - dependencies
     target-branch: "3.14"
