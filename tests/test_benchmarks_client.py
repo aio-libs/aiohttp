@@ -1,39 +1,20 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
-import ssl
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, TypedDict
+from typing import TYPE_CHECKING, Any, Iterator
 
 import pytest
 from yarl import URL
 
 from aiohttp import hdrs, request, web
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer, ConnectionType
-from aiohttp.test_utils import TestClient, TestServer
+from aiohttp.test_utils import TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
-
-
-class _ConnArgs(TypedDict, total=False):
-    ssl: ssl.SSLContext
-
-
-@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
-def conn_type(
-    request: pytest.FixtureRequest,
-    ssl_ctx: ssl.SSLContext,
-    client_ssl_ctx: ssl.SSLContext,
-) -> ConnectionType:
-    if request.param == "ssl":
-        return ConnectionType(
-            s_kwargs={"ssl": ssl_ctx},
-            c_kwargs={"ssl": client_ssl_ctx},
-        )
-    return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
 @pytest.fixture

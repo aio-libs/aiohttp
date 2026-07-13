@@ -5,40 +5,20 @@ import os
 import pathlib
 import ssl
 import sys
-from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, TypedDict
+from typing import TYPE_CHECKING
 
 import pytest
 from multidict import CIMultiDict
 
 from aiohttp import ClientResponse, web
 from aiohttp.pytest_plugin import AiohttpClient, ConnectionType
-from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:
     pytest_codspeed = pytest.importorskip("pytest_codspeed")
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
-
-
-class _ConnArgs(TypedDict, total=False):
-    ssl: ssl.SSLContext
-
-
-@pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
-def conn_type(
-    request: pytest.FixtureRequest,
-    ssl_ctx: ssl.SSLContext,
-    client_ssl_ctx: ssl.SSLContext,
-) -> ConnectionType:
-    if request.param == "ssl":
-        return ConnectionType(
-            s_kwargs={"ssl": ssl_ctx},
-            c_kwargs={"ssl": client_ssl_ctx},
-        )
-    return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
 @dataclass(frozen=True)
