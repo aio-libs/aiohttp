@@ -54,12 +54,6 @@ class _ConnArgs(TypedDict, total=False):
     ssl: ssl.SSLContext
 
 
-@dataclass(frozen=True)
-class ConnectionType:
-    s_kwargs: _ConnArgs
-    c_kwargs: _ConnArgs
-
-
 @pytest.fixture(params=("tcp", "ssl"), ids=("tcp", "ssl"))
 def conn_type(
     request: pytest.FixtureRequest,
