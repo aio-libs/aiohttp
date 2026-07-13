@@ -82,7 +82,7 @@ def sender(request: Any, loop: Any):
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
         if request.param == "no_sendfile":
             if aiofastnet is None:
-                assert asyncio.get_running_loop().sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
+                assert loop.sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
             else:
                 assert aiofastnet.sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
         return web.FileResponse(path, chunk_size=chunk_size)
@@ -90,7 +90,7 @@ def sender(request: Any, loop: Any):
     if request.param == "no_sendfile":
         if aiofastnet is None:
             with mock.patch.object(  # type: ignore[unreachable, unused-ignore]
-                asyncio.get_running_loop(),
+                loop,
                 "sendfile",
                 autospec=True,
                 spec_set=True,
