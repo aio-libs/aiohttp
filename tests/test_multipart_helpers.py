@@ -535,6 +535,22 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    @pytest.mark.parametrize(
+        "header",
+        (
+            # An unknown charset name is attacker-controlled and makes
+            # urllib.parse.unquote raise the builtin LookupError.
+            "attachment; filename*=unknown-8bit''foo-%c3%a4.html",
+            # Undecodable octets raise UnicodeDecodeError.
+            "attachment; filename*=UTF-8''%ff.html",
+        ),
+    )
+    def test_attwithfn2231baddecode(self, header: str) -> None:
+        with pytest.warns(aiohttp.BadContentDispositionParam):
+            disptype, params = parse_content_disposition(header)
+        assert "attachment" == disptype
+        assert {} == params
+
     def test_attwithfn2231dpct(self) -> None:
         disptype, params = parse_content_disposition(
             "attachment; filename*=UTF-8''A-%2541.html"
@@ -706,6 +722,18 @@ class TestContentDispositionFilename:
     def test_attfncontenc(self) -> None:
         params = {"filename*0*": "UTF-8''foo-%c3%a4", "filename*1": ".html"}
         assert "foo-ä.html" == content_disposition_filename(params)
+
+    @pytest.mark.parametrize(
+        "params",
+        (
+            # Unknown charset name raises the builtin LookupError.
+            {"filename*0*": "unknown-8bit''foo-%c3%a4", "filename*1": ".html"},
+            # Undecodable octets raise UnicodeDecodeError.
+            {"filename*0*": "UTF-8''%ff", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontenc_baddecode(self, params: dict[str, str]) -> None:
+        assert content_disposition_filename(params) is None
 
     def test_attfncontlz(self) -> None:
         params = {"filename*0": "foo", "filename*01": "bar"}
