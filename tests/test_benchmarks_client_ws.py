@@ -2,7 +2,6 @@
 
 import asyncio
 import ssl
-from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Awaitable, Callable, Iterator, TypedDict
 
 import pytest
