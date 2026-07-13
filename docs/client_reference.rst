@@ -184,7 +184,7 @@ The client session supports the context manager protocol for self closing.
 
       A per-request ``ssl`` argument overrides this value.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.15
 
    :param bool trust_env: Trust environment settings for proxy configuration if the parameter
       is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
@@ -534,7 +534,7 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.0
 
-         .. versionchanged:: 4.0
+         .. versionchanged:: 3.15
 
             Defaults to the session's ``ssl`` value.
 
@@ -797,7 +797,7 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.0
 
-         .. versionchanged:: 4.0
+         .. versionchanged:: 3.15
 
             Defaults to the session's ``ssl`` value.
 
