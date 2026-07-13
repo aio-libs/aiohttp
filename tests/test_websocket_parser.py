@@ -600,6 +600,34 @@ def test_parse_compress_frame_multi(parser: PatchableWebSocketReader) -> None:
     assert (1, 1, b"1234", False) == (fin, opcode, payload, not not compress)
 
 
+def test_compressed_continuation_with_ping(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # A control frame may be interleaved between the fragments of a data
+    # message. The continuation must still be decompressed.
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+    message = b"hello compressed world " * 4
+    compressobj = ZLibBackend.compressobj(wbits=-9)
+    compressed = compressobj.compress(message)
+    compressed += compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    assert compressed.endswith(WS_DEFLATE_TRAILING)
+    compressed = compressed[:-4]
+    half = len(compressed) // 2
+
+    # first fragment: compressed binary, RSV1 set, not final
+    parser.feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, half) + compressed[:half])
+    # interleaved ping
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PING, 0))
+    # final continuation fragment
+    parser.feed_data(
+        PACK_LEN1(0x80 | WSMsgType.CONTINUATION, len(compressed) - half)
+        + compressed[half:]
+    )
+
+    assert out._buffer[0] == (WSMessage(WSMsgType.PING, b"", ""), 0)
+    assert out._buffer[1] == (WSMessage(WSMsgType.BINARY, message, ""), len(message))
+
+
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b01000001, 0b00000001))
     parser.parse_frame(b"1")
