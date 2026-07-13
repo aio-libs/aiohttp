@@ -40,7 +40,7 @@ pycares==5.0.1
     # via aiodns
 pycparser==3.0
     # via cffi
-typing-extensions==4.15.0 ; python_version < "3.13"
+typing-extensions==4.16.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal

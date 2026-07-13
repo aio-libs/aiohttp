@@ -146,7 +146,7 @@ tomli==2.4.1
     #   slotscheck
 trustme==1.2.1
     # via -r requirements/lint.in
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   aiohttp
     #   aiosignal
