@@ -48,7 +48,7 @@ tomli==2.4.1
     # via
     #   coverage
     #   pytest
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via exceptiongroup
 wait-for-it==2.3.0
     # via -r requirements/test-common-base.in
