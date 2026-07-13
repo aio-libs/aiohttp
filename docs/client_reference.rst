@@ -50,6 +50,7 @@ The client session supports the context manager protocol for self closing.
                          raise_for_status=False, \
                          timeout=sentinel, \
                          auto_decompress=True, \
+                         ssl=True, \
                          trust_env=False, \
                          requote_redirect_url=True, \
                          trace_configs=None, \
@@ -195,6 +196,18 @@ The client session supports the context manager protocol for self closing.
    :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
       .. versionadded:: 2.3
+
+   :param ssl: Default SSL validation mode for requests made through this
+      session. ``True`` for default SSL check
+      (:func:`ssl.create_default_context` is used),
+      ``False`` for skip SSL certificate validation,
+      :class:`aiohttp.Fingerprint` for fingerprint
+      validation, :class:`ssl.SSLContext` for custom SSL
+      certificate validation (``True`` by default).
+
+      A per-request ``ssl`` argument overrides this value.
+
+      .. versionadded:: 3.15
 
    :param bool trust_env: Trust environment settings for proxy configuration if the parameter
       is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
@@ -553,7 +566,14 @@ The client session supports the context manager protocol for self closing.
                   Supersedes *verify_ssl*, *ssl_context* and
                   *fingerprint* parameters.
 
+                  When not given, the session's ``ssl`` value is used
+                  (``True`` unless set).
+
          .. versionadded:: 3.0
+
+         .. versionchanged:: 3.15
+
+            Defaults to the session's ``ssl`` value.
 
       :param str server_hostname: Sets or overrides the host name that the
          target server's certificate will be matched against.
@@ -816,7 +836,14 @@ The client session supports the context manager protocol for self closing.
                   Supersedes *verify_ssl*, *ssl_context* and
                   *fingerprint* parameters.
 
+                  When not given, the session's ``ssl`` value is used
+                  (``True`` unless set).
+
          .. versionadded:: 3.0
+
+         .. versionchanged:: 3.15
+
+            Defaults to the session's ``ssl`` value.
 
       :param bool verify_ssl: Perform SSL certificate validation for
          *HTTPS* requests (enabled by default). May be disabled to
