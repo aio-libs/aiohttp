@@ -55,11 +55,7 @@ def test_simple_web_file_response(
         if sys.version_info >= (3, 12):
             server_ssl_context.options |= ssl.OP_ENABLE_KTLS
 
-    server_transport: asyncio.Transport | None = None
-
     async def handler(request: web.Request) -> web.FileResponse:
-        nonlocal server_transport
-        server_transport = request.transport
         return web.FileResponse(path=benchmark_file.path)
 
     app = web.Application()

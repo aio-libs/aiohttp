@@ -1,7 +1,7 @@
 """codspeed benchmarks for HTTP client."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Iterator
+from typing import TYPE_CHECKING
 
 import pytest
 from yarl import URL

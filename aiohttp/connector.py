@@ -203,7 +203,6 @@ async def _wait_for_close(waiters: list[Awaitable[object]]) -> None:
 
 
 class Connection:
-    """Represents a single connection."""
 
     _source_traceback = None
 
