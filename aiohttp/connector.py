@@ -49,6 +49,12 @@ from .helpers import (
 from .log import client_logger
 from .resolver import DefaultResolver
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
+
+
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
@@ -90,6 +96,82 @@ if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
+
+
+async def create_connection(
+    loop: asyncio.AbstractEventLoop,
+    protocol_factory: Callable[[], ResponseHandler],
+    *,
+    ssl: SSLContext | None,
+    sock: socket.socket,
+    server_hostname: str | None,
+    ssl_shutdown_timeout: float | None = None,
+) -> tuple[asyncio.Transport, ResponseHandler]:
+    if aiofastnet is not None:
+        return await aiofastnet.create_connection(
+            loop,
+            protocol_factory,
+            ssl=ssl,
+            sock=sock,
+            server_hostname=server_hostname,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
+    else:
+        if sys.version_info >= (3, 11):
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+            )
+
+
+async def start_tls(
+    loop: asyncio.AbstractEventLoop,
+    transport: asyncio.Transport,
+    protocol: ResponseHandler,
+    sslcontext: SSLContext,
+    *,
+    server_hostname: str | None,
+    ssl_handshake_timeout: float | None,
+    ssl_shutdown_timeout: float | None = None,
+) -> asyncio.BaseTransport | None:
+    if aiofastnet is not None:
+        return await aiofastnet.start_tls(
+            loop,
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname=server_hostname,
+            ssl_handshake_timeout=ssl_handshake_timeout,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
+    else:
+        if sys.version_info >= (3, 11):
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+            )
 
 
 class _DeprecationWaiter:
@@ -1307,7 +1389,7 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                return await create_connection(self._loop, *args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1402,6 +1484,10 @@ class TCPConnector(BaseConnector):
         if type(underlying_transport).__module__.startswith("uvloop"):
             return
 
+        # Check if aiofastnet is being used, which supports TLS in TLS
+        if aiofastnet is not None:
+            return
+
         # Support in asyncio was added in Python 3.11 (bpo-44011)
         asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(
             underlying_transport,
@@ -1453,7 +1539,8 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
@@ -1462,7 +1549,8 @@ class TCPConnector(BaseConnector):
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,

@@ -3,6 +3,7 @@ import signal
 import socket
 import warnings
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from yarl import URL
@@ -20,6 +21,49 @@ else:
         from ssl import SSLContext
     except ImportError:  # pragma: no cover
         SSLContext = object  # type: ignore[misc,assignment]
+
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
+
+
+async def create_server(
+    loop: asyncio.AbstractEventLoop,
+    protocol_factory: Callable[[], asyncio.Protocol],
+    host: str | None = None,
+    port: int | None = None,
+    *,
+    sock: socket.socket | None = None,
+    ssl: SSLContext | None = None,
+    backlog: int = 100,
+    reuse_address: bool | None = None,
+    reuse_port: bool | None = None,
+) -> asyncio.Server:
+    if aiofastnet is not None:
+        return await aiofastnet.create_server(
+            loop,
+            protocol_factory,
+            host,
+            port,
+            sock=sock,
+            ssl=ssl,
+            backlog=backlog,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port,
+        )
+    else:
+        return await loop.create_server(
+            protocol_factory,
+            host,
+            port,
+            sock=sock,
+            ssl=ssl,
+            backlog=backlog,
+            reuse_address=reuse_address,
+            reuse_port=reuse_port,
+        )
+
 
 __all__ = (
     "BaseSite",
@@ -135,7 +179,8 @@ class TCPSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
+        self._server = await create_server(
+            loop,
             server,
             self._host,
             self._port,
@@ -255,8 +300,8 @@ class SockSite(BaseSite):
         loop = asyncio.get_event_loop()
         server = self._runner.server
         assert server is not None
-        self._server = await loop.create_server(
-            server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
+        self._server = await create_server(
+            loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
 
 

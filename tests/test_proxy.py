@@ -11,6 +11,7 @@ import pytest
 from yarl import URL
 
 import aiohttp
+from aiohttp import connector as connector_module
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientRequest, ClientResponse, Fingerprint
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
@@ -81,12 +82,15 @@ class TestProxy(unittest.TestCase):
                 "transport.get_extra_info.return_value": False,
             }
         )
-        self.loop.create_connection = mock.AsyncMock(
-            return_value=(proto.transport, proto)
-        )
-        conn = self.loop.run_until_complete(
-            connector.connect(req, None, aiohttp.ClientTimeout())
-        )
+        with mock.patch.object(
+            connector_module,
+            "create_connection",
+            autospec=True,
+            return_value=(proto.transport, proto),
+        ):
+            conn = self.loop.run_until_complete(
+                connector.connect(req, None, aiohttp.ClientTimeout())
+            )
         self.assertEqual(req.url, URL("http://www.python.org"))
         self.assertIs(conn._protocol, proto)
         self.assertIs(conn.transport, proto.transport)
@@ -141,12 +145,15 @@ class TestProxy(unittest.TestCase):
                 "transport.get_extra_info.return_value": False,
             }
         )
-        self.loop.create_connection = mock.AsyncMock(
-            return_value=(proto.transport, proto)
-        )
-        conn = self.loop.run_until_complete(
-            connector.connect(req, None, aiohttp.ClientTimeout())
-        )
+        with mock.patch.object(
+            connector_module,
+            "create_connection",
+            autospec=True,
+            return_value=(proto.transport, proto),
+        ):
+            conn = self.loop.run_until_complete(
+                connector.connect(req, None, aiohttp.ClientTimeout())
+            )
         self.assertEqual(req.url, URL("http://www.python.org"))
         self.assertIs(conn._protocol, proto)
         self.assertIs(conn.transport, proto.transport)
@@ -232,17 +239,21 @@ class TestProxy(unittest.TestCase):
                 }
             ]
         )
-        connector._loop.create_connection = mock.AsyncMock(
-            side_effect=OSError("dont take it serious")
-        )
-
         req = ClientRequest(
             "GET",
             URL("http://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        with self.assertRaises(aiohttp.ClientProxyConnectionError):
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                side_effect=OSError("dont take it serious"),
+            ),
+            self.assertRaises(aiohttp.ClientProxyConnectionError),
+        ):
             self.loop.run_until_complete(
                 connector.connect(req, None, aiohttp.ClientTimeout())
             )
@@ -296,21 +307,32 @@ class TestProxy(unittest.TestCase):
         )
 
         tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-        self.loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ),
+            mock.patch.object(
+                connector_module,
+                "start_tls",
+                autospec=True,
+                return_value=mock.Mock(),
+            ) as start_tls_mock,
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
 
         self.assertEqual(
-            self.loop.start_tls.call_args.kwargs["server_hostname"], "www.python.org"
+            start_tls_mock.call_args.kwargs["server_hostname"], "www.python.org"
         )
 
         self.loop.run_until_complete(proxy_req.close())
@@ -368,9 +390,6 @@ class TestProxy(unittest.TestCase):
         )
 
         tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-        self.loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
@@ -378,12 +397,26 @@ class TestProxy(unittest.TestCase):
             server_hostname="server-hostname.example.com",
             loop=self.loop,
         )
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ),
+            mock.patch.object(
+                connector_module,
+                "start_tls",
+                autospec=True,
+                return_value=mock.Mock(),
+            ) as start_tls_mock,
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
 
         self.assertEqual(
-            self.loop.start_tls.call_args.kwargs["server_hostname"],
+            start_tls_mock.call_args.kwargs["server_hostname"],
             "server-hostname.example.com",
         )
 
@@ -475,20 +508,6 @@ class TestProxy(unittest.TestCase):
                             spec_set=True,
                             return_value=fingerprint_mock,
                         ),
-                        mock.patch.object(  # Called on connection to http://proxy.example.com
-                            self.loop,
-                            "create_connection",
-                            autospec=True,
-                            spec_set=True,
-                            return_value=(mock.Mock(), mock.Mock()),
-                        ),
-                        mock.patch.object(  # Called on connection to https://www.python.org
-                            self.loop,
-                            "start_tls",
-                            autospec=True,
-                            spec_set=True,
-                            return_value=TransportMock(),
-                        ),
                     ):
                         req = ClientRequest(
                             "GET",
@@ -496,7 +515,21 @@ class TestProxy(unittest.TestCase):
                             proxy=URL("http://proxy.example.com"),
                             loop=self.loop,
                         )
-                        with self.assertRaises(aiohttp.ServerFingerprintMismatch):
+                        with (
+                            mock.patch.object(  # Called on connection to http://proxy.example.com
+                                connector_module,
+                                "create_connection",
+                                autospec=True,
+                                return_value=(mock.Mock(), mock.Mock()),
+                            ),
+                            mock.patch.object(  # Called on connection to https://www.python.org
+                                connector_module,
+                                "start_tls",
+                                autospec=True,
+                                return_value=TransportMock(),
+                            ),
+                            self.assertRaises(aiohttp.ServerFingerprintMismatch),
+                        ):
                             self.loop.run_until_complete(
                                 connector._create_connection(
                                     req, [], aiohttp.ClientTimeout()
@@ -552,18 +585,29 @@ class TestProxy(unittest.TestCase):
         )
 
         tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-        self.loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ),
+            mock.patch.object(
+                connector_module,
+                "start_tls",
+                autospec=True,
+                return_value=mock.Mock(),
+            ),
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
 
         self.assertEqual(req.url.path, "/")
         self.assertEqual(proxy_req.method, "CONNECT")
@@ -621,20 +665,27 @@ class TestProxy(unittest.TestCase):
             ]
         )
 
-        # Called on connection to http://proxy.example.com
-        self.loop.create_connection = mock.AsyncMock(
-            return_value=(mock.Mock(), mock.Mock())
-        )
-        # Called on connection to https://www.python.org
-        self.loop.start_tls = mock.AsyncMock(side_effect=ssl.CertificateError)
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        with self.assertRaises(aiohttp.ClientConnectorCertificateError):
+        with (
+            mock.patch.object(  # Called on connection to http://proxy.example.com
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(mock.Mock(), mock.Mock()),
+            ),
+            mock.patch.object(  # Called on connection to https://www.python.org
+                connector_module,
+                "start_tls",
+                autospec=True,
+                side_effect=ssl.CertificateError,
+            ),
+            self.assertRaises(aiohttp.ClientConnectorCertificateError),
+        ):
             self.loop.run_until_complete(
                 connector._create_connection(req, None, aiohttp.ClientTimeout())
             )
@@ -687,20 +738,27 @@ class TestProxy(unittest.TestCase):
             ]
         )
 
-        # Called on connection to http://proxy.example.com
-        self.loop.create_connection = mock.AsyncMock(
-            return_value=(mock.Mock(), mock.Mock()),
-        )
-        # Called on connection to https://www.python.org
-        self.loop.start_tls = mock.AsyncMock(side_effect=ssl.SSLError)
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        with self.assertRaises(aiohttp.ClientConnectorSSLError):
+        with (
+            mock.patch.object(  # Called on connection to http://proxy.example.com
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(mock.Mock(), mock.Mock()),
+            ),
+            mock.patch.object(  # Called on connection to https://www.python.org
+                connector_module,
+                "start_tls",
+                autospec=True,
+                side_effect=ssl.SSLError,
+            ),
+            self.assertRaises(aiohttp.ClientConnectorSSLError),
+        ):
             self.loop.run_until_complete(
                 connector._create_connection(req, None, aiohttp.ClientTimeout())
             )
@@ -757,8 +815,6 @@ class TestProxy(unittest.TestCase):
 
         tr, proto = mock.Mock(), mock.Mock()
         tr.get_extra_info.return_value = None
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
@@ -768,9 +824,15 @@ class TestProxy(unittest.TestCase):
         with self.assertRaisesRegex(
             aiohttp.ClientHttpProxyError, "400, message='bad request'"
         ):
-            self.loop.run_until_complete(
-                connector._create_connection(req, None, aiohttp.ClientTimeout())
-            )
+            with mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ):
+                self.loop.run_until_complete(
+                    connector._create_connection(req, None, aiohttp.ClientTimeout())
+                )
 
         self.loop.run_until_complete(proxy_req.close())
         proxy_resp.close()
@@ -826,8 +888,6 @@ class TestProxy(unittest.TestCase):
 
         tr, proto = mock.Mock(), mock.Mock()
         tr.get_extra_info.return_value = None
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
@@ -835,9 +895,15 @@ class TestProxy(unittest.TestCase):
             loop=self.loop,
         )
         with self.assertRaisesRegex(OSError, "error message"):
-            self.loop.run_until_complete(
-                connector._create_connection(req, None, aiohttp.ClientTimeout())
-            )
+            with mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ):
+                self.loop.run_until_complete(
+                    connector._create_connection(req, None, aiohttp.ClientTimeout())
+                )
 
     @mock.patch("aiohttp.connector.ClientRequest")
     @mock.patch(
@@ -870,17 +936,21 @@ class TestProxy(unittest.TestCase):
 
         tr, proto = mock.Mock(), mock.Mock()
         tr.get_extra_info.return_value = None
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-
         req = ClientRequest(
             "GET",
             URL("http://localhost:1234/path"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with mock.patch.object(
+            connector_module,
+            "create_connection",
+            autospec=True,
+            return_value=(tr, proto),
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
         self.assertEqual(req.url, URL("http://localhost:1234/path"))
 
     def test_proxy_auth_property(self) -> None:
@@ -953,20 +1023,32 @@ class TestProxy(unittest.TestCase):
         )
 
         tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-        self.loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
-
         req = ClientRequest(
             "GET",
             URL("https://www.python.org"),
             proxy=URL("http://proxy.example.com"),
             loop=self.loop,
         )
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ),
+            mock.patch.object(
+                connector_module,
+                "start_tls",
+                autospec=True,
+                return_value=mock.Mock(),
+            ) as start_tls_mock,
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
         # ssl_shutdown_timeout=0 is not passed to start_tls
-        self.loop.start_tls.assert_called_with(
+        start_tls_mock.assert_called_with(
+            mock.ANY,
             mock.ANY,
             mock.ANY,
             _SSL_CONTEXT_VERIFIED,
@@ -1034,9 +1116,6 @@ class TestProxy(unittest.TestCase):
         )
 
         tr, proto = mock.Mock(), mock.Mock()
-        self.loop.create_connection = mock.AsyncMock(return_value=(tr, proto))
-        self.loop.start_tls = mock.AsyncMock(return_value=mock.Mock())
-
         self.assertIn("AUTHORIZATION", proxy_req.headers)
         self.assertNotIn("PROXY-AUTHORIZATION", proxy_req.headers)
 
@@ -1048,9 +1127,23 @@ class TestProxy(unittest.TestCase):
         )
         self.assertNotIn("AUTHORIZATION", req.headers)
         self.assertNotIn("PROXY-AUTHORIZATION", req.headers)
-        self.loop.run_until_complete(
-            connector._create_connection(req, None, aiohttp.ClientTimeout())
-        )
+        with (
+            mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ),
+            mock.patch.object(
+                connector_module,
+                "start_tls",
+                autospec=True,
+                return_value=mock.Mock(),
+            ),
+        ):
+            self.loop.run_until_complete(
+                connector._create_connection(req, None, aiohttp.ClientTimeout())
+            )
 
         self.assertEqual(req.url.path, "/")
         self.assertNotIn("AUTHORIZATION", req.headers)

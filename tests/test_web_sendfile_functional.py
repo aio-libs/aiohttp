@@ -14,6 +14,7 @@ import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.pytest_plugin import AiohttpClient
+from aiohttp.typedefs import PathLike
 from aiohttp.web_fileresponse import NOSENDFILE
 
 try:
@@ -28,6 +29,11 @@ try:
     import ssl
 except ImportError:
     ssl = None  # type: ignore
+
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
 
 
 HELLO_AIOHTTP = b"Hello aiohttp! :-)\n"
@@ -73,22 +79,33 @@ def loop_with_mocked_native_sendfile(loop: Any):
 def sender(request: Any, loop: Any):
     sendfile_mock = None
 
-    def maker(*args, **kwargs):
-        ret = web.FileResponse(*args, **kwargs)
-        rloop = asyncio.get_running_loop()
-        is_patched = rloop.sendfile is sendfile_mock
-        assert is_patched if request.param == "no_sendfile" else not is_patched
-        return ret
+    def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
+        if request.param == "no_sendfile":
+            if aiofastnet is None:
+                assert loop.sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
+            else:
+                assert aiofastnet.sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
+        return web.FileResponse(path, chunk_size=chunk_size)
 
     if request.param == "no_sendfile":
-        with mock.patch.object(
-            loop,
-            "sendfile",
-            autospec=True,
-            spec_set=True,
-            side_effect=NotImplementedError,
-        ) as sendfile_mock:
-            yield maker
+        if aiofastnet is None:
+            with mock.patch.object(  # type: ignore[unreachable, unused-ignore]
+                loop,
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
+        else:
+            with mock.patch.object(  # type: ignore[unreachable, unused-ignore]
+                aiofastnet,
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
     else:
         yield maker
 

@@ -24,6 +24,7 @@ from aiohttp import (
     ServerDisconnectedError,
     WSCloseCode,
     web,
+    web_runner as web_runner_module,
 )
 from aiohttp.web_runner import BaseRunner
 
@@ -64,6 +65,22 @@ def skip_if_on_windows():
 
 
 @pytest.fixture
+def create_server_mock() -> Iterator[mock.AsyncMock]:
+    server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
+    server.wait_closed.return_value = None
+    server.sockets = []
+
+    with mock.patch.object(
+        web_runner_module,
+        "create_server",
+        autospec=True,
+        spec_set=True,
+        return_value=server,
+    ) as create_server_mock:
+        yield create_server_mock
+
+
+@pytest.fixture
 def patched_loop(
     loop: asyncio.AbstractEventLoop,
 ) -> Iterator[asyncio.AbstractEventLoop]:
@@ -97,7 +114,9 @@ def stopper(loop):
     return f
 
 
-def test_run_app_http(patched_loop) -> None:
+def test_run_app_http(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
     startup_handler = mock.AsyncMock()
     app.on_startup.append(startup_handler)
@@ -106,19 +125,35 @@ def test_run_app_http(patched_loop) -> None:
 
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
 
-    patched_loop.create_server.assert_called_with(
-        mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+    create_server_mock.assert_called_with(
+        patched_loop,
+        mock.ANY,
+        None,
+        8080,
+        ssl=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
     )
     startup_handler.assert_called_once_with(app)
     cleanup_handler.assert_called_once_with(app)
 
 
-def test_run_app_close_loop(patched_loop) -> None:
+def test_run_app_close_loop(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
     web.run_app(app, print=stopper(patched_loop), loop=patched_loop)
 
-    patched_loop.create_server.assert_called_with(
-        mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+    create_server_mock.assert_called_with(
+        patched_loop,
+        mock.ANY,
+        None,
+        8080,
+        ssl=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
     )
     assert patched_loop.is_closed()
 
@@ -155,6 +190,7 @@ mock_unix_server_multi = [
 mock_server_single = [
     mock.call(
         mock.ANY,
+        mock.ANY,
         "127.0.0.1",
         8080,
         ssl=None,
@@ -166,6 +202,7 @@ mock_server_single = [
 mock_server_multi = [
     mock.call(
         mock.ANY,
+        mock.ANY,
         "127.0.0.1",
         8080,
         ssl=None,
@@ -174,6 +211,7 @@ mock_server_multi = [
         reuse_port=None,
     ),
     mock.call(
+        mock.ANY,
         mock.ANY,
         "192.168.1.1",
         8080,
@@ -185,7 +223,14 @@ mock_server_multi = [
 ]
 mock_server_default_8989 = [
     mock.call(
-        mock.ANY, None, 8989, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+        mock.ANY,
+        mock.ANY,
+        None,
+        8989,
+        ssl=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
     )
 ]
 mock_socket = mock.Mock(getsockname=lambda: ("mock-socket", 123))
@@ -195,6 +240,7 @@ mixed_bindings_tests = (
         {},
         [
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 None,
                 8080,
@@ -254,6 +300,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 "127.0.0.1",
                 8000,
                 ssl=None,
@@ -262,6 +309,7 @@ mixed_bindings_tests = (
                 reuse_port=None,
             ),
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 "192.168.1.1",
                 8000,
@@ -276,7 +324,7 @@ mixed_bindings_tests = (
     (
         "Only socket",
         {"sock": [mock_socket]},
-        [mock.call(mock.ANY, ssl=None, sock=mock_socket, backlog=128)],
+        [mock.call(mock.ANY, mock.ANY, ssl=None, sock=mock_socket, backlog=128)],
         [],
     ),
     (
@@ -285,6 +333,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 None,
                 8765,
                 ssl=None,
@@ -292,7 +341,7 @@ mixed_bindings_tests = (
                 reuse_address=None,
                 reuse_port=None,
             ),
-            mock.call(mock.ANY, sock=mock_socket, ssl=None, backlog=128),
+            mock.call(mock.ANY, mock.ANY, sock=mock_socket, ssl=None, backlog=128),
         ],
         [],
     ),
@@ -302,6 +351,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 "localhost",
                 8080,
                 ssl=None,
@@ -309,7 +359,7 @@ mixed_bindings_tests = (
                 reuse_address=None,
                 reuse_port=None,
             ),
-            mock.call(mock.ANY, sock=mock_socket, ssl=None, backlog=128),
+            mock.call(mock.ANY, mock.ANY, sock=mock_socket, ssl=None, backlog=128),
         ],
         [],
     ),
@@ -318,6 +368,7 @@ mixed_bindings_tests = (
         {"reuse_port": True},
         [
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 None,
                 8080,
@@ -335,6 +386,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 None,
                 8080,
                 ssl=None,
@@ -350,6 +402,7 @@ mixed_bindings_tests = (
         {"reuse_address": True, "reuse_port": True},
         [
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 None,
                 8080,
@@ -367,6 +420,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 None,
                 8989,
                 ssl=None,
@@ -383,6 +437,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 "127.0.0.1",
                 8080,
                 ssl=None,
@@ -391,6 +446,7 @@ mixed_bindings_tests = (
                 reuse_port=True,
             ),
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 "192.168.1.1",
                 8080,
@@ -411,6 +467,7 @@ mixed_bindings_tests = (
         },
         [
             mock.call(
+                mock.ANY,
                 mock.ANY,
                 None,
                 8989,
@@ -433,6 +490,7 @@ mixed_bindings_tests = (
         [
             mock.call(
                 mock.ANY,
+                mock.ANY,
                 "127.0.0.1",
                 8080,
                 ssl=None,
@@ -453,17 +511,23 @@ mixed_bindings_test_params = [test[1:] for test in mixed_bindings_tests]
     mixed_bindings_test_params,
     ids=mixed_bindings_test_ids,
 )
-def test_run_app_mixed_bindings(
-    run_app_kwargs, expected_server_calls, expected_unix_server_calls, patched_loop
-):
+def test_run_app_mixed_bindings(  # type: ignore[misc]
+    run_app_kwargs: dict[str, Any],
+    expected_server_calls: list[mock._Call],
+    expected_unix_server_calls: list[mock._Call],
+    patched_loop: asyncio.AbstractEventLoop,
+    create_server_mock: mock.AsyncMock,
+) -> None:
     app = web.Application()
     web.run_app(app, print=stopper(patched_loop), **run_app_kwargs, loop=patched_loop)
 
-    assert patched_loop.create_unix_server.mock_calls == expected_unix_server_calls
-    assert patched_loop.create_server.mock_calls == expected_server_calls
+    assert patched_loop.create_unix_server.mock_calls == expected_unix_server_calls  # type: ignore[attr-defined]
+    assert create_server_mock.mock_calls == expected_server_calls
 
 
-def test_run_app_https(patched_loop) -> None:
+def test_run_app_https(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
 
     ssl_context = ssl.create_default_context()
@@ -471,7 +535,8 @@ def test_run_app_https(patched_loop) -> None:
         app, ssl_context=ssl_context, print=stopper(patched_loop), loop=patched_loop
     )
 
-    patched_loop.create_server.assert_called_with(
+    create_server_mock.assert_called_with(
+        patched_loop,
         mock.ANY,
         None,
         8443,
@@ -483,7 +548,9 @@ def test_run_app_https(patched_loop) -> None:
 
 
 def test_run_app_nondefault_host_port(
-    patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
+    patched_loop: asyncio.AbstractEventLoop,
+    unused_port_socket: socket.socket,
+    create_server_mock: mock.AsyncMock,
 ) -> None:
     port = unused_port_socket.getsockname()[1]
     host = "127.0.0.1"
@@ -493,13 +560,22 @@ def test_run_app_nondefault_host_port(
         app, host=host, port=port, print=stopper(patched_loop), loop=patched_loop
     )
 
-    patched_loop.create_server.assert_called_with(
-        mock.ANY, host, port, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+    create_server_mock.assert_called_with(
+        patched_loop,
+        mock.ANY,
+        host,
+        port,
+        ssl=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
     )
 
 
 def test_run_app_with_sock(
-    patched_loop: asyncio.AbstractEventLoop, unused_port_socket: socket.socket
+    patched_loop: asyncio.AbstractEventLoop,
+    unused_port_socket: socket.socket,
+    create_server_mock: mock.AsyncMock,
 ) -> None:
     sock = unused_port_socket
     app = web.Application()
@@ -510,12 +586,14 @@ def test_run_app_with_sock(
         loop=patched_loop,
     )
 
-    patched_loop.create_server.assert_called_with(  # type: ignore[attr-defined]
-        mock.ANY, sock=sock, ssl=None, backlog=128
+    create_server_mock.assert_called_with(
+        patched_loop, mock.ANY, sock=sock, ssl=None, backlog=128
     )
 
 
-def test_run_app_multiple_hosts(patched_loop: asyncio.AbstractEventLoop) -> None:
+def test_run_app_multiple_hosts(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     hosts = ("127.0.0.1", "127.0.0.2")
 
     app = web.Application()
@@ -523,6 +601,7 @@ def test_run_app_multiple_hosts(patched_loop: asyncio.AbstractEventLoop) -> None
 
     calls = map(
         lambda h: mock.call(
+            patched_loop,
             mock.ANY,
             h,
             8080,
@@ -533,15 +612,24 @@ def test_run_app_multiple_hosts(patched_loop: asyncio.AbstractEventLoop) -> None
         ),
         hosts,
     )
-    patched_loop.create_server.assert_has_calls(calls)
+    create_server_mock.assert_has_calls(list(calls))
 
 
-def test_run_app_custom_backlog(patched_loop) -> None:
+def test_run_app_custom_backlog(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
     web.run_app(app, backlog=10, print=stopper(patched_loop), loop=patched_loop)
 
-    patched_loop.create_server.assert_called_with(
-        mock.ANY, None, 8080, ssl=None, backlog=10, reuse_address=None, reuse_port=None
+    create_server_mock.assert_called_with(
+        patched_loop,
+        mock.ANY,
+        None,
+        8080,
+        ssl=None,
+        backlog=10,
+        reuse_address=None,
+        reuse_port=None,
     )
 
 
@@ -608,7 +696,11 @@ def test_run_app_abstract_linux_socket(patched_loop) -> None:
     )
 
 
-def test_run_app_preexisting_inet_socket(patched_loop, mocker) -> None:
+def test_run_app_preexisting_inet_socket(
+    patched_loop,
+    mocker,
+    create_server_mock: mock.AsyncMock,
+) -> None:
     app = web.Application()
 
     sock = socket.socket()
@@ -619,14 +711,16 @@ def test_run_app_preexisting_inet_socket(patched_loop, mocker) -> None:
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=sock, print=printer, loop=patched_loop)
 
-        patched_loop.create_server.assert_called_with(
-            mock.ANY, sock=sock, backlog=128, ssl=None
+        create_server_mock.assert_called_with(
+            patched_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://127.0.0.1:{port}" in printer.call_args[0][0]
 
 
 @pytest.mark.skipif(not HAS_IPV6, reason="IPv6 is not available")
-def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
+def test_run_app_preexisting_inet6_socket(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
 
     sock = socket.socket(socket.AF_INET6)
@@ -637,14 +731,19 @@ def test_run_app_preexisting_inet6_socket(patched_loop) -> None:
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=sock, print=printer, loop=patched_loop)
 
-        patched_loop.create_server.assert_called_with(
-            mock.ANY, sock=sock, backlog=128, ssl=None
+        create_server_mock.assert_called_with(
+            patched_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://[::1]:{port}" in printer.call_args[0][0]
 
 
 @pytest.mark.skipif(not hasattr(socket, "AF_UNIX"), reason="requires UNIX sockets")
-def test_run_app_preexisting_unix_socket(patched_loop, unix_sockname, mocker) -> None:
+def test_run_app_preexisting_unix_socket(
+    patched_loop: asyncio.AbstractEventLoop,
+    unix_sockname: str,
+    mocker,
+    create_server_mock: mock.AsyncMock,
+) -> None:
     app = web.Application()
 
     sock = socket.socket(socket.AF_UNIX)
@@ -655,13 +754,15 @@ def test_run_app_preexisting_unix_socket(patched_loop, unix_sockname, mocker) ->
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=sock, print=printer, loop=patched_loop)
 
-        patched_loop.create_server.assert_called_with(
-            mock.ANY, sock=sock, backlog=128, ssl=None
+        create_server_mock.assert_called_with(
+            patched_loop, mock.ANY, sock=sock, backlog=128, ssl=None
         )
         assert f"http://unix:{unix_sockname}:" in printer.call_args[0][0]
 
 
-def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
+def test_run_app_multiple_preexisting_sockets(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     app = web.Application()
 
     sock1 = socket.socket()
@@ -675,10 +776,10 @@ def test_run_app_multiple_preexisting_sockets(patched_loop) -> None:
         printer = mock.Mock(wraps=stopper(patched_loop))
         web.run_app(app, sock=(sock1, sock2), print=printer, loop=patched_loop)
 
-        patched_loop.create_server.assert_has_calls(
+        create_server_mock.assert_has_calls(
             [
-                mock.call(mock.ANY, sock=sock1, backlog=128, ssl=None),
-                mock.call(mock.ANY, sock=sock2, backlog=128, ssl=None),
+                mock.call(patched_loop, mock.ANY, sock=sock1, backlog=128, ssl=None),
+                mock.call(patched_loop, mock.ANY, sock=sock2, backlog=128, ssl=None),
             ]
         )
         assert f"http://127.0.0.1:{port1}" in printer.call_args[0][0]
@@ -727,8 +828,10 @@ def test_sigterm() -> None:
         assert proc.wait() == 0
 
 
-def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:
-    patched_loop.create_server = mock.Mock(side_effect=RuntimeError())
+def test_startup_cleanup_signals_even_on_failure(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
+    create_server_mock.side_effect = RuntimeError()
 
     app = web.Application()
     startup_handler = mock.AsyncMock()
@@ -743,7 +846,9 @@ def test_startup_cleanup_signals_even_on_failure(patched_loop) -> None:
     cleanup_handler.assert_called_once_with(app)
 
 
-def test_run_app_coro(patched_loop) -> None:
+def test_run_app_coro(
+    patched_loop: asyncio.AbstractEventLoop, create_server_mock: mock.AsyncMock
+) -> None:
     startup_handler = cleanup_handler = None
 
     async def make_app():
@@ -757,8 +862,15 @@ def test_run_app_coro(patched_loop) -> None:
 
     web.run_app(make_app(), print=stopper(patched_loop), loop=patched_loop)
 
-    patched_loop.create_server.assert_called_with(
-        mock.ANY, None, 8080, ssl=None, backlog=128, reuse_address=None, reuse_port=None
+    create_server_mock.assert_called_with(
+        patched_loop,
+        mock.ANY,
+        None,
+        8080,
+        ssl=None,
+        backlog=128,
+        reuse_address=None,
+        reuse_port=None,
     )
     startup_handler.assert_called_once_with(mock.ANY)
     cleanup_handler.assert_called_once_with(mock.ANY)
@@ -871,7 +983,7 @@ def test_run_app_cancels_all_pending_tasks(patched_loop):
     assert task.cancelled()
 
 
-def test_run_app_cancels_done_tasks(patched_loop):
+def test_run_app_cancels_done_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
     task = None
 
@@ -889,7 +1001,7 @@ def test_run_app_cancels_done_tasks(patched_loop):
     assert task.done()
 
 
-def test_run_app_cancels_failed_tasks(patched_loop):
+def test_run_app_cancels_failed_tasks(patched_loop: asyncio.AbstractEventLoop) -> None:
     app = web.Application()
     task = None
 

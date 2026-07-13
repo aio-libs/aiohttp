@@ -3,6 +3,8 @@
 import asyncio
 import os
 import pathlib
+import ssl
+import sys
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -45,8 +47,13 @@ def test_simple_web_file_response(
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
     benchmark_file: BenchmarkFile,
+    pytestconfig: pytest.Config,
 ) -> None:
-    """Benchmark simple web.FileResponse."""
+    """Benchmark creating 100 simple web.FileResponse."""
+    server_ssl_context = conn_type.s_kwargs.get("ssl")
+    if server_ssl_context is not None:
+        if sys.version_info >= (3, 12):
+            server_ssl_context.options |= ssl.OP_ENABLE_KTLS
 
     async def handler(request: web.Request) -> web.FileResponse:
         return web.FileResponse(path=benchmark_file.path)
