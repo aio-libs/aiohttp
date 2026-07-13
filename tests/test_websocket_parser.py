@@ -598,7 +598,6 @@ def test_compressed_continuation_with_ping(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     # A control frame may be interleaved between the fragments of a data
-    # A control frame may be interleaved between the fragments of a data
     # message. The continuation must still be decompressed.
     # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
     message = b"hello compressed world " * 4
@@ -610,11 +609,11 @@ def test_compressed_continuation_with_ping(
     half = len(compressed) // 2
 
     # first fragment: compressed binary, RSV1 set, not final
-    parser._feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, half) + compressed[:half])
+    parser.feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, half) + compressed[:half])
     # interleaved ping
-    parser._feed_data(PACK_LEN1(0x80 | WSMsgType.PING, 0))
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PING, 0))
     # final continuation fragment
-    parser._feed_data(
+    parser.feed_data(
         PACK_LEN1(0x80 | WSMsgType.CONTINUATION, len(compressed) - half)
         + compressed[half:]
     )
