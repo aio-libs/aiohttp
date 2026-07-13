@@ -1,5 +1,6 @@
 import base64
 import binascii
+import builtins
 import json
 import re
 import sys
@@ -102,7 +103,9 @@ def parse_content_disposition(
     if not header:
         return None, {}
 
+    # https://www.rfc-editor.org/info/rfc9110/#section-5.6.6-2
     disptype, *parts = header.split(";")
+    disptype = disptype.strip()
     if not is_token(disptype):
         warnings.warn(BadContentDispositionHeader(header))
         return None, {}
@@ -148,15 +151,19 @@ def parse_content_disposition(
 
             try:
                 value = unquote(value, encoding, "strict")
-            except UnicodeDecodeError:  # pragma: nocover
+            except (builtins.LookupError, UnicodeDecodeError):
+                # The charset is attacker-controlled here; an unknown name
+                # raises the builtin LookupError (the bare name is shadowed in
+                # this module by payload.LookupError).
                 warnings.warn(BadContentDispositionParam(item))
                 continue
 
         else:
             failed = True
-            if is_quoted(value):
+            rstripped = value.rstrip()
+            if is_quoted(rstripped):
                 failed = False
-                value = unescape(value[1:-1].lstrip("\\/"))
+                value = unescape(rstripped[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
@@ -206,7 +213,14 @@ def content_disposition_filename(
         if "'" in value:
             encoding, _, value = value.split("'", 2)
             encoding = encoding or "utf-8"
-            return unquote(value, encoding, "strict")
+            try:
+                return unquote(value, encoding, "strict")
+            except (builtins.LookupError, UnicodeDecodeError):
+                # Both the charset name and the octets are attacker-controlled
+                # here; an unknown encoding raises the builtin LookupError
+                # (shadowed in this module by payload.LookupError) and
+                # undecodable bytes raise UnicodeDecodeError.
+                return None
         return value
 
 

@@ -56,6 +56,7 @@ Arcadiy Ivanov
 Arie Bovenberg
 Arseny Timoniq
 Arsh Smith
+Arshiya Tabasum
 Artem Yushkovskiy
 Arthur Darcet
 Ashutosh Kumar Singh
@@ -124,6 +125,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+dxbjavid
 Earle Lowe
 Eduard Iskandarov
 Eli Ribble
@@ -298,6 +300,7 @@ Oisin Aylward
 Olaf Conradi
 Oleg Höfling
 Omkar Kabde
+oppnc
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -369,6 +372,7 @@ Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
 Taha Jahangir
+Taras Kozlov
 Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
