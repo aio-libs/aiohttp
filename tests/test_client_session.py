@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+import ssl
 import sys
 import warnings
 from collections import deque
@@ -944,6 +945,71 @@ async def test_default_proxy() -> None:
     ), "`ClientSession._request` uses per-request proxy not session default"
 
     await session.close()
+
+
+async def test_default_ssl() -> None:
+    ssl_ctx = ssl.create_default_context()
+
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(ssl=ssl_ctx, request_class=request_class_mock)
+
+    assert session._default_ssl is ssl_ctx, "`ClientSession._default_ssl` not set"
+
+    with pytest.raises(OnCall):
+        await session.get("http://example.com")
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is ssl_ctx
+    ), "`ClientSession._request` does not use the session default ssl"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get("http://example.com", ssl=False)
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is False
+    ), "`ClientSession._request` uses session default ssl not the per-request one"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get("http://example.com", ssl=True)
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is True
+    ), "explicit `ssl=True` should not be replaced by the session default"
+
+    await session.close()
+
+
+async def test_default_ssl_not_set() -> None:
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(request_class=request_class_mock)
+
+    with pytest.raises(OnCall):
+        await session.get("http://example.com")
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is True
+    ), "the default ssl mode should stay `True` when not configured"
+
+    await session.close()
+
+
+async def test_default_ssl_invalid_type() -> None:
+    with pytest.raises(
+        TypeError, match="ssl should be SSLContext, Fingerprint, or bool"
+    ):
+        ClientSession(ssl="/some/cert.pem")  # type: ignore[arg-type]
 
 
 async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
