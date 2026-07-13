@@ -28,7 +28,7 @@ except ImportError:
 try:
     import ssl
 except ImportError:
-    ssl = None  # type: ignore[assignment]
+    ssl = None  # type: ignore
 
 try:
     import aiofastnet

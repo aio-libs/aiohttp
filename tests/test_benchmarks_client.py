@@ -18,31 +18,6 @@ else:
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
-@pytest.fixture
-def aiohttp_client_sync(
-    event_loop: asyncio.AbstractEventLoop,
-) -> Iterator[
-    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
-]:
-    clients = []
-
-    async def go(
-        app: web.Application,
-        *,
-        server_kwargs: dict[str, Any] | None = None,
-    ) -> TestClient[web.Request, web.Application]:
-        server = TestServer(app)
-        client = TestClient(server)
-        await server.start_server(**(server_kwargs or {}))
-        clients.append(client)
-        return client
-
-    yield go
-
-    while clients:
-        event_loop.run_until_complete(clients.pop().close())
-
-
 class _ConnArgs(TypedDict, total=False):
     ssl: ssl.SSLContext
 

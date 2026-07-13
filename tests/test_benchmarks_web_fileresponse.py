@@ -23,37 +23,6 @@ else:
     BenchmarkFixture = pytest_codspeed.BenchmarkFixture
 
 
-@pytest.fixture
-def aiohttp_client_sync(
-    event_loop: asyncio.AbstractEventLoop,
-    aiohttp_client_cls: type[TestClient[web.Request, web.Application]],
-) -> Iterator[
-    Callable[[web.Application], Awaitable[TestClient[web.Request, web.Application]]]
-]:
-    # TODO: Remove this fixture when async benchmarks are working.
-    clients = []
-
-    async def go(
-        __param: web.Application,
-        *,
-        server_kwargs: dict[str, Any] | None = None,
-        **kwargs: Any,
-    ) -> TestClient[web.Request, web.Application]:
-        server_kwargs = dict(server_kwargs or {})
-        server_ssl_context = server_kwargs.pop("ssl", None)
-        server = TestServer(__param, **server_kwargs)
-        client = aiohttp_client_cls(server, **kwargs)
-
-        await server.start_server(ssl=server_ssl_context)
-        clients.append(client)
-        return client
-
-    yield go
-
-    while clients:
-        event_loop.run_until_complete(clients.pop().close())
-
-
 class _ConnArgs(TypedDict, total=False):
     ssl: ssl.SSLContext
 
