@@ -1,5 +1,6 @@
 import base64
 import binascii
+import builtins
 import json
 import re
 import sys
@@ -148,7 +149,10 @@ def parse_content_disposition(
 
             try:
                 value = unquote(value, encoding, "strict")
-            except UnicodeDecodeError:  # pragma: nocover
+            except (builtins.LookupError, UnicodeDecodeError):
+                # The charset is attacker-controlled here; an unknown name
+                # raises the builtin LookupError (the bare name is shadowed in
+                # this module by payload.LookupError).
                 warnings.warn(BadContentDispositionParam(item))
                 continue
 
@@ -207,7 +211,14 @@ def content_disposition_filename(
         if "'" in value:
             encoding, _, value = value.split("'", 2)
             encoding = encoding or "utf-8"
-            return unquote(value, encoding, "strict")
+            try:
+                return unquote(value, encoding, "strict")
+            except (builtins.LookupError, UnicodeDecodeError):
+                # Both the charset name and the octets are attacker-controlled
+                # here; an unknown encoding raises the builtin LookupError
+                # (shadowed in this module by payload.LookupError) and
+                # undecodable bytes raise UnicodeDecodeError.
+                return None
         return value
 
 
