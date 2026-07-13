@@ -219,7 +219,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v8.3.2
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -324,7 +324,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v8.3.2
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -396,7 +396,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v8.3.2
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -483,6 +483,15 @@ jobs:
         make cythonize
     - name: Install self
       run: python -m pip install -e .
+    - name: Load kernel TLS module
+      if: runner.os == 'Linux'
+      run: sudo modprobe tls
+    - name: Show kernel and OpenSSL build information
+      if: runner.os == 'Linux'
+      run: |
+        lsb_release -a
+        uname -r
+        openssl version -a
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v4
       with:

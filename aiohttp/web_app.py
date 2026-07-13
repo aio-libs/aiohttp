@@ -33,9 +33,11 @@ from .web_urldispatcher import (
     Domain,
     MaskDomain,
     MatchedSubAppResource,
+    MatchInfoError,
     PrefixedSubAppResource,
     SystemRoute,
     UrlDispatcher,
+    UrlMappingMatchInfo,
 )
 
 __all__ = ("Application", "CleanupError")
@@ -364,7 +366,11 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        match_info = await self._router.resolve(request)
+        match_info: UrlMappingMatchInfo
+        if (err := request._pre_handler_error) is not None:
+            match_info = MatchInfoError(err)
+        else:
+            match_info = await self._router.resolve(request)
         match_info.add_app(self)
         match_info.freeze()
 

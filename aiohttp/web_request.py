@@ -9,7 +9,16 @@ import types
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Optional,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -70,6 +79,12 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
+class _CloneKwargs(TypedDict, total=False):
+    scheme: str
+    host: str
+    remote: str
+
+
 @frozen_dataclass_decorator
 class FileField:
     name: str
@@ -112,6 +127,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
     _read_bytes: bytes | None = None
+    _pre_handler_error: HTTPBadRequest | None = None
 
     def __init__(
         self,
@@ -127,10 +143,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         scheme: str | None = None,
         host: str | None = None,
         remote: str | None = None,
+        pre_handler_error: HTTPBadRequest | None = None,
     ) -> None:
         self._message = message
         self._protocol = protocol
         self._payload_writer = payload_writer
+        if pre_handler_error is not None:
+            self._pre_handler_error = pre_handler_error
 
         self._payload = payload
         self._headers: HeadersDictProxy = message.headers
@@ -207,7 +226,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         message = self._message._replace(**dct)
 
-        kwargs: dict[str, str] = {}
+        kwargs: _CloneKwargs = {}
         if scheme is not sentinel:
             kwargs["scheme"] = scheme
         if host is not sentinel:
@@ -226,6 +245,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._loop,
             client_max_size=client_max_size,
             state=self._state.copy(),
+            pre_handler_error=self._pre_handler_error,
             **kwargs,
         )
 
@@ -248,6 +268,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     @property
     def client_max_size(self) -> int:
         return self._client_max_size
+
+    @property
+    def pre_handler_error(self) -> HTTPBadRequest | None:
+        return self._pre_handler_error
 
     @reify
     def rel_url(self) -> URL:
@@ -868,8 +892,7 @@ class Request(BaseRequest):
 
     async def _prepare_hook(self, response: StreamResponse) -> None:
         match_info = self._match_info
-        if match_info is None:
-            return
+        assert match_info is not None
         for app in match_info._apps:
             if on_response_prepare := app.on_response_prepare:
                 await on_response_prepare.send(self, response)

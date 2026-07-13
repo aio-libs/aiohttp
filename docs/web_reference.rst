@@ -167,6 +167,22 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
+   .. attribute:: pre_handler_error
+
+      An :exc:`HTTPBadRequest` set by the protocol when the parser
+      could not parse the incoming bytes, otherwise ``None``. The
+      original parser exception is available as ``__cause__``.
+
+      Users of the low-level :class:`aiohttp.web.Server` (without an
+      :class:`Application`) must inspect this attribute and emit
+      the error response themselves. :class:`Application` users
+      receive the error via the middleware chain and do not need
+      to read this directly.
+
+      Read-only :exc:`HTTPBadRequest` or ``None`` property.
+
+      .. versionadded:: 4.0
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
