@@ -287,9 +287,9 @@ def test_close_frame(out: WebSocketDataQueue, parser: PatchableWebSocketReader) 
 def test_close_frame_info(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
-    parser._handle_frame(True, WSMsgType.CLOSE, b"0112345", 0)
+    parser._handle_frame(True, WSMsgType.CLOSE, b"\x03\xe912345", 0)
     res = out._buffer[0]
-    assert res == WSMessageClose(data=12337, size=7, extra="12345")
+    assert res == WSMessageClose(data=1001, size=7, extra="12345")
 
 
 def test_close_frame_invalid(
@@ -304,6 +304,18 @@ def test_close_frame_invalid_2(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     data = build_close_frame(code=1)
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+@pytest.mark.parametrize("code", (5000, 9999, 65535))
+def test_close_frame_invalid_code_above_range(
+    parser: PatchableWebSocketReader, code: int
+) -> None:
+    data = build_close_frame(code=code)
 
     with pytest.raises(WebSocketError) as ctx:
         parser._feed_data(data)
@@ -592,6 +604,34 @@ def test_parse_compress_frame_multi(parser: PatchableWebSocketReader) -> None:
     res = parser.parse_frame(b"1234")
     fin, opcode, payload, compress = res[0]
     assert (1, 1, b"1234", False) == (fin, opcode, payload, not not compress)
+
+
+def test_compressed_continuation_with_ping(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # A control frame may be interleaved between the fragments of a data
+    # message. The continuation must still be decompressed.
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+    message = b"hello compressed world " * 4
+    compressobj = ZLibBackend.compressobj(wbits=-9)
+    compressed = compressobj.compress(message)
+    compressed += compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
+    assert compressed.endswith(WS_DEFLATE_TRAILING)
+    compressed = compressed[:-4]
+    half = len(compressed) // 2
+
+    # first fragment: compressed binary, RSV1 set, not final
+    parser.feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, half) + compressed[:half])
+    # interleaved ping
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PING, 0))
+    # final continuation fragment
+    parser.feed_data(
+        PACK_LEN1(0x80 | WSMsgType.CONTINUATION, len(compressed) - half)
+        + compressed[half:]
+    )
+
+    assert out._buffer[0] == WSMessagePing(data=b"", size=0, extra="")
+    assert out._buffer[1] == WSMessageBinary(data=message, size=len(message), extra="")
 
 
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:

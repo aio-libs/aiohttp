@@ -483,6 +483,15 @@ jobs:
         make cythonize
     - name: Install self
       run: python -m pip install -e .
+    - name: Load kernel TLS module
+      if: runner.os == 'Linux'
+      run: sudo modprobe tls
+    - name: Show kernel and OpenSSL build information
+      if: runner.os == 'Linux'
+      run: |
+        lsb_release -a
+        uname -r
+        openssl version -a
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v4
       with:
@@ -832,7 +841,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@v3.0.1
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.

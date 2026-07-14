@@ -186,7 +186,7 @@ class _RequestOptions(TypedDict, total=False):
     read_until_eof: bool
     proxy: StrOrURL | None
     timeout: "ClientTimeout | _SENTINEL | None"
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     trace_request_ctx: object
@@ -210,7 +210,7 @@ class _WSConnectOptions(TypedDict, total=False):
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
@@ -314,6 +314,7 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
+        "_default_ssl",
         "_retry_connection",
         "_middlewares",
     )
@@ -326,6 +327,7 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
         skip_auto_headers: Iterable[str] | None = None,
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
@@ -361,6 +363,12 @@ class ClientSession:
             assert self._base_url.absolute, "Only absolute URLs are supported"
         if self._base_url is not None and not self._base_url.path.endswith("/"):
             raise ValueError("base_url must have a trailing '/'")
+
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                f"got {ssl!r} instead."
+            )
 
         loop = asyncio.get_running_loop()
 
@@ -438,6 +446,7 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
+        self._default_ssl = ssl
         self._retry_connection: bool = True
         self._middlewares = tuple(middlewares)
 
@@ -503,7 +512,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -523,6 +532,8 @@ class ClientSession:
 
         method = method.upper()
 
+        if ssl is sentinel:
+            ssl = self._default_ssl
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
@@ -954,7 +965,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1029,7 +1040,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1085,7 +1096,7 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+        if ssl is not sentinel and not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
                 f"got {ssl!r} instead."
