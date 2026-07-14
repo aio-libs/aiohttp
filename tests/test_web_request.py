@@ -930,6 +930,22 @@ async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) 
     assert err.value.status_code == 415
 
 
+async def test_request_text_with_invalid_content_type_encoding(
+    protocol: BaseProtocol,
+) -> None:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(b"\xff")
+    payload.feed_eof()
+    headers = {"Content-Type": "text/html; charset=utf-8"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
+
+
 async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
@@ -975,6 +991,24 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     )
     result = await req.post()
     assert dict(result) == {"a": "b", "c": "d"}
+
+
+async def test_urlencoded_form_with_invalid_content_type_encoding(
+    protocol: BaseProtocol,
+) -> None:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(b"a=1&b=\xff")
+    payload.feed_eof()
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+    }
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.post()
+    assert err.value.status_code == 415
 
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:

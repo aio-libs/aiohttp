@@ -1,0 +1,1 @@
+Fixed ``BaseRequest.text()`` and ``application/x-www-form-urlencoded`` request parsing to return HTTP 415 when body bytes fail to decode with the declared charset -- by :user:`cyphercodes`.
