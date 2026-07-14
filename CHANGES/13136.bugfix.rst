@@ -1,0 +1,1 @@
+Fixed Python parser not rejecting a bare ``LF`` in the request line -- by :user:`Dreamsorcerer`.
