@@ -977,6 +977,29 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
+async def test_multipart_formdata_unknown_charset(protocol: BaseProtocol) -> None:
+    # An unknown charset on a text part must yield 415, not a raw LookupError.
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(
+        b"-----------------------------326931944431359\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n'
+        b"Content-Type: text/plain; charset=unknown-8bit\r\n"
+        b"\r\n"
+        b"b\r\n"
+        b"-----------------------------326931944431359--\r\n"
+    )
+    content_type = (
+        "multipart/form-data; boundary=---------------------------326931944431359"
+    )
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST", "/", headers={"CONTENT-TYPE": content_type}, payload=payload
+    )
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.post()
+    assert err.value.status_code == 415
+
+
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:
     # Ensure ValueError is raised when Content-Disposition has no name
     payload = StreamReader(

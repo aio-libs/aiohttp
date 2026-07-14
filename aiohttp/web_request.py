@@ -776,7 +776,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
-                            out.add(field.name, value.decode(charset))
+                            try:
+                                decoded = value.decode(charset)
+                            except LookupError:
+                                raise HTTPUnsupportedMediaType()
+                            out.add(field.name, decoded)
                         else:
                             out.add(field.name, value)  # type: ignore[arg-type]
                 else:
