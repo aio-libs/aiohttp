@@ -323,7 +323,42 @@ def test_invalid_linebreak(
         parser.feed_data(text)
 
 
-def test_cve_2023_37276(parser: Any) -> None:
+def test_partial_request_split_still_parses(parser: HttpRequestParser) -> None:
+    """A legitimate request split mid-line must still stream."""
+    messages, _, _ = parser.feed_data(b"GET /split HTTP/1.1\r\nHo")
+    assert not messages
+    messages, _, _ = parser.feed_data(b"st: a\r\n\r\n")
+    assert len(messages) == 1
+    assert messages[0][0].path == "/split"
+
+
+@pytest.mark.parametrize(
+    "attacker",
+    (
+        pytest.param(
+            b"GET /attacker HTTP/1.1\nHost: a\nX-Foo: bar\n\n", id="request_line"
+        ),
+        pytest.param(
+            b"POST /attacker HTTP/1.1\r\nHost: a\r\n"
+            b"Transfer-Encoding: chunked\r\n\r\n5\n",
+            id="chunk_size",
+        ),
+        pytest.param(
+            b"POST /attacker HTTP/1.1\r\nHost: a\r\n"
+            b"Transfer-Encoding: chunked\r\n\r\n0\r\nX-Trailer: bad\n",
+            id="trailer",
+        ),
+    ),
+)
+def test_reject_bare_lf_at_point_seen(
+    parser: HttpRequestParser, attacker: bytes
+) -> None:
+    """A bare LF where CRLF is required is rejected at the point it's seen."""
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(attacker)
+
+
+def test_cve_2023_37276(parser: HttpRequestParser) -> None:
     text = b"""POST / HTTP/1.1\r\nHost: localhost:8080\r\nX-Abc: \rxTransfer-Encoding: chunked\r\n\r\n"""
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
