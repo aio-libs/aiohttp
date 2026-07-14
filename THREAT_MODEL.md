@@ -324,7 +324,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   could grow without bound. Memory was previously bounded only
   transitively by `read_bufsize` ([§5.7](#57-server-connection-lifecycle) threat 7.4);
   the fix adds an explicit pipeline-count cap.
-- **PR #13124** (3.14.2) — the pure-Python request parser buffered a
+- **PR #13136** (3.14.2) — the pure-Python request parser buffered a
   bare `LF` line ending (where `CRLF` is required) across reads instead of
   rejecting it, so bytes from a following request on the same connection
   could be concatenated into the failed parse and disclosed in the error.
