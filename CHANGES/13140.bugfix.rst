@@ -1,5 +1,6 @@
 Fixed :py:meth:`Request.post() <aiohttp.web.BaseRequest.post>` raising an
-unhandled :exc:`LookupError` (surfacing as a 500) when a ``multipart/form-data``
-text field declared an unknown charset; it now returns ``415 Unsupported Media
-Type`` like the urlencoded branch and :py:meth:`~aiohttp.web.BaseRequest.text`
+unhandled ``LookupError`` (surfacing as a ``500``) when a ``multipart/form-data``
+text field declared an unknown charset; it now returns
+``415 Unsupported Media Type``, matching the ``application/x-www-form-urlencoded``
+branch and :py:meth:`Request.text() <aiohttp.web.BaseRequest.text>`
 -- by :user:`arshsmith1`.
