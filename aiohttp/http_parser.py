@@ -514,6 +514,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
+                    # A bare LF here means CRLF was required:
+                    # reject instead of buffering, else a following request's
+                    # bytes get appended to this line and leak in the error.
+                    if b"\n" in self._tail:
+                        raise BadHttpMessage("Bad line ending, expected CRLF")
                     if len(self._tail) > self.max_line_size:
                         raise LineTooLong(self._tail[:100] + b"...", self.max_line_size)
                     data = EMPTY
@@ -1008,6 +1013,12 @@ class HttpPayloadParser:
                             self._chunk_size = size
                             self.payload.begin_http_chunk_receiving()
                     else:
+                        if b"\n" in chunk:
+                            exc = TransferEncodingError(
+                                "Bad chunk-size line ending, expected CRLF"
+                            )
+                            set_exception(self.payload, exc)
+                            raise exc
                         self._chunk_tail = chunk
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
@@ -1052,6 +1063,12 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos < 0:  # No line found
+                        if b"\n" in chunk:
+                            exc = TransferEncodingError(
+                                "Bad trailer line ending, expected CRLF"
+                            )
+                            set_exception(self.payload, exc)
+                            raise exc
                         self._chunk_tail = chunk
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
