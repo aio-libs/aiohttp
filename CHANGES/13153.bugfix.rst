@@ -1,0 +1,5 @@
+Fixed :func:`~aiohttp.web.normalize_path_middleware` redirecting to an
+attacker-supplied origin when a request is made with an absolute-form
+target (:rfc:`9112#section-3.2.2`), e.g. ``GET http://example.org/foo``.
+The ``Location`` header is now built from the request path alone
+-- by :user:`arshsmith1`.
