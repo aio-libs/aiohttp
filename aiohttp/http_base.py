@@ -13,21 +13,6 @@ from aiohttp.typedefs import DEFAULT_JSON_DECODER
 class BaseResponse(HeadersMixin):
     """Shared public API for HTTP responses."""
 
-    __slots__ = (
-        "_body",
-        "_cookies",
-        "_headers",
-        "_history",
-        "_in_context",
-        "_released",
-        "_resolve_charset",
-        "method",
-        "url",
-        "status",
-        "reason",
-        "_raw_cookie_headers",
-    )
-
     status: int
     _body: Optional[bytes]
     _cookies: Optional[SimpleCookie]
