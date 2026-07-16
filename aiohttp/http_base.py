@@ -3,22 +3,33 @@ import codecs
 import contextlib
 import json
 from http.cookies import SimpleCookie
-from typing import Any, Mapping, Optional, Tuple, Union, Iterable, Callable, List
+from typing import Any, Callable, Iterable, List, Mapping, Optional, Tuple, Union
 
-from aiohttp.client_exceptions import ClientResponseError, ContentTypeError
-from aiohttp.helpers import HeadersMixin, parse_mimetype, is_expected_content_type
-from aiohttp._cookie_helpers import parse_set_cookie_headers
-from aiohttp.hdrs import CONTENT_TYPE, SET_COOKIE
-from aiohttp.typedefs import DEFAULT_JSON_DECODER
 from multidict import CIMultiDict
+
+from aiohttp._cookie_helpers import parse_set_cookie_headers
+from aiohttp.client_exceptions import ClientResponseError, ContentTypeError
+from aiohttp.hdrs import CONTENT_TYPE, SET_COOKIE
+from aiohttp.helpers import HeadersMixin, is_expected_content_type, parse_mimetype
+from aiohttp.typedefs import DEFAULT_JSON_DECODER
 
 
 class BaseResponse(HeadersMixin):
     """Shared public API for HTTP responses."""
 
     __slots__ = (
-        "_body", "_cookies", "_headers", "_history", "_in_context",
-        "_released", "_resolve_charset", "method", "url", "status", "reason", "_raw_cookie_headers"
+        "_body",
+        "_cookies",
+        "_headers",
+        "_history",
+        "_in_context",
+        "_released",
+        "_resolve_charset",
+        "method",
+        "url",
+        "status",
+        "reason",
+        "_raw_cookie_headers",
     )
 
     status: int

@@ -15,10 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
 
 from . import hdrs, multipart, payload
-from ._cookie_helpers import (
-    parse_cookie_header,
-    preserve_morsel_with_coded_value,
-)
+from ._cookie_helpers import parse_cookie_header, preserve_morsel_with_coded_value
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
