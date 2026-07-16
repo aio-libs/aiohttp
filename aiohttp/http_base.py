@@ -1,7 +1,6 @@
 import codecs
 import contextlib
 from http.cookies import SimpleCookie
-
 from typing import Any, Callable, Optional, Tuple
 
 from aiohttp._cookie_helpers import parse_set_cookie_headers
@@ -9,6 +8,7 @@ from aiohttp.client_exceptions import ClientResponseError, ContentTypeError
 from aiohttp.hdrs import CONTENT_TYPE
 from aiohttp.helpers import HeadersMixin, is_expected_content_type, parse_mimetype
 from aiohttp.typedefs import DEFAULT_JSON_DECODER
+
 
 class BaseResponse(HeadersMixin):
     """Shared public API for HTTP responses."""
