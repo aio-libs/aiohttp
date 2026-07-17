@@ -1,0 +1,4 @@
+Added ``METH_QUERY`` to ``aiohttp.hdrs`` and included the ``QUERY`` method
+(:rfc:`10008`, explicitly safe and idempotent) in the set of idempotent
+methods the client may retry on a closed keep-alive connection
+-- by :user:`rodrigobnogueira`.

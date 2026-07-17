@@ -706,6 +706,16 @@ def test_parse(parser: HttpRequestParser) -> None:
     assert msg.headers["Host"] == "a"
 
 
+def test_parse_query_method(parser: HttpRequestParser) -> None:
+    # Regression test for #13160: the C parser's method table ended one short
+    # of llhttp's HTTP_QUERY, mapping the method to "<unknown>".
+    text = b"QUERY /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.method == "QUERY"
+
+
 async def test_parse_body(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nContent-Length: 4\r\n\r\nbody"
     messages, upgrade, tail = parser.feed_data(text)

@@ -1,0 +1,5 @@
+Fixed the C HTTP parser reporting the ``QUERY`` method (:rfc:`10008`) as
+``<unknown>`` -- the vendored llhttp already recognized it, but the parser's
+method table ended one entry short, so servers built with the C extensions
+answered ``405 Method Not Allowed`` for routes registered for it
+-- by :user:`rodrigobnogueira`.

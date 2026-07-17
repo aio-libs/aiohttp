@@ -216,7 +216,11 @@ class _WSConnectOptions(TypedDict, total=False):
 
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+# QUERY is explicitly safe and idempotent:
+# https://www.rfc-editor.org/rfc/rfc10008
+IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE", "QUERY"}
+)
 
 _RetType_co = TypeVar(
     "_RetType_co",

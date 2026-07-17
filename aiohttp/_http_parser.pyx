@@ -100,7 +100,7 @@ cdef inline object extend(object buf, const char* at, size_t length):
     memcpy(ptr + s, at, length)
 
 
-DEF METHODS_COUNT = 46;
+DEF METHODS_COUNT = 47;  # Must span llhttp's llhttp_method_t (HTTP_QUERY = 46 is the highest value)
 
 cdef list _http_method = []
 

@@ -303,6 +303,29 @@ async def test_post_json(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
+async def test_query_method(aiohttp_client: AiohttpClient) -> None:
+    # Regression test for #13160: the C parser reported QUERY as "<unknown>",
+    # so routes registered for it answered 405.
+    dct = {"key": "value"}
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.method == "QUERY"
+        data = await request.json()
+        assert dct == data
+        return web.json_response(data)
+
+    app = web.Application()
+    app.router.add_route("QUERY", "/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.request("QUERY", "/", json=dct)
+    assert 200 == resp.status
+    data = await resp.json()
+    assert dct == data
+
+    resp.release()
+
+
 async def test_multipart(aiohttp_client: AiohttpClient) -> None:
     with multipart.MultipartWriter() as writer:
         writer.append("test")

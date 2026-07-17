@@ -133,7 +133,8 @@ cdef extern from "llhttp.h":
         HTTP_SET_PARAMETER,
         HTTP_REDIRECT,
         HTTP_RECORD,
-        HTTP_FLUSH
+        HTTP_FLUSH,
+        HTTP_QUERY
 
     ctypedef llhttp_method llhttp_method_t;
 
