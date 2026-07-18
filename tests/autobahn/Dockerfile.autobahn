@@ -1,0 +1,1 @@
+FROM crossbario/autobahn-testsuite:25.10.1

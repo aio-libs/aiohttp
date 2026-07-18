@@ -3,6 +3,7 @@ import pprint
 import socket
 import subprocess
 import time
+from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -17,8 +18,6 @@ else:
 
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
-
-IMAGE = "crossbario/autobahn-testsuite:25.10.1"
 
 
 def wait_for_port(port: int, timeout: float = 15.0) -> None:
@@ -39,8 +38,17 @@ def report_dir(tmp_path_factory: TempPathFactory) -> Path:
 
 
 @pytest.fixture(scope="session", autouse=True)
-def autobahn_image() -> None:
-    docker.pull(IMAGE)
+def build_autobahn_testsuite() -> Iterator[None]:
+    docker.build(
+        file="tests/autobahn/Dockerfile.autobahn",
+        tags=["autobahn-testsuite"],
+        context_path=".",
+    )
+
+    try:
+        yield
+    finally:
+        docker.image.remove(x="autobahn-testsuite")
 
 
 def get_report(path: Path, result: dict[str, str]) -> dict[str, object] | None:
@@ -77,7 +85,7 @@ def process_xfail(
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     autobahn_container = docker.run(
         detach=True,
-        image=IMAGE,
+        image="autobahn-testsuite",
         name="autobahn",
         remove=True,
         volumes=[
@@ -138,7 +146,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     try:
         wait_for_port(9001)
         docker.run(
-            image=IMAGE,
+            image="autobahn-testsuite",
             name="autobahn",
             remove=True,
             volumes=[
