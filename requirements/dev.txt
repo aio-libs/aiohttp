@@ -304,8 +304,6 @@ valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==21.7.8
     # via pre-commit
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 wheel==0.48.0
     # via pip-tools
 yarl==1.24.5
