@@ -302,6 +302,33 @@ def test_last_modified_datetime() -> None:
     assert resp.last_modified == dt
 
 
+def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
+    """Regression test for
+    https://github.com/aio-libs/aiohttp/issues/5303
+
+    Setting last_modified from a float timestamp with a fractional
+    second and from an equivalent datetime with the same fractional
+    second must produce the same header. Previously the timestamp
+    branch rounded up (math.ceil) while the datetime branch truncated
+    (utctimetuple() drops microseconds), so the same instant produced
+    two different Last-Modified headers depending on which type was
+    used to set it.
+    """
+    dt = datetime.datetime(2020, 12, 2, 9, 51, 2, 500000, datetime.timezone.utc)
+
+    resp_dt = web.StreamResponse()
+    resp_dt.last_modified = dt
+
+    resp_ts = web.StreamResponse()
+    resp_ts.last_modified = dt.timestamp()
+
+    assert resp_dt.headers["Last-Modified"] == resp_ts.headers["Last-Modified"]
+    # Both should round up to the next whole second.
+    assert resp_dt.last_modified == datetime.datetime(
+        2020, 12, 2, 9, 51, 3, 0, datetime.timezone.utc
+    )
+
+
 def test_last_modified_reset() -> None:
     resp = web.StreamResponse()
 
