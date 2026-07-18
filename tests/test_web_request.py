@@ -930,7 +930,7 @@ async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) 
     assert err.value.status_code == 415
 
 
-async def test_request_text_with_invalid_content_type_encoding(
+async def test_request_text_with_invalid_default_encoding(
     protocol: BaseProtocol,
 ) -> None:
     payload = StreamReader(
@@ -938,7 +938,7 @@ async def test_request_text_with_invalid_content_type_encoding(
     )
     payload.feed_data(b"\xff")
     payload.feed_eof()
-    headers = {"Content-Type": "text/html; charset=utf-8"}
+    headers = {"Content-Type": "text/html"}
     req = make_mocked_request("POST", "/", payload=payload, headers=headers)
 
     with pytest.raises(web.HTTPUnsupportedMediaType) as err:
