@@ -69,6 +69,7 @@ from .client_exceptions import (
 )
 from .client_middlewares import ClientMiddlewareType, build_client_middlewares
 from .client_reqrep import (
+    SSL_ALLOWED_TYPES,
     ClientRequest as ClientRequest,
     ClientResponse as ClientResponse,
     Fingerprint as Fingerprint,
@@ -186,7 +187,7 @@ class _RequestOptions(TypedDict, total=False):
     proxy: StrOrURL | None
     proxy_auth: BasicAuth | None
     timeout: "ClientTimeout | _SENTINEL | None"
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     trace_request_ctx: object
@@ -212,7 +213,7 @@ class _WSConnectOptions(TypedDict, total=False):
     headers: LooseHeaders | None
     proxy: StrOrURL | None
     proxy_auth: BasicAuth | None
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     verify_ssl: bool | None
     fingerprint: bytes | None
     ssl_context: SSLContext | None
@@ -291,6 +292,7 @@ class ClientSession:
             "_max_headers",
             "_resolve_charset",
             "_default_proxy",
+            "_default_ssl",
             "_default_proxy_auth",
             "_retry_connection",
             "_middlewares",
@@ -311,6 +313,7 @@ class ClientSession:
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
         proxy_auth: BasicAuth | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
         skip_auto_headers: Iterable[str] | None = None,
         auth: BasicAuth | None = None,
         json_serialize: JSONEncoder = json.dumps,
@@ -356,6 +359,12 @@ class ClientSession:
             assert self._base_url.absolute, "Only absolute URLs are supported"
         if self._base_url is not None and not self._base_url.path.endswith("/"):
             raise ValueError("base_url must have a trailing '/'")
+
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, bool, Fingerprint or None, "
+                f"got {ssl!r} instead."
+            )
 
         if timeout is sentinel or timeout is None:
             self._timeout = DEFAULT_TIMEOUT
@@ -474,6 +483,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._default_proxy_auth = proxy_auth
+        self._default_ssl = ssl
         self._retry_connection: bool = True
         self._middlewares = middlewares
 
@@ -556,7 +566,7 @@ class ClientSession:
         verify_ssl: bool | None = None,
         fingerprint: bytes | None = None,
         ssl_context: SSLContext | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -576,6 +586,11 @@ class ClientSession:
             raise RuntimeError("Session is closed")
 
         method = method.upper()
+        # Resolve the session default before merging the legacy parameters:
+        # _merge_ssl_params treats any non-True ssl as explicit and would
+        # reject the sentinel when a legacy parameter is also given.
+        if ssl is sentinel:
+            ssl = self._default_ssl
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         if auth is not None:
@@ -1070,7 +1085,7 @@ class ClientSession:
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
         proxy_auth: BasicAuth | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         verify_ssl: bool | None = None,
         fingerprint: bytes | None = None,
         ssl_context: SSLContext | None = None,
@@ -1155,7 +1170,7 @@ class ClientSession:
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
         proxy_auth: BasicAuth | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         verify_ssl: bool | None = None,
         fingerprint: bytes | None = None,
         ssl_context: SSLContext | None = None,
@@ -1238,6 +1253,10 @@ class ClientSession:
                 stacklevel=2,
             )
             ssl = True
+        # Resolve the session default before merging the legacy parameters,
+        # mirroring _request (the merge treats any non-True ssl as explicit).
+        if ssl is sentinel:
+            ssl = self._default_ssl
         ssl = _merge_ssl_params(ssl, verify_ssl, ssl_context, fingerprint)
 
         # send request
