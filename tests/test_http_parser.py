@@ -2536,6 +2536,19 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     assert msg.url.fragment == "фраг"
 
 
+def test_parse_uri_empty_query_with_fragment(parser: HttpRequestParser) -> None:
+    # Origin-form target with an empty query but a fragment: the ``#`` sits
+    # immediately after ``?``. Regression for the C parser folding ``#frag``
+    # into the query string instead of the fragment.
+    text = ("GET /path?#frag HTTP/1.1\r\nHost: a\r\n\r\n").encode()
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.url.path == "/path"
+    assert msg.url.query == {}
+    assert msg.url.fragment == "frag"
+
+
 @pytest.mark.skipif(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
