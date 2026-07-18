@@ -27,7 +27,7 @@ def wait_for_port(port: int, timeout: float = 15.0) -> None:
             with socket.create_connection(("localhost", port), timeout=1):
                 return
         except OSError:
-            if time.monotonic() >= deadline:
+            if time.monotonic() >= deadline:  # pragma: no cover
                 raise
             time.sleep(0.5)
 
