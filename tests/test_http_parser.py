@@ -2540,7 +2540,7 @@ def test_parse_uri_empty_query_with_fragment(parser: HttpRequestParser) -> None:
     # Origin-form target with an empty query but a fragment: the ``#`` sits
     # immediately after ``?``. Regression for the C parser folding ``#frag``
     # into the query string instead of the fragment.
-    text = ("GET /path?#frag HTTP/1.1\r\nHost: a\r\n\r\n").encode()
+    text = (b"GET /path?#frag HTTP/1.1\r\nHost: a\r\n\r\n")
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
 
