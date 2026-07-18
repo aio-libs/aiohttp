@@ -2,27 +2,15 @@
 
 import asyncio
 
-from aiohttp import ClientConnectionError, ClientSession, WSMsgType
-
-
-async def get_case_count(session: ClientSession) -> int:
-    # Docker publishes the fuzzingserver's port before wstest starts accepting
-    # connections, so the first attempt can be dropped mid-handshake. Retry
-    # until the server is actually ready.
-    for _ in range(30):
-        try:
-            async with session.ws_connect("/getCaseCount") as ws:
-                msg = await ws.receive()
-                assert msg.type is WSMsgType.TEXT
-                return int(msg.data)
-        except ClientConnectionError:
-            await asyncio.sleep(0.5)
-    raise RuntimeError("autobahn fuzzingserver did not become ready in time")
+from aiohttp import ClientSession, WSMsgType
 
 
 async def client(url: str, name: str) -> None:
     async with ClientSession(base_url=url) as session:
-        num_tests = await get_case_count(session)
+        async with session.ws_connect("/getCaseCount") as ws:
+            msg = await ws.receive()
+            assert msg.type is WSMsgType.TEXT
+            num_tests = int(msg.data)
 
         for i in range(1, num_tests + 1):
             async with session.ws_connect(

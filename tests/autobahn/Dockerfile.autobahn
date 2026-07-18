@@ -1,6 +1,0 @@
-FROM crossbario/autobahn-testsuite:25.10.1
-
-RUN apt-get update && apt-get install python3 python3-pip -y
-RUN pip3 install wait-for-it
-
-CMD ["wstest", "--mode", "fuzzingserver", "--spec", "/config/fuzzingserver.json"]
