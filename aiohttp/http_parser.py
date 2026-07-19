@@ -697,7 +697,8 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
             url = URL(path, encoded=True)
             if not url.absolute:
-                # authority-form is only allowed with CONNECT (RFC 9112 3.2.3)
+                # authority-form is only allowed with CONNECT
+                # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
                 )

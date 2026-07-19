@@ -1134,8 +1134,7 @@ def test_url_absolute(parser: HttpRequestParser) -> None:
 
 
 def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
-    # Authority-form targets (RFC 9112 3.2.3) are valid only with CONNECT;
-    # any other method must reject "host:port" as not an absolute-form URL.
+    # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
     with pytest.raises(http_exceptions.InvalidURLError):
         parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
 
