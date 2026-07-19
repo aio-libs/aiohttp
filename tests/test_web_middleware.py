@@ -416,8 +416,15 @@ class TestNormalizePathMiddleware:
         assert resp.headers["Location"] == "/google.com"
         assert resp.url.query == URL("//google.com").query
 
+    @pytest.mark.parametrize(
+        "target, location",
+        [
+            (b"http://google.com/google.com", "/google.com/"),
+            (b"http://google.com/google.com?p1=1&p2=2", "/google.com/?p1=1&p2=2"),
+        ],
+    )
     async def test_open_redirect_absolute_form_target(
-        self, aiohttp_server: AiohttpServer
+        self, target: bytes, location: str, aiohttp_server: AiohttpServer
     ) -> None:
         async def handle(request: web.Request) -> web.Response:
             return web.Response(text="OK")
@@ -429,8 +436,8 @@ class TestNormalizePathMiddleware:
         reader, writer = await asyncio.open_connection(server.host, server.port)
         try:
             writer.write(
-                b"GET http://google.com/google.com HTTP/1.1\r\n"
-                b"Host: localhost\r\nConnection: close\r\n\r\n"
+                b"GET %s HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+                % target
             )
             await writer.drain()
             head = (await reader.readuntil(b"\r\n\r\n")).decode("ascii")
@@ -440,7 +447,7 @@ class TestNormalizePathMiddleware:
                 await writer.wait_closed()
 
         assert head.startswith("HTTP/1.1 308 ")
-        assert "\r\nLocation: /google.com/\r\n" in head
+        assert f"\r\nLocation: {location}\r\n" in head
 
 
 async def test_normalize_path_skips_parser_error(
