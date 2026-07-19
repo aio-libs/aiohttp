@@ -89,12 +89,12 @@ def normalize_path_middleware(
             request.match_info.http_exception, (HTTPNotFound, HTTPMethodNotAllowed)
         ):
             paths_to_check = []
-            # rel_url drops the scheme and authority an absolute-form target
-            # (RFC 9112 3.2.2) carries, which must not reach Location.
-            rel_url = request.rel_url
-            raw_query_string = rel_url.raw_query_string
-            query = "?" + raw_query_string if raw_query_string else ""
-            path = rel_url.raw_path
+            if "?" in request.raw_path:
+                path, query = request.raw_path.split("?", 1)
+                query = "?" + query
+            else:
+                query = ""
+                path = request.raw_path
 
             if merge_slashes:
                 paths_to_check.append(re.sub("//+", "/", path))

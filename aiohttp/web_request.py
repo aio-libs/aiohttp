@@ -465,7 +465,22 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._message.path
+        # An absolute-form or authority-form target (RFC 9112 3.2.2/3.2.3),
+        # e.g. a proxy-style or malicious request, carries a scheme and/or host
+        # that must not leak into the path (nor into redirect Location headers).
+        # Strip the "scheme://" and authority, keeping the remainder (path,
+        # query and fragment) byte-for-byte, exactly as an origin-form target.
+        path = self._message.path
+        if self._message.url.absolute:
+            scheme_sep = path.find("://")
+            cursor = scheme_sep + 3 if scheme_sep != -1 else 0
+            rel = len(path)
+            for delimiter in "/?#":
+                found = path.find(delimiter, cursor)
+                if found != -1:
+                    rel = min(rel, found)
+            return path[rel:]
+        return path
 
     @reify
     def query(self) -> MultiDictProxy[str]:
