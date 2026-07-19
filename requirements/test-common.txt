@@ -22,9 +22,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.1.0
     # via cryptography
-click==8.4.2
-    # via wait-for-it
-coverage==7.15.0
+coverage==7.15.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -146,8 +144,6 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 yarl==1.24.2
     # via aiohttp
 zlib-ng==1.0.0

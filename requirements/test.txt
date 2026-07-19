@@ -38,9 +38,7 @@ cffi==2.1.0
     # via
     #   cryptography
     #   pycares
-click==8.4.2
-    # via wait-for-it
-coverage==7.15.0
+coverage==7.15.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -176,8 +174,6 @@ typing-inspection==0.4.2
     # via pydantic
 uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 yarl==1.24.2
     # via
     #   -r requirements/runtime-deps.in
