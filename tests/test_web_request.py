@@ -993,7 +993,7 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
-async def test_urlencoded_form_with_invalid_content_type_encoding(
+async def test_urlencoded_form_with_invalid_default_encoding(
     protocol: BaseProtocol,
 ) -> None:
     payload = StreamReader(
@@ -1002,7 +1002,7 @@ async def test_urlencoded_form_with_invalid_content_type_encoding(
     payload.feed_data(b"a=1&b=\xff")
     payload.feed_eof()
     headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
+        "Content-Type": "application/x-www-form-urlencoded",
     }
     req = make_mocked_request("POST", "/", payload=payload, headers=headers)
 
