@@ -474,8 +474,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-9
         # https://www.rfc-editor.org/info/rfc9112/#name-authority-form
         if self._message.url.absolute and self._method != "CONNECT":
+            # absolute-form always contains "://" (guaranteed by the parser).
             scheme_sep = path.find("://")
-            cursor = scheme_sep + 3 if scheme_sep != -1 else 0
+            assert scheme_sep != -1
+            cursor = scheme_sep + 3
             rel = len(path)
             for delimiter in "/?#":
                 found = path.find(delimiter, cursor)
