@@ -467,11 +467,12 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         """
         path = self._message.path
 
-        # An absolute-form or authority-form target, carries a scheme and/or host
-        # that must not leak into the path. Strip the "scheme://" and authority, keeping
-        # the remainder byte-for-byte, exactly as an origin-form target.
+        # An absolute-form target carries a "scheme://authority" that must not
+        # leak into the path. Strip it, keeping the remainder byte-for-byte,
+        # exactly as an origin-form target. Authority-form is used only by
+        # CONNECT (RFC 9112 3.2.3) and is left unchanged.
         # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-9
-        if self._message.url.absolute:
+        if self._message.url.absolute and self._method != "CONNECT":
             scheme_sep = path.find("://")
             cursor = scheme_sep + 3 if scheme_sep != -1 else 0
             rel = len(path)
