@@ -1,0 +1,4 @@
+Exposed the request's timeout configuration to client middlewares as the
+read-only :attr:`ClientRequest.timeout <aiohttp.ClientRequest.timeout>`
+property, so a middleware can bound its own waits and retries by the
+caller's time budget -- by :user:`rodrigobnogueira`.
