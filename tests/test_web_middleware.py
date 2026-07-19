@@ -427,7 +427,7 @@ class TestNormalizePathMiddleware:
         self, target: bytes, location: str, aiohttp_server: AiohttpServer
     ) -> None:
         async def handle(request: web.Request) -> web.Response:
-            return web.Response(text="OK")
+            return web.Response(text="OK")  # pragma: no cover
 
         app = web.Application(middlewares=[web.normalize_path_middleware()])
         app.add_routes([web.get("/google.com/", handle)])
