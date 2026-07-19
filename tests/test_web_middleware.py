@@ -420,7 +420,7 @@ class TestNormalizePathMiddleware:
         self, aiohttp_server: AiohttpServer
     ) -> None:
         async def handle(request: web.Request) -> web.Response:
-            return web.Response(text="OK")
+            assert False
 
         app = web.Application(middlewares=[web.normalize_path_middleware()])
         app.add_routes([web.get("/google.com/", handle)])
