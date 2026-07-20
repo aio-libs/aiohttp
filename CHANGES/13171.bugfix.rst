@@ -1,3 +1,0 @@
-Fixed the C HTTP parser folding the fragment into the query string for an
-origin-form request target with an empty query (e.g. ``/path?#frag``),
-which diverged from the pure-Python parser -- by :user:`GiulioDER`.

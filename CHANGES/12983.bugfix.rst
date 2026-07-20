@@ -1,1 +1,0 @@
-Fixed ``DigestAuthMiddleware`` raising an ``IndexError`` on empty domain -- by :user:`Dreamsorcerer`.
