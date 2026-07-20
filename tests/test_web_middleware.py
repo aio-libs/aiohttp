@@ -1,5 +1,6 @@
 import asyncio
 from collections.abc import Awaitable, Callable, Iterable
+from contextlib import suppress
 from typing import NoReturn
 
 import pytest
@@ -414,6 +415,32 @@ class TestNormalizePathMiddleware:
         assert resp.status == 308
         assert resp.headers["Location"] == "/google.com"
         assert resp.url.query == URL("//google.com").query
+
+    async def test_open_redirect_absolute_form_target(
+        self, aiohttp_server: AiohttpServer
+    ) -> None:
+        async def handle(request: web.Request) -> web.Response:
+            assert False
+
+        app = web.Application(middlewares=[web.normalize_path_middleware()])
+        app.add_routes([web.get("/google.com/", handle)])
+        server = await aiohttp_server(app)
+
+        reader, writer = await asyncio.open_connection(server.host, server.port)
+        try:
+            writer.write(
+                b"GET http://google.com/google.com HTTP/1.1\r\n"
+                b"Host: localhost\r\nConnection: close\r\n\r\n"
+            )
+            await writer.drain()
+            head = (await reader.readuntil(b"\r\n\r\n")).decode("ascii")
+        finally:
+            writer.close()
+            with suppress(ConnectionResetError, BrokenPipeError):
+                await writer.wait_closed()
+
+        assert head.startswith("HTTP/1.1 308 ")
+        assert "\r\nLocation: /google.com/\r\n" in head
 
 
 async def test_normalize_path_skips_parser_error(

@@ -71,7 +71,7 @@ jobs:
         make sync-direct-runtime-deps
         git diff --exit-code -- requirements/runtime-deps.in
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v6.3.0
       with:
         python-version: 3.11
     - name: Cache PyPI
@@ -465,7 +465,7 @@ jobs:
         submodules: true
     - name: Setup Python 3.13.2
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v6.3.0
       with:
         python-version: 3.13.2
         cache: pip
@@ -517,7 +517,7 @@ jobs:
         submodules: true
     - name: Setup Python
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v6.3.0
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -606,7 +606,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v6.3.0
     - name: Install build tooling and cython
       run: >-
         python -m
@@ -707,7 +707,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v6.3.0
       with:
         python-version: 3.x
     - name: Install build tooling and cython
@@ -841,7 +841,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v3.0.1
+      uses: softprops/action-gh-release@v3.0.2
       with:
         # dist/ contains the built packages, which smoketest-artifacts/
         # contains the signatures and certificates.
