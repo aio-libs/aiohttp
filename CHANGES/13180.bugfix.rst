@@ -1,4 +1,2 @@
 Fixed the client dropping only the first ``Authorization``, ``Cookie`` and
-``Proxy-Authorization`` header when a redirect crosses an origin, so a request
-made with duplicate credential headers leaked the surviving copy to the new
-origin -- by :user:`arshsmith1`.
+``Proxy-Authorization`` header when a redirect crosses an origin -- by :user:`arshsmith1`.
