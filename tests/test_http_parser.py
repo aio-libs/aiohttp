@@ -1055,7 +1055,13 @@ def test_url_absolute(parser: Any) -> None:
     assert msg.url == URL("https://www.google.com/path/to.html")
 
 
-def test_headers_old_websocket_key1(parser: Any) -> None:
+def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_headers_old_websocket_key1(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nSEC-WEBSOCKET-KEY1: line\r\n\r\n"
 
     with pytest.raises(http_exceptions.BadHttpMessage):
