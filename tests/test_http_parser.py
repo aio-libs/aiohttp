@@ -706,6 +706,21 @@ def test_parse(parser: HttpRequestParser) -> None:
     assert msg.headers["Host"] == "a"
 
 
+def test_parse_query_method(parser: HttpRequestParser) -> None:
+    """QUERY has the highest llhttp method id; both parsers must decode its name.
+
+    Regression test for a stale hand-maintained method count in the C parser
+    that mapped the last method(s) to "<unknown>".
+    """
+    text = b"QUERY /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+    assert msg.method == "QUERY"
+    assert msg.path == "/test"
+    assert msg.version == (1, 1)
+
+
 async def test_parse_body(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nContent-Length: 4\r\n\r\nbody"
     messages, upgrade, tail = parser.feed_data(text)

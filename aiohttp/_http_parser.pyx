@@ -100,20 +100,29 @@ cdef inline object extend(object buf, const char* at, size_t length):
     memcpy(ptr + s, at, length)
 
 
-DEF METHODS_COUNT = 46;
+# The method-name table and its length come straight from llhttp's canonical
+# HTTP_ALL_METHOD_MAP, so they track the vendored llhttp version automatically
+# instead of relying on a hand-maintained method count.
+cdef extern from *:
+    """
+    #include "llhttp.h"
+
+    #define _AIOHTTP_METHOD_NAME(NUM, NAME, STRING) [NUM] = #STRING,
+    static const char* const _aiohttp_method_names[] = {
+        HTTP_ALL_METHOD_MAP(_AIOHTTP_METHOD_NAME)
+    };
+    #undef _AIOHTTP_METHOD_NAME
+    """
+    const char* _aiohttp_method_names[]
+    const int METHODS_COUNT "((int)(sizeof(_aiohttp_method_names) / sizeof(_aiohttp_method_names[0])))"
+
 
 cdef list _http_method = []
 
 for i in range(METHODS_COUNT):
-    _http_method.append(
-        cparser.llhttp_method_name(<cparser.llhttp_method_t> i).decode('ascii'))
+    assert _aiohttp_method_names[i] is not NULL
+    _http_method.append(_aiohttp_method_names[i].decode('ascii'))
 
-
-cdef inline str http_method_str(int i):
-    if i < METHODS_COUNT:
-        return <str>_http_method[i]
-    else:
-        return "<unknown>"
 
 cdef inline object find_header(bytes raw_header):
     cdef Py_ssize_t size
@@ -506,7 +515,7 @@ cdef class HttpParser:
                 encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
-            method = http_method_str(self._cparser.method)
+            method = <str>_http_method[self._cparser.method]
             msg = _new_request_message(
                 method, self._path,
                 http_version, headers, raw_headers,
