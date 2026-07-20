@@ -1,0 +1,4 @@
+Stopped treating a non-ascii ``Transfer-Encoding`` value that
+case-folds to ``chunked`` (e.g. one containing ``U+212A KELVIN SIGN``) as
+chunked in the pure-Python HTTP response parser, matching the existing
+``.isascii()`` guard in the request parser -- by :user:`Kropiunig`.
