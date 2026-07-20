@@ -1,7 +1,0 @@
-Fixed :py:attr:`~aiohttp.web.StreamResponse.last_modified` rounding a
-:class:`datetime.datetime` with a fractional second down while rounding an
-equivalent :class:`float` timestamp up, so the two produced different
-``Last-Modified`` headers for the same instant. Both now round up to the
-next whole second, consistent with how :py:class:`~aiohttp.web.FileResponse`
-relies on this rounding to avoid falsely reporting a resource as
-unmodified.
