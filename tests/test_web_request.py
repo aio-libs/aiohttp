@@ -11,7 +11,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion
+from aiohttp import HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
@@ -222,6 +222,41 @@ def test_absolute_url() -> None:
     assert req.scheme == "https"
     assert req.host == "example.com"
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
+
+
+def test_absolute_form_raw_path() -> None:
+    # An absolute-form target (RFC 9112 3.2.2) must not leak the scheme/host
+    # into raw_path. The path, query and fragment are kept byte-for-byte, the
+    # same raw form an origin-form target yields.
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1#frag")
+    assert req.raw_path == "/path/to?a=1#frag"
+    assert req.raw_path == make_mocked_request("GET", "/path/to?a=1#frag").raw_path
+
+
+def test_connect_authority_form_raw_path() -> None:
+    # Authority-form is only used by CONNECT (RFC 9112 3.2.3); its target is a
+    # bare host:port with no scheme prefix, so raw_path returns it unchanged.
+    message = RawRequestMessage(
+        "CONNECT",
+        "example.com:443",
+        HttpVersion(1, 1),
+        CIMultiDict(),
+        (),
+        False,
+        None,
+        False,
+        False,
+        URL.build(authority="example.com:443", encoded=True),
+    )
+    protocol = mock.Mock()
+    protocol.ssl_context = None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 80)
+    req = web.BaseRequest(
+        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    assert req._message.url.absolute
+    assert req.raw_path == "example.com:443"
 
 
 def test_clone_absolute_scheme() -> None:
