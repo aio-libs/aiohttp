@@ -734,7 +734,7 @@ cdef class HttpRequestParser(HttpParser):
                 else:
                     path = self._path[0:idx1]
                     idx1 += 1
-                    idx2 = self._path.find("#", idx1+1)
+                    idx2 = self._path.find("#", idx1)
                     if idx2 == -1:
                         query = self._path[idx1:]
                         fragment = ""
