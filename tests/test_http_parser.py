@@ -2155,6 +2155,35 @@ async def test_http_response_parser_last_chunked(
     assert await messages[0][1].read() == b"Test"
 
 
+async def test_http_response_parser_te_non_ascii() -> None:
+    # "\N{KELVIN SIGN}".lower() == "k", so "chun\N{KELVIN SIGN}ed".lower()
+    # == "chunked", but the value is not an ascii token and must not be
+    # treated as chunked. Mirrors the HttpRequestParser handling and its
+    # ``.isascii()`` guard (see test_te_header_non_ascii).
+    protocol = ResponseHandler(asyncio.get_running_loop())
+    response = HttpResponseParserPy(
+        protocol,
+        asyncio.get_running_loop(),
+        DEFAULT_CHUNK_SIZE,
+        max_line_size=8190,
+        max_field_size=8190,
+        read_until_eof=True,
+    )
+    protocol._parser = response
+    te = "chun\N{KELVIN SIGN}ed"
+    text = (
+        f"HTTP/1.1 200 OK\r\nTransfer-Encoding: {te}\r\n\r\n"
+        "1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
+    ).encode()
+    messages, upgrade, tail = response.feed_data(text)
+    response.feed_eof()
+
+    msg = messages[0][0]
+    assert not msg.chunked
+    # Body must be returned raw, not de-chunked.
+    assert await messages[0][1].read() == b"1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
+
+
 def test_http_response_parser_bad(response: HttpResponseParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTT/1\r\n\r\n")
