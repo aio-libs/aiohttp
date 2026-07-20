@@ -1,29 +1,20 @@
-from libc.stdint cimport int32_t, uint8_t, uint16_t, uint64_t
+# This file contains just the definitions needed in our Cython code.
+
+from libc.stdint cimport uint8_t, uint16_t, uint64_t
 
 
 cdef extern from "llhttp.h":
 
     struct llhttp__internal_s:
-        int32_t _index
-        void* _span_pos0
-        void* _span_cb0
-        int32_t error
-        const char* reason
-        const char* error_pos
         void* data
-        void* _current
         uint64_t content_length
         uint8_t type
         uint8_t method
         uint8_t http_major
         uint8_t http_minor
-        uint8_t header_state
-        uint8_t lenient_flags
         uint8_t upgrade
-        uint8_t finish
         uint16_t flags
         uint16_t status_code
-        void* settings
 
     ctypedef llhttp__internal_s llhttp__internal_t
     ctypedef llhttp__internal_t llhttp_t
@@ -43,20 +34,10 @@ cdef extern from "llhttp.h":
         llhttp_cb      on_chunk_header
         llhttp_cb      on_chunk_complete
 
-        llhttp_cb      on_url_complete
-        llhttp_cb      on_status_complete
-        llhttp_cb      on_header_field_complete
-        llhttp_cb      on_header_value_complete
-
     ctypedef llhttp_settings_s llhttp_settings_t
 
     enum llhttp_errno:
         HPE_OK,
-        HPE_INTERNAL,
-        HPE_STRICT,
-        HPE_LF_EXPECTED,
-        HPE_UNEXPECTED_CONTENT_LENGTH,
-        HPE_CLOSED_CONNECTION,
         HPE_INVALID_METHOD,
         HPE_INVALID_URL,
         HPE_INVALID_CONSTANT,
@@ -73,8 +54,7 @@ cdef extern from "llhttp.h":
         HPE_CB_CHUNK_HEADER,
         HPE_CB_CHUNK_COMPLETE,
         HPE_PAUSED,
-        HPE_PAUSED_UPGRADE,
-        HPE_USER
+        HPE_PAUSED_UPGRADE
 
     ctypedef llhttp_errno llhttp_errno_t
 
@@ -84,58 +64,10 @@ cdef extern from "llhttp.h":
 
     enum llhttp_type:
         HTTP_REQUEST,
-        HTTP_RESPONSE,
-        HTTP_BOTH
+        HTTP_RESPONSE
 
     enum llhttp_method:
-        HTTP_DELETE,
-        HTTP_GET,
-        HTTP_HEAD,
-        HTTP_POST,
-        HTTP_PUT,
-        HTTP_CONNECT,
-        HTTP_OPTIONS,
-        HTTP_TRACE,
-        HTTP_COPY,
-        HTTP_LOCK,
-        HTTP_MKCOL,
-        HTTP_MOVE,
-        HTTP_PROPFIND,
-        HTTP_PROPPATCH,
-        HTTP_SEARCH,
-        HTTP_UNLOCK,
-        HTTP_BIND,
-        HTTP_REBIND,
-        HTTP_UNBIND,
-        HTTP_ACL,
-        HTTP_REPORT,
-        HTTP_MKACTIVITY,
-        HTTP_CHECKOUT,
-        HTTP_MERGE,
-        HTTP_MSEARCH,
-        HTTP_NOTIFY,
-        HTTP_SUBSCRIBE,
-        HTTP_UNSUBSCRIBE,
-        HTTP_PATCH,
-        HTTP_PURGE,
-        HTTP_MKCALENDAR,
-        HTTP_LINK,
-        HTTP_UNLINK,
-        HTTP_SOURCE,
-        HTTP_PRI,
-        HTTP_DESCRIBE,
-        HTTP_ANNOUNCE,
-        HTTP_SETUP,
-        HTTP_PLAY,
-        HTTP_PAUSE,
-        HTTP_TEARDOWN,
-        HTTP_GET_PARAMETER,
-        HTTP_SET_PARAMETER,
-        HTTP_REDIRECT,
-        HTTP_RECORD,
-        HTTP_FLUSH
-
-    ctypedef llhttp_method llhttp_method_t;
+        HTTP_CONNECT
 
     void llhttp_settings_init(llhttp_settings_t* settings)
     void llhttp_init(llhttp_t* parser, llhttp_type type,
@@ -151,8 +83,6 @@ cdef extern from "llhttp.h":
     llhttp_errno_t llhttp_get_errno(const llhttp_t* parser)
     const char* llhttp_get_error_reason(const llhttp_t* parser)
     const char* llhttp_get_error_pos(const llhttp_t* parser)
-
-    const char* llhttp_method_name(llhttp_method_t method)
 
     void llhttp_set_lenient_headers(llhttp_t* parser, int enabled)
     void llhttp_set_lenient_optional_cr_before_lf(llhttp_t* parser, int enabled)
