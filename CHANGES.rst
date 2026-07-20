@@ -204,7 +204,7 @@ Bug fixes
 
 
 - Fixed the C parser reporting newer HTTP methods such as ``QUERY`` as ``<unknown>``;
-the method table is now derived from the vendored llhttp instead of a hand-maintained count
+  the method table is now derived from the vendored llhttp instead of a hand-maintained count
 -- by :user:`Dreamsorcerer`.
 
 
