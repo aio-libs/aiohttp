@@ -1,3 +1,0 @@
-Added admin documentation on incident response and on running reproducer code
-safely, covering security vulnerability handling and supply-chain, account, and
-CI/infrastructure compromise -- by :user:`Dreamsorcerer`.

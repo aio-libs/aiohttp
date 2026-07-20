@@ -10,6 +10,239 @@
 
 .. towncrier release notes start
 
+3.14.2 (2026-07-20)
+===================
+
+Bug fixes
+---------
+
+- Fixed :py:attr:`~aiohttp.web.StreamResponse.last_modified` rounding a
+  :class:`datetime.datetime` with a fractional second down.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`5303`.
+
+
+
+- Fixed resolving ``localhost`` on Windows to fall back without ``AI_ADDRCONFIG``
+  when the first lookup fails, so ``localhost`` still works without an active
+  network.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`5357`.
+
+
+
+- Rejected multipart body parts whose ``Content-Length`` header is not a
+  plain sequence of digits (e.g. ``+5``, ``-1``, ``1_0``), matching the
+  strictness of the main request parser per :rfc:`9110#section-8.6`
+  -- by :user:`dxbjavid`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12794`.
+
+
+
+- Fixed ``GunicornWebWorker`` endlessly reloading when app fails during startup -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12879`.
+
+
+
+- Fixed some inconsistent case sensitivity on request methods -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12931`.
+
+
+
+- Fixed ``IndexError: string index out of range`` in ``parse_content_disposition``
+  when a header parameter has an empty value (e.g. ``filename=``).
+  -- by :user:`JSap0914`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12948`.
+
+
+
+- Fixed the ``sock_read`` timeout being re-armed on a keep-alive connection after
+  it had been returned to the pool. An idle pooled connection could be left with a
+  pending read timeout that fired and poisoned it, so the next request reusing the
+  connection failed immediately with :exc:`aiohttp.SocketTimeoutError`. The read
+  timeout is now only rescheduled when resuming a transport that was actually
+  paused -- by :user:`daragok`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12953`, :issue:`12954`.
+
+
+
+- Fixed the client decompressing frames when ``permessage-deflate`` was not negotiated -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12976`.
+
+
+
+- Fixed ``DigestAuthMiddleware`` raising an ``IndexError`` on empty domain -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12983`.
+
+
+
+- Fixed :class:`~aiohttp.DigestAuthMiddleware` corrupting the ``Digest``
+  challenge when a ``WWW-Authenticate`` response offered more than one
+  authentication scheme -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12984`.
+
+
+
+- Fixed client not closing cleanly after an exception -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12985`.
+
+
+
+- Fixed control frames breaking fragmented WebSocket messages -- by :user:`arshsmith1`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12988`.
+
+
+
+- Fixed ``parse_content_disposition`` rejecting otherwise-valid
+  ``Content-Disposition`` header values that contain optional whitespace (OWS)
+  around the disposition type (e.g. ``"form-data ; name=\"field\""``).
+  The disposition type is now stripped before token validation, consistent with
+  how parameter keys are already handled -- by :user:`JSap0914`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12996`.
+
+
+
+- Fixed an :exc:`IndexError` in the pure-Python HTTP parser -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13001`.
+
+
+
+- Fixed parsing optional whitespace in Content-Disposition -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13002`.
+
+
+
+- Fixed request body not being read on rejected WebSocket upgrades -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13016`.
+
+
+
+- Fixed :exc:`LookupError` (and an unguarded :exc:`UnicodeDecodeError`) escaping
+  ``Content-Disposition`` parsing when a multipart part supplies an extended
+  parameter with an unknown charset
+  -- by :user:`arshsmith1`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13042`.
+
+
+
+- Fixed ``escape_quotes`` in the Digest authentication middleware not escaping
+  backslashes, so a ``WWW-Authenticate`` challenge value containing a backslash
+  could break out of its quoted-string in the generated ``Authorization`` header
+  -- by :user:`dxbjavid`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13054`.
+
+
+
+- Fixed Python parser not rejecting a bare ``LF`` in the request line -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13136`.
+
+
+
+- Fixed the C HTTP parser folding the fragment into the query string for an
+  origin-form request target with an empty query (e.g. ``/path?#frag``),
+  which diverged from the pure-Python parser -- by :user:`GiulioDER`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13171`.
+
+
+
+- Fixed the C parser reporting newer HTTP methods such as ``QUERY`` as ``<unknown>``;
+  the method table is now derived from the vendored llhttp instead of a hand-maintained count
+  -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13174`.
+
+
+
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Upgraded ``llhttp`` to v9.4.2 -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12956`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Added admin documentation on incident response and on running reproducer code
+  safely, covering security vulnerability handling and supply-chain, account, and
+  CI/infrastructure compromise -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12914`.
+
+
+
+
+----
+
+
 3.14.1 (2026-06-07)
 ===================
 
