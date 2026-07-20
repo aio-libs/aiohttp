@@ -2145,6 +2145,16 @@ ClientRequest
       - :class:`ssl.SSLContext`: Custom SSL context
       - :class:`Fingerprint`: Verify specific certificate fingerprint
 
+   .. attribute:: timeout
+      :type: ClientTimeout
+
+      The timeout configuration this request runs under (read-only): the
+      per-request timeout when one was passed to the request method, the
+      session's default otherwise. Useful in middleware to bound waits or
+      retries by the caller's time budget.
+
+      .. versionadded:: 3.15
+
    .. attribute:: url
       :type: yarl.URL
 

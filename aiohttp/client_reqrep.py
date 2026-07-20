@@ -81,7 +81,7 @@ __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 
 if TYPE_CHECKING:
-    from .client import ClientSession
+    from .client import ClientSession, ClientTimeout
     from .connector import Connection
     from .tracing import Trace
 
@@ -871,6 +871,7 @@ class ClientRequest:
         proxy: URL | None = None,
         proxy_auth: BasicAuth | None = None,
         timer: BaseTimerContext | None = None,
+        timeout: Optional["ClientTimeout"] = None,
         session: Optional["ClientSession"] = None,
         ssl: SSLContext | bool | Fingerprint = True,
         proxy_headers: LooseHeaders | None = None,
@@ -889,11 +890,13 @@ class ClientRequest:
         assert type(url) is URL, url
         if proxy is not None:
             assert type(proxy) is URL, proxy
-        # FIXME: session is None in tests only, need to fix tests
+        # FIXME: session and timeout are None in tests only, need to fix tests
         # assert session is not None
         if TYPE_CHECKING:
             assert session is not None
+            assert timeout is not None
         self._session = session
+        self._timeout = timeout
         if params:
             url = url.extend_query(params)
         self.original_url = url
@@ -950,6 +953,11 @@ class ClientRequest:
     @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
         return self._skip_auto_headers or CIMultiDict()
+
+    @property
+    def timeout(self) -> "ClientTimeout":
+        """The timeout configuration this request runs under (read-only)."""
+        return self._timeout
 
     @property
     def _writer(self) -> Optional["asyncio.Task[None]"]:
