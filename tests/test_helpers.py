@@ -4,6 +4,7 @@ import gc
 import ipaddress
 import itertools
 import sys
+import time
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -352,6 +353,10 @@ def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
+@pytest.mark.skipif(
+    time.get_clock_info("monotonic").resolution > 0.001,
+    reason="loop.time() resolution is coarser than the test's 1ms tolerance",
+)
 def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
 
