@@ -198,6 +198,7 @@ Jan Buchar
 Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
+Javid Khan
 Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
