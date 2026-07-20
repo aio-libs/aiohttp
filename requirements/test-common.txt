@@ -22,7 +22,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.1.0
     # via cryptography
-coverage==7.15.1
+coverage==7.15.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
