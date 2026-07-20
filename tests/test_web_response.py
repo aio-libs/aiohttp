@@ -339,6 +339,23 @@ def test_last_modified_datetime() -> None:
     assert resp.last_modified == dt
 
 
+def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
+    dt = datetime.datetime(2020, 12, 2, 9, 51, 2, 500000, datetime.timezone.utc)
+
+    resp_dt = web.StreamResponse()
+    resp_dt.last_modified = dt
+
+    resp_ts = web.StreamResponse()
+    resp_ts.last_modified = dt.timestamp()
+
+    assert resp_dt.headers["Last-Modified"] == resp_ts.headers["Last-Modified"]
+    # Both should round up to the next whole second, so that Last-Modified
+    # is never earlier than the file's true st_mtime, invalidating the caching.
+    assert resp_dt.last_modified == datetime.datetime(
+        2020, 12, 2, 9, 51, 3, 0, datetime.timezone.utc
+    )
+
+
 def test_last_modified_reset() -> None:
     resp = StreamResponse()
 
