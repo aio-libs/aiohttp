@@ -37,7 +37,7 @@ except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
-from multidict import MultiDict
+from multidict import CIMultiDict, MultiDict
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL, Query
@@ -3573,6 +3573,51 @@ async def test_drop_auth_on_redirect_to_other_host(
             },
             cookies={"a": "b"},
         ) as resp:
+            assert resp.status == 200
+
+
+async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Every copy of a credential header is dropped, not just the first one."""
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert list(request.headers.getall("Authorization")) == [
+            "Basic first",
+            "Basic second",
+        ]
+        raise web.HTTPFound(server_to.make_url("/path2"))
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
+        return web.Response()
+
+    app_from = web.Application()
+    app_from.router.add_get("/path1", srv_from)
+    server_from = await aiohttp_server(app_from)
+
+    app_to = web.Application()
+    app_to.router.add_get("/path2", srv_to)
+    server_to = await aiohttp_server(app_to)
+
+    # Two servers on the same host but different ports are different origins,
+    # so following the redirect must strip the credential headers.
+    headers = CIMultiDict(
+        (
+            ("Authorization", "Basic first"),
+            ("Authorization", "Basic second"),
+            ("Proxy-Authorization", "Basic first"),
+            ("Proxy-Authorization", "Basic second"),
+            ("Cookie", "a=b"),
+            ("Cookie", "c=d"),
+        )
+    )
+
+    url = server_from.make_url("/path1")
+    async with aiohttp.ClientSession() as client:
+        async with client.get(url, headers=headers) as resp:
             assert resp.status == 200
 
 
