@@ -3577,18 +3577,16 @@ async def test_drop_auth_on_redirect_to_other_host(
 
 
 async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
-    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+    aiohttp_server: AiohttpServer,
 ) -> None:
     """Every copy of a credential header is dropped, not just the first one."""
-    url_from = URL("http://host1.com/path1")
-    url_to = URL("http://host2.com/path2")
 
     async def srv_from(request: web.Request) -> NoReturn:
         assert list(request.headers.getall("Authorization")) == [
             "Basic first",
             "Basic second",
         ]
-        raise web.HTTPFound(url_to)
+        raise web.HTTPFound(server_to.make_url("/path2"))
 
     async def srv_to(request: web.Request) -> web.Response:
         assert "Authorization" not in request.headers, "Header wasn't dropped"
@@ -3596,40 +3594,16 @@ async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
         assert "Cookie" not in request.headers
         return web.Response()
 
-    server_from = await create_server_for_url_and_handler(url_from, srv_from)
-    server_to = await create_server_for_url_and_handler(url_to, srv_to)
+    app_from = web.Application()
+    app_from.router.add_get("/path1", srv_from)
+    server_from = await aiohttp_server(app_from)
 
-    etc_hosts = {
-        (url_from.host, url_from.port): server_from,
-        (url_to.host, url_to.port): server_to,
-    }
+    app_to = web.Application()
+    app_to.router.add_get("/path2", srv_to)
+    server_to = await aiohttp_server(app_to)
 
-    class FakeResolver(AbstractResolver):
-        async def resolve(
-            self,
-            host: str,
-            port: int = 0,
-            family: socket.AddressFamily = socket.AF_INET,
-        ) -> list[ResolveResult]:
-            server = etc_hosts[(host, port)]
-            assert server.port is not None
-
-            return [
-                {
-                    "hostname": host,
-                    "host": server.host,
-                    "port": server.port,
-                    "family": socket.AF_INET,
-                    "proto": 0,
-                    "flags": socket.AI_NUMERICHOST,
-                }
-            ]
-
-        async def close(self) -> None:
-            """Dummy"""
-
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
-
+    # Two servers on the same host but different ports are different origins,
+    # so following the redirect must strip the credential headers.
     headers = CIMultiDict(
         (
             ("Authorization", "Basic first"),
@@ -3641,8 +3615,9 @@ async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
         )
     )
 
-    async with aiohttp.ClientSession(connector=connector) as client:
-        async with client.get(url_from, headers=headers) as resp:
+    url = server_from.make_url("/path1")
+    async with aiohttp.ClientSession() as client:
+        async with client.get(url, headers=headers) as resp:
             assert resp.status == 200
 
 
