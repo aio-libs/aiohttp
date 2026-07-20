@@ -37,7 +37,7 @@ except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
-from multidict import MultiDict
+from multidict import CIMultiDict, MultiDict
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL, Query
@@ -3573,6 +3573,76 @@ async def test_drop_auth_on_redirect_to_other_host(
             },
             cookies={"a": "b"},
         ) as resp:
+            assert resp.status == 200
+
+
+async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
+    create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
+) -> None:
+    """Every copy of a credential header is dropped, not just the first one."""
+    url_from = URL("http://host1.com/path1")
+    url_to = URL("http://host2.com/path2")
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert list(request.headers.getall("Authorization")) == [
+            "Basic first",
+            "Basic second",
+        ]
+        raise web.HTTPFound(url_to)
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
+        return web.Response()
+
+    server_from = await create_server_for_url_and_handler(url_from, srv_from)
+    server_to = await create_server_for_url_and_handler(url_to, srv_to)
+
+    etc_hosts = {
+        (url_from.host, url_from.port): server_from,
+        (url_to.host, url_to.port): server_to,
+    }
+
+    class FakeResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            server = etc_hosts[(host, port)]
+            assert server.port is not None
+
+            return [
+                {
+                    "hostname": host,
+                    "host": server.host,
+                    "port": server.port,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": socket.AI_NUMERICHOST,
+                }
+            ]
+
+        async def close(self) -> None:
+            """Dummy"""
+
+    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+
+    headers = CIMultiDict(
+        (
+            ("Authorization", "Basic first"),
+            ("Authorization", "Basic second"),
+            ("Proxy-Authorization", "Basic first"),
+            ("Proxy-Authorization", "Basic second"),
+            ("Cookie", "a=b"),
+            ("Cookie", "c=d"),
+        )
+    )
+
+    async with aiohttp.ClientSession(connector=connector) as client:
+        async with client.get(url_from, headers=headers) as resp:
             assert resp.status == 200
 
 
