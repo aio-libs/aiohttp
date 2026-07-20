@@ -240,7 +240,7 @@ def test_connect_authority_form_raw_path() -> None:
         "CONNECT",
         "example.com:443",
         HttpVersion(1, 1),
-        HeadersDictProxy(CIMultiDict()),
+        CIMultiDict(),
         (),
         False,
         None,

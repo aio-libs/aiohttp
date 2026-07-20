@@ -396,7 +396,7 @@ class TestNormalizePathMiddleware:
         assert resp.url.query == URL("//google.com").query
 
     async def test_open_redirect_absolute_form_target(
-        self, aiohttp_server: AiohttpServer
+        self, aiohttp_server: Any
     ) -> None:
         async def handle(request: web.Request) -> web.Response:
             assert False
