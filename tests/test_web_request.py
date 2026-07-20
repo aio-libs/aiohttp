@@ -11,7 +11,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
-from aiohttp import HttpVersion
+from aiohttp import HttpVersion, web
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
