@@ -64,7 +64,7 @@ packaging==26.2
     # via pytest
 pathspec==1.1.1
     # via mypy
-platformdirs==4.10.0
+platformdirs==4.10.1
     # via
     #   python-discovery
     #   virtualenv
