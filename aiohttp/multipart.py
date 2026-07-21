@@ -136,7 +136,7 @@ def parse_content_disposition(
 
         elif is_continuous_param(key):
             if is_quoted(value):
-                value = unescape(value[1:-1])
+                value = unescape(value[1:-1].lstrip("\\/"))
             elif not is_token(value):
                 warnings.warn(BadContentDispositionParam(item))
                 continue
@@ -150,7 +150,7 @@ def parse_content_disposition(
                 continue
 
             try:
-                value = unquote(value, encoding, "strict")
+                value = unquote(value, encoding, "strict").lstrip("\\/")
             except (builtins.LookupError, UnicodeDecodeError):
                 # The charset is attacker-controlled here; an unknown name
                 # raises the builtin LookupError (the bare name is shadowed in
@@ -214,7 +214,7 @@ def content_disposition_filename(
             encoding, _, value = value.split("'", 2)
             encoding = encoding or "utf-8"
             try:
-                return unquote(value, encoding, "strict")
+                return unquote(value, encoding, "strict").lstrip("\\/")
             except (builtins.LookupError, UnicodeDecodeError):
                 # Both the charset name and the octets are attacker-controlled
                 # here; an unknown encoding raises the builtin LookupError
