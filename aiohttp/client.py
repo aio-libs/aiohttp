@@ -984,9 +984,9 @@ class ClientSession:
                         if url.origin() != redirect_origin:
                             auth = None
                             cookies = None
-                            headers.pop(hdrs.AUTHORIZATION, None)
-                            headers.pop(hdrs.COOKIE, None)
-                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
+                            headers.popall(hdrs.AUTHORIZATION, None)
+                            headers.popall(hdrs.COOKIE, None)
+                            headers.popall(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}

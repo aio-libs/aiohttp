@@ -1,0 +1,2 @@
+Fixed the client dropping only the first ``Authorization``, ``Cookie`` and
+``Proxy-Authorization`` header when a redirect crosses an origin -- by :user:`arshsmith1`.
