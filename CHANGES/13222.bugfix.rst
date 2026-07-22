@@ -1,1 +1,0 @@
-Fixed error message construction in the C HTTP parser -- by :user:`bdraco`.
