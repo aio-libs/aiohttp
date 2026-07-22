@@ -136,7 +136,7 @@ def parse_content_disposition(
 
         elif is_continuous_param(key):
             if is_quoted(value):
-                value = unescape(value[1:-1].lstrip("\\/"))
+                value = unescape(value[1:-1])
             elif not is_token(value):
                 warnings.warn(BadContentDispositionParam(item))
                 continue
@@ -221,7 +221,7 @@ def content_disposition_filename(
                 # (shadowed in this module by payload.LookupError) and
                 # undecodable bytes raise UnicodeDecodeError.
                 return None
-        return value
+        return value.lstrip("\\/")
 
 
 class MultipartResponseWrapper:

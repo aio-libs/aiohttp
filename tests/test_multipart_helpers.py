@@ -573,11 +573,13 @@ class TestParseContentDisposition:
         assert {"filename*": "foo.html"} == params
 
     def test_attfncontabspath(self) -> None:
+        # The continuation parts are normalised once they are joined, so the
+        # separator survives parsing.
         disptype, params = parse_content_disposition(
             'attachment; filename*0="/foo."; filename*1="html"'
         )
         assert "attachment" == disptype
-        assert {"filename*0": "foo.", "filename*1": "html"} == params
+        assert {"filename*0": "/foo.", "filename*1": "html"} == params
 
     def test_attfncont(self) -> None:
         disptype, params = parse_content_disposition(
@@ -734,6 +736,18 @@ class TestContentDispositionFilename:
     def test_attfncont(self) -> None:
         params = {"filename*0": "foo.", "filename*1": "html"}
         assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontabspath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontinnerpath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="dir"; filename*1="/foo.html"'
+        )
+        assert "dir/foo.html" == content_disposition_filename(params)
 
     def test_attfncontqs(self) -> None:
         params = {"filename*0": "foo", "filename*1": "bar.html"}
