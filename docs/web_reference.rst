@@ -2822,6 +2822,11 @@ application on specific TCP or Unix socket, e.g.::
                                default). These handlers will raise
                                :exc:`GracefulExit`.
 
+                               When ``True``, you must catch
+                               :exc:`GracefulExit` in your code
+                               (or use :func:`run_app` which
+                               handles it automatically).
+
    :param kwargs: named parameters to pass into
                   web protocol.
 
@@ -2900,6 +2905,11 @@ application on specific TCP or Unix socket, e.g.::
                                :data:`signal.SIGTERM` (``False`` by
                                default). These handlers will raise
                                :exc:`GracefulExit`.
+
+                               When ``True``, you must catch
+                               :exc:`GracefulExit` in your code
+                               (or use :func:`run_app` which
+                               handles it automatically).
 
    :param kwargs: named parameters to pass into
                   web protocol.
@@ -3049,6 +3059,10 @@ application on specific TCP or Unix socket, e.g.::
    Raised by signal handlers for :data:`signal.SIGINT` and :data:`signal.SIGTERM`
    defined in :class:`AppRunner` and :class:`ServerRunner`
    when ``handle_signals`` is set to ``True``.
+
+   You **must** catch this exception when using :class:`AppRunner` or
+   :class:`ServerRunner` with ``handle_signals=True``. The high-level
+   :func:`run_app` function already catches it internally.
 
    Inherited from :exc:`SystemExit`,
    which exits with error code ``1`` if not handled.
