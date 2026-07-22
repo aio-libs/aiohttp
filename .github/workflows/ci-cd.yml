@@ -764,11 +764,6 @@ jobs:
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
-      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
-
-    environment:
-      name: pypi
-      url: https://pypi.org/p/aiohttp
 
     steps:
     - name: Checkout
@@ -822,27 +817,95 @@ jobs:
         fix_issue_repl: >-
           #\1
 
-    - name: >-
-        Publish 🐍📦 to PyPI
+  publish:
+    name: Publish (shard ${{ matrix.shard }}/2)
+    needs:
+    - deploy
+    - pre-setup  # transitive, for accessing settings
+    runs-on: ubuntu-latest
+    if: >-
+      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
+
+    permissions:
+      contents: write  # IMPORTANT: mandatory for uploading Sigstore signatures
+      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
+
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aiohttp
+
+    strategy:
+      # Run the shards sequentially: each is a separate job that mints its own
+      # fresh OIDC identity, so per-shard signing stays well under the token
+      # lifetime (see pypa/gh-action-pypi-publish#307), and only one job updates
+      # the shared GitHub Release at a time. fail-fast is off so a failed shard
+      # can be re-run on its own; every step is idempotent.
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        shard:
+        - 0
+        - 1
+
+    steps:
+    - name: Download distributions
+      uses: actions/download-artifact@v8
+      with:
+        path: dist
+        pattern: dist-*
+        merge-multiple: true
+    - name: Select this shard's distributions
+      # gh-action-pypi-publish and the Sigstore signing below each mint a single
+      # short-lived OIDC identity per job and reuse it for every file, so signing
+      # the whole dist set in one job can outlast the token and fail partway
+      # through (pypa/gh-action-pypi-publish#307). Keeping only every Nth dist
+      # here bounds each job's signing loop. Bump the matrix and SHARDS together
+      # if the wheel matrix keeps growing.
+      #
+      # The split is fully deterministic: the same built dists always sort the
+      # same way (LC_ALL=C, byte order, independent of runner locale) and land
+      # in the same shard, so re-running a single failed shard reprocesses
+      # exactly its own half and never touches the other shard's dists.
+      id: shard
+      shell: bash
+      env:
+        SHARD: ${{ matrix.shard }}
+        SHARDS: '2'
+      run: |
+        shopt -s nullglob
+        cd dist
+        mapfile -t all < <(printf '%s\n' ./*.whl ./*.tar.gz | LC_ALL=C sort)
+        i=0
+        inputs=()
+        for f in "${all[@]}"; do
+          [ -n "${f}" ] || continue
+          name=${f#./}
+          if [ "$(( i % SHARDS ))" -eq "${SHARD}" ]; then
+            inputs+=("dist/${name}")
+          else
+            rm -f -- "${name}"
+          fi
+          i=$(( i + 1 ))
+        done
+        cd ..
+        echo "Shard ${SHARD}/${SHARDS} keeps ${#inputs[@]} dist(s):"
+        printf '  %s\n' "${inputs[@]}"
+        echo "sigstore-inputs=${inputs[*]}" >> "${GITHUB_OUTPUT}"
+    - name: Publish 🐍📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
-        # Allow re-running the deploy job after a partial PyPI upload
-        # without failing on dists that were already published.
+        # Allow re-running after a partial PyPI upload without failing on
+        # dists that a prior attempt already published.
         skip-existing: true
-
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.4.0
       with:
-        inputs: >-
-          ./dist/*.tar.gz
-          ./dist/*.whl
-
+        inputs: ${{ steps.shard.outputs.sigstore-inputs }}
     - name: Upload artifact signatures to GitHub Release
       # Confusingly, this action also supports updating releases, not
-      # just creating them. This is what we want here, since we've manually
-      # created the release above.
+      # just creating them. This is what we want here, since the release
+      # was created by the deploy job above.
       uses: softprops/action-gh-release@v3.0.2
       with:
-        # dist/ contains the built packages, which smoketest-artifacts/
-        # contains the signatures and certificates.
+        # dist/ holds this shard's packages plus their Sigstore signatures.
         files: dist/**
