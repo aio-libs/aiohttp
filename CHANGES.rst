@@ -10,6 +10,33 @@
 
 .. towncrier release notes start
 
+3.14.3 (2026-07-22)
+===================
+
+Bug fixes
+---------
+
+- Fixed the client dropping only the first ``Authorization``, ``Cookie`` and
+  ``Proxy-Authorization`` header when a redirect crossed an origin -- by :user:`arshsmith1`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13180`.
+  
+  
+  
+- Fixed error message construction in the C HTTP parser -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13222`.
+  
+  
+  
+
+----
+
+
 3.14.2 (2026-07-20)
 ===================
 
