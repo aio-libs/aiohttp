@@ -1888,6 +1888,29 @@ def test_http_request_parser_bad_nonascii_uri(parser: HttpRequestParser) -> None
         parser.feed_data(b"GET \xff HTTP/1.1\r\n\r\n")
 
 
+@pytest.mark.parametrize(
+    "target",
+    (
+        b"/a\x00b",
+        b"/a\tb",
+        b"/a\nb",
+        b"/a\rb",
+        b"/a\x1fb",
+        b"/a\x7fb",
+        b"/a?b=\x01",
+        b"/a#\x01",
+        b"http://example.com/a\x00b",
+    ),
+    ids=("nul", "htab", "lf", "cr", "us", "del", "query", "fragment", "absolute-form"),
+)
+def test_http_request_parser_ctl_in_request_target(
+    parser: HttpRequestParser, target: bytes
+) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-3
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> None:
     path = b"t" * (size - 5)
