@@ -2039,6 +2039,99 @@ async def test_http_response_parser_bad_chunked_strict_c(
         response.feed_data(text)
 
 
+# The C parser builds its error message from a snippet of the fed buffer. That
+# snippet must be sliced out of the bounded ``data`` bytes object; materializing the
+# raw llhttp error-position pointer instead runs strlen past the end of the buffer.
+# These tests pin the snippet to bytes that lie inside the fed input, and cover error
+# positions right at the buffer end where the over-read used to happen.
+
+_CHUNKED_RESP_HDR = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+# (malformed body appended to a chunked response header, expected error snippet,
+# llhttp error reason)
+_BAD_CHUNKED_RESPONSES = [
+    (b"0\rX\r\n\r\n", b"0\rX", "Expected LF after chunk size"),
+    (b"5\r\nhello\rX\r\n0\r\n\r\n", b"hello\rX", "Expected LF after chunk data"),
+    (b"5\r\nhelloXY\r\n0\r\n\r\n", b"helloXY", "Expected LF after chunk data"),
+    (b"1\r\nA\rB\r\n0\r\n\r\n", b"A\rB", "Expected LF after chunk data"),
+    (b"0_2e\r\n\r\n", b"0_2e", "Invalid character in chunk size"),
+]
+
+# Same, but the buffer ends exactly at the offending byte so the error position sits
+# at the end of the input with no trailing CRLF to bound the old strlen-based slice.
+_BAD_CHUNKED_RESPONSES_AT_END = [
+    (b"0\rX", b"0\rX", "Expected LF after chunk size"),
+    (b"5\r\nhello\rX", b"hello\rX", "Expected LF after chunk data"),
+    (b"0_", b"0_", "Invalid character in chunk size"),
+]
+
+_BAD_REQUESTS_AT_END = [
+    (b"GET / HTTP/1.1\r\nHost: x\n", b"Host: x\n"),
+    (b"POST / HTTP/1.1\r\nHost: x\r\nA: b\x01", b"A: b\x01"),
+]
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(
+    ("body", "snippet", "reason"),
+    _BAD_CHUNKED_RESPONSES + _BAD_CHUNKED_RESPONSES_AT_END,
+)
+async def test_c_parser_error_snippet_bounded_response(
+    body: bytes, snippet: bytes, reason: str
+) -> None:
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = HttpResponseParserC(
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = response
+    text = _CHUNKED_RESP_HDR + body
+    assert snippet in text
+    match = f"{re.escape(reason)}[\\s\\S]*{re.escape(repr(snippet))}"
+    with pytest.raises(http_exceptions.BadHttpMessage, match=match):
+        response.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(("text", "snippet"), _BAD_REQUESTS_AT_END)
+def test_c_parser_error_snippet_at_buffer_end_request(
+    loop: asyncio.AbstractEventLoop,
+    server: Server,
+    text: bytes,
+    snippet: bytes,
+) -> None:
+    protocol = RequestHandler(server, loop=loop)
+    parser = HttpRequestParserC(
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = parser
+    assert snippet in text
+    with pytest.raises(http_exceptions.BadHttpMessage, match=re.escape(repr(snippet))):
+        parser.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize("split", [1, 2, 3, 5])
+@pytest.mark.parametrize(("body", "snippet", "reason"), _BAD_CHUNKED_RESPONSES)
+async def test_c_parser_error_snippet_fragmented_response(
+    body: bytes, snippet: bytes, reason: str, split: int
+) -> None:
+    # Feed the malformed body in two pieces so the second feed runs through the
+    # tail-prepend path before the error is reported; the parser must report a clean
+    # error rather than reading past the buffer. The snippet offset shifts with the
+    # split, so pin the stable llhttp reason instead.
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = HttpResponseParserC(
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = response
+    response.feed_data(_CHUNKED_RESP_HDR)
+    with pytest.raises(http_exceptions.BadHttpMessage, match=re.escape(reason)):
+        response.feed_data(body[:split])
+        response.feed_data(body[split:])
+
+
 async def test_http_response_parser_notchunked(response) -> None:
     text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: notchunked\r\n\r\n1\r\nT\r\n3\r\nest\r\n0\r\n\r\n"
     messages, upgrade, tail = response.feed_data(text)
