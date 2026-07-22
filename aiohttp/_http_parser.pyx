@@ -675,11 +675,12 @@ cdef class HttpParser:
                     ex = self._last_error
                     self._last_error = None
                 else:
-                    after = cparser.llhttp_get_error_pos(self._cparser)
-                    before = data[:after - base]
-                    after_b = after.split(b"\r\n", 1)[0]
+                    error_pos = cparser.llhttp_get_error_pos(self._cparser)
+                    error_off = error_pos - base
+                    before = data[:error_off]
+                    after = data[error_off:].split(b"\r\n", 1)[0]
                     before = before.rsplit(b"\r\n", 1)[-1]
-                    data = before + after_b
+                    data = before + after
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
                 self._payload = None
