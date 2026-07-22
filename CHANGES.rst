@@ -22,17 +22,17 @@ Bug fixes
 
   *Related issues and pull requests on GitHub:*
   :issue:`13180`.
-  
-  
-  
+
+
+
 - Fixed error message construction in the C HTTP parser -- by :user:`bdraco`.
 
 
   *Related issues and pull requests on GitHub:*
   :issue:`13222`.
-  
-  
-  
+
+
+
 
 ----
 
