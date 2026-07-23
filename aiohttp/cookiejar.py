@@ -337,6 +337,21 @@ class CookieJar(AbstractCookieJar):
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
 
+            # RFC 6265bis 4.1.3: enforce the __Secure- and __Host- name
+            # prefixes so a related-origin (sibling subdomain) or on-path party
+            # cannot forge a cookie the target server trusts as host-locked and
+            # secure. Only applied to cookies from an actual response; a jar
+            # seeded programmatically has no response host to check against.
+            if hostname is not None:
+                lower_name = name.lower()
+                if lower_name.startswith(("__secure-", "__host-")):
+                    if not cookie["secure"] or not self._is_secure_origin(response_url):
+                        continue
+                    if lower_name.startswith("__host-") and (
+                        cookie["domain"] or cookie["path"] != "/"
+                    ):
+                        continue
+
             domain = cookie["domain"]
 
             # ignore domains with trailing dots
@@ -494,6 +509,15 @@ class CookieJar(AbstractCookieJar):
         # setting protected attributes directly.
         morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
         return morsel
+
+    def _is_secure_origin(self, url: URL) -> bool:
+        """Whether cookies from url should be treated as a secure origin."""
+        if url.scheme in ("https", "wss"):
+            return True
+        if self._treat_as_secure_origin:
+            with contextlib.suppress(ValueError):
+                return url.origin() in self._treat_as_secure_origin
+        return False
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

@@ -421,6 +421,65 @@ async def test_ignore_domain_ending_with_dot() -> None:
     assert cookies_sent.output(header="Cookie:") == ""
 
 
+@pytest.mark.parametrize(
+    ("set_cookie", "url"),
+    [
+        # __Host- with a Domain attribute is not host-only.
+        (
+            "__Host-sid=x; Domain=example.com; Path=/; Secure",
+            "https://sub.example.com/",
+        ),
+        # __Host- without Path=/.
+        ("__Host-sid=x; Path=/admin; Secure", "https://example.com/admin"),
+        # __Host- without Secure.
+        ("__Host-sid=x; Path=/", "https://example.com/"),
+        # Prefixes must not be accepted over an insecure origin.
+        ("__Host-sid=x; Path=/; Secure", "http://example.com/"),
+        ("__Secure-sid=x; Secure", "http://example.com/"),
+        # __Secure- without the Secure attribute.
+        ("__Secure-sid=x", "https://example.com/"),
+        # Prefix match is case-insensitive, so casing cannot bypass it.
+        (
+            "__host-sid=x; Domain=example.com; Path=/; Secure",
+            "https://sub.example.com/",
+        ),
+    ],
+)
+async def test_cookie_prefix_rejected(set_cookie: str, url: str) -> None:
+    jar = CookieJar()
+    jar.update_cookies(SimpleCookie(set_cookie), URL(url))
+    assert len(jar) == 0
+
+
+@pytest.mark.parametrize(
+    ("set_cookie", "url"),
+    [
+        ("__Host-sid=x; Path=/; Secure", "https://example.com/"),
+        ("__Secure-sid=x; Secure", "https://example.com/"),
+        ("__Secure-sid=x; Domain=example.com; Secure", "https://www.example.com/"),
+    ],
+)
+async def test_cookie_prefix_accepted(set_cookie: str, url: str) -> None:
+    jar = CookieJar()
+    jar.update_cookies(SimpleCookie(set_cookie), URL(url))
+    assert len(jar) == 1
+
+
+async def test_cookie_prefix_programmatic_seed_unaffected() -> None:
+    # Seeding the jar without a response URL is a trusted path and keeps working.
+    jar = CookieJar()
+    jar.update_cookies(SimpleCookie("__Host-seed=x; Path=/; Secure"))
+    assert "__Host-seed" in jar.filter_cookies(URL("https://any.example/"))
+
+
+async def test_cookie_prefix_treat_as_secure_origin() -> None:
+    jar = CookieJar(treat_as_secure_origin=URL("http://example.com"))
+    jar.update_cookies(
+        SimpleCookie("__Host-sid=x; Path=/; Secure"), URL("http://example.com/")
+    )
+    assert "__Host-sid" in jar.filter_cookies(URL("http://example.com/"))
+
+
 class TestCookieJarSafe:
     @pytest.fixture(autouse=True)
     def setup_cookies(
