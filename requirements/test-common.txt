@@ -144,7 +144,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-yarl==1.24.2
+yarl==1.24.5
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/test-common.in
