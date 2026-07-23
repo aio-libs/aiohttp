@@ -48,5 +48,5 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   aiosignal
     #   exceptiongroup
     #   multidict
-yarl==1.24.2
+yarl==1.24.5
     # via -r requirements/runtime-deps.in
