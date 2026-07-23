@@ -933,6 +933,13 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since the first group
       # created the release above.
+      #
+      # The groups run this concurrently against the same release, which is safe:
+      # each group's files are a disjoint share, so asset names never collide, and
+      # with no body/name inputs the action preserves the existing release
+      # metadata (it writes back what it reads) rather than clearing it, so the
+      # concurrent metadata updates are identical no-ops. The Wait step above
+      # guarantees the release (with its notes) already exists first.
       uses: softprops/action-gh-release@v3.0.2
       with:
         # dist/ holds this group's packages plus their Sigstore signatures.
