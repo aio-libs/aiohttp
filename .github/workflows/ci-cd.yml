@@ -753,7 +753,7 @@ jobs:
         path: ./wheelhouse/*.whl
 
   deploy:
-    name: Deploy (shard ${{ matrix.shard }})
+    name: Deploy (${{ matrix.group }})
     needs:
     - build-tarball
     - build-wheels
@@ -769,7 +769,7 @@ jobs:
     # The required-reviewer pypi environment gates this job, so a human must
     # approve before anything is created or published. Release creation and
     # publishing all live in this one gated matrix, so a release needs a single
-    # approval: the shards are pending together and a reviewer approves them in
+    # approval: the groups are pending together and a reviewer approves them in
     # one review (see the strategy comment below).
     environment:
       name: pypi
@@ -779,22 +779,23 @@ jobs:
       # The PyPI publish and the Sigstore signing each mint one short-lived OIDC
       # identity per job and reuse it for every file, so signing the whole dist
       # set in a single job can outlast the token and fail partway through
-      # (pypa/gh-action-pypi-publish#307). Splitting the work across shards, each
+      # (pypa/gh-action-pypi-publish#307). Splitting the work across groups, each
       # its own job with a fresh identity signing only its share, keeps every
       # signing loop well under the token lifetime.
       #
-      # The shards run in parallel and all target the pypi environment, so they
+      # The groups run in parallel and all target the pypi environment, so they
       # are pending for approval at the same time and a reviewer approves them in
-      # a single review rather than one prompt per shard. Shard 0 creates the
-      # GitHub Release and the others wait for it; each shard only ever touches
-      # its own disjoint share of dists, so the concurrent Release asset uploads
-      # never collide. fail-fast is off and every step is idempotent, so a single
-      # failed shard can be re-run on its own.
+      # a single review rather than one prompt per group. The first group
+      # (job-index 0) creates the GitHub Release and the others wait for it; each
+      # group only ever touches its own disjoint share of dists, so the
+      # concurrent Release asset uploads never collide. fail-fast is off and
+      # every step is idempotent, so a single failed group can be re-run on its
+      # own.
       fail-fast: false
       matrix:
-        shard:
-        - 0
-        - 1
+        group:
+        - 1 of 2
+        - 2 of 2
 
     steps:
     - name: Checkout
@@ -810,66 +811,62 @@ jobs:
         path: dist
         pattern: dist-*
         merge-multiple: true
-    - name: Select this shard's distributions
+    - name: Select this group's distributions
       # Keep only every Nth dist so this job signs a bounded share. To add a
-      # shard, extend the matrix list above; the count comes from
-      # strategy.job-total automatically, so there is no separate shard count to
-      # keep in sync.
+      # group, extend the matrix list above; the count comes from
+      # strategy.job-total automatically, so there is no separate count to keep
+      # in sync.
       #
       # The split is fully deterministic: the same built dists always sort the
       # same way (LC_ALL=C, byte order, independent of runner locale) and land in
-      # the same shard, so re-running a single failed shard reprocesses exactly
-      # its own share and never touches another shard's dists.
-      id: shard
+      # the same group, so re-running a single failed group reprocesses exactly
+      # its own share and never touches another group's dists.
+      id: group
       shell: bash
       env:
-        SHARD: ${{ strategy.job-index }}
-        SHARDS: ${{ strategy.job-total }}
+        GROUP_INDEX: ${{ strategy.job-index }}
+        GROUP_COUNT: ${{ strategy.job-total }}
       run: |
         shopt -s nullglob
-        cd dist
-        mapfile -t all < <(printf '%s\n' ./*.whl ./*.tar.gz | LC_ALL=C sort)
+        mapfile -t all < <(printf '%s\n' dist/*.whl dist/*.tar.gz | LC_ALL=C sort)
         i=0
         inputs=()
         for f in "${all[@]}"; do
           [ -n "${f}" ] || continue
-          name=${f#./}
-          if [ "$(( i % SHARDS ))" -eq "${SHARD}" ]; then
-            inputs+=("dist/${name}")
+          if [ "$(( i % GROUP_COUNT ))" -eq "${GROUP_INDEX}" ]; then
+            inputs+=("${f}")
           else
-            rm -f -- "${name}"
+            rm -f -- "${f}"
           fi
           i=$(( i + 1 ))
         done
-        cd ..
-        echo "Shard ${SHARD}/${SHARDS} keeps ${#inputs[@]} dist(s):"
+        echo "Group $(( GROUP_INDEX + 1 )) of ${GROUP_COUNT} keeps ${#inputs[@]} dist(s):"
         printf '  %s\n' "${inputs[@]}"
         echo "sigstore-inputs=${inputs[*]}" >> "${GITHUB_OUTPUT}"
     - name: Check whether the GitHub Release already exists
-      # Shard 0 owns Release creation. Allows re-running after a partial failure
-      # without the Make Release step failing with HTTP 422 because the
-      # tag/release was created on a prior attempt. Treat only the literal
-      # `release not found` reply as "does not exist"; other failures (auth,
-      # rate-limit, network) re-raise so the job fails loudly instead of falling
-      # through to Make Release.
+      # The first group owns Release creation. Skipping Make Release when the
+      # release already exists lets the job be re-run after a partial failure
+      # without hitting HTTP 422. Query the API and branch on the HTTP status,
+      # not on prose: a 404 means "create it", any other failure (auth,
+      # rate-limit, network) re-raises so the job fails loudly.
       if: ${{ strategy.job-index == 0 }}
       id: gh-release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ github.ref_name }}
       run: |
-        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
-            >/dev/null 2>err; then
+        if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+            --silent 2>err; then
           echo 'exists=true' >> "${GITHUB_OUTPUT}"
-        elif grep -qx 'release not found' err; then
+        elif grep -q 'HTTP 404' err; then
           echo 'exists=false' >> "${GITHUB_OUTPUT}"
         else
           cat err >&2
           exit 1
         fi
     - name: Make Release
-      # Shard 0 creates the Release and uploads its share of the packages; the
-      # other shards add their packages and signatures below.
+      # The first group creates the Release and uploads its share of the
+      # packages; the other groups add their packages and signatures below.
       if: ${{ strategy.job-index == 0 && steps.gh-release.outputs.exists != 'true' }}
       uses: aio-libs/create-release@v1.6.6
       with:
@@ -883,18 +880,24 @@ jobs:
         fix_issue_repl: >-
           #\1
     - name: Wait for the GitHub Release
-      # The other shards do not create the Release; they wait for shard 0 to
-      # create it before they publish or upload anything, so a failure to create
-      # the Release blocks the irreversible PyPI upload too.
+      # The other groups do not create the Release; they wait for the first
+      # group to create it before they publish or upload anything, so a failure
+      # to create the Release blocks the irreversible PyPI upload too. Only a
+      # 404 counts as "not yet"; any other API failure re-raises immediately
+      # instead of silently retrying for the whole timeout.
       if: ${{ strategy.job-index != 0 }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         TAG: ${{ github.ref_name }}
       run: |
         for _ in $(seq 1 150); do
-          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
-              >/dev/null 2>&1; then
+          if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
+              --silent 2>err; then
             exit 0
+          fi
+          if ! grep -q 'HTTP 404' err; then
+            cat err >&2
+            exit 1
           fi
           sleep 2
         done
@@ -909,12 +912,12 @@ jobs:
     - name: Sign the dists with Sigstore
       uses: sigstore/gh-action-sigstore-python@v3.4.0
       with:
-        inputs: ${{ steps.shard.outputs.sigstore-inputs }}
+        inputs: ${{ steps.group.outputs.sigstore-inputs }}
     - name: Upload artifact signatures to GitHub Release
       # Confusingly, this action also supports updating releases, not
-      # just creating them. This is what we want here, since shard 0 created
-      # the release above.
+      # just creating them. This is what we want here, since the first group
+      # created the release above.
       uses: softprops/action-gh-release@v3.0.2
       with:
-        # dist/ holds this shard's packages plus their Sigstore signatures.
+        # dist/ holds this group's packages plus their Sigstore signatures.
         files: dist/**
