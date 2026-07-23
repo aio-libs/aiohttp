@@ -1,6 +1,4 @@
 import asyncio
-import codecs
-import contextlib
 import functools
 import io
 import re
@@ -10,25 +8,20 @@ import warnings
 from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
-from types import MappingProxyType, TracebackType
+from types import MappingProxyType
 from typing import TYPE_CHECKING, Any, Literal, NamedTuple, TypedDict
 
 from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy
 from yarl import URL, Query
 
 from . import hdrs, multipart, payload
-from ._cookie_helpers import (
-    parse_cookie_header,
-    parse_set_cookie_headers,
-    preserve_morsel_with_coded_value,
-)
+from ._cookie_helpers import parse_cookie_header, preserve_morsel_with_coded_value
 from .abc import AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
     ClientOSError,
     ClientResponseError,
-    ContentTypeError,
     InvalidURL,
     ServerFingerprintMismatch,
 )
@@ -39,11 +32,9 @@ from .helpers import (
     HTTP_AND_EMPTY_SCHEMA_SET,
     BaseTimerContext,
     HeadersDictProxy,
-    HeadersMixin,
     TimerNoop,
     encode_basic_auth,
     frozen_dataclass_decorator,
-    is_expected_content_type,
     parse_mimetype,
     reify,
     sentinel,
@@ -58,8 +49,9 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
+from .http_base import BaseResponse
 from .streams import EMPTY_PAYLOAD, StreamReader
-from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
+from .typedefs import RawHeaders
 
 try:
     import ssl
@@ -243,7 +235,7 @@ class ResponseParams(TypedDict):
     max_headers: int
 
 
-class ClientResponse(HeadersMixin):
+class ClientResponse(BaseResponse):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
@@ -378,31 +370,6 @@ class ClientResponse(HeadersMixin):
                 self._upload_complete.set_result(None)
         return self._upload_complete
 
-    @property
-    def cookies(self) -> SimpleCookie:
-        if self._cookies is None:
-            if self._raw_cookie_headers is not None:
-                # Parse cookies for response.cookies (SimpleCookie for backward compatibility)
-                cookies = SimpleCookie()
-                # Use parse_set_cookie_headers for more lenient parsing that handles
-                # malformed cookies better than SimpleCookie.load
-                cookies.update(parse_set_cookie_headers(self._raw_cookie_headers))
-                self._cookies = cookies
-            else:
-                self._cookies = SimpleCookie()
-        return self._cookies
-
-    @cookies.setter
-    def cookies(self, cookies: SimpleCookie) -> None:
-        self._cookies = cookies
-        # Generate raw cookie headers from the SimpleCookie
-        if cookies:
-            self._raw_cookie_headers = tuple(
-                morsel.OutputString() for morsel in cookies.values()
-            )
-        else:
-            self._raw_cookie_headers = None
-
     @reify
     def url(self) -> URL:
         return self._url
@@ -415,10 +382,6 @@ class ClientResponse(HeadersMixin):
     def host(self) -> str:
         assert self._url.host is not None
         return self._url.host
-
-    @reify
-    def headers(self) -> HeadersDictProxy:
-        return self._headers
 
     @reify
     def raw_headers(self) -> RawHeaders:
@@ -478,11 +441,6 @@ class ClientResponse(HeadersMixin):
     @property
     def connection(self) -> "Connection | None":
         return self._connection
-
-    @reify
-    def history(self) -> tuple["ClientResponse", ...]:
-        """A sequence of responses, if redirects occurred."""
-        return self._history
 
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
@@ -604,33 +562,6 @@ class ClientResponse(HeadersMixin):
         self._cleanup_writer()
         self._release_connection()
 
-    @property
-    def ok(self) -> bool:
-        """Returns ``True`` if ``status`` is less than ``400``, ``False`` if not.
-
-        This is **not** a check for ``200 OK`` but a check that the response
-        status is under 400.
-        """
-        return 400 > self.status
-
-    def raise_for_status(self) -> None:
-        if not self.ok:
-            # reason should always be not None for a started response
-            assert self.reason is not None
-
-            # If we're in a context we can rely on __aexit__() to release as the
-            # exception propagates.
-            if not self._in_context:
-                self.release()
-
-            raise ClientResponseError(
-                self.request_info,
-                self.history,
-                status=self.status,
-                message=self.reason,
-                headers=self.headers,
-            )
-
     def _release_connection(self) -> None:
         if self._connection is not None:
             if self.__writer is None:
@@ -709,83 +640,6 @@ class ClientResponse(HeadersMixin):
         if protocol is None or not protocol.upgraded:
             await self._wait_released()  # Underlying connection released
         return self._body
-
-    def get_encoding(self) -> str:
-        ctype = self.headers.get(hdrs.CONTENT_TYPE, "").lower()
-        mimetype = parse_mimetype(ctype)
-
-        encoding = mimetype.parameters.get("charset")
-        if encoding:
-            with contextlib.suppress(LookupError, ValueError):
-                return codecs.lookup(encoding).name
-
-        if mimetype.type == "application" and (
-            mimetype.subtype == "json" or mimetype.subtype == "rdap"
-        ):
-            # RFC 7159 states that the default encoding is UTF-8.
-            # RFC 7483 defines application/rdap+json
-            return "utf-8"
-
-        if self._body is None:
-            raise RuntimeError(
-                "Cannot compute fallback encoding of a not yet read body"
-            )
-
-        return self._resolve_charset(self, self._body)
-
-    async def text(self, encoding: str | None = None, errors: str = "strict") -> str:
-        """Read response payload and decode."""
-        await self.read()
-
-        if encoding is None:
-            encoding = self.get_encoding()
-
-        return self._body.decode(encoding, errors=errors)  # type: ignore[union-attr]
-
-    async def json(
-        self,
-        *,
-        encoding: str | None = None,
-        loads: JSONDecoder = DEFAULT_JSON_DECODER,
-        content_type: str | None = "application/json",
-    ) -> Any:
-        """Read and decodes JSON response."""
-        await self.read()
-
-        if content_type:
-            if not is_expected_content_type(self.content_type, content_type):
-                raise ContentTypeError(
-                    self.request_info,
-                    self.history,
-                    status=self.status,
-                    message=(
-                        "Attempt to decode JSON with "
-                        "unexpected mimetype: %s" % self.content_type
-                    ),
-                    headers=self.headers,
-                )
-
-        if encoding is None:
-            encoding = self.get_encoding()
-
-        return loads(self._body.decode(encoding))  # type: ignore[union-attr]
-
-    async def __aenter__(self) -> "ClientResponse":
-        self._in_context = True
-        return self
-
-    async def __aexit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc_val: BaseException | None,
-        exc_tb: TracebackType | None,
-    ) -> None:
-        self._in_context = False
-        # similar to _RequestContextManager, we do not need to check
-        # for exceptions, response object can close connection
-        # if state is broken
-        self.release()
-        await self.wait_for_close()
 
 
 class ClientRequestBase:
