@@ -1,0 +1,4 @@
+Fixed ``Content-Disposition`` parsing stripping leading path separators from a
+quoted ``filename`` but not from the RFC 5987 ``filename*`` or the RFC 2231
+``filename*0``/``filename*0*`` continuation forms, so the sender chose whether
+that normalisation applied -- by :user:`arshsmith1`.

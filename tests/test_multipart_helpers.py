@@ -563,7 +563,23 @@ class TestParseContentDisposition:
             "attachment; filename*=UTF-8''%5cfoo.html"
         )
         assert "attachment" == disptype
-        assert {"filename*": "\\foo.html"} == params
+        assert {"filename*": "foo.html"} == params
+
+    def test_attwithfn2231abspath(self) -> None:
+        disptype, params = parse_content_disposition(
+            "attachment; filename*=UTF-8''%2Ffoo.html"
+        )
+        assert "attachment" == disptype
+        assert {"filename*": "foo.html"} == params
+
+    def test_attfncontabspath(self) -> None:
+        # The continuation parts are normalised once they are joined, so the
+        # separator survives parsing.
+        disptype, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "attachment" == disptype
+        assert {"filename*0": "/foo.", "filename*1": "html"} == params
 
     def test_attfncont(self) -> None:
         disptype, params = parse_content_disposition(
@@ -711,9 +727,27 @@ class TestContentDispositionFilename:
         params = {"filename*": "файл.html"}
         assert "файл.html" == content_disposition_filename(params)
 
+    def test_filename_ext_abspath(self) -> None:
+        _, params = parse_content_disposition(
+            'form-data; name="f"; filename="/etc/evil"; filename*=UTF-8\'\'%2Fetc%2Fevil'
+        )
+        assert "etc/evil" == content_disposition_filename(params)
+
     def test_attfncont(self) -> None:
         params = {"filename*0": "foo.", "filename*1": "html"}
         assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontabspath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontinnerpath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="dir"; filename*1="/foo.html"'
+        )
+        assert "dir/foo.html" == content_disposition_filename(params)
 
     def test_attfncontqs(self) -> None:
         params = {"filename*0": "foo", "filename*1": "bar.html"}
@@ -721,6 +755,16 @@ class TestContentDispositionFilename:
 
     def test_attfncontenc(self) -> None:
         params = {"filename*0*": "UTF-8''foo-%c3%a4", "filename*1": ".html"}
+        assert "foo-ä.html" == content_disposition_filename(params)
+
+    @pytest.mark.parametrize(
+        "params",
+        (
+            {"filename*0*": "UTF-8''%2Ffoo-%c3%a4", "filename*1": ".html"},
+            {"filename*0*": "UTF-8''%5cfoo-%c3%a4", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontencabspath(self, params: dict[str, str]) -> None:
         assert "foo-ä.html" == content_disposition_filename(params)
 
     @pytest.mark.parametrize(
