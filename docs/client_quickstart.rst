@@ -6,8 +6,8 @@
  Client Quickstart
 ===================
 
-Eager to get started? This page gives a good introduction in how to
-get started with aiohttp client API.
+Eager to get started? This page gives a good introduction to how to
+get started with the aiohttp client API.
 
 First, make sure that aiohttp is :ref:`installed
 <aiohttp-installation>` and *up-to-date*
@@ -24,7 +24,7 @@ Begin by importing the aiohttp module, and asyncio::
     import aiohttp
     import asyncio
 
-Now, let's try to get a web-page. For example let's query
+Now, let's try to get a web-page. For example, let's query
 ``http://httpbin.org/get``::
 
     async def main():
