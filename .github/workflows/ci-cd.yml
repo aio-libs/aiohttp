@@ -766,6 +766,12 @@ jobs:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
       id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
 
+    # TAG is shared by the two release-existence steps. GITHUB_TOKEN stays scoped
+    # to the steps that need it rather than job-wide, so third-party actions in
+    # this job never see it in their environment.
+    env:
+      TAG: ${{ github.ref_name }}
+
     # The required-reviewer pypi environment gates this job, so a human must
     # approve before anything is created or published. Release creation and
     # publishing all live in this one gated matrix, so a release needs a single
@@ -791,6 +797,12 @@ jobs:
       # concurrent Release asset uploads never collide. fail-fast is off and
       # every step is idempotent, so a single failed group can be re-run on its
       # own.
+      #
+      # Each label "N of M" self-encodes its own position and total, which is the
+      # only source of truth for the split. Keep `group` the sole matrix axis: an
+      # include/exclude entry would renumber strategy.job-index / job-total, but
+      # the label-derived split below stays correct as long as job-index 0 is the
+      # first label.
       fail-fast: false
       matrix:
         group:
@@ -799,6 +811,9 @@ jobs:
 
     steps:
     - name: Checkout
+      # Only the release-creating group needs the repo (create-release reads
+      # CHANGES.rst and aiohttp/__init__.py); the others only touch dist/.
+      if: ${{ strategy.job-index == 0 }}
       uses: actions/checkout@v7
       with:
         submodules: true
@@ -812,10 +827,10 @@ jobs:
         pattern: dist-*
         merge-multiple: true
     - name: Select this group's distributions
-      # Keep only every Nth dist so this job signs a bounded share. To add a
-      # group, extend the matrix list above; the count comes from
-      # strategy.job-total automatically, so there is no separate count to keep
-      # in sync.
+      # Keep only this group's share of the dists so the job signs a bounded set.
+      # index and count come from the "N of M" label, the single source of truth
+      # for the split; to add a group, extend the matrix list above (e.g.
+      # "1 of 3" .. "3 of 3").
       #
       # The split is fully deterministic: the same built dists always sort the
       # same way (LC_ALL=C, byte order, independent of runner locale) and land in
@@ -824,23 +839,24 @@ jobs:
       id: group
       shell: bash
       env:
-        GROUP_INDEX: ${{ strategy.job-index }}
-        GROUP_COUNT: ${{ strategy.job-total }}
+        GROUP: ${{ matrix.group }}
       run: |
+        set -euo pipefail
+        index=$(( ${GROUP%% of *} - 1 ))
+        count=${GROUP##* of }
         shopt -s nullglob
         mapfile -t all < <(printf '%s\n' dist/*.whl dist/*.tar.gz | LC_ALL=C sort)
         i=0
         inputs=()
         for f in "${all[@]}"; do
-          [ -n "${f}" ] || continue
-          if [ "$(( i % GROUP_COUNT ))" -eq "${GROUP_INDEX}" ]; then
+          if [ "$(( i % count ))" -eq "${index}" ]; then
             inputs+=("${f}")
           else
             rm -f -- "${f}"
           fi
           i=$(( i + 1 ))
         done
-        echo "Group $(( GROUP_INDEX + 1 )) of ${GROUP_COUNT} keeps ${#inputs[@]} dist(s):"
+        echo "Group ${GROUP} keeps ${#inputs[@]} of ${#all[@]} dist(s):"
         printf '  %s\n' "${inputs[@]}"
         echo "sigstore-inputs=${inputs[*]}" >> "${GITHUB_OUTPUT}"
     - name: Check whether the GitHub Release already exists
@@ -853,8 +869,8 @@ jobs:
       id: gh-release
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.ref_name }}
       run: |
+        set -euo pipefail
         if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
             --silent 2>err; then
           echo 'exists=true' >> "${GITHUB_OUTPUT}"
@@ -888,8 +904,8 @@ jobs:
       if: ${{ strategy.job-index != 0 }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.ref_name }}
       run: |
+        set -euo pipefail
         for _ in $(seq 1 150); do
           if gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${TAG}" \
               --silent 2>err; then
