@@ -792,6 +792,25 @@ def test_single_forwarded_header_injection2() -> None:
     assert req.forwarded[1]["for"] == "_real"
 
 
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        ("a", {}),
+        ("; a", {}),
+        ("for=1.2.3.4; a", {"for": "1.2.3.4"}),
+        ("for=_real; x", {"for": "_real"}),
+    ],
+)
+def test_single_forwarded_header_trailing_bad_value(
+    header: str, expected: dict[str, str]
+) -> None:
+    # A trailing field-value with no closing ';' that fails to parse as a
+    # forwarded-pair used to spin the parser loop forever (find(";") == -1
+    # reset pos to 0). It must terminate and keep any valid prefix.
+    req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
+    assert dict(req.forwarded[0]) == expected
+
+
 def test_single_forwarded_header_long_quoted_string() -> None:
     header = 'for="' + "\\\\" * 5000 + '"'
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
