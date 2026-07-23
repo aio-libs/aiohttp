@@ -805,6 +805,7 @@ class ClientSession:
                         proxy=proxy_,
                         proxy_auth=proxy_auth,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl if ssl is not None else True,
                         server_hostname=server_hostname,
