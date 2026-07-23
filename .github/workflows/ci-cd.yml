@@ -753,7 +753,7 @@ jobs:
         path: ./wheelhouse/*.whl
 
   deploy:
-    name: Deploy
+    name: Deploy (shard ${{ matrix.shard }})
     needs:
     - build-tarball
     - build-wheels
@@ -764,11 +764,37 @@ jobs:
 
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
+      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
 
-    # No environment gate here on purpose: creating the GitHub Release is
-    # reversible, so it does not need the required-reviewer prompt. The gate
-    # lives on the publish job below, which performs the irreversible PyPI
-    # upload; keeping it off deploy means a release needs only one approval.
+    # The required-reviewer pypi environment gates this job, so a human must
+    # approve before anything is created or published. Release creation and
+    # publishing all live in this one gated matrix, so a release needs a single
+    # approval: the shards are pending together and a reviewer approves them in
+    # one review (see the strategy comment below).
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aiohttp
+
+    strategy:
+      # The PyPI publish and the Sigstore signing each mint one short-lived OIDC
+      # identity per job and reuse it for every file, so signing the whole dist
+      # set in a single job can outlast the token and fail partway through
+      # (pypa/gh-action-pypi-publish#307). Splitting the work across shards, each
+      # its own job with a fresh identity signing only its share, keeps every
+      # signing loop well under the token lifetime.
+      #
+      # The shards run in parallel and all target the pypi environment, so they
+      # are pending for approval at the same time and a reviewer approves them in
+      # a single review rather than one prompt per shard. Shard 0 creates the
+      # GitHub Release and the others wait for it; each shard only ever touches
+      # its own disjoint share of dists, so the concurrent Release asset uploads
+      # never collide. fail-fast is off and every step is idempotent, so a single
+      # failed shard can be re-run on its own.
+      fail-fast: false
+      matrix:
+        shard:
+        - 0
+        - 1
 
     steps:
     - name: Checkout
@@ -784,97 +810,16 @@ jobs:
         path: dist
         pattern: dist-*
         merge-multiple: true
-    - name: Collected dists
-      run: |
-        tree dist
-    - name: Check whether the GitHub Release already exists
-      # Allows re-running the deploy job after a partial failure (e.g. PyPI
-      # upload error) without the Make Release step failing with HTTP 422
-      # because the tag/release was created on a prior attempt. Treat
-      # only the literal `release not found` reply as "does not exist";
-      # other failures (auth, rate-limit, network) re-raise so the job
-      # fails loudly instead of falling through to Make Release.
-      id: gh-release
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        TAG: ${{ github.ref_name }}
-      run: |
-        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
-            >/dev/null 2>err; then
-          echo 'exists=true' >> "${GITHUB_OUTPUT}"
-        elif grep -qx 'release not found' err; then
-          echo 'exists=false' >> "${GITHUB_OUTPUT}"
-        else
-          cat err >&2
-          exit 1
-        fi
-    - name: Make Release
-      if: steps.gh-release.outputs.exists != 'true'
-      uses: aio-libs/create-release@v1.6.6
-      with:
-        changes_file: CHANGES.rst
-        name: aiohttp
-        version_file: aiohttp/__init__.py
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        dist_dir: dist
-        fix_issue_regex: >-
-          :issue:`(\d+)`
-        fix_issue_repl: >-
-          #\1
-
-  publish:
-    name: Publish (shard ${{ matrix.shard }})
-    needs:
-    - deploy
-    - pre-setup  # transitive, for accessing settings
-    runs-on: ubuntu-latest
-    if: >-
-      needs.pre-setup.outputs.upstream-repository-id == github.repository_id
-
-    permissions:
-      contents: write  # IMPORTANT: mandatory for uploading Sigstore signatures
-      id-token: write  # IMPORTANT: mandatory for trusted publishing & sigstore
-
-    environment:
-      name: pypi
-      url: https://pypi.org/p/aiohttp
-
-    strategy:
-      # Both shards run in parallel: each is a separate job that mints its own
-      # fresh OIDC identity, so per-shard signing stays well under the token
-      # lifetime (see pypa/gh-action-pypi-publish#307). Running them together
-      # (rather than sequentially) keeps both environment deployments pending at
-      # the same time, so a required reviewer approves both in a single review
-      # instead of one prompt per shard. Each shard uploads a disjoint set of
-      # dists, so the concurrent GitHub Release asset uploads never collide.
-      # fail-fast is off so a failed shard can be re-run on its own; every step
-      # is idempotent.
-      fail-fast: false
-      matrix:
-        shard:
-        - 0
-        - 1
-
-    steps:
-    - name: Download distributions
-      uses: actions/download-artifact@v8
-      with:
-        path: dist
-        pattern: dist-*
-        merge-multiple: true
     - name: Select this shard's distributions
-      # gh-action-pypi-publish and the Sigstore signing below each mint a single
-      # short-lived OIDC identity per job and reuse it for every file, so signing
-      # the whole dist set in one job can outlast the token and fail partway
-      # through (pypa/gh-action-pypi-publish#307). Keeping only every Nth dist
-      # here bounds each job's signing loop. To add a shard, extend the matrix
-      # list below; the count comes from strategy.job-total automatically, so
-      # there is no separate shard count to keep in sync.
+      # Keep only every Nth dist so this job signs a bounded share. To add a
+      # shard, extend the matrix list above; the count comes from
+      # strategy.job-total automatically, so there is no separate shard count to
+      # keep in sync.
       #
       # The split is fully deterministic: the same built dists always sort the
-      # same way (LC_ALL=C, byte order, independent of runner locale) and land
-      # in the same shard, so re-running a single failed shard reprocesses
-      # exactly its own half and never touches the other shard's dists.
+      # same way (LC_ALL=C, byte order, independent of runner locale) and land in
+      # the same shard, so re-running a single failed shard reprocesses exactly
+      # its own share and never touches another shard's dists.
       id: shard
       shell: bash
       env:
@@ -900,6 +845,61 @@ jobs:
         echo "Shard ${SHARD}/${SHARDS} keeps ${#inputs[@]} dist(s):"
         printf '  %s\n' "${inputs[@]}"
         echo "sigstore-inputs=${inputs[*]}" >> "${GITHUB_OUTPUT}"
+    - name: Check whether the GitHub Release already exists
+      # Shard 0 owns Release creation. Allows re-running after a partial failure
+      # without the Make Release step failing with HTTP 422 because the
+      # tag/release was created on a prior attempt. Treat only the literal
+      # `release not found` reply as "does not exist"; other failures (auth,
+      # rate-limit, network) re-raise so the job fails loudly instead of falling
+      # through to Make Release.
+      if: ${{ strategy.job-index == 0 }}
+      id: gh-release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
+            >/dev/null 2>err; then
+          echo 'exists=true' >> "${GITHUB_OUTPUT}"
+        elif grep -qx 'release not found' err; then
+          echo 'exists=false' >> "${GITHUB_OUTPUT}"
+        else
+          cat err >&2
+          exit 1
+        fi
+    - name: Make Release
+      # Shard 0 creates the Release and uploads its share of the packages; the
+      # other shards add their packages and signatures below.
+      if: ${{ strategy.job-index == 0 && steps.gh-release.outputs.exists != 'true' }}
+      uses: aio-libs/create-release@v1.6.6
+      with:
+        changes_file: CHANGES.rst
+        name: aiohttp
+        version_file: aiohttp/__init__.py
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        dist_dir: dist
+        fix_issue_regex: >-
+          :issue:`(\d+)`
+        fix_issue_repl: >-
+          #\1
+    - name: Wait for the GitHub Release
+      # The other shards do not create the Release; they wait for shard 0 to
+      # create it before they publish or upload anything, so a failure to create
+      # the Release blocks the irreversible PyPI upload too.
+      if: ${{ strategy.job-index != 0 }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        TAG: ${{ github.ref_name }}
+      run: |
+        for _ in $(seq 1 150); do
+          if gh release view "${TAG}" --repo "${GITHUB_REPOSITORY}" \
+              >/dev/null 2>&1; then
+            exit 0
+          fi
+          sleep 2
+        done
+        echo "GitHub Release ${TAG} did not appear in time" >&2
+        exit 1
     - name: Publish 🐍📦 to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
       with:
@@ -912,8 +912,8 @@ jobs:
         inputs: ${{ steps.shard.outputs.sigstore-inputs }}
     - name: Upload artifact signatures to GitHub Release
       # Confusingly, this action also supports updating releases, not
-      # just creating them. This is what we want here, since the release
-      # was created by the deploy job above.
+      # just creating them. This is what we want here, since shard 0 created
+      # the release above.
       uses: softprops/action-gh-release@v3.0.2
       with:
         # dist/ holds this shard's packages plus their Sigstore signatures.
