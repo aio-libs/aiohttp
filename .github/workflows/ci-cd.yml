@@ -835,13 +835,16 @@ jobs:
       url: https://pypi.org/p/aiohttp
 
     strategy:
-      # Run the shards sequentially: each is a separate job that mints its own
+      # Both shards run in parallel: each is a separate job that mints its own
       # fresh OIDC identity, so per-shard signing stays well under the token
-      # lifetime (see pypa/gh-action-pypi-publish#307), and only one job updates
-      # the shared GitHub Release at a time. fail-fast is off so a failed shard
-      # can be re-run on its own; every step is idempotent.
+      # lifetime (see pypa/gh-action-pypi-publish#307). Running them together
+      # (rather than sequentially) keeps both environment deployments pending at
+      # the same time, so a required reviewer approves both in a single review
+      # instead of one prompt per shard. Each shard uploads a disjoint set of
+      # dists, so the concurrent GitHub Release asset uploads never collide.
+      # fail-fast is off so a failed shard can be re-run on its own; every step
+      # is idempotent.
       fail-fast: false
-      max-parallel: 1
       matrix:
         shard:
         - 0
