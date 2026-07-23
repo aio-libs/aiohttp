@@ -765,6 +765,13 @@ jobs:
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
 
+    # The pypi environment's required reviewers gate this job, so a human must
+    # approve before the GitHub Release is created; the publish job below is
+    # gated by the same environment before anything reaches PyPI.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/aiohttp
+
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -818,7 +825,7 @@ jobs:
           #\1
 
   publish:
-    name: Publish (shard ${{ matrix.shard }}/2)
+    name: Publish (shard ${{ matrix.shard }})
     needs:
     - deploy
     - pre-setup  # transitive, for accessing settings
@@ -862,8 +869,9 @@ jobs:
       # short-lived OIDC identity per job and reuse it for every file, so signing
       # the whole dist set in one job can outlast the token and fail partway
       # through (pypa/gh-action-pypi-publish#307). Keeping only every Nth dist
-      # here bounds each job's signing loop. Bump the matrix and SHARDS together
-      # if the wheel matrix keeps growing.
+      # here bounds each job's signing loop. To add a shard, extend the matrix
+      # list below; the count comes from strategy.job-total automatically, so
+      # there is no separate shard count to keep in sync.
       #
       # The split is fully deterministic: the same built dists always sort the
       # same way (LC_ALL=C, byte order, independent of runner locale) and land
@@ -872,8 +880,8 @@ jobs:
       id: shard
       shell: bash
       env:
-        SHARD: ${{ matrix.shard }}
-        SHARDS: '2'
+        SHARD: ${{ strategy.job-index }}
+        SHARDS: ${{ strategy.job-total }}
       run: |
         shopt -s nullglob
         cd dist
