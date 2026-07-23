@@ -174,7 +174,7 @@ typing-inspection==0.4.2
     # via pydantic
 uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
-yarl==1.24.2
+yarl==1.24.5
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp

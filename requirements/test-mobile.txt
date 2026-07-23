@@ -119,7 +119,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   exceptiongroup
     #   multidict
     #   pytest-asyncio
-yarl==1.24.2
+yarl==1.24.5
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp

@@ -83,7 +83,7 @@ typing-extensions==4.16.0
     #   exceptiongroup
     #   multidict
     #   pytest-asyncio
-yarl==1.24.2
+yarl==1.24.5
     # via aiohttp
 
 # The following packages are considered to be unsafe in a requirements file:

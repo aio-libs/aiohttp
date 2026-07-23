@@ -327,7 +327,7 @@ virtualenv==21.6.1
     # via pre-commit
 wheel==0.47.0
     # via pip-tools
-yarl==1.24.2
+yarl==1.24.5
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
