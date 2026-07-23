@@ -7,8 +7,10 @@ import hashlib
 import json
 import os
 import sys
+import time
 import traceback
 import warnings
+from collections import deque
 from collections.abc import (
     Awaitable,
     Callable,
@@ -232,22 +234,59 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
     try:
-        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+        async with connector.sem:
+            # at most just one
+            conn = await connector.connect(
+                req, traces=req._traces, timeout=req._timeout
+            )
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
 
     assert conn.protocol is not None
-    conn.protocol.set_response_params(**req._response_params)
+    assert conn.protocol.transport is not None
+
+    ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
+    alpn_protocol = ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
+
+    resp = None
+    started = False
+
+    if alpn_protocol == "h2":
+        # release immediately to allow reuse
+        connector._release(conn._key, conn._protocol, should_close=False)
+        # the protocol corresponding to the connection
+        # remains (i.e., the count per host is always 1 for h2)
+        # This is the number of TCP connections not the number of
+        # streams
+        connector._acquired.add(conn._protocol)
     try:
-        resp = await req._send(conn)
-        try:
+        # backwards compatibility
+        if alpn_protocol == "h2":
+            body = await req.body.as_bytes()
+            resp = await conn.protocol.send(  # type: ignore[attr-defined]
+                req.method,
+                req.url,
+                list(req.headers.items()),
+                body,
+            )
+
+            # release again to clear the protocol from _acquired if required
+            connector._release(conn._key, conn._protocol, should_close=False)
+            # we still have to null the protocol since we didn't close the connection
+            conn._protocol = None
+        else:
+            conn.protocol.set_response_params(**req._response_params)
+            resp = await req._send(conn)
             await resp.start(conn)
-        except BaseException:
+        # h3 not implemented
+
+        started = True
+    finally:
+        if resp is not None and not started:
             resp.close()
-            raise
-    except BaseException:
-        conn.close()
-        raise
+            conn.close()
+        if resp is None:
+            conn.close()
     return resp
 
 
