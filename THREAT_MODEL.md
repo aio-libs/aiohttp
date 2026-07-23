@@ -704,3 +704,106 @@ boundary at which user-supplied strings can become wire bytes.
   the main request parser's strictness per RFC 9110 §8.6.
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.5. Compression codecs
+
+**Scope.** The compression abstractions used across the library:
+`ZLibCompressor` / `ZLibDecompressor` for gzip / deflate, and the
+optional brotli and zstd decompressors. Out of scope: per-caller usage
+specifics (PMCE in [§5.3](#53-websocket-framing--per-message-deflate), multipart per-part Content-Encoding in [§5.4](#54-multipart-parsing--encoding),
+HTTP body decompression in [§5.6](#56-streams--payloads) / [§5.9](#59-server-requestresponse-objects) / [§5.12](#512-client-api--request-lifecycle)). This section focuses
+on what the *codec wrapper itself* guarantees and where its sharp edges
+are.
+
+**Components covered.**
+
+- `aiohttp/compression_utils.py` — `ZLibBackend`, `ZLibBackendWrapper`,
+  `ZLibCompressor`, `ZLibDecompressor`, `BrotliDecompressor`,
+  `ZSTDDecompressor`, `set_zlib_backend`.
+- Callers (referenced for trust-boundary discussion):
+  `aiohttp/http_parser.py` (`DeflateBuffer`, `HttpPayloadParser`),
+  `aiohttp/_websocket/reader_py.py` (PMCE inflate),
+  `aiohttp/_websocket/writer.py` (PMCE deflate),
+  `aiohttp/multipart.py` (per-part decompression),
+  `aiohttp/web_response.py` (response compression).
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted compressed bytes]) --> Decomp[ZLibDecompressor / BrotliDecompressor / ZSTDDecompressor]
+  Decomp -->|max_length-bounded chunk| App([Caller buffer])
+  AppSrc([Caller body]) --> Comp[ZLibCompressor]
+  Comp -->|wire bytes| WireOut([Outbound])
+```
+
+The decompressors take attacker-controlled compressed input on the server
+ingress and client response paths. The compressors take in-process
+caller bodies and emit wire bytes. The wrappers themselves are thin
+adapters around the underlying libraries (`zlib` / `brotli` /
+`zstandard`); their job is (a) policy uniformity (`max_length`,
+backend selection, async offload) and (b) cross-backend quirk handling.
+
+**Assets at risk (chunk-specific).**
+
+- **Memory boundedness of decompression** — a small compressed input
+  cannot expand to an unbounded output buffer.
+- **Compressor state integrity** — async cancellation cannot leave the
+  compressor in a state that produces invalid wire bytes downstream.
+- **Backend equivalence** — swapping `zlib` for `isal_zlib` (or another
+  ZLibBackendProtocol implementation) does not silently weaken any of
+  the above guarantees.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb (gzip / deflate / brotli / zstd) | D | A small compressed input can decompress to a large output buffer if the per-call `max_length` is not enforced or the per-stream cap is not applied across calls. | High |
+| 5.2 | Backend swap (`set_zlib_backend`) | T | An alternative backend registered via `set_zlib_backend` could have `max_length` semantics that differ from stdlib `zlib` and `isal_zlib` — e.g. silently returning more bytes than requested, or lacking the "no further data" detection that aiohttp relies on to terminate the decompress loop. That would weaken the per-call cap that defends against decompression bombs. | Low–Med |
+| 5.3 | Cancellation mid-`compress()` | T | Cancelling a compression awaitable mid-call leaves the compressor's internal state inconsistent. Subsequent `compress()` calls on the same object produce output that peers decompress as garbage — a body-corruption / framing-desync class, not a memory attack. | Medium |
+| 5.4 | gzip CRC / size mismatch | T | A malicious upstream could append arbitrary bytes after a valid gzip checksum — zlib stops at the checksum and drops the trailing data silently, so aiohttp does not raise. An intermediary or proxy that treats the trailing bytes as part of the next framed message could desync. | Low |
+| 5.5 | Error message disclosure | I | `ContentEncodingError` messages that reflect attacker-supplied encoding names or backend-specific error text back to the peer could leak server-side state (path names, internal buffer contents) if constructed carelessly. | Low |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb | All decompressors accept a `max_length` parameter and refuse to produce more than that many bytes per call. Per-stream caps are applied by callers (`HttpPayloadParser` in [§5.6](#56-streams--payloads), `BodyPartReader` in [§5.4](#54-multipart-parsing--encoding), `WebSocketReader` in [§5.3](#53-websocket-framing--per-message-deflate)), each with their own bound. Some backends (notably `isal_zlib`) can overshoot `max_length` by a single zlib block before the next call rejects further data. | Maintain regression tests for every backend. The post-decompress per-stream cap (caller-side) is the load-bearing defence; codec-level `max_length` is best-effort. |
+| 5.2 | Backend swap | `ZLibBackendWrapper.data_available` and the `_last_empty` flag work around isal's lack of "no further data" detection. The wrapper's signatures (`ZLibCompressObjProtocol` / `ZLibDecompressObjProtocol` in `compression_utils.py`) define the protocol any alternative backend must satisfy. | **Expand the docstrings on `ZLibCompressObjProtocol` / `ZLibDecompressObjProtocol` to spell out (a) the strict `max_length` output contract, (b) the "no further data" detection convention aiohttp relies on to terminate the decompress loop, and (c) that new backends must be gated behind the same regression suite as `zlib` / `isal_zlib`.** |
+| 5.3 | Cancellation hazard | Comments in `compress()` (`compression_utils.py:ZLibCompressor.compress`) note that cancelling mid-call corrupts compressor state. Callers serialise via the connection-level write lock or by ensuring compress is not concurrent with itself. | **Document explicitly: any aiohttp-internal call site that can be cancelled mid-compress must close the connection on cancellation. Audit call sites for compliance.** |
+| 5.4 | CRC / trailing garbage | zlib raises on CRC mismatch; aiohttp surfaces as `ContentEncodingError`. Trailing garbage after a valid gzip checksum is silently dropped — same behaviour as upstream `zlib`. | **User**: do not rely on aiohttp to flag trailing data after a valid gzip checksum. |
+| 5.5 | Error disclosure | Generic message; no internal state. | None. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-6mq8-rvhq-8wgg (CVE-2025-69223)** (3.13.3)
+  — decompression DoS hardening. `DeflateBuffer.feed_data` calls the
+  underlying decompressor with a strict per-call `max_length` (initial
+  cap 32 MiB per `decompress()` call) and applies a post-decompress size
+  check; `feed_eof` asserts that `flush()` produces no residual bytes.
+  This is the primary mitigation for zip-bomb attacks against the HTTP
+  body, multipart, and WebSocket auto-decompress paths, and
+  cross-cuts every chunk that uses compression ([§5.3](#53-websocket-framing--per-message-deflate), [§5.4](#54-multipart-parsing--encoding), [§5.6](#56-streams--payloads), [§5.9](#59-server-requestresponse-objects), [§5.12](#512-client-api--request-lifecycle)).
+- **PR #11966** (3.14.0) — follow-up refinement on top of previous fix:
+  valid but highly-compressed payloads that expanded past 32 MiB in
+  a single `decompress()` call were being rejected outright by the
+  initial fix, breaking legitimate traffic. #11966 tightens the
+  per-call cap from 32 MiB to 256 KiB (matching the asyncio socket
+  receive buffer) but wraps the decompress in a loop, so a valid stream
+  is reassembled from many 256 KiB chunks rather than rejected. Also
+  codifies the isal-specific "no further data" workaround in
+  `ZLibDecompressor.decompress_sync`.
+- **GHSA-g3cq-j2xw-wf74 (CVE-2026-54278)** (3.14.1) — when a
+  handler did not consume the request body, the connection-cleanup path
+  decompressed the entire compressed body into memory in a single
+  one-shot call, bypassing the `client_max_size` cap that normally
+  fires during streaming `Request.read()`. A small compressed body could
+  expand to a large in-memory buffer before any cap took effect.
+
+**Open questions.**
+
+1. Is the cancellation hazard on `ZLibCompressor.compress()` (threat 5.3)
+   adequately covered by the existing connection-write-lock pattern at
+   every call site, or is there an unaudited path?
