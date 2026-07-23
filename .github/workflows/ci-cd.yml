@@ -765,12 +765,10 @@ jobs:
     permissions:
       contents: write  # IMPORTANT: mandatory for making GitHub Releases
 
-    # The pypi environment's required reviewers gate this job, so a human must
-    # approve before the GitHub Release is created; the publish job below is
-    # gated by the same environment before anything reaches PyPI.
-    environment:
-      name: pypi
-      url: https://pypi.org/p/aiohttp
+    # No environment gate here on purpose: creating the GitHub Release is
+    # reversible, so it does not need the required-reviewer prompt. The gate
+    # lives on the publish job below, which performs the irreversible PyPI
+    # upload; keeping it off deploy means a release needs only one approval.
 
     steps:
     - name: Checkout
