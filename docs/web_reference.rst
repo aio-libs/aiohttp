@@ -2739,9 +2739,8 @@ View
       Request sent to view's constructor, read-only property.
 
 
-   Overridable coroutine methods: ``connect()``, ``delete()``,
-   ``get()``, ``head()``, ``options()``, ``patch()``, ``post()``,
-   ``put()``, ``trace()``.
+   Overridable coroutine methods: ``delete()``, ``get()``, ``head()``,
+   ``options()``, ``patch()``, ``post()``, ``put()``, ``trace()``.
 
 .. seealso:: :ref:`aiohttp-web-class-based-views`
 
