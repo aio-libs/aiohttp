@@ -261,6 +261,61 @@ async def test_static_file_with_content_type(
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("filename", "content", "expected_type"),
+    [
+        ("hello.txt", b"Hello", "text/plain"),
+        ("hello.html", b"<h1>Hi</h1>", "text/html"),
+    ],
+)
+async def test_static_file_charset(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    filename: str,
+    content: bytes,
+    expected_type: str,
+) -> None:
+    """Test that charset is appended to the content-type for text-like files."""
+    file_path = tmp_path / filename
+    file_path.write_bytes(content)
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, charset="utf-8")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    assert resp.headers["Content-Type"] == f"{expected_type}; charset=utf-8"
+    assert await resp.read() == content
+    resp.close()
+    resp.release()
+    await client.close()
+
+
+async def test_static_file_charset_ignored_for_non_text(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that charset is not appended to non-text content types."""
+    file_path = tmp_path / "data.bin"
+    file_path.write_bytes(b"\x00\x01\x02")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, charset="utf-8")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+    assert resp.status == 200
+    assert resp.headers["Content-Type"] == "application/octet-stream"
+    resp.release()
+    await client.close()
+
+
 @pytest.mark.parametrize("hello_txt", ["gzip", "br"], indirect=True)
 async def test_static_file_custom_content_type(
     hello_txt: pathlib.Path, aiohttp_client: AiohttpClient, sender: _Sender
