@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4
     # via -r requirements/lint.in
-aiofastnet==0.20.0
+aiofastnet==0.21.0
     # via -r requirements/lint.in
 aiohappyeyeballs==2.7.1
     # via aiohttp
