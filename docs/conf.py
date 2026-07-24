@@ -88,7 +88,10 @@ myst_heading_anchors = 3  # anchors for h1-h3 so the in-page section links work
 myst_fence_as_directive = ["mermaid"]  # render ```mermaid fences as diagrams
 
 # TODO: Remove this option once THREAT_MODEL.md is complete.
-suppress_warnings = ["myst.xref_missing"]
+suppress_warnings = [
+    "myst.xref_missing",
+    "ref.python",
+]
 
 intersphinx_mapping = {
     "pytest": ("http://docs.pytest.org/en/latest/", None),
