@@ -782,6 +782,42 @@ async def test_http10_keep_alive_with_headers(aiohttp_client: AiohttpClient) -> 
     resp.release()
 
 
+async def test_force_close_response_skips_lingering_close(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Calling resp.force_close() must close the connection promptly instead
+    of waiting to drain an unread request body (see issue #1800)."""
+    request_payload: StreamReader | None = None
+    drained = False
+    orig_readany = StreamReader.readany
+
+    async def spy_readany(self: StreamReader) -> bytes:
+        nonlocal drained
+        if self is request_payload:
+            drained = True
+        return await orig_readany(self)
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        nonlocal request_payload
+        request_payload = request.content
+        resp = web.StreamResponse()
+        resp.force_close()
+        await resp.prepare(request)
+        await resp.write_eof()
+        # Deliberately do not read request.content, leaving the body unread.
+        return resp
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+
+    with mock.patch.object(StreamReader, "readany", spy_readany):
+        client = await aiohttp_client(app)
+        async with client.post("/", data=b"x" * (2**20)) as resp:
+            assert resp.status == 200
+
+    assert drained is False
+
+
 async def test_upload_file(aiohttp_client: AiohttpClient) -> None:
     here = pathlib.Path(__file__).parent
     fname = here / "aiohttp.png"

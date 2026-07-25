@@ -1,0 +1,2 @@
+Fixed ``response.force_close()`` not preventing the lingering close timer
+from waiting to drain an unread request body -- by :user:`Ranjeeth11`.

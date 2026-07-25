@@ -735,7 +735,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
                     # Could be force closed while awaiting above tasks.
-                    if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
+                    if not self._force_close and self._keepalive and lingering_time:  # type: ignore[redundant-expr]
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )
