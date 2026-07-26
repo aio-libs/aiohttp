@@ -430,16 +430,21 @@ cdef class HttpParser:
 
     cdef _process_header(self):
         cdef str value
+        cdef bytes raw_value
         if self._raw_name != b"":
             name = find_header(self._raw_name)
-            value = self._raw_value.decode('utf-8', 'surrogateescape')
+            # llhttp strips the OWS before the field value but not the one
+            # after it, so drop that here.
+            # ref: RFC 9110 section 5.5
+            raw_value = self._raw_value.strip(b" \t")
+            value = raw_value.decode('utf-8', 'surrogateescape')
 
             # reject null bytes in header values - matches the Python parser
             # check at http_parser.py. llhttp in lenient mode doesn't reject
             # these itself, so we need to catch them here.
             # ref: RFC 9110 section 5.5 (CTL chars forbidden in field values)
             if "\x00" in value:
-                raise InvalidHeader(self._raw_value)
+                raise InvalidHeader(raw_value)
 
             if not self._lax and name in SINGLETON_HEADERS:
                 if name in self._seen_singletons:
@@ -454,7 +459,7 @@ cdef class HttpParser:
 
             self._has_value = False
             self._header_name_size = 0
-            self._raw_headers.append((self._raw_name, self._raw_value))
+            self._raw_headers.append((self._raw_name, raw_value))
             self._raw_name = b""
             self._raw_value = b""
 

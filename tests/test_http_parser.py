@@ -645,6 +645,15 @@ def test_whitespace_before_header(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_whitespace_around_header_value(parser: HttpRequestParser) -> None:
+    text = b"GET / HTTP/1.1\r\nHost: a\r\ntest: \t value \t \r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.headers["test"] == "value"
+    assert msg.raw_headers == ((b"Host", b"a"), (b"test", b"value"))
+
+
 @pytest.fixture
 def xfail_c_parser_status(request: pytest.FixtureRequest) -> None:
     if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
