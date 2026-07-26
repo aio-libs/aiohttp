@@ -1,0 +1,3 @@
+Exposed the request's timeout configuration to client middlewares as the
+read-only :attr:`ClientRequest.timeout <aiohttp.ClientRequest.timeout>`
+property -- by :user:`rodrigobnogueira`.

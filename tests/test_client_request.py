@@ -15,7 +15,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import BaseConnector, hdrs, payload
+from aiohttp import BaseConnector, ClientTimeout, hdrs, payload
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
@@ -125,6 +125,12 @@ def test_version_1_0(make_request) -> None:
 def test_version_default(make_request) -> None:
     req = make_request("get", "http://python.org/")
     assert req.version == (1, 1)
+
+
+def test_timeout_property(make_request: _RequestMaker) -> None:
+    timeout = ClientTimeout(total=42)
+    req = make_request("get", "http://python.org/", timeout=timeout)
+    assert req.timeout is timeout
 
 
 def test_request_info(make_request) -> None:
