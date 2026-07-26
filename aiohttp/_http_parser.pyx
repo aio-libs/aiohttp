@@ -433,10 +433,9 @@ cdef class HttpParser:
         cdef bytes raw_value
         if self._raw_name != b"":
             name = find_header(self._raw_name)
-            # llhttp strips the OWS before the field value but not the one
-            # after it, so drop that here.
-            # ref: RFC 9110 section 5.5
-            raw_value = self._raw_value.strip(b" \t")
+            # llhttp strips the OWS before the field value but not after.
+            # https://www.rfc-editor.org/info/rfc9110/#section-5.5-3
+            raw_value = self._raw_value.rstrip(b" \t")
             value = raw_value.decode('utf-8', 'surrogateescape')
 
             # reject null bytes in header values - matches the Python parser
