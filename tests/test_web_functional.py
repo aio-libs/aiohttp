@@ -29,7 +29,7 @@ from aiohttp import (
 from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy, ceil_timeout
 from aiohttp.streams import StreamReader
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import MAX_MSG_QUEUE_SIZE, RequestHandler
@@ -810,11 +810,19 @@ async def test_force_close_response_skips_lingering_close(
     app = web.Application()
     app.router.add_post("/", handler)
 
-    with mock.patch.object(StreamReader, "readany", spy_readany):
+    with (
+        mock.patch.object(StreamReader, "readany", spy_readany),
+        mock.patch(
+            "aiohttp.web_protocol.ceil_timeout", wraps=ceil_timeout
+        ) as mock_ceil_timeout,
+    ):
         client = await aiohttp_client(app)
         async with client.post("/", data=b"x" * (2**20)) as resp:
             assert resp.status == 200
 
+    # The lingering-close branch itself must never be entered...
+    assert not mock_ceil_timeout.called
+    # ...and the unread request body must never be drained.
     assert drained is False
 
 
