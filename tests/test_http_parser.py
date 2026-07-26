@@ -1424,14 +1424,9 @@ async def test_decompress_error_while_draining_pending_data(
     payload = msgs[0][-1]
 
     # The next feed drains pending data first, which hits the broken decoder.
-    # The C parser delivers the error via the payload; the pure Python parser
-    # raises it from feed_data.
-    try:
-        response.feed_data(b"b" * 10)
-    except http_exceptions.ContentEncodingError:
-        pass
-    else:
-        assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+    # The parser must not raise; the error is delivered via the payload.
+    response.feed_data(b"b" * 10)
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
 
 
 async def test_two_content_length_responses_in_one_call(
