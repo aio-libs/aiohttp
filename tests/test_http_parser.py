@@ -313,6 +313,24 @@ def test_invalid_linebreak(
         parser.feed_data(text)
 
 
+def test_control_char_in_header_value(parser: HttpRequestParser) -> None:
+    """Both parsers reject a control character in a header value.
+
+    Only the error detail differs: the C parser points at the offending byte,
+    the Python parser reports the whole header.
+    """
+    text = b"POST / HTTP/1.1\r\nHost: localhost:8080\r\nSet-Cookie: abc\x01def\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
+def test_bare_lf_in_headers(parser: HttpRequestParser) -> None:
+    """Both parsers reject a bare LF used as a header terminator."""
+    text = b"GET / HTTP/1.1\r\nHost: a\nX-Evil: b\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
+
+
 def test_partial_request_split_still_parses(parser: HttpRequestParser) -> None:
     """A legitimate request split mid-line must still stream."""
     messages, _, _ = parser.feed_data(b"GET /split HTTP/1.1\r\nHo")
@@ -488,6 +506,13 @@ def test_unpaired_surrogate_in_header_py(
     except http_exceptions.InvalidHeader as e:
         message = e.message.encode("utf-8")
     assert message is not None
+
+
+def test_unpaired_surrogate_in_header(parser: HttpRequestParser) -> None:
+    """Both parsers reject a header line that isn't valid UTF-8."""
+    text = b"POST / HTTP/1.1\r\nHost: a\r\n\xff\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(text)
 
 
 def test_content_length_transfer_encoding(parser: HttpRequestParser) -> None:
@@ -700,6 +725,25 @@ def test_py_parser_normalises_method_to_uppercase(
     assert len(messages) == 1
     msg, _ = messages[0]
     assert msg.method == "GET"
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_c_parser_rejects_lowercase_method(
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
+) -> None:
+    """The counterpart of the test above: llhttp rejects a lowercase method."""
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserC(
+        protocol,
+        event_loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    protocol._parser = parser
+    text = b"get /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    with pytest.raises(http_exceptions.BadHttpMethod):
+        parser.feed_data(text)
 
 
 def test_parse(parser: HttpRequestParser) -> None:
