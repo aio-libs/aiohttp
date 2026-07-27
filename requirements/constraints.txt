@@ -71,7 +71,7 @@ coverage==7.15.2
     #   pytest-cov
 cryptography==49.0.0
     # via trustme
-cython==3.2.8
+cython==3.2.9
     # via -r requirements/cython.in
 distlib==0.4.3
     # via virtualenv
