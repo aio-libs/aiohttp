@@ -1,0 +1,2 @@
+Covered both HTTP parser implementations in tests that previously
+exercised only one of them -- by :user:`LuShadowX`.
