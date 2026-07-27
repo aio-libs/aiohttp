@@ -1277,6 +1277,52 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert result == b"ok"
 
 
+async def test_decompress_error_while_draining_pending_data(
+    response: HttpResponseParser,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Decompressor failure on the pending-data drain must not crash.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13203
+    where the C parser segfaulted on Python 3.12+ when the decompressor
+    raised while draining pending decompressed data, as brotlicffi 1.2
+    does on its empty-input drain call.
+    """
+
+    class _BrokenDecompressor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self._calls = 0
+
+        def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+            self._calls += 1
+            if self._calls > 1:
+                raise ValueError("decoder is broken")
+            # Must be large enough to exceed the high water mark so the
+            # parser pauses with pending data still available.
+            return b"x" * (1024 * 1024)
+
+        @property
+        def data_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("aiohttp.http_parser.ZLibDecompressor", _BrokenDecompressor)
+
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: 100\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+    # First byte 0x78 keeps the zlib header sniff from swapping decompressors.
+    msgs, upgrade, tail = response.feed_data(headers + b"\x78\x9c" + b"a" * 8)
+    payload = msgs[0][-1]
+
+    # The next feed drains pending data first, which hits the broken decoder.
+    # The parser must not raise; the error is delivered via the payload.
+    response.feed_data(b"b" * 10)
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+
+
 async def test_two_content_length_responses_in_one_call(
     response: HttpResponseParser,
 ) -> None:

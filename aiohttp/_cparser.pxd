@@ -19,8 +19,8 @@ cdef extern from "llhttp.h":
     ctypedef llhttp__internal_s llhttp__internal_t
     ctypedef llhttp__internal_t llhttp_t
 
-    ctypedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length) except -1
-    ctypedef int (*llhttp_cb)(llhttp_t*) except -1
+    ctypedef int (*llhttp_data_cb)(llhttp_t*, const char *at, size_t length) except? -1
+    ctypedef int (*llhttp_cb)(llhttp_t*) except? -1
 
     struct llhttp_settings_s:
         llhttp_cb      on_message_begin
