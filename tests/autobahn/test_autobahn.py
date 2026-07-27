@@ -1,6 +1,8 @@
 import json
 import pprint
+import socket
 import subprocess
+import time
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -9,14 +11,25 @@ import pytest
 from pytest import TempPathFactory
 
 if TYPE_CHECKING:
-    from python_on_whales import DockerException, docker
+    from python_on_whales import docker
 else:
     python_on_whales = pytest.importorskip("python_on_whales")
-    DockerException = python_on_whales.DockerException
     docker = python_on_whales.docker
 
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
+
+
+def wait_for_port(port: int, timeout: float = 15.0) -> None:
+    deadline = time.monotonic() + timeout
+    while True:
+        try:
+            with socket.create_connection(("localhost", port), timeout=1):
+                return
+        except OSError:
+            if time.monotonic() >= deadline:  # pragma: no cover
+                raise
+            time.sleep(0.5)
 
 
 @pytest.fixture(scope="session")
@@ -70,34 +83,28 @@ def process_xfail(
 
 @pytest.mark.autobahn
 def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
-    client = subprocess.Popen(
-        (
-            "wait-for-it",
-            "-s",
-            "localhost:9001",
-            "--",
-            "coverage",
-            "run",
-            "-a",
-            "tests/autobahn/client/client.py",
-        )
+    autobahn_container = docker.run(
+        detach=True,
+        image="autobahn-testsuite",
+        name="autobahn",
+        remove=True,
+        volumes=[
+            (request.path.parent / "client", "/config"),
+            (report_dir, "/reports"),
+        ],
+        networks=("host",),
+        command=(
+            "wstest",
+            "--mode",
+            "fuzzingserver",
+            "--spec",
+            "/config/fuzzingserver.json",
+        ),
     )
     try:
-        autobahn_container = docker.run(
-            detach=True,
-            image="autobahn-testsuite",
-            name="autobahn",
-            publish=[(9001, 9001)],
-            remove=True,
-            volumes=[
-                (request.path.parent / "client", "/config"),
-                (report_dir, "/reports"),
-            ],
-        )
-        client.wait()
+        wait_for_port(9001)
+        subprocess.run(("coverage", "run", "-a", "tests/autobahn/client/client.py"))
     finally:
-        client.terminate()
-        client.wait()
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
@@ -137,6 +144,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         ("coverage", "run", "-a", "tests/autobahn/server/server.py")
     )
     try:
+        wait_for_port(9001)
         docker.run(
             image="autobahn-testsuite",
             name="autobahn",
@@ -147,10 +155,6 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
             ],
             networks=("host",),
             command=(
-                "wait-for-it",
-                "-s",
-                "localhost:9001",
-                "--",
                 "wstest",
                 "--mode",
                 "fuzzingclient",

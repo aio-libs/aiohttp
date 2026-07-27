@@ -122,6 +122,12 @@ async def test_version_default(make_client_request: _RequestMaker) -> None:
     assert req.version == (1, 1)
 
 
+async def test_timeout_property(make_client_request: _RequestMaker) -> None:
+    timeout = ClientTimeout(total=42)
+    req = make_client_request("get", URL("http://python.org/"), timeout=timeout)
+    assert req.timeout is timeout
+
+
 async def test_request_info(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     url = URL("http://python.org/")

@@ -1127,6 +1127,11 @@ class ClientRequest(ClientRequestBase):
         return self._skip_auto_headers or CIMultiDict()
 
     @property
+    def timeout(self) -> ClientTimeout:
+        """The timeout configuration this request runs under (read-only)."""
+        return self._timeout
+
+    @property
     def connection_key(self) -> ConnectionKey:
         if proxy_headers := self.proxy_headers:
             h: int | None = hash(tuple(proxy_headers.items()))
