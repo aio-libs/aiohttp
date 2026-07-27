@@ -1,1 +1,0 @@
-Fixed client not closing cleanly after an exception -- by :user:`Dreamsorcerer`.

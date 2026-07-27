@@ -1,1 +1,0 @@
-Fixed some inconsistent case sensitivity on request methods -- by :user:`Dreamsorcerer`.

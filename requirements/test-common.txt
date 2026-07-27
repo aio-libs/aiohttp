@@ -8,7 +8,7 @@ aiohappyeyeballs==2.7.1
     # via aiohttp
 aiosignal==1.4.0
     # via aiohttp
-annotated-types==0.7.0
+annotated-types==0.8.0
     # via pydantic
 ast-serialize==0.6.0
     # via mypy
@@ -22,9 +22,7 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 cffi==2.1.0
     # via cryptography
-click==8.4.2
-    # via wait-for-it
-coverage==7.15.1
+coverage==7.15.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -146,9 +144,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.2
     # via pydantic
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
-yarl==1.24.2
+yarl==1.24.5
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/test-common.in

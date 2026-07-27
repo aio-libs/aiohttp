@@ -1,4 +1,0 @@
-Fixed :exc:`LookupError` (and an unguarded :exc:`UnicodeDecodeError`) escaping
-``Content-Disposition`` parsing when a multipart part supplies an extended
-parameter with an unknown charset, e.g. ``filename*=unknown-8bit''...``
--- by :user:`arshsmith1`.

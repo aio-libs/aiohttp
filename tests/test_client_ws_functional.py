@@ -3,7 +3,6 @@ import json
 import struct
 import sys
 import zlib
-from contextlib import suppress
 from typing import Literal, NoReturn
 from unittest import mock
 
@@ -898,24 +897,8 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
         # surface as a timeout/closure on the client side.
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
-
-        assert ws._writer is not None
-        transport = ws._writer.transport
-
-        # Server-to-client frames are not masked.
-        length = len(payload)  # payload is fixed length of 2048 bytes
-        header = bytes((0x82, 126)) + struct.pack("!H", length)
-
-        frame = header + payload
-        for i in range(0, len(frame), chunk_size):
-            transport.write(frame[i : i + chunk_size])
-            await asyncio.sleep(delay)
-
-        # Ensure the server side is cleaned up.
-        with suppress(asyncio.TimeoutError):
-            await ws.receive(timeout=1.0)
-        with suppress(Exception):
-            await ws.close()
+        # Keep the connection open until the client tears it down.
+        await ws.receive()
         return ws
 
     app = web.Application()
@@ -923,15 +906,43 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     client = await aiohttp_client(app)
 
     async with client.ws_connect("/", heartbeat=heartbeat) as resp:
-        # If heartbeat were not reset on incoming bytes, the client would send
-        # a PING while this frame is still being streamed.
-        with mock.patch.object(
-            resp._writer, "send_frame", wraps=resp._writer.send_frame
-        ) as sf:
-            msg = await resp.receive()
+        assert resp._conn is not None
+        protocol = resp._conn.protocol
+        assert protocol is not None
+
+        # A server->client BINARY frame (unmasked, 16-bit length form).
+        header = bytes((0x82, 126)) + struct.pack("!H", len(payload))
+        frame = header + payload
+
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        # Drive the clock so the result cannot depend on wall-clock scheduling.
+        with (
+            mock.patch.object(loop, "time") as loop_time,
+            mock.patch.object(
+                resp._writer, "send_frame", wraps=resp._writer.send_frame
+            ) as sf,
+        ):
+            loop_time.return_value = now
+            # If heartbeat were not reset on incoming bytes, the client would
+            # send a PING while this frame is still being streamed.
+            for i in range(0, len(frame), chunk_size):
+                # Deliver a chunk via the real receive path, then advance the
+                # clock by less than the heartbeat so the reset stays ahead.
+                protocol.data_received(frame[i : i + chunk_size])
+                now += delay
+                loop_time.return_value = now
+                # Two ticks: run the coalesced reset, then let the heartbeat
+                # timer re-evaluate its deadline against the advanced clock.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+
             assert (
                 sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
             ), "Heartbeat PING sent while data was still being received"
+
+        # Clock restored: the fully-received frame arrives as one BINARY message.
+        msg = await resp.receive()
         assert msg.type is WSMsgType.BINARY
         assert msg.data == payload
         assert not resp.closed

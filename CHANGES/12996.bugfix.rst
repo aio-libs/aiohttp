@@ -1,5 +1,0 @@
-Fixed ``parse_content_disposition`` rejecting otherwise-valid
-``Content-Disposition`` header values that contain optional whitespace (OWS)
-around the disposition type (e.g. ``"form-data ; name=\"field\""``).
-The disposition type is now stripped before token validation, consistent with
-how parameter keys are already handled -- by :user:`JSap0914`.

@@ -1,0 +1,1 @@
+Split release publishing and signing across multiple jobs so each stays within the short-lived signing token lifetime, fixing intermittent release upload failures -- by :user:`bdraco`.

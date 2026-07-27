@@ -1,0 +1,1 @@
+Fixed a segmentation fault in the C HTTP parser on Python 3.12 and newer when payload decompression raised an error while pending decompressed data was being drained, as seen with ``brotlicffi`` 1.2 -- by :user:`bdraco`.

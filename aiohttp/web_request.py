@@ -465,7 +465,26 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._message.path
+        path = self._message.path
+
+        # An absolute-form target carries a "scheme://authority" that must not
+        # leak into the path. Strip it, keeping the remainder byte-for-byte,
+        # exactly as an origin-form target. Authority-form is used only by
+        # CONNECT and is left unchanged.
+        # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-9
+        # https://www.rfc-editor.org/info/rfc9112/#name-authority-form
+        if self._message.url.absolute and self._method != "CONNECT":
+            # absolute-form always contains "://" (guaranteed by the parser).
+            scheme_sep = path.find("://")
+            assert scheme_sep != -1
+            cursor = scheme_sep + 3
+            rel = len(path)
+            for delimiter in "/?#":
+                found = path.find(delimiter, cursor)
+                if found != -1:
+                    rel = min(rel, found)
+            return path[rel:]
+        return path
 
     @reify
     def query(self) -> MultiDictProxy[str]:
@@ -665,7 +684,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         encoding = self.charset or "utf-8"
         try:
             return bytes_body.decode(encoding)
-        except LookupError:
+        except (LookupError, UnicodeDecodeError):
             raise HTTPUnsupportedMediaType()
 
     async def json(
@@ -790,7 +809,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 bytes_query = data.rstrip()
                 try:
                     query = bytes_query.decode(charset)
-                except LookupError:
+                except (LookupError, UnicodeDecodeError):
                     raise HTTPUnsupportedMediaType()
                 out.extend(
                     parse_qsl(qs=query, keep_blank_values=True, encoding=charset)
