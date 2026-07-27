@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test-common.txt --strip-extras requirements/test-common.in
 #
-annotated-types==0.7.0
+annotated-types==0.8.0
     # via pydantic
 ast-serialize==0.6.0
     # via mypy
