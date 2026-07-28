@@ -1,8 +1,10 @@
+from abc import ABC, abstractmethod
 import codecs
 import contextlib
+from collections.abc import Callable
 import json
 from http.cookies import SimpleCookie
-from typing import Any, Callable, Optional, Tuple
+from typing import Any, Optional
 
 from aiohttp._cookie_helpers import parse_set_cookie_headers
 from aiohttp.client_exceptions import ClientResponseError, ContentTypeError
@@ -10,57 +12,60 @@ from aiohttp.hdrs import CONTENT_TYPE
 from aiohttp.helpers import HeadersMixin, is_expected_content_type, parse_mimetype
 
 
-class BaseResponse(HeadersMixin):
+class BaseResponse(HeadersMixin, ABC):
     """Shared public API for HTTP responses."""
 
     status: int
-    _body: Optional[bytes]
-    _cookies: Optional[SimpleCookie]
+    _body: bytes | None
+    _cookies: SimpleCookie | None
     _headers: Any
-    _history: Tuple[Any, ...]
-    reason: Optional[str]
-    _raw_cookie_headers: Optional[Tuple[str, ...]]
+    _history: tuple[Any, ...]
+    reason: str | None
+    _raw_cookie_headers: tuple[str, ...] | None
 
-    def __init__(self) -> None:
-        self._in_context = False
-        self._released: bool = False
-        self._resolve_charset: Callable[[Any, bytes], str] = lambda *_: "utf-8"
+    _in_context: bool = False
+    _released: bool = False
+    _resolve_charset: Callable[[Any, bytes], str] = lambda *_: "utf-8"
+
+    url: Any = None
+    content: bytes | None = None
+    method: str = ""
+    connection: Any = None
 
     # ----------------------------------------------------------------
     # Abstract / overridable protocol methods
     # ----------------------------------------------------------------
+    @abstractmethod
     async def read(self) -> bytes:
         """Read the entire response body."""
-        raise NotImplementedError
 
+    @abstractmethod
     def release(self) -> None:
         """Release the underlying connection / stream."""
-        raise NotImplementedError
 
+    @abstractmethod
     def close(self) -> None:
         """Close the connection immediately."""
-        raise NotImplementedError
 
+    @abstractmethod
     async def wait_for_close(self) -> None:
         """Wait for the connection to be fully released."""
-        self.release()
-        raise NotImplementedError
 
     @property
     def headers(self) -> Any:
         return self._headers
 
     @property
-    def history(self) -> Tuple[Any, ...]:
+    def history(self) -> tuple["BaseResponse", ...]:
         return self._history
 
     # ----------------------------------------------------------------
     # request_info – used by raise_for_status
     # ----------------------------------------------------------------
     @property
+    @abstractmethod
     def request_info(self) -> Any:
         """Return a RequestInfo object for error reporting."""
-        raise NotImplementedError
 
     # ----------------------------------------------------------------
     # Public status checks

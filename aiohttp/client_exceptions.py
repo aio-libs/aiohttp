@@ -14,10 +14,11 @@ except ImportError:  # pragma: no cover
     ssl = SSLContext = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
-    from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .client_reqrep import ConnectionKey, Fingerprint, RequestInfo
+    from .http_base import BaseResponse
     from .http_parser import RawResponseMessage
 else:
-    RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None
+    RequestInfo = BaseResponse = ConnectionKey = RawResponseMessage = None
 
 __all__ = (
     "ClientError",
@@ -65,12 +66,12 @@ class ClientResponseError(ClientError):
     headers: Response headers.
     """
 
-    args: tuple[RequestInfo, tuple[ClientResponse, ...]]
+    args: tuple[RequestInfo, tuple[BaseResponse, ...]]
 
     def __init__(
         self,
         request_info: RequestInfo,
-        history: tuple[ClientResponse, ...],
+        history: tuple[BaseResponse, ...],
         *,
         status: int | None = None,
         message: str = "",
