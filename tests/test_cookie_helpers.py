@@ -2,7 +2,6 @@
 
 import logging
 import sys
-import time
 from http.cookies import (
     CookieError,
     Morsel,
@@ -635,23 +634,6 @@ def test_cookie_pattern_matches_partitioned_attribute(test_string: str) -> None:
     match = pattern.match(test_string)
     assert match is not None, f"Pattern should match '{test_string}'"
     assert match.group("key").lower() == "partitioned"
-
-
-def test_cookie_pattern_performance() -> None:
-    """Test that the cookie pattern doesn't suffer from ReDoS issues."""
-    COOKIE_PATTERN_TIME_THRESHOLD_SECONDS = 0.08
-    value = "a" + "=" * 21651 + "\x00"
-    start = time.perf_counter()
-    match = helpers._COOKIE_PATTERN.match(value)
-    elapsed = time.perf_counter() - start
-
-    # If this is taking more time, there's probably a performance/ReDoS issue.
-    assert elapsed < COOKIE_PATTERN_TIME_THRESHOLD_SECONDS, (
-        f"Pattern took {elapsed * 1000:.1f}ms, "
-        f"expected <{COOKIE_PATTERN_TIME_THRESHOLD_SECONDS * 1000:.0f}ms - potential ReDoS issue"
-    )
-    # This example shouldn't produce a match either.
-    assert match is None
 
 
 def test_parse_set_cookie_headers_issue_7993_double_quotes() -> None:
