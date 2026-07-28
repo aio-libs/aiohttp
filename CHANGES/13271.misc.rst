@@ -1,2 +1,2 @@
-Covered both HTTP parser implementations in tests that previously
-exercised only one of them -- by :user:`LuShadowX`.
+Widened two HTTP parser tests that only exercised one implementation to
+run against both -- by :user:`LuShadowX`.
