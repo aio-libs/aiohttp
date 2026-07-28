@@ -405,18 +405,17 @@ class WebSocketReader:
                 # Set compress status if last package is FIN
                 # OR set compress status if this is first fragment
                 # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
-                    self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
-                elif rsv1:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Received frame with non-zero reserved bits",
-                    )
-
-                # Control frames (opcode > 0x7) may be interleaved between the
-                # fragments of a data message.
-                # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+                # Control frames (opcode > 0x7) must not change the compression
+                # state, otherwise a PONG followed by a compressed data frame
+                # is rejected as "non-zero reserved bits" (regression in 3.14.2).
                 if opcode <= 0x7:
+                    if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
+                        self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
+                    elif rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Received frame with non-zero reserved bits",
+                        )
                     self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
