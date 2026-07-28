@@ -1,8 +1,8 @@
-from abc import ABC, abstractmethod
 import codecs
 import contextlib
-from collections.abc import Callable
 import json
+from abc import ABC, abstractmethod
+from collections.abc import Callable
 from http.cookies import SimpleCookie
 from typing import Any, Optional
 
