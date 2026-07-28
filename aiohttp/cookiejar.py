@@ -44,21 +44,27 @@ _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
+    # RFC 6265 5.1.1 defines cookie-date digits as %x30-39 (ASCII only), so the
+    # date regexes are compiled with re.ASCII. Without it \d also matches
+    # unicode decimal digits (Arabic-Indic, fullwidth, ...) which int() then
+    # happily converts, so a server could smuggle a valid expiry through a date
+    # string a spec-compliant client would reject.
     DATE_TOKENS_RE = re.compile(
         r"[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
-        r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)"
+        r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)",
+        re.ASCII,
     )
 
-    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})")
+    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})", re.ASCII)
 
-    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
+    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})", re.ASCII)
 
     DATE_MONTH_RE = re.compile(
         "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
-        re.I,
+        re.I | re.ASCII,
     )
 
-    DATE_YEAR_RE = re.compile(r"(\d{2,4})")
+    DATE_YEAR_RE = re.compile(r"(\d{2,4})", re.ASCII)
 
     # calendar.timegm() fails for timestamps after datetime.datetime.max
     # Minus one as a loss of precision occurs when timestamp() is called.

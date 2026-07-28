@@ -141,6 +141,13 @@ def test_date_parsing() -> None:
     # Invalid time
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
 
+    # Non-ASCII digits are not cookie-date digits (RFC 6265 5.1.1), so a date
+    # built from Arabic-Indic or fullwidth digits must not parse even though
+    # int() would otherwise accept them.
+    assert parse_func("Tue, ١ Jan ١٩٧٠ ٠٠:٠٠:٠٠ GMT") is None
+    assert parse_func("Tue, １ Jan １９７０ ００:００:００ GMT") is None
+    assert parse_func("Tue, 1 Jan 1970 ٠٠:٠٠:٠٠ GMT") is None
+
 
 def test_domain_matching() -> None:
     test_func = CookieJar._is_domain_match
