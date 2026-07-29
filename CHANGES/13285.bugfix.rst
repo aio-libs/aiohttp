@@ -1,0 +1,1 @@
+Fixed quadratic worst-case backtracking (ReDoS) when parsing the ``Forwarded`` request header and the ``Link`` response header. A single header value carrying a long run of whitespace ahead of a non-space character could stall the event loop for seconds -- by :user:`arshsmith1`.
