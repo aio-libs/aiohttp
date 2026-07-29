@@ -1,0 +1,1 @@
+Fixed the pure-Python HTTP response parser treating a ``Transfer-Encoding`` whose final coding lower-cases to ``chunked`` only because it contains a non-ASCII character (e.g. ``chunKed`` with U+212A KELVIN SIGN) as chunked, so it now guards with ``isascii()`` before the case-insensitive comparison the same way the request parser does -- by :user:`arshsmith1`.

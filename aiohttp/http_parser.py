@@ -834,7 +834,9 @@ class HttpResponseParser(HttpParser[RawResponseMessage]):
 
     def _is_chunked_te(self, te: str) -> bool:
         # https://www.rfc-editor.org/rfc/rfc9112#section-6.3-2.4.2
-        return te.rsplit(",", maxsplit=1)[-1].strip(" \t").lower() == "chunked"
+        last = te.rsplit(",", maxsplit=1)[-1].strip(" \t")
+        # .lower() transforms some non-ascii chars, so must check first.
+        return last.isascii() and last.lower() == "chunked"
 
 
 class HttpPayloadParser:

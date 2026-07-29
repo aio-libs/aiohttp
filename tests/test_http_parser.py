@@ -929,6 +929,17 @@ def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
     assert not upgrade
 
 
+def test_response_te_header_non_ascii(response: HttpResponseParser) -> None:
+    # K = Kelvin sign, not valid ascii; str.lower() folds it to "chunked".
+    # The response parser must guard with isascii() before lower()-comparing,
+    # like the request parser does, so it does not frame the body as chunked
+    # when a peer reading the same bytes would treat it as an unknown coding.
+    text = "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunKed\r\n\r\n"
+    messages, upgrade, tail = response.feed_data(text.encode())
+    msg = messages[0][0]
+    assert not msg.chunked
+
+
 @pytest.mark.parametrize(
     ("connection", "expected"),
     [
