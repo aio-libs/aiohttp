@@ -221,7 +221,7 @@ def symlinks_supported() -> None:
         target.touch()
         try:
             (Path(tmp_dir) / "symlink").symlink_to(target)
-        except OSError as exc:
+        except OSError as exc:  # pragma: no cover
             pytest.skip(f"requires privilege to create symlinks: {exc}")
 
 
