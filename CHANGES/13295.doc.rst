@@ -1,3 +1,3 @@
-Corrected the documented signature of :meth:`StreamReader.read_nowait`, whose
-``n`` parameter defaults to ``-1`` rather than the ``None`` that was previously
-documented -- by :user:`LALITH0110`.
+Corrected the documented signature of :meth:`~aiohttp.StreamReader.read_nowait`,
+whose ``n`` parameter defaults to ``-1`` rather than the ``None`` that was
+previously documented -- by :user:`LALITH0110`.
