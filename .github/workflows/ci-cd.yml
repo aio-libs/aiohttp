@@ -843,6 +843,6 @@ jobs:
       # created the release above.
       uses: softprops/action-gh-release@v3.0.2
       with:
-        # dist/ contains the built packages, which smoketest-artifacts/
-        # contains the signatures and certificates.
+        # dist/ contains the built packages plus the Sigstore signatures
+        # and certificates emitted alongside them by the signing step above.
         files: dist/**
