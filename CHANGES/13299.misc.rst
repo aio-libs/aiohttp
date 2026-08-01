@@ -1,0 +1,2 @@
+Avoided generating a default ``Date`` response header when one had already been
+supplied -- by :user:`marcus-campbell`.
