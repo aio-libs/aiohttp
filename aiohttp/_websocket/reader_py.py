@@ -393,22 +393,30 @@ class WebSocketReader:
                         "Control frame payload cannot be larger than 125 bytes",
                     )
 
-                # Set compress status if last package is FIN
-                # OR set compress status if this is first fragment
-                # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
-                    self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
-                elif rsv1:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Received frame with non-zero reserved bits",
-                    )
-
                 # Control frames (opcode > 0x7) may be interleaved between the
-                # fragments of a data message.
+                # fragments of a data message and never carry the per-message
+                # compressed bit, so they must not touch the compression state.
                 # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
-                if opcode <= 0x7:
+                # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
+                if opcode > 0x7:
+                    if rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Received frame with non-zero reserved bits",
+                        )
+                else:
+                    # Set compress status if last package is FIN
+                    # OR set compress status if this is first fragment
+                    # Raise error if not first fragment with rsv1 = 0x1
+                    if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
+                        self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
+                    elif rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Received frame with non-zero reserved bits",
+                        )
                     self._frame_fin = bool(fin)
+
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
                 self._payload_len_flag = length
