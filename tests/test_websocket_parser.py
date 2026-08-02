@@ -649,8 +649,8 @@ def test_compressed_frame_after_control_frame(
     parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PONG, 0))
     parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
 
-    assert out._buffer[0] == WSMessagePong(data=b"", size=0, extra="")
-    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
+    assert out._buffer[0] == (WSMessage(WSMsgType.PONG, b"", ""), 0)
+    assert out._buffer[1] == (WSMessage(WSMsgType.TEXT, "hello", ""), 5)
 
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
