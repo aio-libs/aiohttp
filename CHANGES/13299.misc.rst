@@ -1,2 +1,2 @@
-Avoided generating a default ``Date`` response header when one had already been
-supplied -- by :user:`marcus-campbell`.
+Avoided formatting an unused fallback ``Date`` header value when the response
+already has one -- by :user:`marcus-campbell`.
