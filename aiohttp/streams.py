@@ -102,6 +102,7 @@ class StreamReader:
         "_eof_callbacks",
         "_eof_counter",
         "_on_chunk_received",
+        "_chunk_received_tasks",
         "total_bytes",
         "total_compressed_bytes",
     )
@@ -138,6 +139,7 @@ class StreamReader:
         self._on_chunk_received: (
             Callable[[bytes], Coroutine[None, None, None]] | None
         ) = None
+        self._chunk_received_tasks: set[asyncio.Task[None]] = set()
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -536,9 +538,14 @@ class StreamReader:
         chunk = self._read_nowait(n)
         if chunk and (cb := self._on_chunk_received) is not None:
             # read_nowait is sync but the hook is async; schedule it so the
-            # observability event still fires.
-            # TODO: Save and await this task.
-            asyncio.create_task(cb(chunk))  # type: ignore[unused-awaitable]
+            # observability event still fires. The loop only holds a weak
+            # reference to a task, so keep one here until it completes —
+            # otherwise the trace event can be collected before it fires.
+            # TODO: this still bypasses the `self._timer` bound that
+            # _fire_chunk_received applies; awaiting it needs a sync/async split.
+            task = asyncio.create_task(cb(chunk))
+            self._chunk_received_tasks.add(task)
+            task.add_done_callback(self._chunk_received_tasks.discard)
         return chunk
 
     def _read_nowait_chunk(self, n: int) -> bytes:
