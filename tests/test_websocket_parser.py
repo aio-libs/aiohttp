@@ -640,6 +640,31 @@ def test_compressed_continuation_with_ping(
     assert out._buffer[1] == (WSMessage(WSMsgType.BINARY, message, ""), len(message))
 
 
+def test_compressed_frame_after_control_frame(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # A control frame arriving before the first data frame must not
+    # latch the per-message compression state.
+    # https://github.com/aio-libs/aiohttp/issues/13274
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PONG, 0))
+    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
+
+    assert out._buffer[0] == WSMessagePong(data=b"", size=0, extra="")
+    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
+
+
+@pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
+def test_control_frame_with_rsv1(
+    parser: PatchableWebSocketReader, opcode: WSMsgType
+) -> None:
+    # Control frames never carry the per-message compressed bit.
+    # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b01000001, 0b00000001))
     parser.parse_frame(b"1")
