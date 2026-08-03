@@ -350,9 +350,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     pos += len(match.group(0))
                 elif (semi := field_value.find(";", pos)) == -1:
                     # No further pair to parse; a trailing empty or malformed
-                    # value ends this field-value. Without this, find() returns
-                    # -1 and the empty-value branch below resets pos to 0, which
-                    # spins the loop forever on inputs like "Forwarded: a".
+                    # value ends this field-value.
                     break
                 elif not field_value[pos:semi].strip(" \t"):
                     # Empty value

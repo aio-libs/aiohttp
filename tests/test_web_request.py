@@ -804,9 +804,6 @@ def test_single_forwarded_header_injection2() -> None:
 def test_single_forwarded_header_trailing_bad_value(
     header: str, expected: dict[str, str]
 ) -> None:
-    # A trailing field-value with no closing ';' that fails to parse as a
-    # forwarded-pair used to spin the parser loop forever (find(";") == -1
-    # reset pos to 0). It must terminate and keep any valid prefix.
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
     assert dict(req.forwarded[0]) == expected
 
