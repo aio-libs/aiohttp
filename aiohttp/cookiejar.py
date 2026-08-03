@@ -86,21 +86,23 @@ class _RestrictedCookieUnpickler(pickle._Unpickler):
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
+    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
     DATE_TOKENS_RE = re.compile(
         r"[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
-        r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)"
+        r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)",
+        re.ASCII,
     )
 
-    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})")
+    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})", re.ASCII)
 
-    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})")
+    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})", re.ASCII)
 
     DATE_MONTH_RE = re.compile(
         "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
-        re.I,
+        re.I | re.ASCII,
     )
 
-    DATE_YEAR_RE = re.compile(r"(\d{2,4})")
+    DATE_YEAR_RE = re.compile(r"(\d{2,4})", re.ASCII)
 
     # calendar.timegm() fails for timestamps after datetime.datetime.max
     # Minus one as a loss of precision occurs when timestamp() is called.
