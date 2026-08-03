@@ -1,1 +1,1 @@
-Restricted cookie ``Expires`` date parsing to ASCII digits, so a ``Set-Cookie`` date built from non-ASCII digits (Arabic-Indic, fullwidth and the like) no longer parses to a valid expiry as it would in a spec-compliant client per :rfc:`6265#section-5.1.1` -- by :user:`dxbjavid`.
+Restricted cookie ``Expires`` date parsing to ASCII digits -- by :user:`dxbjavid`.
