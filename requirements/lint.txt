@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4
     # via -r requirements/lint.in
-aiofastnet==0.21.0
+aiofastnet==0.22.0
     # via -r requirements/lint.in
 aiohappyeyeballs==2.7.1
     # via aiohttp
@@ -42,7 +42,7 @@ exceptiongroup==1.3.1
     # via
     #   aiofastnet
     #   pytest
-filelock==3.32.0
+filelock==3.32.2
     # via
     #   python-discovery
     #   virtualenv
@@ -166,7 +166,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.0
+virtualenv==21.7.1
     # via pre-commit
 yarl==1.24.5
     # via aiohttp
