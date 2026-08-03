@@ -139,7 +139,10 @@ class StreamReader:
         self._on_chunk_received: (
             Callable[[bytes], Coroutine[None, None, None]] | None
         ) = None
-        self._chunk_received_tasks: set[asyncio.Task[None]] = set()
+        # Allocated lazily: a StreamReader is built per response, but the
+        # chunk-received hook is only set when tracing is enabled, so an
+        # eager set() would cost every response for a rarely-used feature.
+        self._chunk_received_tasks: set[asyncio.Task[None]] | None = None
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -544,8 +547,10 @@ class StreamReader:
             # TODO: this still bypasses the `self._timer` bound that
             # _fire_chunk_received applies; awaiting it needs a sync/async split.
             task = asyncio.create_task(cb(chunk))
-            self._chunk_received_tasks.add(task)
-            task.add_done_callback(self._chunk_received_tasks.discard)
+            if (tasks := self._chunk_received_tasks) is None:
+                tasks = self._chunk_received_tasks = set()
+            tasks.add(task)
+            task.add_done_callback(tasks.discard)
         return chunk
 
     def _read_nowait_chunk(self, n: int) -> bytes:
