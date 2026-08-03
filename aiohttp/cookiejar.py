@@ -44,11 +44,7 @@ _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
-    # RFC 6265 5.1.1 defines cookie-date digits as %x30-39 (ASCII only), so the
-    # date regexes are compiled with re.ASCII. Without it \d also matches
-    # unicode decimal digits (Arabic-Indic, fullwidth, ...) which int() then
-    # happily converts, so a server could smuggle a valid expiry through a date
-    # string a spec-compliant client would reject.
+    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
     DATE_TOKENS_RE = re.compile(
         r"[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
         r"(?P<token>[\x00-\x08\x0A-\x1F\d:a-zA-Z\x7F-\xFF]+)",
