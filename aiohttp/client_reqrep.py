@@ -497,7 +497,7 @@ class ClientResponse(HeadersMixin):
             link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
-                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
+                match = re.match(r"^\s*(\S+)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
                 if match is None:  # Malformed param
                     continue
                 key, _, value, _ = match.groups()
