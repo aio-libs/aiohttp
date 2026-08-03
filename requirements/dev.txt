@@ -8,7 +8,7 @@ aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiofastnet==0.21.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==0.22.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -83,7 +83,7 @@ exceptiongroup==1.3.1
     #   pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==3.32.0
+filelock==3.32.2
     # via
     #   python-discovery
     #   virtualenv
@@ -158,7 +158,7 @@ packaging==26.2
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip==26.1.2
+pip==26.2
     # via pip-tools
 pip-tools==7.6.0
     # via -r requirements/dev.in
@@ -323,7 +323,7 @@ uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.0
+virtualenv==21.7.1
     # via pre-commit
 wheel==0.47.0
     # via pip-tools
