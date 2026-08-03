@@ -141,6 +141,12 @@ def test_date_parsing() -> None:
     # Invalid time
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
 
+    # Invalid digits
+    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
+    assert parse_func("Tue, ١ Jan ١٩٧٠ ٠٠:٠٠:٠٠ GMT") is None
+    assert parse_func("Tue, １ Jan １９７０ ００:００:００ GMT") is None
+    assert parse_func("Tue, 1 Jan 1970 ٠٠:٠٠:٠٠ GMT") is None
+
 
 def test_domain_matching() -> None:
     test_func = CookieJar._is_domain_match
