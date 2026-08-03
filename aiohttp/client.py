@@ -249,7 +249,10 @@ class ClientTimeout:
 DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+# https://www.rfc-editor.org/info/rfc10008/#section-1-12
+IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE", "QUERY"}
+)
 
 _RetType_co = TypeVar(
     "_RetType_co",
