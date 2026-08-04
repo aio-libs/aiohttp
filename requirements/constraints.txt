@@ -168,9 +168,7 @@ pip-tools==7.6.0
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
 platformdirs==4.11.0
-    # via
-    #   python-discovery
-    #   virtualenv
+    # via virtualenv
 pluggy==1.6.0
     # via
     #   pytest
@@ -238,7 +236,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.5.0
+python-discovery==1.5.1
     # via virtualenv
 python-on-whales==0.81.0
     # via
