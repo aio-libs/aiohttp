@@ -49,7 +49,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .http_base import BaseResponse
+from .http_base import ClientResponse
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import RawHeaders
 
@@ -61,7 +61,13 @@ except ImportError:  # pragma: no cover
     SSLContext = object  # type: ignore[misc,assignment]
 
 
-__all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
+__all__ = (
+    "ClientRequest",
+    "HTTPResponse",
+    "ClientResponse",
+    "RequestInfo",
+    "Fingerprint",
+)
 
 
 if TYPE_CHECKING:
@@ -235,7 +241,8 @@ class ResponseParams(TypedDict):
     max_headers: int
 
 
-class ClientResponse(BaseResponse):
+# HTTP/1.1
+class HTTPResponse(ClientResponse):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
     # As the end user will likely never see the None values, we cheat the types below.
@@ -648,7 +655,7 @@ class ClientRequestBase:
     POST_METHODS = {hdrs.METH_PATCH, hdrs.METH_POST, hdrs.METH_PUT}
 
     proxy: URL | None = None
-    response_class = ClientResponse
+    response_class = HTTPResponse
     server_hostname: str | None = None  # Needed in connector.py
     version = HttpVersion11
     _response = None

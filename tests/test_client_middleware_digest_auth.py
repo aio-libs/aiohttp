@@ -23,7 +23,7 @@ from aiohttp.client_middleware_digest_auth import (
     parse_header_pairs,
     unescape_quotes,
 )
-from aiohttp.client_reqrep import ClientResponse
+from aiohttp.client_reqrep import HTTPResponse as ClientResponse
 from aiohttp.payload import BytesIOPayload
 from aiohttp.web import Application, Request, Response
 

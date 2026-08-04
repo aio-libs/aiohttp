@@ -12,7 +12,7 @@ from aiohttp.hdrs import CONTENT_TYPE
 from aiohttp.helpers import HeadersMixin, is_expected_content_type, parse_mimetype
 
 
-class BaseResponse(HeadersMixin, ABC):
+class ClientResponse(HeadersMixin, ABC):
     """Shared public API for HTTP responses."""
 
     status: int
@@ -56,7 +56,7 @@ class BaseResponse(HeadersMixin, ABC):
         return self._headers
 
     @property
-    def history(self) -> tuple["BaseResponse", ...]:
+    def history(self) -> tuple["ClientResponse", ...]:
         return self._history
 
     # ----------------------------------------------------------------
@@ -184,7 +184,7 @@ class BaseResponse(HeadersMixin, ABC):
     # ----------------------------------------------------------------
     # Context manager
     # ----------------------------------------------------------------
-    async def __aenter__(self) -> "BaseResponse":
+    async def __aenter__(self) -> "ClientResponse":
         self._in_context = True
         return self
 

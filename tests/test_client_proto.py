@@ -10,7 +10,7 @@ from aiohttp import http
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientResponse
+from aiohttp.client_reqrep import HTTPResponse as ClientResponse
 from aiohttp.helpers import TimerNoop
 from aiohttp.http_parser import HttpParser, RawResponseMessage
 

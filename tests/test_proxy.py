@@ -16,8 +16,8 @@ from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
     ClientRequestBase,
-    ClientResponse,
     Fingerprint,
+    HTTPResponse as ClientResponse,
 )
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
