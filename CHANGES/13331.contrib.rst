@@ -1,2 +1,3 @@
-Added a reproducible Docker build assessment and validation workflow
+Added a reproducible Docker build assessment and prevented backport label
+checks from failing on unrelated pull request events
 -- by :user:`piyushrajput0`.

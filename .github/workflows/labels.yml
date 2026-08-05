@@ -9,7 +9,12 @@ jobs:
   backport:
     runs-on: ubuntu-latest
     name: Backport label added
-    if: ${{ github.event.pull_request.user.type != 'Bot' }}
+    if: >-
+      ${{
+        github.event.pull_request.user.type != 'Bot'
+        && github.event.action == 'labeled'
+        && startsWith(github.event.label.name, 'backport')
+      }}
     steps:
       - uses: actions/github-script@v9
         with:
