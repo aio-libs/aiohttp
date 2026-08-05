@@ -733,10 +733,22 @@ class ClientSession:
                     ):
                         raise
                     except (ClientOSError, ServerDisconnectedError):
-                        if retry_persistent_connection:
-                            retry_persistent_connection = False
-                            continue
-                        raise
+                        if not retry_persistent_connection:
+                            raise
+                        retry_persistent_connection = False
+                        if data is not None:
+                            # Reuse the payload from the failed attempt rather than
+                            # rebuilding it from `data`: a file-like object has been
+                            # advanced by the aborted write, so a fresh payload would
+                            # resend only the remainder. The existing payload rewinds
+                            # itself to the position it started from.
+                            #
+                            # If it cannot be replayed, fail fast instead of silently
+                            # sending a truncated body.
+                            if req._body.consumed:
+                                raise
+                            data = req._body
+                        continue
                     except ClientError:
                         raise
                     except OSError as exc:
