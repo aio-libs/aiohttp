@@ -1,0 +1,15 @@
+.git
+.github
+*.Dockerfile
+DOCKER_ASSESSMENT.md
+.mypy_cache
+.pytest_cache
+.coverage
+coverage.xml
+htmlcov/
+build/
+dist/
+*.egg-info/
+**/__pycache__/
+**/*.py[cod]
+docs/_build/
