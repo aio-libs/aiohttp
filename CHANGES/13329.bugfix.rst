@@ -5,6 +5,6 @@ The payload of the failed attempt is now reused on retry, so the file handle is
 rewound to the position it had before the first attempt instead of resuming from
 wherever the aborted write left it. Bodies that cannot be replayed (such as a
 partially consumed async iterable) are no longer retried; the original
-connection error is raised instead. A multipart body now reports itself as
-unreplayable when any of its parts is, so neither the retry nor the redirect path
-resends it with a drained part missing.
+connection error is raised instead. A multipart body now reports that it cannot
+be replayed when any of its parts cannot, so neither the retry nor the redirect
+path sends it again with a drained part missing.
