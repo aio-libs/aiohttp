@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiofastnet==1.0.1 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==1.0.2 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.7.1
     # via
@@ -38,7 +38,7 @@ cffi==2.1.0
     # via
     #   cryptography
     #   pycares
-coverage==7.15.2
+coverage==7.15.3
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
