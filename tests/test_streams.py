@@ -1308,8 +1308,14 @@ class TestStreamReaderChunkHook:
         assert stream._chunk_received_tasks is not None
         assert len(stream._chunk_received_tasks) == 1
 
+        # A second call reuses the already-allocated set rather than
+        # replacing it.
+        stream.feed_data(b"def")
+        assert stream.read_nowait() == b"def"
+        assert len(stream._chunk_received_tasks) == 2
+
         await asyncio.sleep(0)
-        assert seen == [b"abc"]
+        assert seen == [b"abc", b"def"]
 
         # add_done_callback is delivered via call_soon, so the discard lands
         # on the tick after the task finishes rather than synchronously.
