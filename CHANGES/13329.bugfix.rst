@@ -1,11 +1,5 @@
 Fixed internally retried requests sending a truncated body when the request
 data was a file object -- by :user:`aiolibsbot`.
 
-The payload of the failed attempt is now reused on retry, so the file handle is
-rewound to the position it had before the first attempt instead of resuming from
-wherever the aborted write left it. Bodies that cannot be replayed (such as a
-partially consumed async iterable) are no longer retried; the original
-connection error is raised instead. A streamed body part read from an incoming
-multipart request marks itself unreplayable once written, and a multipart body
-reports that it cannot be replayed when any of its parts cannot, so neither the
-retry nor the redirect path sends it again with a drained part missing.
+Bodies that cannot be replayed (such as a partially consumed async iterable)
+are no longer retried; the original connection error is raised instead.
