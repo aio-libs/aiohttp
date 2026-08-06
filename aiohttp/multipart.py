@@ -944,6 +944,11 @@ class MultipartWriter(Payload):
     ) -> None:
         pass
 
+    @property
+    def consumed(self) -> bool:
+        """Whether the writer or any of its parts can no longer be replayed."""
+        return self._consumed or any(part.consumed for part, _, _ in self._parts)
+
     def __iter__(self) -> Iterator[_Part]:
         return iter(self._parts)
 

@@ -747,6 +747,11 @@ class ClientSession:
                             # sending a truncated body.
                             if req._body.consumed:
                                 raise
+                            # The writer task was cancelled, not awaited, so a read
+                            # dispatched to the executor may still be in flight and
+                            # would race the rewind below. Wait for it to finish
+                            # before handing the payload to the next attempt.
+                            await req._close()
                             data = req._body
                         continue
                     except ClientError:

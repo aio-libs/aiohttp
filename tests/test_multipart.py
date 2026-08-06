@@ -4,6 +4,7 @@ import io
 import json
 import pathlib
 import sys
+from collections.abc import AsyncIterator
 from types import TracebackType
 from unittest import mock
 
@@ -1835,3 +1836,25 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     await writer.close()
     assert part1.close.call_count == 1
     assert part2.close.call_count == 1
+
+
+async def test_multipart_writer_consumed_follows_parts() -> None:
+    """A writer holding an unreplayable part must report itself as consumed."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"
+        yield b"chunk2"
+
+    writer = aiohttp.MultipartWriter()
+    writer.append(b"replayable")
+    assert writer.consumed is False
+
+    part = writer.append(gen())
+    assert writer.consumed is False
+
+    stream = mock.Mock()
+    stream.write = mock.AsyncMock()
+    await part.write_with_length(stream, None)
+
+    assert part.consumed is True
+    assert writer.consumed is True
