@@ -1858,3 +1858,37 @@ async def test_multipart_writer_consumed_follows_parts() -> None:
 
     assert part.consumed is True
     assert writer.consumed is True
+
+
+async def test_body_part_reader_payload_consumed_after_write() -> None:
+    """A drained body part reader must report itself as consumed."""
+    with Stream(b"Hello, world!\r\n--:--") as stream:
+        body_part = aiohttp.BodyPartReader(
+            BOUNDARY, HeadersDictProxy(CIMultiDict()), stream
+        )
+        payload = BodyPartReaderPayload(body_part)
+        assert payload.consumed is False
+
+        writer = mock.Mock()
+        writer.write = mock.AsyncMock()
+        await payload.write(writer)
+
+        assert payload.consumed is True
+
+
+async def test_multipart_writer_consumed_follows_body_part_reader() -> None:
+    """A writer holding a drained body part reader must report itself consumed."""
+    with Stream(b"Hello, world!\r\n--:--") as stream:
+        body_part = aiohttp.BodyPartReader(
+            BOUNDARY, HeadersDictProxy(CIMultiDict()), stream
+        )
+        writer = aiohttp.MultipartWriter()
+        part = writer.append(body_part)
+        assert writer.consumed is False
+
+        out = mock.Mock()
+        out.write = mock.AsyncMock()
+        await part.write_with_length(out, None)
+
+        assert part.consumed is True
+        assert writer.consumed is True

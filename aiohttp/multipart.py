@@ -663,6 +663,10 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
+        # Reading the part drains the underlying stream irreversibly, so mark the
+        # payload consumed up front: even an interrupted write leaves nothing that
+        # a retry or redirect could replay.
+        self._consumed = True
         while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
             async for d in field.decode_iter(chunk):
                 await writer.write(d)
