@@ -738,10 +738,8 @@ class ClientSession:
                         retry_persistent_connection = False
                         if data is not None:
                             # Rebuilding from `data` would resend only the unread
-                            # remainder of a file object; the payload of the failed
-                            # attempt rewinds itself instead. Await the cancelled
-                            # writer first so an in-flight read cannot race the
-                            # rewind, and so `consumed` reflects the settled state.
+                            # remainder of a file object; reuse the payload, which
+                            # rewinds itself once the cancelled writer has settled.
                             await req._close()
                             if req._body.consumed:
                                 raise
