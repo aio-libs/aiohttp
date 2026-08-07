@@ -1296,6 +1296,42 @@ class TestStreamReaderChunkHook:
         await asyncio.sleep(0)
         assert seen == [b"abc"]
 
+    async def test_read_nowait_holds_the_task_then_releases_it(self) -> None:
+        # The loop keeps only a weak reference to a task, so the scheduled
+        # hook needs a strong referent of its own until it completes. This
+        # asserts the reference exists while pending and is dropped after,
+        # so holding it cannot turn into a leak.
+        stream, seen = self._make_one()
+        stream.feed_data(b"abc")
+
+        assert stream.read_nowait() == b"abc"
+        assert stream._chunk_received_tasks is not None
+        assert len(stream._chunk_received_tasks) == 1
+
+        # A second call reuses the already-allocated set rather than
+        # replacing it.
+        stream.feed_data(b"def")
+        assert stream.read_nowait() == b"def"
+        assert len(stream._chunk_received_tasks) == 2
+
+        await asyncio.sleep(0)
+        assert seen == [b"abc", b"def"]
+
+        # add_done_callback is delivered via call_soon, so the discard lands
+        # on the tick after the task finishes rather than synchronously.
+        await asyncio.sleep(0)
+        assert not stream._chunk_received_tasks
+
+    async def test_no_hook_does_not_allocate_the_task_set(self) -> None:
+        # A StreamReader is built per response but the hook is only set when
+        # tracing is enabled, so the set stays unallocated in the common case.
+        stream, _ = self._make_one()
+        stream._on_chunk_received = None
+        stream.feed_data(b"abc")
+
+        assert stream.read_nowait() == b"abc"
+        assert stream._chunk_received_tasks is None
+
     async def test_hook_exception_propagates(self) -> None:
         async def cb(chunk: bytes) -> None:
             raise RuntimeError("boom")
