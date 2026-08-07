@@ -1,0 +1,79 @@
+# =============================================================================
+# .dockerignore for the aiohttp build context
+#
+# DELIBERATELY DOES NOT IGNORE .git
+#
+# The usual advice is to exclude .git from the build context. Do not do it
+# here. Two things in this repo depend on it:
+#
+#   1. `git submodule update --init --recursive` needs .git/modules and the
+#      recorded gitlink for vendor/llhttp. Without it the submodule cannot be
+#      materialised at all.
+#
+#   2. setup.py branches on `IS_GIT_REPO = (HERE / ".git").exists()`. Dropping
+#      .git silently disables the "Install submodules when building from git
+#      clone" guard, so the build gets *further* and then fails later and far
+#      less legibly, inside gcc, on missing llhttp sources.
+#
+# .git is ~39 MB here, which is an acceptable cost for a correct build.
+# =============================================================================
+
+# Build/test artefacts that must never leak into the image
+.mypy_cache/
+.pytest_cache/
+.hypothesis/
+.tox/
+.nox/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Compiled + Cython-generated output: regenerated inside the image, and stale
+# host copies (wrong libc, wrong arch) would poison the build.
+*.so
+*.pyd
+*.o
+*.obj
+*.a
+*.lib
+__pycache__/
+*.py[cod]
+aiohttp/*.c
+aiohttp/_websocket/*.c
+aiohttp/_find_header.c
+aiohttp/_headers.pyi
+.hash/
+
+# Makefile stamp files - if these are copied in, make thinks work is already
+# done and skips cythonize.
+.install-cython
+.install-deps
+.develop
+.llhttp-gen
+
+# Local virtualenvs and node output from the host
+.venv/
+venv/
+node_modules/
+
+# Editor / OS noise
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Docs and CI config are not needed to build or test the package
+docs/_build/
+.readthedocs.yml
+.github/
+
+# The Dockerfiles themselves
+*.Dockerfile
+Dockerfile
