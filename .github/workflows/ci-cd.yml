@@ -182,6 +182,7 @@ jobs:
   test:
     permissions:
       contents: read # to fetch code (actions/checkout)
+      code-quality: write # to upload coverage to GitHub Code Quality
 
     name: Test
     needs: gen_llhttp
@@ -289,6 +290,12 @@ jobs:
             steps.python-install.outputs.python-version
           }}
         token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload coverage to GitHub Code Quality
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: ./coverage.xml
+        language: Python
+        label: code-coverage/test
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
       uses: codecov/codecov-action@v7
@@ -375,6 +382,7 @@ jobs:
   autobahn:
     permissions:
       contents: read # to fetch code (actions/checkout)
+      code-quality: write # to upload coverage to GitHub Code Quality
 
     name: Autobahn testsuite
     needs: gen_llhttp
@@ -441,6 +449,12 @@ jobs:
         files: ./coverage.xml
         flags: Autobahn
         token: ${{ secrets.CODECOV_TOKEN }}
+    - name: Upload coverage to GitHub Code Quality
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: ./coverage.xml
+        language: Python
+        label: code-coverage/test
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
       uses: codecov/codecov-action@v7
@@ -502,6 +516,7 @@ jobs:
   cython-coverage:
     permissions:
       contents: read # to fetch code (actions/checkout)
+      code-quality: write # to upload coverage to GitHub Code Quality
 
     name: Cython coverage
     needs: gen_llhttp
@@ -557,6 +572,12 @@ jobs:
         flags: cython-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
+    - name: Upload coverage to GitHub Code Quality
+      uses: actions/upload-code-coverage@v1
+      with:
+        file: ./cython-coverage.xml
+        language: Python
+        label: code-coverage/test
 
   check:  # This job does nothing and is only used for the branch protection
     if: always()
