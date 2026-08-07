@@ -32,9 +32,9 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp.client import ClientSession, ClientTimeout
+from aiohttp.client import ClientSession, ClientTimeout, HTTPResponse
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
+from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
@@ -457,7 +457,7 @@ async def make_client_request() -> (
             "compress": False,
             "chunked": None,
             "expect100": False,
-            "response_class": ClientResponse,
+            "response_class": HTTPResponse,
             "proxy": None,
             "response_params": {
                 "timer": timer,

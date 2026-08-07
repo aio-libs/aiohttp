@@ -14,7 +14,8 @@ except ImportError:  # pragma: no cover
     ssl = SSLContext = None  # type: ignore[assignment]
 
 if TYPE_CHECKING:
-    from .client_reqrep import ClientResponse, ConnectionKey, Fingerprint, RequestInfo
+    from .client_reqrep import ConnectionKey, Fingerprint, RequestInfo
+    from .http_base import ClientResponse
     from .http_parser import RawResponseMessage
 else:
     RequestInfo = ClientResponse = ConnectionKey = RawResponseMessage = None

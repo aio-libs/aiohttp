@@ -18,9 +18,10 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import ClientResponse, web
+from aiohttp import web
 from aiohttp.client import _RequestOptions
 from aiohttp.client_exceptions import ClientConnectionError
+from aiohttp.client_reqrep import HTTPResponse as ClientResponse
 from aiohttp.test_utils import TestServer
 
 if TYPE_CHECKING:

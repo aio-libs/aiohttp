@@ -6,7 +6,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
-from aiohttp import client, client_reqrep
+from aiohttp import client, client_reqrep, http_base
 from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http_parser import RawResponseMessage
 from aiohttp.typedefs import StrOrURL
@@ -28,7 +28,8 @@ class TestClientResponseError:
         assert err.status == 0
         if sys.version_info >= (3, 11):
             assert_type(
-                err.args, tuple[client.RequestInfo, tuple[client.ClientResponse, ...]]
+                err.args,
+                tuple[client.RequestInfo, tuple[http_base.ClientResponse, ...]],
             )
 
     def test_status(self) -> None:
