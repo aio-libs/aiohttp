@@ -4,7 +4,9 @@
 #
 # Corrected build for aio-libs/aiohttp @ PR #11290 (4.0.0a2.dev0).
 #
-# Three changes relative to original-reconstructed.Dockerfile:
+# Four changes relative to original-reconstructed.Dockerfile. Only FIX 1 and
+# FIX 2 address the recorded failure; FIX 3 is a robustness improvement and
+# FIX 4 only compensates for damage in the supplied repository.zip.
 #
 #   FIX 1 - Ordering. `git submodule update --init --recursive` now runs BEFORE
 #           `pip install -e .`. This is the actual reported bug: setup.py exits
