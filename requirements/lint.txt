@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4
     # via -r requirements/lint.in
-aiofastnet==1.0.1
+aiofastnet==1.0.3
     # via -r requirements/lint.in
 annotated-types==0.8.0
     # via pydantic
