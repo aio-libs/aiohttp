@@ -86,6 +86,8 @@ TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
+# https://www.rfc-editor.org/rfc/rfc9112#section-3.2-3
+_TARGET_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(r"[\x00-\x1f\x7f]")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
@@ -662,6 +664,13 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
         method = method.upper()
+
+        # request target
+        # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-3
+        if _TARGET_FORBIDDEN_CTL_RE.search(path):
+            raise InvalidURLError(
+                path.encode(errors="surrogateescape").decode("latin1")
+            )
 
         # version
         match = VERSRE.fullmatch(version)
