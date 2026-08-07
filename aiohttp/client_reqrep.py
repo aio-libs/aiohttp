@@ -497,10 +497,14 @@ class ClientResponse(HeadersMixin):
             link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
-                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
+                match = re.match(r"\s*(\S*)\s*=\s*(.*)", param)
                 if match is None:  # Malformed param
                     continue
-                key, _, value, _ = match.groups()
+                key, value = match.groups()
+                value = value.strip()
+                if len(value) >= 2 and value[0] in "\"'" and value[-1] == value[0]:
+                    # strip a matching pair of surrounding quotes
+                    value = value[1:-1]
 
                 link.add(key, value)
 

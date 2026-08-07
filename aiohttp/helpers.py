@@ -84,7 +84,8 @@ _LIST_ELEMENT_RE = re.compile(
             (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
             | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
             | [^,]  # any non-comma character
-          )+?
+          )+  # greedy: a lazy quantifier here backtracks quadratically when
+              # an element carries a long run of whitespace (ReDoS)
         )
     )
     [ \t]* (?:,|\Z)

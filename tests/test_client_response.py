@@ -3,6 +3,7 @@
 import asyncio
 import gc
 import sys
+import time
 from http.cookies import SimpleCookie
 from json import JSONDecodeError
 from unittest import mock
@@ -1595,6 +1596,68 @@ def test_response_links_empty(
     )
     response._headers = HeadersDictProxy(CIMultiDict())
     assert response.links == {}
+
+
+def test_response_links_unquoted_whitespace(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://def-cl-resp.org/")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    h = (("Link", "<http://example.com/>;  rel =  next  ; title = a b "),)
+    response._headers = HeadersDictProxy(CIMultiDict(h))
+    assert response.links == {
+        "next": {"url": URL("http://example.com/"), "rel": "next", "title": "a b"}
+    }
+
+
+def test_response_links_redos(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    # A malicious server can make the per-parameter regex backtrack
+    # quadratically with an unquoted value that carries a long run of
+    # whitespace ahead of a non-space character.
+    url = URL("http://def-cl-resp.org/")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    payload = "<http://example.com/>; rel=a" + " " * 15000 + "b"
+    response._headers = HeadersDictProxy(CIMultiDict((("Link", payload),)))
+
+    start = time.perf_counter()
+    links = response.links
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 0.5, (
+        f"Parsing took {elapsed * 1000:.1f}ms - potential ReDoS in the Link "
+        "header parser"
+    )
+    assert links["a" + " " * 15000 + "b"]["rel"] == "a" + " " * 15000 + "b"
 
 
 def test_response_not_closed_after_get_ok(mocker: MockerFixture) -> None:
