@@ -2912,7 +2912,7 @@ class TestParsePayload:
         p.feed_eof()
 
         assert p.done
-        assert out.is_eof()
+        assert out.is_eof()  # type: ignore[unreachable]
         assert out.exception() is None
         result = await out.read()
         assert result == original
