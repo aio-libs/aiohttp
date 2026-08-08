@@ -2882,6 +2882,41 @@ class TestParsePayload:
         ):
             p.feed_eof()
 
+    async def test_parse_length_payload_eof_completes_after_pause(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """feed_eof() completes a fully received length payload despite a pause.
+
+        Regression test for #13348:
+        The parser paused for flow control with pending decompressed data
+        when EOF arrived; the fully received body must complete instead of
+        raising ContentLengthError.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        original = b"x" * (1024 * 1024)
+        compressed = zlib.compress(original)
+
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="deflate",
+            headers_parser=HeadersParser(),
+        )
+        p.pause_reading()  # flow control kicked in before the final bytes
+        state, tail = p.feed_data(compressed)
+        assert state is PayloadState.PAYLOAD_HAS_PENDING_INPUT
+        assert not p.done
+
+        # All bytes were received, so EOF drains the pending data and
+        # completes the payload.
+        p.feed_eof()
+
+        assert p.done
+        assert out.is_eof()
+        assert out.exception() is None
+        result = await out.read()
+        assert result == original
+
     async def test_parse_chunked_payload_size_error(
         self, protocol: BaseProtocol
     ) -> None:
