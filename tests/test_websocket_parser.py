@@ -819,7 +819,7 @@ def test_flow_control_multi_byte_text(
 
 
 async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -845,7 +845,7 @@ async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
 
 
 async def test_incomplete_frame_not_paused_for_normal_reads(
-    protocol: BaseProtocol
+    protocol: BaseProtocol,
 ) -> None:
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
