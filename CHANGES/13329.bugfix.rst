@@ -1,5 +1,2 @@
 Fixed internally retried requests sending a truncated body when the request
 data was a file object -- by :user:`aiolibsbot`.
-
-Bodies that cannot be replayed (such as a partially consumed async iterable)
-are no longer retried; the original connection error is raised instead.
