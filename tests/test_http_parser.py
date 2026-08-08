@@ -1564,6 +1564,79 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     assert result == original
 
 
+async def test_content_length_eof_while_paused(response: HttpResponseParser) -> None:
+    """EOF right after a fully received content-length body must complete it.
+
+    Regression test for #13348:
+    feeding the final body bytes pauses the parser for flow control before
+    the message can complete; a server closing the connection in that state
+    raised ContentLengthError despite received == expected.
+    """
+    # Must be large enough to exceed the high water mark so the parser
+    # pauses with the message not yet complete.
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body)
+
+    msgs, upgrade, tail = response.feed_data(headers + body)
+    payload = msgs[0][-1]
+    # The server has sent everything and closed the connection.
+    response.feed_eof()
+
+    result = await payload.read()
+    assert result == body
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_compressed_content_length_eof_while_paused(
+    response: HttpResponseParser,
+) -> None:
+    """EOF with pending decompressed data on a complete content-length body.
+
+    Like test_content_length_eof_while_paused, but the decompressor still
+    holds pending data at EOF, so completion is deferred until the reader
+    drains it.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 5 * 1024 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    response.feed_eof()
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) <= (2 * 1024 * 1024)
+
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_content_length_eof_while_paused_incomplete(
+    response: HttpResponseParser,
+) -> None:
+    """EOF on a paused parser with a genuinely incomplete body still raises."""
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % (len(body) + 1)
+
+    response.feed_data(headers + body)
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError,
+        match=r"received 1048576 of 1048577 bytes",
+    ):
+        response.feed_eof()
+
+
 async def test_compressed_until_eof_high_water(
     response_cls: type[HttpResponseParser],
 ) -> None:
