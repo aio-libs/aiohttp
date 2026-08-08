@@ -833,7 +833,7 @@ async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
     # Feed the payload two bytes per read so the pause is
     # driven purely by the fragment count, not the total byte count.
     paused_after = None
-    for i in range(payload_len // 2 - 1):
+    for i in range(payload_len // 2 - 1):  # pragma: no branch
         parser.feed_data(b"xx")
         if protocol._reading_paused:
             paused_after = i + 1  # type: ignore[unreachable]
