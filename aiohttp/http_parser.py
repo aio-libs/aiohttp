@@ -920,11 +920,20 @@ class HttpPayloadParser:
             self.done = True
             self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
-            received = self._length_expected - self._length
-            raise ContentLengthError(
-                f"Not enough data to satisfy content length header "
-                f"(received {received} of {self._length_expected} bytes)."
-            )
+            if self._length:
+                received = self._length_expected - self._length
+                raise ContentLengthError(
+                    f"Not enough data to satisfy content length header "
+                    f"(received {received} of {self._length_expected} bytes)."
+                )
+            # Body has already been received, but parser paused.
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return  # Will resume via feed_data(b"") later
+                self._more_data_available = self.payload.feed_data(b"", 0)
+            self.payload.feed_eof()
+            self.done = True
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
                 "Not enough data to satisfy transfer length header."
