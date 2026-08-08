@@ -66,7 +66,7 @@ extensions = [
 
 
 try:
-    import sphinxcontrib.spelling  # noqa
+    import sphinxcontrib.spelling
 
     extensions.append("sphinxcontrib.spelling")
 except ImportError:

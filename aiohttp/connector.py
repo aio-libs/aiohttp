@@ -1,5 +1,6 @@
 import asyncio
 import functools
+import os
 import random
 import socket
 import sys
@@ -51,6 +52,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http_protocol import HttpDispatcherProtocol
 from .log import client_logger
 from .resolver import DefaultResolver
 
@@ -374,7 +376,7 @@ class BaseConnector:
         ] = defaultdict(OrderedDict)
 
         self._loop = loop
-        self._factory = functools.partial(ResponseHandler, loop=loop)
+        self._factory = functools.partial(HttpDispatcherProtocol, loop=loop)
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: asyncio.TimerHandle | None = None
@@ -400,6 +402,12 @@ class BaseConnector:
         )
         self._placeholder_future.set_result(None)
         self._cleanup_closed()
+
+        # Semaphore for HTTP/2 connections
+        # avoids duplicate connections to the
+        # same host
+        # (HTTP/2 doesn't need connection pooling to send multiple requests)
+        self.sem = asyncio.Semaphore(1)
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -938,7 +946,11 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.verify_mode = ssl.CERT_NONE
         sslcontext.options |= ssl.OP_NO_COMPRESSION
         sslcontext.set_default_verify_paths()
-    sslcontext.set_alpn_protocols(("http/1.1",))
+
+    protocols = ["http/1.1"]
+    if os.getenv("AIOHTTP_ENABLE_EXPERIMENTAL_PROTOCOLS", False):
+        protocols += ["h2"]
+    sslcontext.set_alpn_protocols(tuple(protocols))
     return sslcontext
 
 
@@ -1491,7 +1503,8 @@ class TCPConnector(BaseConnector):
                 tls_transport
             )  # Kick the state machine of the new TLS protocol
 
-        return tls_transport, tls_proto
+        # HACK use the correct type
+        return tls_transport, tls_proto  # type: ignore[return-value]
 
     def _convert_hosts_to_addr_infos(
         self, hosts: list[ResolveResult]
@@ -1583,7 +1596,6 @@ class TCPConnector(BaseConnector):
                     bad_peer = sock.getpeername()
                     aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer)
                     continue
-
             return transp, proto
         assert last_exc is not None
         raise last_exc
@@ -1715,7 +1727,7 @@ class UnixConnector(BaseConnector):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return proto
+        return proto  # type: ignore[return-value]
 
 
 class NamedPipeConnector(BaseConnector):
