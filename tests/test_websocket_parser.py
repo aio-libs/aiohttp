@@ -815,3 +815,47 @@ def test_flow_control_multi_byte_text(
         large_payload_size,
     )
     assert protocol._reading_paused is True
+
+
+async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
+    protocol: BaseProtocol,
+) -> None:
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    payload_len = 32 * 1024
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    assert protocol._reading_paused is False
+
+    # Feed the payload two bytes per read so the pause is
+    # driven purely by the fragment count, not the total byte count.
+    paused_after = None
+    for i in range(payload_len // 2 - 1):  # pragma: no branch
+        parser.feed_data(b"xx")
+        if protocol._reading_paused:
+            paused_after = i + 1  # type: ignore[unreachable]
+            break
+
+    assert paused_after is not None
+    # Paused long before the frame could complete (16384 two-byte reads).
+    assert paused_after < payload_len // 2  # type: ignore[unreachable]
+
+
+async def test_incomplete_frame_not_paused_for_normal_reads(
+    protocol: BaseProtocol,
+) -> None:
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    # Normal traffic (a frame delivered in a handful of reasonably sized reads)
+    # must never trip the fragment-limit backpressure.
+    payload_len = 32 * 1024
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
+    for _ in range(payload_len // 4096):
+        parser.feed_data(b"x" * 4096)
+    assert protocol._reading_paused is False
