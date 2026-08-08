@@ -836,12 +836,12 @@ async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
     for i in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
         if protocol._reading_paused:
-            paused_after = i + 1
+            paused_after = i + 1  # type: ignore[unreachable]
             break
 
     assert paused_after is not None
     # Paused long before the frame could complete (16384 two-byte reads).
-    assert paused_after < payload_len // 2
+    assert paused_after < payload_len // 2  # type: ignore[unreachable]
 
 
 async def test_incomplete_frame_not_paused_for_normal_reads(
