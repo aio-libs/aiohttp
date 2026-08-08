@@ -1,0 +1,1 @@
+Capped the number of per-read payload fragments the WebSocket reader retains in memory -- by :user:`Dreamsorcerer`.
