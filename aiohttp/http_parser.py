@@ -930,7 +930,7 @@ class HttpPayloadParser:
                 if self._paused:
                     self._paused = False
                     return  # Will resume via feed_data(b"") later
-                self._more_data_available = self.payload.feed_data(b"")
+                self._more_data_available = self.payload.feed_data(b"", 0)
             self.payload.feed_eof()
             self.done = True
         elif self._type == ParseState.PARSE_CHUNKED:
