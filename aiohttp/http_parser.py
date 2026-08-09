@@ -371,6 +371,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     # any preceding body is consumed before the next request
                     # line. Resumes via feed_data(b"") when the queue drains.
                     self._tail = data[start_pos:]
+                    # The remainder now lives in self._tail only. Don't return it.
+                    data = EMPTY
                     break
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
