@@ -816,10 +816,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
-                # The parser stops at the queue limit and keeps the rest, so
-                # mark the queue paused the way data_received() does. start()
-                # resumes as it drains, which is what feeds the parser the
-                # remainder; without this the requests it held are never read.
+                # Pause the transport, like in data_received().
                 if (
                     not self._msg_queue_paused
                     and len(self._messages) >= self._max_msg_queue_size
