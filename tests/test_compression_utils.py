@@ -2,10 +2,12 @@
 
 import gzip
 import sys
+import zlib
 
 import pytest
 
 from aiohttp.compression_utils import (
+    MAX_DECOMPRESS_MEMBERS,
     ZLibBackend,
     ZLibCompressor,
     ZLibDecompressor,
@@ -123,3 +125,37 @@ def test_zlib_gzip_multi_member_max_length_exhausted_preserves_unused_data() -> 
     assert result1 == b"AAAA"
     result2 = d.decompress_sync(member3)
     assert result2 == b"BBBBCCCC"
+
+
+def test_zlib_deflate_rejects_member_flood() -> None:
+    """A flood of tiny zero-output deflate members is rejected."""
+    co = zlib.compressobj(wbits=-15)
+    empty_member = co.compress(b"") + co.flush()  # 2-byte empty raw-deflate member
+    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+    blob = empty_member * (MAX_DECOMPRESS_MEMBERS + 5)
+    with pytest.raises(ValueError, match="concatenated compressed members"):
+        d.decompress_sync(blob, max_length=262144)
+
+
+def test_zlib_gzip_rejects_member_flood() -> None:
+    d = ZLibDecompressor(encoding="gzip")
+    blob = gzip.compress(b"") * (MAX_DECOMPRESS_MEMBERS + 5)
+    with pytest.raises(ValueError, match="concatenated compressed members"):
+        d.decompress_sync(blob)
+
+
+def test_zlib_gzip_allows_members_up_to_limit() -> None:
+    """Legitimate concatenated members up to the cap still decode fully."""
+    d = ZLibDecompressor(encoding="gzip")
+    # One initial member plus MAX_DECOMPRESS_MEMBERS handled in the loop.
+    count = MAX_DECOMPRESS_MEMBERS + 1
+    blob = b"".join(gzip.compress(b"AAAA") for _ in range(count))
+    assert d.decompress_sync(blob) == b"AAAA" * count
+
+
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_zstd_rejects_frame_flood() -> None:
+    d = ZSTDDecompressor()
+    blob = zstandard.compress(b"") * (MAX_DECOMPRESS_MEMBERS + 5)
+    with pytest.raises(ValueError, match="concatenated compressed frames"):
+        d.decompress_sync(blob)

@@ -39,6 +39,9 @@ MAX_SYNC_CHUNK_SIZE = 4096
 ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
 ZSTD_MAX_LENGTH_UNLIMITED = -1  # zstd uses -1 to mean unlimited
 
+# Cap on the number of concatenated members/frames a single decompress_sync.
+MAX_DECOMPRESS_MEMBERS = 128
+
 
 class ZLibCompressObjProtocol(Protocol):
     def compress(self, data: Buffer) -> bytes: ...
@@ -295,7 +298,14 @@ class ZLibDecompressor(DecompressionBaseHandler):
         # Handle concatenated gzip/deflate streams (multi-member).
         # After a member ends, unused_data holds the start of the next member.
         # Create a fresh decompressor for each subsequent member.
+        members = 0
         while self._decompressor.eof and self._decompressor.unused_data:
+            members += 1
+            if members > MAX_DECOMPRESS_MEMBERS:
+                raise ValueError(
+                    "Too many concatenated compressed members "
+                    f"(limit {MAX_DECOMPRESS_MEMBERS})"
+                )
             unused = self._decompressor.unused_data
             self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
             if max_length != ZLIB_MAX_LENGTH_UNLIMITED:
@@ -419,7 +429,14 @@ class ZSTDDecompressor(DecompressionBaseHandler):
         # ZstdDecompressor handles one frame only. When a frame ends,
         # eof becomes True and any trailing data goes to unused_data.
         # We create a fresh decompressor to continue with the next frame.
+        frames = 0
         while self._obj.eof and self._obj.unused_data:
+            frames += 1
+            if frames > MAX_DECOMPRESS_MEMBERS:
+                raise ValueError(
+                    "Too many concatenated compressed frames "
+                    f"(limit {MAX_DECOMPRESS_MEMBERS})"
+                )
             unused_data = self._obj.unused_data
             self._obj = ZstdDecompressor()
             if zstd_max_length != ZSTD_MAX_LENGTH_UNLIMITED:
