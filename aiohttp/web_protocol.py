@@ -811,11 +811,43 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
+                try:
+                    messages, upgraded, tail = self._parser.feed_data(
+                        self._message_tail
+                    )
+                except HttpProcessingError as parse_exc:
+                    # Answer it like data_received() does. Letting this escape
+                    # loses the response already built for the request being
+                    # finished, and closes the connection on a client error.
+                    messages = [
+                        (
+                            _ErrInfo(
+                                status=400,
+                                exc=parse_exc,
+                                message=parse_exc.message,
+                            ),
+                            EMPTY_PAYLOAD,
+                        )
+                    ]
+                    upgraded = False
+                    tail = b""
                 self._message_tail = tail
+                # A second upgrade in the tail leaves the parser upgraded while
+                # this stayed False, and the next data_received() would replace
+                # the buffered bytes instead of appending to them.
+                self._upgraded = upgraded
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
+                # The parser stops at the queue limit and keeps the rest, so
+                # mark the queue paused the way data_received() does. start()
+                # resumes as it drains, which is what feeds the parser the
+                # remainder; without this the requests it held are never read.
+                if (
+                    not self._msg_queue_paused
+                    and len(self._messages) >= self._max_msg_queue_size
+                ):
+                    self._pause_msg_queue_reading()
                 # This shouldn't be possible. If a future refactor results in this
                 # failing, then the code may need to be updated to set the waiter.
                 assert self._waiter is None
