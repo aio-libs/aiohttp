@@ -190,17 +190,17 @@ def test_max_msg_queue_size_caps_emitted_messages(
     assert not upgraded
 
 
-def test_max_msg_queue_size_keeps_tail_to_itself(
+async def test_max_msg_queue_size_keeps_tail_to_itself(
     request_cls: type[HttpRequestParser],
     protocol: BaseProtocol,
-    event_loop: asyncio.AbstractEventLoop,
 ) -> None:
     """The remainder is buffered for the next feed, so it must not be returned.
 
     Handing it back as well gives the caller a second copy of bytes the parser
     is already holding, and both copies get parsed.
     """
-    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+    loop = asyncio.get_running_loop()
+    parser = _build_request_parser(request_cls, protocol, loop, 4)
 
     messages, _upgraded, tail = parser.feed_data(_PIPELINED_GET * 10)
 
