@@ -231,12 +231,17 @@ class HTTPMove(HTTPRedirection):
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )
-        self._location = URL(location)
-        self.headers["Location"] = str(self.location)
+        self._parsed_location = URL(location)
+        # Preserve the original location string for the Location header so that
+        # percent-encoded characters (e.g. "%3F" for "?") are not re-encoded by
+        # yarl.URL (which decodes them and can break the redirected webserver).
+        # Only strip CR/LF to prevent request-smuggling-style header injection;
+        # the URL is still validated via URL(location) above.
+        self.headers["Location"] = str(location).replace("\r", "").replace("\n", "")
 
     @property
     def location(self) -> URL:
-        return self._location
+        return self._parsed_location
 
 
 class HTTPMultipleChoices(HTTPMove):
