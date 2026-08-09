@@ -1878,9 +1878,9 @@ async def test_http1_pipelined_behind_declined_upgrade_served_once(
 
     # An upgrade the handler answers normally, then the pipeline, in one write.
     upgrade = (
-        "GET /upgrade HTTP/1.1\r\nHost: localhost\r\n"
-        "Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
-    ).encode("ascii")
+        b"GET /upgrade HTTP/1.1\r\nHost: localhost\r\n"
+        b"Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+    )
 
     reader, writer = await asyncio.open_connection(server.host, server.port)
     try:
