@@ -162,7 +162,13 @@ async def test_bad_pipelined_request_after_failed_websocket_upgrade(
         )
         await writer.drain()
 
-        data = await asyncio.wait_for(reader.read(65536), timeout=5)
+        # The two responses need not arrive in the same segment.
+        data = b""
+        while b"400" not in data:
+            chunk = await asyncio.wait_for(reader.read(65536), timeout=5)
+            if not chunk:
+                break
+            data += chunk
     finally:
         writer.close()
         with contextlib.suppress(ConnectionResetError):
