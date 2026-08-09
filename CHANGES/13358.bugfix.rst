@@ -1,0 +1,4 @@
+Fixed a malformed request pipelined behind a declined upgrade discarding the
+response to that upgrade and closing the connection, instead of being answered
+with ``400``. Requests buffered behind a second declined upgrade on the same
+connection are no longer dropped -- by :user:`rodrigobnogueira`.
