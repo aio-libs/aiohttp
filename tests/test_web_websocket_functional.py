@@ -127,6 +127,117 @@ async def test_partial_pipelined_request_after_failed_websocket_upgrade(
         await writer.wait_closed()
 
 
+async def test_bad_pipelined_request_after_failed_websocket_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A malformed pipelined request still gets a 400, like any other.
+
+    ``finish_response()`` replays the tail before the declined upgrade's own
+    response is written, so letting the parse error escape loses that response
+    and closes the connection on what is only a client error.
+    """
+
+    async def upgrade_handler(request: web.Request) -> NoReturn:
+        raise web.HTTPUpgradeRequired()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", upgrade_handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET / HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n"
+            b"\r\n"
+            b"POST /bad HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Transfer-Encoding: chunked\r\n"
+            b"Content-Length: 5\r\n"
+            b"\r\n"
+        )
+        await writer.drain()
+
+        data = await asyncio.wait_for(reader.read(65536), timeout=5)
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError):
+            await writer.wait_closed()
+
+    # The declined upgrade is answered, and the malformed request gets a 400.
+    assert b"426" in data
+    assert b"400" in data
+
+
+async def test_second_upgrade_pipelined_after_failed_websocket_upgrade(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Bytes arriving after a replayed upgrade are appended, not replaced.
+
+    The replayed tail can itself contain an upgrade request. If that leaves the
+    parser upgraded while the protocol believes otherwise, the next
+    ``data_received()`` overwrites the buffered pipelined bytes instead of
+    appending to them, and the requests behind it are never dispatched.
+    """
+    handled: list[str] = []
+    second_started = asyncio.Event()
+    release_second = asyncio.Event()
+
+    async def upgrade_handler(request: web.Request) -> NoReturn:
+        handled.append(request.path)
+        if request.path == "/upgrade2":
+            second_started.set()
+            await release_second.wait()
+        raise web.HTTPUpgradeRequired()
+
+    async def plain_handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        return web.Response(text=f"ok{request.path}")
+
+    app = web.Application()
+    app.router.add_route("GET", "/upgrade1", upgrade_handler)
+    app.router.add_route("GET", "/upgrade2", upgrade_handler)
+    app.router.add_route("GET", "/{tail:.*}", plain_handler)
+    server = await aiohttp_server(app)
+
+    def upgrade(path: str) -> bytes:
+        return (
+            f"GET {path} HTTP/1.1\r\nHost: localhost\r\n"
+            "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+            "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            "Sec-WebSocket-Version: 13\r\n\r\n"
+        ).encode()
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            upgrade("/upgrade1")
+            + upgrade("/upgrade2")
+            + b"GET /pipelined HTTP/1.1\r\nHost: localhost\r\n\r\n"
+        )
+        await writer.drain()
+        await asyncio.wait_for(second_started.wait(), timeout=5)
+
+        # Arrives while the second upgrade is still being handled.
+        writer.write(b"GET /later HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        await writer.drain()
+        await asyncio.sleep(0.1)
+        release_second.set()
+
+        await asyncio.wait_for(reader.readuntil(b"ok/later"), timeout=5)
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError):
+            await writer.wait_closed()
+
+    assert "/pipelined" in handled
+    assert "/later" in handled
+
+
 async def test_handshake_connection_header_substring_not_a_token(
     aiohttp_client: AiohttpClient,
 ) -> None:

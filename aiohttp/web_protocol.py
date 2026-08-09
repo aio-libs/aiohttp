@@ -811,8 +811,31 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
+                try:
+                    messages, upgraded, tail = self._parser.feed_data(
+                        self._message_tail
+                    )
+                except HttpProcessingError as parse_exc:
+                    # Answer it like data_received() does. Letting this escape
+                    # loses the response already built for the request being
+                    # finished, and closes the connection on a client error.
+                    messages = [
+                        (
+                            _ErrInfo(
+                                status=400,
+                                exc=parse_exc,
+                                message=parse_exc.message,
+                            ),
+                            EMPTY_PAYLOAD,
+                        )
+                    ]
+                    upgraded = False
+                    tail = b""
                 self._message_tail = tail
+                # A second upgrade in the tail leaves the parser upgraded while
+                # this stayed False, and the next data_received() would replace
+                # the buffered bytes instead of appending to them.
+                self._upgraded = upgraded
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
