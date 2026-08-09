@@ -1,0 +1,4 @@
+Fixed requests pipelined behind a request whose upgrade the handler declined
+being served more than once, and requests past the per-connection queue limit
+on that path being left unanswered. Only the pure-Python parser was affected
+-- by :user:`rodrigobnogueira`.
