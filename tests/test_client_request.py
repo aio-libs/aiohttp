@@ -1070,6 +1070,29 @@ async def test_chunked_empty_body(
     resp.close()
 
 
+async def test_send_does_not_eager_start_writer_from_another_loop(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    req = make_client_request(
+        "post",
+        URL("http://python.org/"),
+        data=b"foo",
+        loop=asyncio.get_running_loop(),
+    )
+    other_loop = mock.Mock()
+    with (
+        mock.patch(
+            "aiohttp.client_reqrep.asyncio.get_running_loop", return_value=other_loop
+        ),
+        mock.patch("aiohttp.client_reqrep.asyncio.Task") as eager_task,
+    ):
+        resp = await req._send(conn)
+
+    eager_task.assert_not_called()
+    await req._close()
+    resp.close()
+
+
 async def test_chunked_explicit(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:

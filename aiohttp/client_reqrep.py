@@ -982,7 +982,7 @@ class ClientRequestBase:
         task: asyncio.Task[None] | None
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
+            if sys.version_info >= (3, 12) and self.loop is asyncio.get_running_loop():
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
                 # the task on the event loop.

@@ -1,0 +1,1 @@
+Avoid eagerly starting the request body writer when a request is sent from a different event loop than the :class:`~aiohttp.ClientSession`.
