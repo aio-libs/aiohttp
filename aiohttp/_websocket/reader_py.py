@@ -158,6 +158,9 @@ class WebSocketReader:
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
         self._payload_fragments: list[bytes] = []
+        # Limit number of fragments, so a large number of tiny fragments
+        # doesn't exceed reasonable memory usage.
+        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -493,6 +496,12 @@ class WebSocketReader:
                     # If we don't have a complete frame, we need to save the
                     # data for the next call to feed_data.
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if (
+                        self._max_fragments
+                        and len(self._payload_fragments) > self._max_fragments
+                        and not self.queue._protocol._reading_paused
+                    ):
+                        self.queue._protocol.pause_reading()
                     break
 
                 payload: bytes | bytearray

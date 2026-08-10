@@ -816,6 +816,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
+                # Pause the transport, like in data_received().
+                if (
+                    not self._msg_queue_paused
+                    and len(self._messages) >= self._max_msg_queue_size
+                ):
+                    self._pause_msg_queue_reading()
                 # This shouldn't be possible. If a future refactor results in this
                 # failing, then the code may need to be updated to set the waiter.
                 assert self._waiter is None

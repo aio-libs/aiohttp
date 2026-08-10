@@ -42,7 +42,7 @@ mdurl==0.1.2
     # via markdown-it-py
 myst-parser==4.0.1
     # via -r requirements/doc.in
-packaging==26.2
+packaging==26.3
     # via sphinx
 pyenchant==3.3.0
     # via sphinxcontrib-spelling

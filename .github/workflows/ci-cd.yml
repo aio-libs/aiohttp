@@ -493,7 +493,7 @@ jobs:
         uname -r
         openssl version -a
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v5.0.2
+      uses: CodSpeedHQ/action@v5.0.3
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
@@ -723,7 +723,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v4.1.1
+      uses: pypa/cibuildwheel@v4.2.0
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing

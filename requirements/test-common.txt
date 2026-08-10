@@ -10,7 +10,7 @@ aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.6.0
+ast-serialize==0.7.0
     # via mypy
 async-timeout==5.0.1
     # via aiohttp
@@ -20,9 +20,9 @@ backports-asyncio-runner==1.2.0
     # via pytest-asyncio
 blockbuster==1.5.26
     # via -r requirements/test-common.in
-cffi==2.1.0
+cffi==2.1.1
     # via cryptography
-coverage==7.15.3
+coverage==7.15.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -48,7 +48,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
-librt==0.13.0
+librt==0.14.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
@@ -62,7 +62,7 @@ mypy==2.1.0 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==26.2
+packaging==26.3
     # via pytest
 pathspec==1.1.1
     # via mypy

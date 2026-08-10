@@ -18,7 +18,7 @@ aiosignal==1.4.0
     #   aiohttp
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.6.0
+ast-serialize==0.7.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -34,11 +34,11 @@ blockbuster==1.5.26
     # via -r requirements/test-common.in
 brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-cffi==2.1.0
+cffi==2.1.1
     # via
     #   cryptography
     #   pycares
-coverage==7.15.3
+coverage==7.15.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -69,7 +69,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
-librt==0.13.0
+librt==0.14.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
@@ -84,7 +84,7 @@ mypy==2.1.0 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-packaging==26.2
+packaging==26.3
     # via
     #   gunicorn
     #   pytest

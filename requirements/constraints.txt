@@ -26,7 +26,7 @@ alabaster==1.0.0
     # via sphinx
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.6.0
+ast-serialize==0.7.0
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -53,7 +53,7 @@ build==1.5.1
     # via pip-tools
 certifi==2026.7.22
     # via requests
-cffi==2.1.0
+cffi==2.1.1
     # via
     #   cryptography
     #   pycares
@@ -65,7 +65,7 @@ click==8.4.2
     # via
     #   pip-tools
     #   towncrier
-coverage==7.15.3
+coverage==7.15.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -123,7 +123,7 @@ jinja2==3.1.6
     #   sphinx
     #   sphinxcontrib-mermaid
     #   towncrier
-librt==0.13.0
+librt==0.14.0
     # via mypy
 markdown-it-py==3.0.0
     # via
@@ -152,7 +152,7 @@ myst-parser==4.0.1
     # via -r requirements/doc.in
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.2
+packaging==26.3
     # via
     #   build
     #   gunicorn
@@ -161,7 +161,7 @@ packaging==26.2
     #   wheel
 pathspec==1.1.1
     # via mypy
-pip==26.2
+pip==26.2.1
     # via pip-tools
 pip-tools==7.6.0
     # via -r requirements/dev.in
