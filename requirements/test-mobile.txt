@@ -58,7 +58,7 @@ multidict==6.7.1
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   yarl
-packaging==26.2
+packaging==26.3
     # via
     #   gunicorn
     #   pytest

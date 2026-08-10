@@ -152,7 +152,7 @@ myst-parser==4.0.1
     # via -r requirements/doc.in
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.2
+packaging==26.3
     # via
     #   build
     #   gunicorn
