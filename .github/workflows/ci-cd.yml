@@ -493,7 +493,7 @@ jobs:
         uname -r
         openssl version -a
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v5.0.2
+      uses: CodSpeedHQ/action@v5.0.3
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
