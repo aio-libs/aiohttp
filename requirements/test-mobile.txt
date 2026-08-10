@@ -50,7 +50,7 @@ multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==26.2
+packaging==26.3
     # via
     #   gunicorn
     #   pytest
