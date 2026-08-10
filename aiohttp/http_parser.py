@@ -617,9 +617,18 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 upgrade = True
 
         # encoding
+        # RFC 9110 §8.4: Content-Encoding can be a comma-separated list.
+        # If multiple codings are present, the client must decode them
+        # in reverse order. We store them as a comma-separated normalized
+        # string so the payload parser can chain decompressors.
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+        if enc.isascii():
+            encodings = [e.strip() for e in enc.lower().split(",")]
+            encodings = [e for e in encodings if e]  # Remove empty entries
+            if encodings and all(
+                e in {"gzip", "deflate", "br", "zstd"} for e in encodings
+            ):
+                encoding = ",".join(encodings)
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -874,10 +883,15 @@ class HttpPayloadParser:
         self._eof_pending = False
 
         # payload decompression wrapper
+        # RFC 9110 §8.4: Content-Encoding can be a comma-separated list.
+        # Decode in reverse order (last applied first).
         if response_with_body and compression and self._auto_decompress:
-            real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
-                payload, compression, max_decompress_size=limit
-            )
+            encodings = [e.strip() for e in compression.split(",")]
+            real_payload: StreamReader | DeflateBuffer = payload
+            for enc in reversed(encodings):
+                real_payload = DeflateBuffer(  # type: ignore[arg-type]
+                    real_payload, enc, max_decompress_size=limit
+                )
         else:
             real_payload = payload
 
@@ -1131,6 +1145,9 @@ class DeflateBuffer:
         out.total_compressed_bytes = self.size
         self.encoding = encoding
         self._started_decoding = False
+        # Forward _low_water from the wrapped stream so DeflateBuffer
+        # can be safely chained (RFC 9110 §8.4 multi-coding).
+        self._low_water = getattr(out, "_low_water", 0)
 
         self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
         if encoding == "br":
