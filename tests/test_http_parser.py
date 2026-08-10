@@ -184,6 +184,24 @@ def test_max_msg_queue_size_caps_emitted_messages(
     assert not upgraded
 
 
+def test_max_msg_queue_size_keeps_tail_to_itself(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    """The remainder is buffered for the next feed, so it must not be returned.
+
+    Handing it back as well gives the caller a second copy of bytes the parser
+    is already holding, and both copies get parsed.
+    """
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+
+    messages, _upgraded, tail = parser.feed_data(_PIPELINED_GET * 10)
+
+    assert len(messages) == 4
+    assert tail == b""
+
+
 def test_max_msg_queue_size_resumes_after_consume(
     request_cls: type[HttpRequestParser],
     protocol: BaseProtocol,
@@ -1565,6 +1583,79 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     assert result == original
 
 
+async def test_content_length_eof_while_paused(response: HttpResponseParser) -> None:
+    """EOF right after a fully received content-length body must complete it.
+
+    Regression test for #13348:
+    feeding the final body bytes pauses the parser for flow control before
+    the message can complete; a server closing the connection in that state
+    raised ContentLengthError despite received == expected.
+    """
+    # Must be large enough to exceed the high water mark so the parser
+    # pauses with the message not yet complete.
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body)
+
+    msgs, upgrade, tail = response.feed_data(headers + body)
+    payload = msgs[0][-1]
+    # The server has sent everything and closed the connection.
+    response.feed_eof()
+
+    result = await payload.read()
+    assert result == body
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_compressed_content_length_eof_while_paused(
+    response: HttpResponseParser,
+) -> None:
+    """EOF with pending decompressed data on a complete content-length body.
+
+    Like test_content_length_eof_while_paused, but the decompressor still
+    holds pending data at EOF, so completion is deferred until the reader
+    drains it.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 5 * 1024 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    response.feed_eof()
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) <= (2 * 1024 * 1024)
+
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_content_length_eof_while_paused_incomplete(
+    response: HttpResponseParser,
+) -> None:
+    """EOF on a paused parser with a genuinely incomplete body still raises."""
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % (len(body) + 1)
+
+    response.feed_data(headers + body)
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError,
+        match=r"received 1048576 of 1048577 bytes",
+    ):
+        response.feed_eof()
+
+
 async def test_compressed_until_eof_high_water(
     response_cls: type[HttpResponseParser],
 ) -> None:
@@ -2809,6 +2900,41 @@ class TestParsePayload:
             match=r"received 45 of 100 bytes",
         ):
             p.feed_eof()
+
+    async def test_parse_length_payload_eof_completes_after_pause(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """feed_eof() completes a fully received length payload despite a pause.
+
+        Regression test for #13348:
+        The parser paused for flow control with pending decompressed data
+        when EOF arrived; the fully received body must complete instead of
+        raising ContentLengthError.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        original = b"x" * (1024 * 1024)
+        compressed = zlib.compress(original)
+
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="deflate",
+            headers_parser=HeadersParser(),
+        )
+        p.pause_reading()  # flow control kicked in before the final bytes
+        state, tail = p.feed_data(compressed)
+        assert state is PayloadState.PAYLOAD_HAS_PENDING_INPUT
+        assert not p.done
+
+        # All bytes were received, so EOF drains the pending data and
+        # completes the payload.
+        p.feed_eof()
+
+        assert p.done
+        assert out.is_eof()  # type: ignore[unreachable]
+        assert out.exception() is None
+        result = await out.read()
+        assert result == original
 
     async def test_parse_chunked_payload_size_error(
         self, protocol: BaseProtocol
