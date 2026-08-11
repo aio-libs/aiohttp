@@ -1906,7 +1906,7 @@ def test_http_request_parser_bad_nonascii_uri(parser: HttpRequestParser) -> None
 def test_http_request_parser_ctl_in_request_target(
     parser: HttpRequestParser, target: bytes
 ) -> None:
-    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-3
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
 
