@@ -205,6 +205,33 @@ def test_zlib_deflate_multi_member_window_doubles(
     assert max(feeds) == MEMBER_WINDOW_MAX
 
 
+def test_zlib_deflate_max_length_exhausted_mid_member() -> None:
+    """Output can run out partway through a member, splitting the input in two.
+
+    The bytes the cap left unconsumed stay on the decompressor as
+    unconsumed_tail while the windows not yet fed become pending, so resuming
+    has to feed unconsumed_tail first or the member decodes as garbage.
+    """
+    co = zlib.compressobj(wbits=-15)
+    first_member = co.compress(b"x") + co.flush()
+    body = b"A" * 100_000
+    co = zlib.compressobj(wbits=-15)
+    # Compresses small enough to span several windows, expands far past the cap.
+    second_member = co.compress(body) + co.flush()
+    assert len(second_member) > MEMBER_WINDOW_MIN
+
+    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+    out = d.decompress_sync(first_member + second_member, max_length=1000)
+    split_seen = bool(d._decompressor.unconsumed_tail) and (
+        d._pending_unused_data is not None
+    )
+    while d.data_available:
+        out += d.decompress_sync(b"", max_length=1000)
+
+    assert split_seen, "walk never suspended mid-member"
+    assert out == b"x" + body
+
+
 def test_zlib_deflate_member_flood_rejected() -> None:
     """Zero-output members never decrement max_length, cap must stop them."""
     co = zlib.compressobj(wbits=-15)

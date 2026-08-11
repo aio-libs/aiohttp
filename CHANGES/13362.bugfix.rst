@@ -1,1 +1,1 @@
-Fixed quadratic CPU usage when decompressing payloads built from many small concatenated members/frames (``gzip``, ``deflate`` and ``zstd``) -- by :user:`Dreamsorcerer`.
+Reduced CPU consumption when encountering many concatenated members in a compressed payload and rejected large amounts of members -- by :user:`Dreamsorcerer`.
