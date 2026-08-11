@@ -9,9 +9,9 @@ from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.client_reqrep import RequestInfo
 
 from ..compression_utils import ZLibDecompressor
-from ..http_writer import HttpVersion2
-from ..http_base import BaseResponse
 from ..hdrs import CONTENT_ENCODING, SET_COOKIE
+from ..http_base import BaseResponse
+from ..http_writer import HttpVersion2
 
 
 class Http2Response(BaseResponse):
@@ -62,7 +62,7 @@ class Http2Response(BaseResponse):
     def body(self) -> bytes:
         return self._body
 
-    @property 
+    @property
     def request_info(self) -> RequestInfo:
         return RequestInfo(url=self.url, method=self.method, headers=self.headers)
 
