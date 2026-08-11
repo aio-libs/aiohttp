@@ -799,6 +799,7 @@ def test_single_forwarded_header_injection2() -> None:
         ("; a", {}),
         ("for=1.2.3.4; a", {"for": "1.2.3.4"}),
         ("for=_real; x", {"for": "_real"}),
+        ("bad; for=_real", {}),
     ],
 )
 def test_single_forwarded_header_trailing_bad_value(
