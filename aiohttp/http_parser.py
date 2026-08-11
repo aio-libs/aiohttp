@@ -160,7 +160,7 @@ class ChunkState(IntEnum):
 
 
 class HeadersParser:
-    def __init__(self, max_field_size: int = 8190, lax: bool = False) -> None:
+    def __init__(self, max_field_size: int = 16384, lax: bool = False) -> None:
         self.max_field_size = max_field_size
         self._lax = lax
 
@@ -258,7 +258,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         limit: int,
         max_line_size: int = 8190,
         max_headers: int = 128,
-        max_field_size: int = 8190,
+        max_field_size: int = 16384,
         timer: BaseTimerContext | None = None,
         code: int | None = None,
         method: str | None = None,
@@ -854,7 +854,7 @@ class HttpPayloadParser:
         *,
         headers_parser: HeadersParser,
         max_line_size: int = 8190,
-        max_field_size: int = 8190,
+        max_field_size: int = 16384,
         max_trailers: int = 128,
         limit: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
