@@ -2,8 +2,9 @@ import asyncio
 import sys
 import zlib
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from concurrent.futures import Executor
-from typing import Any, Final, Protocol, TypedDict, cast
+from typing import Any, Final, Protocol, TypedDict, TypeVar, cast
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
@@ -39,8 +40,20 @@ MAX_SYNC_CHUNK_SIZE = 4096
 ZLIB_MAX_LENGTH_UNLIMITED = 0  # zlib uses 0 to mean unlimited
 ZSTD_MAX_LENGTH_UNLIMITED = -1  # zstd uses -1 to mean unlimited
 
-# Cap on the number of concatenated members/frames a single decompress_sync.
-MAX_DECOMPRESS_MEMBERS = 128
+# Concatenated members are decoded through a window that starts small and
+# doubles. A fresh decompressor copies everything past the member it decodes
+# into unused_data, so handing it the whole remaining buffer at every boundary
+# is quadratic over a stream of small members.
+MEMBER_WINDOW_MIN = 64
+MEMBER_WINDOW_MAX = 65536
+
+# Cap on concatenated members decoded in one call. Real payloads are unlikely
+# to have more than a fem members.
+MAX_DECOMPRESS_MEMBERS = 1024
+
+
+class TooManyMembersError(ValueError):
+    """A stream concatenated more members than the caller allows."""
 
 
 class ZLibCompressObjProtocol(Protocol):
@@ -156,6 +169,75 @@ def encoding_to_mode(
         return 16 + ZLibBackend.MAX_WBITS
 
     return -ZLibBackend.MAX_WBITS if suppress_deflate_header else ZLibBackend.MAX_WBITS
+
+
+class MemberDecompressObjProtocol(Protocol):
+    def decompress(self, data: Buffer, max_length: int = ...) -> bytes: ...
+
+    @property
+    def eof(self) -> bool: ...
+
+    @property
+    def unused_data(self) -> bytes: ...
+
+
+_MemberDecompressObjT = TypeVar(
+    "_MemberDecompressObjT", bound=MemberDecompressObjProtocol
+)
+
+
+def _decompress_members(
+    obj: _MemberDecompressObjT,
+    fresh: Callable[[], _MemberDecompressObjT],
+    first: bytes,
+    max_length: int,
+    unlimited: int,
+) -> tuple[bytes, _MemberDecompressObjT, bytes | None]:
+    """Decode a concatenated stream when more than one member."""
+    remaining = memoryview(obj.unused_data)
+    parts = [first]
+    produced = len(first)
+    pos = 0
+    window = MEMBER_WINDOW_MIN
+    budget = max_length
+    pending: bytes | None = None
+    members = 1
+
+    while pos < len(remaining):
+        if obj.eof:
+            members += 1
+            if members > MAX_DECOMPRESS_MEMBERS:
+                raise TooManyMembersError(
+                    f"Compressed stream has more than "
+                    f"{MAX_DECOMPRESS_MEMBERS} members"
+                )
+            # Replace the spent decompressor before the budget check below
+            # can break out of the loop: it still lists these bytes in its
+            # unused_data and would hand them back on the next call.
+            obj = fresh()
+            window = MEMBER_WINDOW_MIN
+        if max_length != unlimited:
+            budget = max_length - produced
+            if budget <= 0:
+                pending = bytes(remaining[pos:])
+                break
+
+        end = min(pos + window, len(remaining))
+        chunk = obj.decompress(remaining[pos:end], budget)
+        if chunk:
+            parts.append(chunk)
+            produced += len(chunk)
+
+        if obj.eof:
+            pos = end - len(obj.unused_data)
+        else:
+            pos = end
+            # Doubling the window on each iteration avoids too many calls
+            # when a large member is present, while protecting us from
+            # quadratic usage when members are of window+1 length.
+            window = min(window * 2, MEMBER_WINDOW_MAX)
+
+    return b"".join(parts), obj, pending
 
 
 class DecompressionBaseHandler(ABC):
@@ -292,30 +374,19 @@ class ZLibDecompressor(DecompressionBaseHandler):
         result = self._decompressor.decompress(
             self._decompressor.unconsumed_tail + data, max_length
         )
+
+        # Concatenated gzip/deflate stream: decode the members after this one.
+        if self._decompressor.eof and self._decompressor.unused_data:
+            result, self._decompressor, self._pending_unused_data = _decompress_members(
+                self._decompressor,
+                lambda: self._zlib_backend.decompressobj(wbits=self._mode),
+                result,
+                max_length,
+                ZLIB_MAX_LENGTH_UNLIMITED,
+            )
+
         # Only way to know that isal has no further data is checking we get no output
         self._last_empty = result == b""
-
-        # Handle concatenated gzip/deflate streams (multi-member).
-        # After a member ends, unused_data holds the start of the next member.
-        # Create a fresh decompressor for each subsequent member.
-        members = 0
-        while self._decompressor.eof and self._decompressor.unused_data:
-            members += 1
-            if members > MAX_DECOMPRESS_MEMBERS:
-                raise ValueError(
-                    "Too many concatenated compressed members "
-                    f"(limit {MAX_DECOMPRESS_MEMBERS})"
-                )
-            unused = self._decompressor.unused_data
-            self._decompressor = self._zlib_backend.decompressobj(wbits=self._mode)
-            if max_length != ZLIB_MAX_LENGTH_UNLIMITED:
-                max_length -= len(result)
-                if max_length <= 0:
-                    self._pending_unused_data = unused
-                    break
-            chunk = self._decompressor.decompress(unused, max_length)
-            self._last_empty = chunk == b""
-            result += chunk
 
         # Member ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.
@@ -424,27 +495,15 @@ class ZSTDDecompressor(DecompressionBaseHandler):
             self._pending_unused_data = None
         result = self._obj.decompress(data, zstd_max_length)
 
-        # Handle multi-frame zstd streams.
-        # https://datatracker.ietf.org/doc/html/rfc8878#section-3.1.1
-        # ZstdDecompressor handles one frame only. When a frame ends,
-        # eof becomes True and any trailing data goes to unused_data.
-        # We create a fresh decompressor to continue with the next frame.
-        frames = 0
-        while self._obj.eof and self._obj.unused_data:
-            frames += 1
-            if frames > MAX_DECOMPRESS_MEMBERS:
-                raise ValueError(
-                    "Too many concatenated compressed frames "
-                    f"(limit {MAX_DECOMPRESS_MEMBERS})"
-                )
-            unused_data = self._obj.unused_data
-            self._obj = ZstdDecompressor()
-            if zstd_max_length != ZSTD_MAX_LENGTH_UNLIMITED:
-                zstd_max_length -= len(result)
-                if zstd_max_length <= 0:
-                    self._pending_unused_data = unused_data
-                    break
-            result += self._obj.decompress(unused_data, zstd_max_length)
+        # Concatenated zstd stream: decode the frames after this one.
+        if self._obj.eof and self._obj.unused_data:
+            result, self._obj, self._pending_unused_data = _decompress_members(
+                self._obj,
+                ZstdDecompressor,
+                result,
+                zstd_max_length,
+                ZSTD_MAX_LENGTH_UNLIMITED,
+            )
 
         # Frame ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.

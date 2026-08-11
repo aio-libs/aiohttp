@@ -1,1 +1,1 @@
-Fixed small compressed members causing excessive CPU usage -- by :user:`Dreamsorcerer`.
+Fixed quadratic CPU usage when decompressing payloads built from many small concatenated members/frames (``gzip``, ``deflate`` and ``zstd``) -- by :user:`Dreamsorcerer`.

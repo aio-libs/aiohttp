@@ -20,7 +20,6 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.compression_utils import MAX_DECOMPRESS_MEMBERS
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
     DeflateBuffer,
@@ -3390,15 +3389,14 @@ class TestParsePayload:
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
 
-    async def test_http_payload_gzip_member_flood_rejected(
+    async def test_http_payload_gzip_empty_member_flood(
         self, protocol: BaseProtocol
     ) -> None:
-        """A body of many tiny empty members is rejected, not decompressed.
+        """A body of many empty members is rejected, not decoded.
 
-        Without the per-call member cap this O(n**2) loop would block the event
-        loop for seconds on a single size-legal request (decompression CPU bomb).
+        Empty members decode to nothing, so must fail from the member limit.
         """
-        payload = gzip.compress(b"") * (MAX_DECOMPRESS_MEMBERS + 5)
+        payload = gzip.compress(b"") * 20000
         out = aiohttp.StreamReader(
             protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
         )

@@ -3,13 +3,17 @@
 import gzip
 import sys
 import zlib
+from typing import Any
 
 import pytest
 
 from aiohttp.compression_utils import (
     MAX_DECOMPRESS_MEMBERS,
+    MEMBER_WINDOW_MAX,
+    TooManyMembersError,
     ZLibBackend,
     ZLibCompressor,
+    ZLibDecompressObjProtocol,
     ZLibDecompressor,
     ZSTDDecompressor,
 )
@@ -21,6 +25,21 @@ try:
         import backports.zstd as zstandard
 except ImportError:  # pragma: no cover
     zstandard = None  # type: ignore[assignment]
+
+
+class _RecordingDecompressObj:
+    """decompressobj proxy recording the size of every buffer fed to it."""
+
+    def __init__(self, obj: ZLibDecompressObjProtocol, feeds: list[int]) -> None:
+        self._obj = obj
+        self._feeds = feeds
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._obj, name)
+
+    def decompress(self, data: Any, max_length: int = 0) -> bytes:
+        self._feeds.append(len(data))
+        return self._obj.decompress(data, max_length)
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -127,35 +146,83 @@ def test_zlib_gzip_multi_member_max_length_exhausted_preserves_unused_data() -> 
     assert result2 == b"BBBBCCCC"
 
 
-def test_zlib_deflate_rejects_member_flood() -> None:
-    """A flood of tiny zero-output deflate members is rejected."""
+def test_zlib_gzip_multi_member_walks_input_once(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Every member is decoded from a bounded window, not from the whole tail.
+
+    A fresh decompressor copies everything past the member it decodes into
+    unused_data, so handing it the rest of the buffer at each boundary is
+    quadratic: this blob would push ~6GiB through unused_data.
+    """
+    blob = gzip.compress(b"") * (MAX_DECOMPRESS_MEMBERS - 1)
+    d = ZLibDecompressor(encoding="gzip")
+    feeds: list[int] = []
+    decompressobj = d._zlib_backend.decompressobj
+
+    def recording(*, wbits: int) -> _RecordingDecompressObj:
+        return _RecordingDecompressObj(decompressobj(wbits=wbits), feeds)
+
+    monkeypatch.setattr(d._zlib_backend, "decompressobj", recording)
+    assert d.decompress_sync(blob) == b""
+    assert max(feeds) <= MEMBER_WINDOW_MAX
+    assert sum(feeds) < 8 * len(blob)
+
+
+def test_zlib_deflate_member_flood_rejected() -> None:
+    """Zero-output members never decrement max_length, cap must stop them."""
     co = zlib.compressobj(wbits=-15)
     empty_member = co.compress(b"") + co.flush()  # 2-byte empty raw-deflate member
     d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
-    blob = empty_member * (MAX_DECOMPRESS_MEMBERS + 5)
-    with pytest.raises(ValueError, match="concatenated compressed members"):
-        d.decompress_sync(blob, max_length=262144)
+    with pytest.raises(TooManyMembersError):
+        d.decompress_sync(empty_member * 5000, max_length=262144)
 
 
-def test_zlib_gzip_rejects_member_flood() -> None:
+def test_zlib_deflate_members_at_limit() -> None:
+    """The limit counts the member decoded before the walk started."""
+    co = zlib.compressobj(wbits=-15)
+    empty_member = co.compress(b"") + co.flush()
+    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+    assert d.decompress_sync(empty_member * MAX_DECOMPRESS_MEMBERS) == b""
+
+
+def test_zlib_deflate_members_one_over_limit() -> None:
+    co = zlib.compressobj(wbits=-15)
+    empty_member = co.compress(b"") + co.flush()
+    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+    with pytest.raises(TooManyMembersError):
+        d.decompress_sync(empty_member * (MAX_DECOMPRESS_MEMBERS + 1))
+
+
+@pytest.mark.parametrize("max_length", (0, 262144), ids=("unlimited", "capped"))
+def test_zlib_gzip_many_members(max_length: int) -> None:
+    """A call may decode up to the member limit, resuming across calls."""
+    member = gzip.compress(b"A" * 64)
+    count = MAX_DECOMPRESS_MEMBERS
     d = ZLibDecompressor(encoding="gzip")
-    blob = gzip.compress(b"") * (MAX_DECOMPRESS_MEMBERS + 5)
-    with pytest.raises(ValueError, match="concatenated compressed members"):
-        d.decompress_sync(blob)
+    out = d.decompress_sync(member * count, max_length=max_length)
+    while d.data_available:
+        out += d.decompress_sync(b"", max_length=max_length)
+    assert out == b"A" * 64 * count
 
 
-def test_zlib_gzip_allows_members_up_to_limit() -> None:
-    """Legitimate concatenated members up to the cap still decode fully."""
+def test_zlib_gzip_empty_members_interleaved_with_output() -> None:
+    blob = (gzip.compress(b"") + gzip.compress(b"DATA")) * 20
     d = ZLibDecompressor(encoding="gzip")
-    # One initial member plus MAX_DECOMPRESS_MEMBERS handled in the loop.
-    count = MAX_DECOMPRESS_MEMBERS + 1
-    blob = b"".join(gzip.compress(b"AAAA") for _ in range(count))
-    assert d.decompress_sync(blob) == b"AAAA" * count
+    assert d.decompress_sync(blob) == b"DATA" * 20
 
 
 @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
-def test_zstd_rejects_frame_flood() -> None:
+def test_zstd_frame_flood_rejected() -> None:
+    """Multi-frame zstd shares the walk, so it shares the limit."""
     d = ZSTDDecompressor()
-    blob = zstandard.compress(b"") * (MAX_DECOMPRESS_MEMBERS + 5)
-    with pytest.raises(ValueError, match="concatenated compressed frames"):
-        d.decompress_sync(blob)
+    with pytest.raises(TooManyMembersError):
+        d.decompress_sync(zstandard.compress(b"") * 5000)
+
+
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_zstd_many_frames() -> None:
+    frame = zstandard.compress(b"B" * 64)
+    count = MAX_DECOMPRESS_MEMBERS
+    d = ZSTDDecompressor()
+    assert d.decompress_sync(frame * count) == b"B" * 64 * count
