@@ -1,0 +1,3 @@
+Fixed the client sending duplicate ``Host`` request headers when a caller
+supplied more than one; only a single canonical ``Host`` is now emitted
+-- by :user:`arshsmith1`.
