@@ -416,6 +416,7 @@ Vladyslav Bohaichuk
 Vladyslav Bondar
 Vojtěch Boček
 W. Trevor King
+waterWang
 Wei Lin
 Weiwei Wang
 Will Fatherley
@@ -424,7 +425,6 @@ Willem de Groot
 William Grzybowski
 William S.
 Wilson Ong
-waterWang
 wouter bolsterlee
 Xavier Halloran
 Xi Rui
