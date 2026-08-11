@@ -6,7 +6,7 @@ from collections import deque
 from typing import Final
 
 from ..base_protocol import BaseProtocol
-from ..compression_utils import ZLibDecompressor
+from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
@@ -243,14 +243,20 @@ class WebSocketReader:
                 # but internally buffer more data such that the payload is
                 # >max_length, so we return one extra byte and if we're able
                 # to do that, then the message is too big.
-                payload_merged = self._decompressobj.decompress_sync(
-                    assembled_payload + WS_DEFLATE_TRAILING,
-                    (
-                        self._max_msg_size + 1
-                        if self._max_msg_size
-                        else self._max_msg_size
-                    ),
-                )
+                try:
+                    payload_merged = self._decompressobj.decompress_sync(
+                        assembled_payload + WS_DEFLATE_TRAILING,
+                        (
+                            self._max_msg_size + 1
+                            if self._max_msg_size
+                            else self._max_msg_size
+                        ),
+                    )
+                except TooManyMembersError as exc:
+                    raise WebSocketError(
+                        WSCloseCode.MESSAGE_TOO_BIG,
+                        "Compressed message has too many deflate members",
+                    ) from exc
                 if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
