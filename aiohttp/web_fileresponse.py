@@ -249,6 +249,9 @@ class FileResponse(StreamResponse):
         return file_path if S_ISREG(st.st_mode) else None, st, None
 
     async def prepare(self, request: "BaseRequest") -> AbstractStreamWriter | None:
+        if self.prepared:
+            return await super().prepare(request)
+
         loop = asyncio.get_running_loop()
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1

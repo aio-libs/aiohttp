@@ -170,6 +170,23 @@ async def test_file_response_sends_headers_immediately() -> None:
     writer.send_headers.assert_called_once()
 
 
+async def test_file_response_prepare_is_reentrant(tmp_path: Path) -> None:
+    filepath = tmp_path / "data.txt"
+    filepath.write_bytes(b"file content")
+
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    request = make_mocked_request("GET", "http://python.org/data.txt", writer=writer)
+    file_sender = FileResponse(filepath)
+
+    with mock.patch("aiohttp.web_fileresponse.NOSENDFILE", True):
+        prepared = await file_sender.prepare(request)
+        prepared_again = await file_sender.prepare(request)
+
+    writer.write.assert_awaited_once_with(b"file content")
+    assert prepared is writer
+    assert prepared_again is writer
+
+
 async def test_sendfile_fallback_respects_count_boundary() -> None:
     """Regression test: _sendfile_fallback should not read beyond the requested count.
 

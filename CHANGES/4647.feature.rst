@@ -1,0 +1,3 @@
+Made :class:`~aiohttp.web.FileResponse`'s
+:meth:`~aiohttp.web.StreamResponse.prepare` method re-entrant without reopening or
+sending the file again -- by :user:`AG0708`.

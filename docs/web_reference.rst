@@ -949,6 +949,8 @@ and :ref:`aiohttp-web-signals` handlers::
    Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
 
    The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
+   Repeated calls to :meth:`~StreamResponse.prepare` return the existing writer
+   without reopening or sending the file again.
 
    :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.
    :param int chunk_size: Chunk size in bytes which will be passed into
