@@ -706,7 +706,8 @@ def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
 
     The reader hands the whole assembled message to one synchronous
     decompress_sync() call. Empty members produce no output for max_msg_size
-    to bound, so must be limited by member count."""
+    to bound, so must be limited by member count.
+    """
     max_msg_size = 262144
     reader = WebSocketReader(out, max_msg_size, compress=True, decode_text=True)
     payload = EMPTY_DEFLATE_MEMBER * (2 * max_msg_size // 256)
