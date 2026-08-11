@@ -1,0 +1,1 @@
+Increased the default ``max_field_size`` from 8190 to 16384 bytes to accommodate post-quantum X.509 certificates (ML-DSA-87) forwarded via headers like ``X-CLIENT-CERT``. -- by :user:`waterWang`
