@@ -317,7 +317,7 @@ class ClientSession:
         trace_configs: list[TraceConfig[object]] | None = None,
         read_bufsize: int = DEFAULT_CHUNK_SIZE,
         max_line_size: int = 8190,
-        max_field_size: int = 8190,
+        max_field_size: int = 16384,
         max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
