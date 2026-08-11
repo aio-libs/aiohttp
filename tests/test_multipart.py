@@ -1943,9 +1943,7 @@ async def test_multipart_writer_consumed_follows_parts() -> None:
 async def test_body_part_reader_payload_consumed_after_write() -> None:
     """A drained body part reader must report itself as consumed."""
     with Stream(b"Hello, world!\r\n--:--") as stream:
-        body_part = aiohttp.BodyPartReader(
-            BOUNDARY, {}, stream
-        )
+        body_part = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
         payload = BodyPartReaderPayload(body_part)
         assert payload.consumed is False
 
@@ -1959,9 +1957,7 @@ async def test_body_part_reader_payload_consumed_after_write() -> None:
 async def test_multipart_writer_consumed_follows_body_part_reader() -> None:
     """A writer holding a drained body part reader must report itself consumed."""
     with Stream(b"Hello, world!\r\n--:--") as stream:
-        body_part = aiohttp.BodyPartReader(
-            BOUNDARY, {}, stream
-        )
+        body_part = aiohttp.BodyPartReader(BOUNDARY, {}, stream)
         writer = aiohttp.MultipartWriter()
         part = writer.append(body_part)
         assert writer.consumed is False
