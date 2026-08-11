@@ -1,6 +1,7 @@
 """Tests for compression utils."""
 
 import gzip
+import os
 import sys
 import zlib
 from typing import Any
@@ -10,6 +11,7 @@ import pytest
 from aiohttp.compression_utils import (
     MAX_DECOMPRESS_MEMBERS,
     MEMBER_WINDOW_MAX,
+    MEMBER_WINDOW_MIN,
     TooManyMembersError,
     ZLibBackend,
     ZLibCompressor,
@@ -167,6 +169,40 @@ def test_zlib_gzip_multi_member_walks_input_once(
     assert d.decompress_sync(blob) == b""
     assert max(feeds) <= MEMBER_WINDOW_MAX
     assert sum(feeds) < 8 * len(blob)
+
+
+def test_zlib_deflate_multi_member_window_doubles(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A member outgrowing the window is fed in doubling slices, then capped.
+
+    The schedule has to adapt to member size, because the peer chooses it: a
+    fixed large window copies everything past a small member's end into
+    unused_data (a member of window+1 bytes costs a whole window per byte of
+    progress), while a fixed small one needs a call per 64 bytes of a large
+    member.
+    """
+    co = zlib.compressobj(wbits=-15)
+    small = co.compress(b"x") + co.flush()
+    co = zlib.compressobj(wbits=-15)
+    # Incompressible, so the member's wire size exceeds the whole ramp below.
+    large = co.compress(os.urandom(200 * 1024)) + co.flush()
+
+    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+    feeds: list[int] = []
+    decompressobj = d._zlib_backend.decompressobj
+
+    def recording(*, wbits: int) -> _RecordingDecompressObj:
+        return _RecordingDecompressObj(decompressobj(wbits=wbits), feeds)
+
+    monkeypatch.setattr(d._zlib_backend, "decompressobj", recording)
+    out = d.decompress_sync(small + large)
+
+    assert len(out) == 1 + 200 * 1024
+    ramp = [MEMBER_WINDOW_MIN << i for i in range(11)]  # 64 .. 65536
+    assert ramp[-1] == MEMBER_WINDOW_MAX
+    assert feeds[: len(ramp)] == ramp
+    assert max(feeds) == MEMBER_WINDOW_MAX
 
 
 def test_zlib_deflate_member_flood_rejected() -> None:
