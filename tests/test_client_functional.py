@@ -6005,6 +6005,74 @@ async def test_file_upload_307_302_redirect_chain(
         await asyncio.to_thread(f.close)
 
 
+async def test_file_upload_retry_persistent_connection(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """A retried request must resend the whole file, not the unread remainder."""
+    received_bodies: list[bytes] = []
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        if num_requests == 1:
+            assert request.transport is not None
+            request.transport.close()
+            return web.Response()
+
+        received_bodies.append(await request.read())
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_put("/upload", handler)
+
+    client = await aiohttp_client(app)
+    client.session._retry_connection = True
+
+    test_file = tmp_path / "test_retry_upload.txt"
+    content = b"This is test file content for a retried upload."
+    await asyncio.to_thread(test_file.write_bytes, content)
+
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.put("/upload", data=f) as resp:
+            assert resp.status == 200
+    finally:
+        await asyncio.to_thread(f.close)
+
+    assert num_requests == 2
+    assert received_bodies == [content]
+
+
+async def test_upload_retry_persistent_connection_unseekable_body(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """An unreplayable body must not be silently resent truncated on retry."""
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        assert request.transport is not None
+        request.transport.close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_put("/upload", handler)
+
+    client = await aiohttp_client(app)
+    client.session._retry_connection = True
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"
+        yield b"chunk2"
+
+    with pytest.raises((aiohttp.ServerDisconnectedError, aiohttp.ClientOSError)):
+        await client.put("/upload", data=gen())
+
+    assert num_requests == 1
+
+
 async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> None:
     """Test whether StreamReader.total_raw_bytes returns the number of bytes downloaded"""
     source_data = b"@dKal^pH>1h|YW1:c2J$" * 4096

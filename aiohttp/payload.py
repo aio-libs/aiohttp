@@ -1066,6 +1066,10 @@ class AsyncIterablePayload(Payload):
 
         # Stream from the iterator
         remaining_bytes = content_length
+        # Nothing is cached, so advancing the iterator is irreversible: mark the
+        # payload consumed up front so an interrupted write cannot be replayed
+        # from a partially drained iterator.
+        self._consumed = True
 
         try:
             while True:
@@ -1083,7 +1087,6 @@ class AsyncIterablePayload(Payload):
         except StopAsyncIteration:
             # Iterator is exhausted
             self._iter = None
-            self._consumed = True  # Mark as consumed when streamed without caching
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         """Decode the payload content as a string if cached chunks are available."""
