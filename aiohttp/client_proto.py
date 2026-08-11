@@ -237,7 +237,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         read_bufsize: int = DEFAULT_CHUNK_SIZE,
         timeout_ceil_threshold: float = 5,
         max_line_size: int = 8190,
-        max_field_size: int = 8190,
+        max_field_size: int = 16384,
         max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
