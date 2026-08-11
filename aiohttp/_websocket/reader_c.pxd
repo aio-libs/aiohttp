@@ -42,6 +42,8 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
+cdef unsigned int MSG_SIZE_OVERHEAD
+
 cdef class WebSocketDataQueue:
 
     cdef unsigned int _size
@@ -54,6 +56,8 @@ cdef class WebSocketDataQueue:
     cdef public object _buffer
     cdef object _get_buffer
     cdef object _put_buffer
+    cdef object _reader
+    cdef bint _parser_paused
 
     cdef void _release_waiter(self)
 

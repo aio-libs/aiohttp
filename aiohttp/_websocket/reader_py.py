@@ -54,6 +54,10 @@ COMPRESSED_TRUE = 1
 
 TUPLE_NEW = tuple.__new__
 
+# Overhead added to each message to ensure that tiny messages can't use
+# unreasonable amounts of memory.
+MSG_SIZE_OVERHEAD: Final[int] = 128
+
 cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
 
 
@@ -76,6 +80,10 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
+        # Set by WebSocketReader.__init__; used to restart parsing that
+        # stopped part-way through a socket read because the queue was full.
+        self._reader: "WebSocketReader | None" = None
+        self._parser_paused = False
 
     def is_eof(self) -> bool:
         return self._eof
@@ -107,8 +115,10 @@ class WebSocketDataQueue:
         self._exception = None  # Break cyclic references
 
     def feed_data(self, data: "WSMessage") -> None:
+        # Unbox into the typed local before adding, so Cython keeps the sum in
+        # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
         size = data.size
-        self._size += size
+        self._size += size + MSG_SIZE_OVERHEAD
         self._put_buffer(data)
         self._release_waiter()
         if self._size > self._limit and not self._protocol._reading_paused:
@@ -129,7 +139,11 @@ class WebSocketDataQueue:
         if self._buffer:
             data = self._get_buffer()
             size = data.size
-            self._size -= size
+            self._size -= size + MSG_SIZE_OVERHEAD
+            if self._parser_paused and self._size < self._limit:
+                # Resume parsing after a pause.
+                assert self._reader is not None
+                self._reader.feed_data(b"")
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
@@ -147,6 +161,8 @@ class WebSocketReader:
         decode_text: bool,
     ) -> None:
         self.queue = queue
+        # Assign through the typed attribute so Cython resolves it at C level.
+        self.queue._reader = self
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
 
@@ -343,6 +359,7 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
+        self.queue._parser_paused = False
         if self._tail:
             data, self._tail = self._tail + data, b""
 
@@ -540,6 +557,10 @@ class WebSocketReader:
                 )
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
+
+                if self.queue._size > self.queue._limit:
+                    self.queue._parser_paused = True
+                    break
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
         self._tail = data_cstr[start_pos:data_len] if start_pos < data_len else b""

@@ -18,6 +18,7 @@ from aiohttp._websocket.helpers import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
+from aiohttp._websocket.reader_py import MSG_SIZE_OVERHEAD
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
 from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
@@ -29,6 +30,7 @@ from aiohttp.http_websocket import (
     WSMessagePong,
     WSMessageText,
 )
+from aiohttp.streams import EofStream
 
 
 class PatchableWebSocketReader(WebSocketReader):
@@ -932,4 +934,104 @@ async def test_incomplete_frame_not_paused_for_normal_reads(
     # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
     for _ in range(payload_len // 4096):
         parser.feed_data(b"x" * 4096)
+    assert protocol._reading_paused is False
+
+
+def _compressed_burst(payload: bytes, count: int) -> bytes:
+    """`count` complete, independently deflated BINARY messages in one read."""
+    return build_frame(
+        payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True
+    ) * (count)
+
+
+async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None:
+    # Zero-length messages are not free: each one is a queued object. They used
+    # to add nothing to the queue's byte counter, so a peer could stream empty
+    # frames forever without the transport ever being paused.
+    high_water = 2 * 2**16
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 10000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+
+    assert protocol._reading_paused is True
+    assert len(out._buffer) < sent
+    assert len(out._buffer) * MSG_SIZE_OVERHEAD <= high_water + MSG_SIZE_OVERHEAD
+
+
+async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> None:
+    # permessage-deflate reaches ~1000:1, so a single read can carry dozens of
+    # complete frames that each inflate to max_msg_size. pause_reading() only
+    # stops the transport from delivering more data; the parser has to stop
+    # too, or the whole read is inflated into the queue in one go.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    burst = _compressed_burst(payload, 32)
+    assert len(burst) < 2**16  # the whole burst is one plausible socket read
+
+    parser.feed_data(burst)
+
+    assert protocol._reading_paused is True
+    # Overshoot is capped at the one message that crossed the mark, not the
+    # 16 MiB the peer asked us to inflate.
+    assert len(out._buffer) == 1
+    assert sum(msg.size for msg in out._buffer) == len(payload)
+
+
+async def test_backpressure_does_not_drop_stashed_frames(
+    protocol: BaseProtocol,
+) -> None:
+    # The frames the parser stopped short of must still be delivered as the
+    # application drains the queue, with no further socket data to drive it.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 32))
+
+    for _ in range(32):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+    assert not out._buffer
+    assert protocol._reading_paused is False
+
+
+async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
+    # A peer that bursts and then disconnects must not lose the tail: at EOF
+    # there is no resume to ride on, so draining has to keep driving the parser.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 8))
+    parser.feed_eof()
+
+    for _ in range(8):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+    with pytest.raises(EofStream):
+        await asyncio.wait_for(out.read(), 5)
+
+
+async def test_burst_under_high_water_is_parsed_in_one_read(
+    protocol: BaseProtocol,
+) -> None:
+    # Ordinary pipelined traffic that fits under the mark must not be stalled
+    # or split across reads by the backpressure check.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, mask=True) * 50)
+
+    assert len(out._buffer) == 50
     assert protocol._reading_paused is False
