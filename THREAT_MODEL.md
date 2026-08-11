@@ -307,7 +307,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   response-side byte check.
 - **GHSA-w2fm-2cpv-w7v5 (CVE-2026-22815)** (3.13.4) — uncapped memory
   growth on long header / trailer blocks. Fixed by enforcing
-  `max_field_size` / `max_headers` on the trailer block too.
+  `max_field_size` (default increased from 8190 to 16384) / `max_headers` on the trailer block too.
 - **PR #12302** (3.13.5) — duplicate-singleton-header rejection
   was breaking real-world response parsing (servers like Google APIs /
   Werkzeug emit duplicate `Content-Type` / `Server`); fix disables the
