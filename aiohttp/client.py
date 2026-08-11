@@ -886,8 +886,8 @@ class ClientSession:
                             # Rebuilding from `data` would resend only the unread
                             # remainder of a file object; reuse the payload, which
                             # rewinds itself once the cancelled writer has settled.
-                            await req._close()
-                            if req._body.consumed:
+                            await req.close()
+                            if req._body is not None and req._body.consumed:
                                 raise
                             data = req._body
                         continue
