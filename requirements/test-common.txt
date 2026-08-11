@@ -14,7 +14,7 @@ cffi==2.1.1
     # via cryptography
 click==8.4.2
     # via wait-for-it
-coverage==7.15.3
+coverage==7.15.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
