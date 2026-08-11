@@ -689,7 +689,7 @@ class MultipartReader:
         content: StreamReader,
         *,
         client_max_size: int = sys.maxsize,
-        max_field_size: int = 8190,
+        max_field_size: int = 16384,
         max_headers: int = 128,
         max_size_error_cls: type[Exception] = ValueError,
     ) -> None:
