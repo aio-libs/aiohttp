@@ -665,8 +665,9 @@ def test_compressed_multi_block_message(out: WebSocketDataQueue) -> None:
     )
 
     assert error is False
-    assert out._buffer[0] == WSMessageBinary(
-        data=expected, size=len(expected), extra=""
+    assert out._buffer[0] == (
+        WSMessage(WSMsgType.BINARY, expected, ""),
+        len(expected),
     )
 
 
@@ -689,8 +690,9 @@ def test_compressed_multi_member_message(out: WebSocketDataQueue) -> None:
     )
 
     assert error is False
-    assert out._buffer[0] == WSMessageBinary(
-        data=expected, size=len(expected), extra=""
+    assert out._buffer[0] == (
+        WSMessage(WSMsgType.BINARY, expected, ""),
+        len(expected),
     )
 
 
