@@ -48,7 +48,7 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0
     # via -r requirements/lint.in
-librt==0.14.0
+librt==0.15.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
