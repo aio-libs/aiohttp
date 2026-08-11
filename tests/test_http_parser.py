@@ -3258,6 +3258,26 @@ class TestParsePayload:
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
 
+    async def test_http_payload_gzip_empty_member_flood(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A body of many empty members is rejected, not decoded.
+
+        Empty members decode to nothing, so must fail from the member limit.
+        """
+        payload = gzip.compress(b"") * 20000
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(payload),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            p.feed_data(payload)
+
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
