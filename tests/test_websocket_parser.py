@@ -2,6 +2,7 @@ import asyncio
 import pickle
 import random
 import struct
+import zlib
 from unittest import mock
 
 import pytest
@@ -651,6 +652,78 @@ def test_compressed_frame_after_control_frame(
 
     assert out._buffer[0] == (WSMessage(WSMsgType.PONG, b"", ""), 0)
     assert out._buffer[1] == (WSMessage(WSMsgType.TEXT, "hello", ""), 5)
+
+
+# A complete raw-deflate member: BFINAL set, empty fixed-Huffman block,
+# decoding to nothing.
+EMPTY_DEFLATE_MEMBER = b"\x03\x00"
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_multi_block_message(out: WebSocketDataQueue) -> None:
+    """Blocks that leave BFINAL unset stay a single member."""
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    compressobj = zlib.compressobj(wbits=-15)
+    payload = b"".join(
+        compressobj.compress(b"block %d " % i)
+        + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
+        for i in range(50)
+    ).removesuffix(WS_DEFLATE_TRAILING)
+    expected = b"".join(b"block %d " % i for i in range(50))
+
+    # FIN | RSV1 (compressed) | BINARY
+    error, _ = reader.feed_data(
+        PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+    )
+
+    assert error is False
+    assert out._buffer[0] == WSMessageBinary(
+        data=expected, size=len(expected), extra=""
+    )
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_multi_member_message(out: WebSocketDataQueue) -> None:
+    """Concatenated BFINAL members decode.
+
+    A block following a BFINAL one starts a fresh deflate member, so this must
+    keep working well below the member limit.
+    """
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    payload = b""
+    for i in range(50):
+        compressobj = zlib.compressobj(wbits=-15)
+        payload += compressobj.compress(b"part %d " % i) + compressobj.flush()
+    expected = b"".join(b"part %d " % i for i in range(50))
+
+    error, _ = reader.feed_data(
+        PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+    )
+
+    assert error is False
+    assert out._buffer[0] == WSMessageBinary(
+        data=expected, size=len(expected), extra=""
+    )
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
+    """Past the member limit the message is rejected, not decoded.
+
+    The reader hands the whole assembled message to one synchronous
+    decompress_sync() call. Empty members produce no output for max_msg_size
+    to bound, so must be limited by member count.
+    """
+    max_msg_size = 262144
+    reader = WebSocketReader(out, max_msg_size, compress=True, decode_text=True)
+    payload = EMPTY_DEFLATE_MEMBER * (2 * max_msg_size // 256)
+
+    with pytest.raises(WebSocketError) as ctx:
+        reader._feed_data(
+            PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+        )
+
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
