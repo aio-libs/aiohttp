@@ -95,6 +95,8 @@ jobs:
     outputs:
       sdist-filename: >-
         ${{ steps.dist-filename-detection.outputs.sdist-filename }}
+      wheel-filename: >-
+        ${{ steps.dist-filename-detection.outputs.wheel-filename }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -114,16 +116,20 @@ jobs:
     - name: Cythonize
       run: |
         make cythonize
-    - name: Make sdist
+    - name: Build sdists and pure-python wheel
       run: |
-        python -m build --sdist
-    - name: Determine the sdist filename
+        python -m build
+      env:
+        AIOHTTP_NO_EXTENSIONS: 1
+    - name: Determine the sdist and wheel filenames
       id: dist-filename-detection
-      run: echo "sdist-filename=$(basename dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
+      run: |
+        echo "sdist-filename=$(basename dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
+        echo "wheel-filename=$(basename dist/*.whl)" >> "$GITHUB_OUTPUT"
     - name: Upload artifacts
       uses: actions/upload-artifact@v7
       with:
-        name: dist-sdist
+        name: dist-pure
         path: dist
 
   lint-from-git:
@@ -177,11 +183,11 @@ jobs:
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        workflow-artifact-name: dist-sdist
+        workflow-artifact-name: dist-pure
     - name: Download the sdist artifact for the twine check
       uses: actions/download-artifact@v8
       with:
-        name: dist-sdist
+        name: dist-pure
         path: dist/
     - name: Setup Python
       uses: actions/setup-python@v7.0.0
@@ -282,7 +288,7 @@ jobs:
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        workflow-artifact-name: dist-sdist
+        workflow-artifact-name: dist-pure
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
@@ -375,7 +381,7 @@ jobs:
     - name: Download the source distribution
       uses: actions/download-artifact@v8
       with:
-        name: dist-sdist
+        name: dist-pure
         path: dist/
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
@@ -441,7 +447,7 @@ jobs:
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        workflow-artifact-name: dist-sdist
+        workflow-artifact-name: dist-pure
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
@@ -507,11 +513,11 @@ jobs:
       with:
         source-tarball-name: >-
           ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        workflow-artifact-name: dist-sdist
+        workflow-artifact-name: dist-pure
     - name: Download the source distribution
       uses: actions/download-artifact@v8
       with:
-        name: dist-sdist
+        name: dist-pure
         path: dist/
     - name: Setup Python 3.13.2
       id: python-install
@@ -696,7 +702,7 @@ jobs:
     - name: Download the source distribution
       uses: actions/download-artifact@v8
       with:
-        name: dist-sdist
+        name: dist-pure
         path: dist/
     - name: Set up QEMU
       if: ${{ matrix.qemu }}
