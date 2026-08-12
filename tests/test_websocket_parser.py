@@ -2,6 +2,7 @@ import asyncio
 import pickle
 import random
 import struct
+import sys
 import zlib
 from unittest import mock
 
@@ -1020,6 +1021,52 @@ async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
 
     with pytest.raises(EofStream):
         await asyncio.wait_for(out.read(), 5)
+
+
+async def test_stalled_reader_reference_released_after_drain(
+    protocol: BaseProtocol,
+) -> None:
+    # The queue holds the reader back only while parsing is stalled. Keeping it
+    # any longer would leave reader <-> queue as a cycle outliving the
+    # connection, reclaimable only by the collector rather than by refcounting.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 4))
+    assert out._stalled_reader is parser
+    stalled_refcount = sys.getrefcount(parser)
+
+    for _ in range(4):
+        await asyncio.wait_for(out.read(), 5)
+
+    assert sys.getrefcount(parser) == stalled_refcount - 1
+    assert out._stalled_reader is None
+
+
+async def test_stalled_reader_reference_released_on_error(
+    protocol: BaseProtocol,
+) -> None:
+    # A parse error is terminal, so the stashed-reader reference must go too.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    # The reserved opcode sits behind the stash, so it is only reached on a
+    # drain-driven resume.
+    parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, mask=True))
+    assert out._stalled_reader is parser
+    stalled_refcount = sys.getrefcount(parser)
+
+    for _ in range(3):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(WebSocketError):
+        await asyncio.wait_for(out.read(), 5)
+
+    assert sys.getrefcount(parser) == stalled_refcount - 1
+    assert out._stalled_reader is None
 
 
 async def test_burst_under_high_water_is_parsed_in_one_read(

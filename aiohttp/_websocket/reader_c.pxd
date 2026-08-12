@@ -56,8 +56,7 @@ cdef class WebSocketDataQueue:
     cdef public object _buffer
     cdef object _get_buffer
     cdef object _put_buffer
-    cdef object _reader
-    cdef bint _parser_paused
+    cdef public object _stalled_reader
 
     cdef void _release_waiter(self)
 

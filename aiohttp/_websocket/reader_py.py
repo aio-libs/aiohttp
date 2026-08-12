@@ -80,10 +80,9 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
-        # Set by WebSocketReader.__init__; used to restart parsing that
-        # stopped part-way through a socket read because the queue was full.
-        self._reader: "WebSocketReader | None" = None
-        self._parser_paused = False
+        # Held only while the reader has bytes stashed in its _tail, so the
+        # reader <-> queue cycle cannot outlive the stash.
+        self._stalled_reader: "WebSocketReader | None" = None
 
     def is_eof(self) -> bool:
         return self._eof
@@ -98,6 +97,7 @@ class WebSocketDataQueue:
     ) -> None:
         self._eof = True
         self._exception = exc
+        self._stalled_reader = None  # Nothing more will be parsed
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_exception(waiter, exc, exc_cause)
@@ -140,10 +140,9 @@ class WebSocketDataQueue:
             data = self._get_buffer()
             size = data.size
             self._size -= size + MSG_SIZE_OVERHEAD
-            if self._parser_paused and self._size < self._limit:
+            if self._stalled_reader is not None and self._size < self._limit:
                 # Resume parsing after a pause.
-                assert self._reader is not None
-                self._reader.feed_data(b"")
+                self._stalled_reader.feed_data(b"")
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
@@ -161,8 +160,6 @@ class WebSocketReader:
         decode_text: bool,
     ) -> None:
         self.queue = queue
-        # Assign through the typed attribute so Cython resolves it at C level.
-        self.queue._reader = self
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
 
@@ -359,7 +356,7 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
-        self.queue._parser_paused = False
+        self.queue._stalled_reader = None
         if self._tail:
             data, self._tail = self._tail + data, b""
 
@@ -559,7 +556,9 @@ class WebSocketReader:
                 self._state = READ_HEADER
 
                 if self.queue._size > self.queue._limit:
-                    self.queue._parser_paused = True
+                    # Leave the rest of the read in _tail; pause_reading() only
+                    # stops the transport delivering more, not this loop.
+                    self.queue._stalled_reader = self
                     break
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
