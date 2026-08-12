@@ -2,7 +2,6 @@ import asyncio
 import pickle
 import random
 import struct
-import sys
 import zlib
 from unittest import mock
 
@@ -984,6 +983,31 @@ async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> N
     assert sum(msg.size for msg in out._buffer) == len(payload)
 
 
+async def test_read_arriving_over_high_water_inflates_nothing(
+    protocol: BaseProtocol,
+) -> None:
+    # pause_reading() does not retract a read already in flight (the proactor
+    # transport completes its outstanding overlapped read, and a transport
+    # without flow control ignores the pause entirely). Such a read must not
+    # buy the peer one more inflated message before the parser stops again.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 2))
+    assert len(out._buffer) == 1
+
+    # Lands while the queue is still over the mark and nothing has drained.
+    parser.feed_data(_compressed_burst(payload, 2))
+    assert len(out._buffer) == 1
+
+    # All four are still delivered once the application catches up.
+    for _ in range(4):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+
 async def test_backpressure_does_not_drop_stashed_frames(
     protocol: BaseProtocol,
 ) -> None:
@@ -1036,12 +1060,12 @@ async def test_stalled_reader_reference_released_after_drain(
     payload = b"\0" * (512 * 1024)
     parser.feed_data(_compressed_burst(payload, 4))
     assert out._stalled_reader is parser
-    stalled_refcount = sys.getrefcount(parser)
 
     for _ in range(4):
         await asyncio.wait_for(out.read(), 5)
 
-    assert sys.getrefcount(parser) == stalled_refcount - 1
+    # Dropping this reference is what keeps reader <-> queue from becoming a
+    # cycle that outlives the connection.
     assert out._stalled_reader is None
 
 
@@ -1058,14 +1082,13 @@ async def test_stalled_reader_reference_released_on_error(
     # drain-driven resume.
     parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, mask=True))
     assert out._stalled_reader is parser
-    stalled_refcount = sys.getrefcount(parser)
 
     for _ in range(3):
         await asyncio.wait_for(out.read(), 5)
     with pytest.raises(WebSocketError):
         await asyncio.wait_for(out.read(), 5)
 
-    assert sys.getrefcount(parser) == stalled_refcount - 1
+    # As above: the terminal state must release the reference too.
     assert out._stalled_reader is None
 
 

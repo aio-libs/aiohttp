@@ -365,6 +365,11 @@ class WebSocketReader:
         data_cstr = data
 
         while True:
+            if self.queue._size > self.queue._limit:
+                # Over the high-water mark, stop before parsing.
+                self.queue._stalled_reader = self
+                break
+
             # read header
             if self._state == READ_HEADER:
                 if data_len - start_pos < 2:
@@ -554,12 +559,6 @@ class WebSocketReader:
                 )
                 self._frame_payload_len = 0
                 self._state = READ_HEADER
-
-                if self.queue._size > self.queue._limit:
-                    # Leave the rest of the read in _tail; pause_reading() only
-                    # stops the transport delivering more, not this loop.
-                    self.queue._stalled_reader = self
-                    break
 
         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
         self._tail = data_cstr[start_pos:data_len] if start_pos < data_len else b""
