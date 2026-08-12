@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4
     # via -r requirements/lint.in
-aiofastnet==1.0.2
+aiofastnet==1.0.5
     # via -r requirements/lint.in
 aiohappyeyeballs==2.7.1
     # via aiohttp
@@ -164,7 +164,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.2
+virtualenv==21.7.3
     # via pre-commit
 yarl==1.24.5
     # via aiohttp
