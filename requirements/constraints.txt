@@ -8,7 +8,7 @@ aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-aiofastnet==1.0.2 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==1.0.5 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
@@ -253,7 +253,7 @@ requests==2.34.2
     #   sphinxcontrib-spelling
 rich==15.0.0
     # via pytest-codspeed
-setuptools==83.0.0
+setuptools==84.0.0
     # via pip-tools
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
@@ -331,7 +331,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.2
+virtualenv==21.7.3
     # via pre-commit
 wheel==0.47.0
     # via pip-tools
