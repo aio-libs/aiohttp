@@ -1,7 +1,9 @@
 import asyncio
+import gc
 import pickle
 import random
 import struct
+import weakref
 import zlib
 from unittest import mock
 
@@ -1059,7 +1061,8 @@ async def test_stalled_reader_reference_released_after_drain(
 
     payload = b"\0" * (512 * 1024)
     parser.feed_data(_compressed_burst(payload, 4))
-    assert out._stalled_reader is parser
+    stalled = out._stalled_reader
+    assert stalled is not None and stalled() is parser
 
     for _ in range(4):
         await asyncio.wait_for(out.read(), 5)
@@ -1081,7 +1084,8 @@ async def test_stalled_reader_reference_released_on_error(
     # The reserved opcode sits behind the stash, so it is only reached on a
     # drain-driven resume.
     parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, mask=True))
-    assert out._stalled_reader is parser
+    stalled = out._stalled_reader
+    assert stalled is not None and stalled() is parser
 
     for _ in range(3):
         await asyncio.wait_for(out.read(), 5)
@@ -1090,6 +1094,33 @@ async def test_stalled_reader_reference_released_on_error(
 
     # As above: the terminal state must release the reference too.
     assert out._stalled_reader is None
+
+
+async def test_queue_does_not_keep_stalled_reader_alive(
+    protocol: BaseProtocol,
+) -> None:
+    # The one case feed_eof() cannot clean up: the connection dies while
+    # parsing is stalled, then the application drops the response without
+    # draining. The queue's link back must be weak or reader <-> queue
+    # survives as a cycle that only the collector can reclaim.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    parser.feed_eof()
+    # Deliberately not asserted against `parser`: pytest's assertion rewriting
+    # would keep a temporary alive and mask the very thing under test.
+    stalled = out._stalled_reader
+    assert stalled is not None and stalled() is not None
+
+    ref = weakref.ref(parser)
+    del parser, stalled
+    gc.disable()
+    try:
+        assert ref() is None, "queue kept the stalled reader alive"
+    finally:
+        gc.enable()
 
 
 async def test_burst_under_high_water_is_parsed_in_one_read(

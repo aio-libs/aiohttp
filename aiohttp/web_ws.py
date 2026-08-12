@@ -81,6 +81,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _ws_protocol: str | None = None
     _writer: WebSocketWriter | None = None
     _reader: WebSocketDataQueue | None = None
+    _parser: WebSocketReader | None = None
     _closed: bool = False
     _closing: bool = False
     _conn_lost: int = 0
@@ -386,14 +387,16 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._reader = WebSocketDataQueue(
             request._protocol, DEFAULT_CHUNK_SIZE, loop=loop
         )
-        parser = WebSocketReader(
+        # Owns the parser so a stalled reader parked on the queue by weakref
+        # stays alive while this response can still be drained.
+        self._parser = WebSocketReader(
             self._reader,
             self._max_msg_size,
             compress=bool(self._compress),
             decode_text=self._decode_text,
         )
         cb = None if self._heartbeat is None else self._on_data_received
-        request.protocol.set_parser(parser, data_received_cb=cb)
+        request.protocol.set_parser(self._parser, data_received_cb=cb)
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 

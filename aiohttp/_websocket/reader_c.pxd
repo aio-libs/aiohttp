@@ -68,6 +68,10 @@ cdef class WebSocketDataQueue:
 
 cdef class WebSocketReader:
 
+    # cdef classes are not weak-referenceable without this; the queue parks a
+    # weakref here while parsing is stalled.
+    cdef object __weakref__
+
     cdef WebSocketDataQueue queue
     cdef unsigned int _max_msg_size
     cdef bint _decode_text

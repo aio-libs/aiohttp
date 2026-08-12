@@ -6,7 +6,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Final, Generic, Literal, overload
 
-from ._websocket.reader import WebSocketDataQueue
+from ._websocket.reader import WebSocketDataQueue, WebSocketReader
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, frozen_dataclass_decorator, set_result
@@ -78,6 +78,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
         self._writer = writer
         self._reader = reader
+        # Set by ClientSession._ws_connect; owns the parser so a stalled
+        # reader parked on the queue by weakref stays alive while this
+        # response can still be drained.
+        self._parser: WebSocketReader | None = None
         self._protocol = protocol
         self._closed = False
         self._closing = False

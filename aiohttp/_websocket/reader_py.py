@@ -2,6 +2,7 @@
 
 import asyncio
 import builtins
+import weakref
 from collections import deque
 from typing import Final
 
@@ -80,9 +81,7 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
-        # Held only while the reader has bytes stashed in its _tail, so the
-        # reader <-> queue cycle cannot outlive the stash.
-        self._stalled_reader: "WebSocketReader | None" = None
+        self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
 
     def is_eof(self) -> bool:
         return self._eof
@@ -142,7 +141,8 @@ class WebSocketDataQueue:
             self._size -= size + MSG_SIZE_OVERHEAD
             if self._stalled_reader is not None and self._size < self._limit:
                 # Resume parsing after a pause.
-                self._stalled_reader.feed_data(b"")
+                if (reader := self._stalled_reader()) is not None:
+                    reader.feed_data(b"")
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
@@ -367,7 +367,7 @@ class WebSocketReader:
         while True:
             if self.queue._size > self.queue._limit:
                 # Over the high-water mark, stop before parsing.
-                self.queue._stalled_reader = self
+                self.queue._stalled_reader = weakref.ref(self)
                 break
 
             # read header
