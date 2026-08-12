@@ -252,6 +252,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.12 | Cython ⇄ pure-Python divergence | T / S | Behaviour differences between llhttp and the Python fallback may produce parser-confusion if a deployment unintentionally switches backends (e.g. a user installs without compiled extensions). | Med |
 | 1.13 | Vendored llhttp version drift | S / T | An upstream llhttp CVE not picked up by aiohttp's vendoring cadence remains exploitable until `make generate-llhttp` is re-run and released. | Medium |
 | 1.14 | Build/regen of llhttp (`make generate-llhttp`) | S / T | Local tampering or supply-chain compromise of the npm `llhttp` package gets baked into the vendored C. Covered in [§5.19](#519-build--release-supply-chain) but originates here. | Medium |
+| 1.15 | `Content-Encoding` coding chain | D | RFC 9110 §8.4 allows several nested codings; each layer multiplies the decompression amplification available from a small wire body (~1000× per gzip layer), so unbounded chains make client-side zip bombs cheap. | Low–Med |
 
 **Mitigations.**
 
@@ -271,6 +272,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
+| 1.15 | Nested coding amplification | `http_parser.py:parse_content_encoding` (shared by both parsers) decodes at most `MAX_CONTENT_CODINGS = 2` codings — real-world misconfiguration is double-compression (#13364); deeper nesting is hostile — and raises `ContentEncodingError` beyond that instead of decoding or silently passing compressed bytes through. Unknown codings anywhere in the chain disable decoding (passthrough, as for a single unknown coding). `DeflateBuffer` pumps the stage nearest the output first, so each stage buffers at most one `max_length`-sized delivery from the previous one. | None. |
 
 **Past advisories / hardening (recap).**
 
@@ -331,6 +333,12 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   Now rejected at the point it is seen, matching llhttp (request line,
   headers, chunk-size, trailers). Not a vulnerability because no proxy would
   pipeline requests from multiple clients and forward raw LFs to the backend.
+- **Issue #13364** — multi-coding `Content-Encoding` (e.g. `gzip,gzip` from
+  servers that compress twice) was passed through undecoded; now decoded in
+  reverse application order, capped at `MAX_CONTENT_CODINGS = 2` with an
+  explicit `ContentEncodingError` beyond the cap (threat 1.15). Coding
+  tokens are matched case-insensitively and repeated `Content-Encoding`
+  headers are treated as one comma-joined list in both parsers.
 
 These are all currently in place; this section assumes no regression.
 

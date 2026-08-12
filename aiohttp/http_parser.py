@@ -110,6 +110,45 @@ SINGLETON_HEADERS: Final[frozenset[str]] = frozenset(
     }
 )
 
+# Content codings from Content-Encoding the parser can decode transparently.
+SUPPORTED_CONTENT_CODINGS: Final[frozenset[str]] = frozenset(
+    {"gzip", "deflate", "br", "zstd"}
+)
+# Each nested coding multiplies the decompression amplification an attacker
+# can request, so chains longer than this are refused outright.
+MAX_CONTENT_CODINGS: Final[int] = 2
+
+
+def parse_content_encoding(value: str, auto_decompress: bool) -> str | None:
+    """Parse a Content-Encoding header value into a decodable coding chain.
+
+    Returns the lowercased codings joined with "," in the order they were
+    applied when every listed coding is supported, or None when the payload
+    must be passed through as-is. A chain of more than MAX_CONTENT_CODINGS
+    supported codings raises ContentEncodingError when auto_decompress is
+    True: an explicit error beats handing compressed bytes to the caller,
+    while bounding the decompression amplification a peer can request.
+    """
+    if not value.isascii():
+        return None
+    enc = value.lower()
+    if enc in SUPPORTED_CONTENT_CODINGS:
+        return enc
+    if "," not in enc:
+        return None
+    # RFC 9110 section 8.4: multiple codings are listed in the order applied.
+    # "identity" is a synonym for "no encoding".
+    codings = [c for c in (t.strip(" \t") for t in enc.split(",")) if c != "identity"]
+    if not codings or not SUPPORTED_CONTENT_CODINGS.issuperset(codings):
+        return None
+    if len(codings) > MAX_CONTENT_CODINGS:
+        if auto_decompress:
+            raise ContentEncodingError(
+                f"Content-Encoding lists more than {MAX_CONTENT_CODINGS} codings"
+            )
+        return None
+    return ",".join(codings)
+
 
 class RawRequestMessage(NamedTuple):
     method: str
@@ -619,9 +658,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                 upgrade = True
 
         # encoding
-        enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+        # Repeated Content-Encoding headers arrive comma-joined from
+        # HeadersDictProxy.__getitem__, per RFC 9110 section 5.3.
+        enc = headers.get(hdrs.CONTENT_ENCODING)
+        if enc is not None:
+            encoding = parse_content_encoding(enc, self._auto_decompress)
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -1128,6 +1169,51 @@ class HttpPayloadParser:
         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
 
+class _DecompressStage:
+    """One coding of a Content-Encoding chain and its decompressor."""
+
+    __slots__ = ("coding", "decompressor", "_started_decoding")
+
+    def __init__(self, coding: str | None) -> None:
+        self.coding = coding
+        self._started_decoding = False
+
+        self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
+        if coding == "br":
+            if not HAS_BROTLI:
+                raise ContentEncodingError(
+                    "Can not decode content-encoding: brotli (br). "
+                    "Please install `Brotli`"
+                )
+            self.decompressor = BrotliDecompressor()
+        elif coding == "zstd":
+            if not HAS_ZSTD:
+                raise ContentEncodingError(
+                    "Can not decode content-encoding: zstandard (zstd). "
+                    "Please install `backports.zstd`"
+                )
+            self.decompressor = ZSTDDecompressor()
+        else:
+            self.decompressor = ZLibDecompressor(encoding=coding)
+
+    def decompress(self, chunk: bytes, max_length: int) -> bytes:
+        # Inspect the first real byte once to choose the decompressor. An empty
+        # chunk (e.g. a chunk-size line arriving without body bytes) has no
+        # header to sniff, so skip it and wait for the first data byte.
+        if not self._started_decoding and chunk:
+            # RFC1950
+            # bits 0..3 = CM = 0b1000 = 8 = "deflate"
+            # bits 4..7 = CINFO = 1..7 = windows size.
+            if self.coding == "deflate" and chunk[0] & 0xF != 8:
+                # Change the decoder to decompress incorrectly compressed data
+                # Actually we should issue a warning about non-RFC-compliant data.
+                self.decompressor = ZLibDecompressor(
+                    encoding=self.coding, suppress_deflate_header=True
+                )
+            self._started_decoding = True
+        return self.decompressor.decompress_sync(chunk, max_length=max_length)
+
+
 class DeflateBuffer:
     """DeflateStream decompress stream and feed data into specified stream."""
 
@@ -1141,27 +1227,23 @@ class DeflateBuffer:
         self.size = 0
         out.total_compressed_bytes = self.size
         self.encoding = encoding
-        self._started_decoding = False
-
-        self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
-        if encoding == "br":
-            if not HAS_BROTLI:
-                raise ContentEncodingError(
-                    "Can not decode content-encoding: brotli (br). "
-                    "Please install `Brotli`"
-                )
-            self.decompressor = BrotliDecompressor()
-        elif encoding == "zstd":
-            if not HAS_ZSTD:
-                raise ContentEncodingError(
-                    "Can not decode content-encoding: zstandard (zstd). "
-                    "Please install `backports.zstd`"
-                )
-            self.decompressor = ZSTDDecompressor()
-        else:
-            self.decompressor = ZLibDecompressor(encoding=encoding)
-
+        # Codings are listed in the order they were applied (RFC 9110
+        # section 8.4), so decoding walks them in reverse: the last coding
+        # is the outermost layer on the wire.
+        codings = encoding.split(",") if encoding and "," in encoding else [encoding]
+        self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
+
+    @property
+    def decompressor(self) -> BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor:
+        """Decompressor for the outermost coding."""
+        return self._stages[0].decompressor
+
+    @decompressor.setter
+    def decompressor(
+        self, decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
+    ) -> None:
+        self._stages[0].decompressor = decompressor
 
     def set_exception(
         self,
@@ -1175,27 +1257,24 @@ class DeflateBuffer:
         self.size += len(chunk)
         self.out.total_compressed_bytes = self.size
 
-        # Inspect the first real byte once to choose the decompressor. An empty
-        # chunk (e.g. a chunk-size line arriving without body bytes) has no
-        # header to sniff, so skip it and wait for the first data byte.
-        if not self._started_decoding and chunk:
-            # RFC1950
-            # bits 0..3 = CM = 0b1000 = 8 = "deflate"
-            # bits 4..7 = CINFO = 1..7 = windows size.
-            if self.encoding == "deflate" and chunk[0] & 0xF != 8:
-                # Change the decoder to decompress incorrectly compressed data
-                # Actually we should issue a warning about non-RFC-compliant data.
-                self.decompressor = ZLibDecompressor(
-                    encoding=self.encoding, suppress_deflate_header=True
-                )
-            self._started_decoding = True
+        stages = self._stages
+        start = 0
+        if not chunk:
+            # Resume the walk at the stage nearest the output that still holds
+            # pending data: draining it before pumping earlier stages caps the
+            # input a stage can accumulate at one max_length-sized delivery.
+            for i in range(len(stages) - 1, 0, -1):
+                if stages[i].decompressor.data_available:
+                    start = i
+                    break
 
         low_water = self.out._low_water
         max_length = (
             0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         )
         try:
-            chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
+            for i in range(start, len(stages)):
+                chunk = stages[i].decompress(chunk, max_length)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
@@ -1203,19 +1282,21 @@ class DeflateBuffer:
 
         if chunk:
             self.out.feed_data(chunk)
-        return self.decompressor.data_available
+        return any(stage.decompressor.data_available for stage in stages)
 
     def feed_eof(self) -> None:
-        chunk = self.decompressor.flush()
-        # This should never contain data as we defer the call until exhausting
-        # the decompression. If .flush() is returning data, this may indicate a
-        # zip bomb vulnerability as it will decompress all remaining data at once.
-        assert not chunk
+        for stage in self._stages:
+            chunk = stage.decompressor.flush()
+            # This should never contain data as we defer the call until
+            # exhausting the decompression. If .flush() is returning data, this
+            # may indicate a zip bomb vulnerability as it will decompress all
+            # remaining data at once.
+            assert not chunk
 
-        if self.size > 0:
-            # decompressor is not brotli unless encoding is "br"
-            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
-                raise ContentEncodingError("deflate")
+            if self.size > 0:
+                # decompressor is not brotli unless coding is "br"
+                if stage.coding == "deflate" and not stage.decompressor.eof:  # type: ignore[union-attr]
+                    raise ContentEncodingError("deflate")
 
         self.out.feed_eof()
 

@@ -172,6 +172,12 @@ The client session supports the context manager protocol for self closing.
 
    :param bool auto_decompress: Automatically decompress response body (``True`` by default).
 
+      Supported codings are ``gzip``, ``deflate``, ``br`` and ``zstd``.
+      A ``Content-Encoding`` chain of up to 2 supported codings is decoded
+      in reverse order of application; longer chains produce an error
+      instead of an undecoded body, and a body with an unsupported coding
+      is passed through unchanged.
+
       .. versionadded:: 2.3
 
    :param ssl: Default SSL validation mode for requests made through this

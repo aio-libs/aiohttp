@@ -1146,6 +1146,58 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     assert msg.compression is None
 
 
+def test_compression_case_insensitive(parser: HttpRequestParser) -> None:
+    # RFC 9110 section 8.4.1: content codings are case-insensitive.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: GZip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip"
+
+
+def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
+    # RFC 9110 section 8.4: codings are listed in the order they were applied.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: deflate, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "deflate,gzip"
+
+
+def test_compression_repeated_headers(parser: HttpRequestParser) -> None:
+    # Repeated Content-Encoding headers are one comma-joined list.
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\n"
+        b"content-encoding: deflate\r\ncontent-encoding: gzip\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "deflate,gzip"
+
+
+def test_compression_multiple_codings_identity(parser: HttpRequestParser) -> None:
+    # "identity" is a synonym for no encoding and drops out of the chain.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: identity, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip"
+
+
+def test_compression_multiple_codings_unknown(parser: HttpRequestParser) -> None:
+    # An unsupported coding anywhere in the chain disables decoding.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: compress, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression is None
+
+
+def test_compression_too_many_codings(parser: HttpRequestParser) -> None:
+    # Refused outright: nesting multiplies decompression amplification.
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip, gzip, gzip\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        parser.feed_data(text)
+
+
 def test_url_connect(parser: HttpRequestParser) -> None:
     text = b"CONNECT www.google.com HTTP/1.1\r\nHost: a\r\ncontent-length: 0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
@@ -1504,6 +1556,61 @@ async def test_compressed_zlib_64kb(response_cls: type[HttpResponseParser]) -> N
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+async def test_compressed_multiple_codings(response: HttpResponseParser) -> None:
+    """A Content-Encoding chain is decoded in reverse order of application.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13364:
+    a body compressed with deflate and then gzip must be gunzipped first
+    and inflated second, including across flow-control pauses.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"C" * 1024 * 1024
+    compressed = gzip.compress(zlib.compress(original))
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate, gzip\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
+async def test_too_many_codings_without_auto_decompress(
+    response_cls: type[HttpResponseParser],
+) -> None:
+    """With auto-decompression off, a long chain passes through untouched."""
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = response_cls(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+        auto_decompress=False,
+    )
+    protocol._parser = response
+
+    body = b"not really compressed"
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+        b"Content-Encoding: gzip, gzip, gzip\r\n"
+        b"\r\n"
+    ) + body
+
+    msgs, upgrade, tail = response.feed_data(text)
+    msg, payload = msgs[0]
+    assert msg.compression is None
+    assert await payload.read() == body
 
 
 async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> None:
@@ -3543,6 +3650,34 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
 
         # Read all decompressed data
+        result = b"".join(buf._buffer)
+        assert len(result) == len(original)
+        assert result == original
+
+    async def test_streaming_decompress_multiple_codings(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chained codings decode with the same windowed walk as a single one.
+
+        The doubly-compressed payload arrives in small chunks; every stage
+        must keep its intermediate buffering bounded while the output stays
+        identical to the original.
+        """
+        original = b"Hello, chained codings! " * 100_000
+        compressed = gzip.compress(gzip.compress(original))
+
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "gzip,gzip")
+
+        for i in range(0, len(compressed), 1024):  # pragma: no branch
+            chunk = compressed[i : i + 1024]
+            while dbuf.feed_data(chunk):
+                chunk = b""
+
+        dbuf.feed_eof()
+
         result = b"".join(buf._buffer)
         assert len(result) == len(original)
         assert result == original
