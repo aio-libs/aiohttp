@@ -1115,18 +1115,24 @@ async def test_queue_does_not_keep_stalled_reader_alive(
 
     parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
     parser.feed_eof()
-    # Deliberately not asserted against `parser`: pytest's assertion rewriting
-    # would keep a temporary alive and mask the very thing under test.
+    # `parser` deliberately never appears in an assert: pytest's assertion
+    # rewriting keeps temporaries for the failure message, and a lingering
+    # reference to it would mask the very thing under test.
     stalled = out._stalled_reader
-    assert stalled is not None and stalled() is not None
+    assert stalled is not None
 
     ref = weakref.ref(parser)
     del parser, stalled
-    gc.disable()
-    try:
-        assert ref() is None, "queue kept the stalled reader alive"
-    finally:
-        gc.enable()
+    # `out` deliberately stays alive across the collection: a strong link back
+    # would keep the reader reachable from a live root, so this proves the link
+    # is weak rather than merely testing reclamation timing. Collect instead of
+    # disabling the gc -- PyPy has no refcounting to reclaim eagerly, and can
+    # need more than one pass to clear the weakref.
+    for _ in range(3):
+        gc.collect()
+
+    assert ref() is None, "queue kept the stalled reader alive"
+    assert out._stalled_reader is not None and out._stalled_reader() is None
 
 
 async def test_burst_under_high_water_is_parsed_in_one_read(
