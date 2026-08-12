@@ -46,7 +46,7 @@ cdef unsigned int MSG_SIZE_OVERHEAD
 
 cdef class WebSocketDataQueue:
 
-    cdef unsigned int _size
+    cdef public unsigned int _size
     cdef public object _protocol
     cdef unsigned int _limit
     cdef object _loop

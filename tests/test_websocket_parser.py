@@ -1027,6 +1027,12 @@ async def test_backpressure_does_not_drop_stashed_frames(
         assert msg.data == payload
 
     assert not out._buffer
+    # feed_data() adds MSG_SIZE_OVERHEAD and _read_from_buffer() subtracts it;
+    # _size is an unsigned int under Cython, so if those ever drift the
+    # subtraction wraps to ~4G rather than going negative. _size < _limit is
+    # then permanently false and the connection wedges silently: the transport
+    # is never resumed and the stalled parser is never driven again.
+    assert out._size == 0
     assert protocol._reading_paused is False
 
 
