@@ -902,8 +902,14 @@ class ClientRequestBase:
         """Update request headers."""
         self.headers: CIMultiDict[str] = CIMultiDict()
 
-        # Build the host header
-        host = self.url.host_port_subcomponent
+        # Build the host header. Per RFC 6874 §4, the zone id of an IPv6
+        # link-local address only has local significance at the sending
+        # host and must be stripped from the outgoing Host header.
+        url = self.url
+        raw_host = url.raw_host
+        if raw_host is not None and "%" in raw_host:
+            url = url.with_host(raw_host.split("%", 1)[0])
+        host = url.host_port_subcomponent
 
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
@@ -942,7 +948,12 @@ class ClientRequestBase:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            connect_host = self.url.host_subcomponent
+            url = self.url
+            raw_host = url.raw_host
+            if raw_host is not None and "%" in raw_host:
+                # RFC 6874 §4: strip the zone id from the authority.
+                url = url.with_host(raw_host.split("%", 1)[0])
+            connect_host = url.host_subcomponent
             assert connect_host is not None
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
