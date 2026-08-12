@@ -22,11 +22,12 @@ from contextlib import suppress
 import atheris  # noqa: I900
 
 with atheris.instrument_imports():
+    from multidict import CIMultiDict
+
     from aiohttp import BodyPartReader
     from aiohttp.hdrs import CONTENT_TYPE
     from aiohttp.helpers import HeadersDictProxy
     from aiohttp.streams import StreamReader
-    from multidict import CIMultiDict
 
 
 class FuzzStream(StreamReader):
