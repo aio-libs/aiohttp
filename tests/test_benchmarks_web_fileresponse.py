@@ -1,8 +1,10 @@
 """codspeed benchmarks for the web file responses."""
 
 import asyncio
+import os
 import pathlib
 import ssl
+import sys
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -43,7 +45,6 @@ def aiohttp_client_sync(
         client = aiohttp_client_cls(server, **kwargs)
 
         await server.start_server(ssl=server_ssl_context)
-        await client.start_server()
         clients.append(client)
         return client
 
@@ -77,26 +78,57 @@ def conn_type(
     return ConnectionType(s_kwargs={}, c_kwargs={})
 
 
+@dataclass(frozen=True)
+class BenchmarkFile:
+    path: pathlib.Path
+    response_count: int
+
+
+@pytest.fixture(
+    params=((10 * 1024, 100), (1024 * 1024, 10)),
+    ids=("small", "large"),
+)
+def benchmark_file(
+    request: pytest.FixtureRequest, tmp_path: pathlib.Path
+) -> BenchmarkFile:
+    size, response_count = request.param
+    filepath = tmp_path / "sample.txt"
+    filepath.touch()
+    os.truncate(filepath, size)
+    return BenchmarkFile(filepath, response_count)
+
+
 def test_simple_web_file_response(
     event_loop: asyncio.AbstractEventLoop,
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
+    benchmark_file: BenchmarkFile,
+    pytestconfig: pytest.Config,
 ) -> None:
     """Benchmark creating 100 simple web.FileResponse."""
-    response_count = 100
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    server_ssl_context = conn_type.s_kwargs.get("ssl")
+    if server_ssl_context is not None:
+        if sys.version_info >= (3, 12):
+            server_ssl_context.options |= ssl.OP_ENABLE_KTLS
+
+    server_transport: asyncio.Transport | None = None
 
     async def handler(request: web.Request) -> web.FileResponse:
-        return web.FileResponse(path=filepath)
+        nonlocal server_transport
+        server_transport = request.transport
+        return web.FileResponse(path=benchmark_file.path)
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
     async def run_file_response_benchmark() -> None:
         client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
-        for _ in range(response_count):
-            await client.get("/", **conn_type.c_kwargs)
+        for request_number in range(benchmark_file.response_count):
+            response = await client.get("/", **conn_type.c_kwargs)
+            # Consume response.
+            # Large responses may leave transport unclosed on at least python 3.10.
+            await response.read()
         await client.close()
 
     @benchmark
@@ -109,24 +141,24 @@ def test_simple_web_file_sendfile_fallback_response(
     aiohttp_client_sync: AiohttpClient,
     benchmark: BenchmarkFixture,
     conn_type: ConnectionType,
+    benchmark_file: BenchmarkFile,
 ) -> None:
-    """Benchmark creating 100 simple web.FileResponse without sendfile."""
-    response_count = 100
-    filepath = pathlib.Path(__file__).parent / "sample.txt"
+    """Benchmark simple web.FileResponse without sendfile."""
 
     async def handler(request: web.Request) -> web.FileResponse:
         transport = request.transport
         assert transport is not None
         transport._sendfile_compatible = False  # type: ignore[attr-defined]
-        return web.FileResponse(path=filepath)
+        return web.FileResponse(path=benchmark_file.path)
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
     async def run_file_response_benchmark() -> None:
         client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
-        for _ in range(response_count):
-            await client.get("/", **conn_type.c_kwargs)
+        for _ in range(benchmark_file.response_count):
+            response = await client.get("/", **conn_type.c_kwargs)
+            await response.read()
         await client.close()
 
     @benchmark

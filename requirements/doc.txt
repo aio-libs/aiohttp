@@ -10,11 +10,11 @@ alabaster==1.0.0
     # via sphinx
 babel==2.18.0
     # via sphinx
-certifi==2026.5.20
+certifi==2026.7.22
     # via requests
-charset-normalizer==3.4.7
+charset-normalizer==3.4.9
     # via requests
-click==8.4.1
+click==8.4.2
     # via towncrier
 docutils==0.21.2
     # via
@@ -42,7 +42,7 @@ mdurl==0.1.2
     # via markdown-it-py
 myst-parser==4.0.1
     # via -r requirements/doc.in
-packaging==26.2
+packaging==26.3
     # via sphinx
 pygments==2.20.0
     # via sphinx
@@ -68,7 +68,7 @@ sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-mermaid==2.0.2
+sphinxcontrib-mermaid==2.1.0
     # via -r requirements/doc.in
 sphinxcontrib-qthelp==2.0.0
     # via sphinx

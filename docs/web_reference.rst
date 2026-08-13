@@ -167,6 +167,22 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
+   .. attribute:: pre_handler_error
+
+      An :exc:`HTTPBadRequest` set by the protocol when the parser
+      could not parse the incoming bytes, otherwise ``None``. The
+      original parser exception is available as ``__cause__``.
+
+      Users of the low-level :class:`aiohttp.web.Server` (without an
+      :class:`Application`) must inspect this attribute and emit
+      the error response themselves. :class:`Application` users
+      receive the error via the middleware chain and do not need
+      to read this directly.
+
+      Read-only :exc:`HTTPBadRequest` or ``None`` property.
+
+      .. versionadded:: 4.0
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -2246,6 +2262,21 @@ Resource classes hierarchy::
          When set to ``False`` has no impact
 
          if file not found has no impact
+
+   .. method:: set_options_route(handler)
+
+      Register *handler* as the ``OPTIONS`` route for this resource.
+
+      Raises :exc:`RuntimeError` if an ``OPTIONS`` route was already set.
+
+      :param handler: a :ref:`web-handler<aiohttp-web-handler>` for
+                      ``OPTIONS`` requests.
+
+      :return: the newly created :class:`ResourceRoute`.
+
+      .. versionchanged:: 3.15
+
+         Now returns the created :class:`ResourceRoute` instead of ``None``.
 
 
 .. class:: PrefixedSubAppResource

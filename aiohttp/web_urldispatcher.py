@@ -588,13 +588,15 @@ class StaticResource(PrefixResource):
             "routes": self._routes,
         }
 
-    def set_options_route(self, handler: Handler) -> None:
+    def set_options_route(self, handler: Handler) -> "ResourceRoute":
         if "OPTIONS" in self._routes:
             raise RuntimeError("OPTIONS route was set already")
-        self._routes["OPTIONS"] = ResourceRoute(
+        route = ResourceRoute(
             "OPTIONS", handler, self, expect_handler=self._expect_handler
         )
+        self._routes["OPTIONS"] = route
         self._allowed_methods.add("OPTIONS")
+        return route
 
     async def resolve(self, request: Request) -> _Resolve:
         path = request.rel_url.path_safe

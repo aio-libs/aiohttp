@@ -30,6 +30,16 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
+    def test_ows_before_separator(self) -> None:
+        # https://github.com/aio-libs/aiohttp/issues/13002
+        # Optional whitespace before the ";" separator (RFC 9110 §5.6.6) must
+        # not make the quoted-value repair heuristic swallow the next param.
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
+
     def test_inlwithasciifilename(self) -> None:
         disptype, params = parse_content_disposition('inline; filename="foo.html"')
         assert "inline" == disptype
@@ -525,6 +535,22 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    @pytest.mark.parametrize(
+        "header",
+        (
+            # An unknown charset name is attacker-controlled and makes
+            # urllib.parse.unquote raise the builtin LookupError.
+            "attachment; filename*=unknown-8bit''foo-%c3%a4.html",
+            # Undecodable octets raise UnicodeDecodeError.
+            "attachment; filename*=UTF-8''%ff.html",
+        ),
+    )
+    def test_attwithfn2231baddecode(self, header: str) -> None:
+        with pytest.warns(aiohttp.BadContentDispositionParam):
+            disptype, params = parse_content_disposition(header)
+        assert "attachment" == disptype
+        assert {} == params
+
     def test_attwithfn2231dpct(self) -> None:
         disptype, params = parse_content_disposition(
             "attachment; filename*=UTF-8''A-%2541.html"
@@ -537,7 +563,23 @@ class TestParseContentDisposition:
             "attachment; filename*=UTF-8''%5cfoo.html"
         )
         assert "attachment" == disptype
-        assert {"filename*": "\\foo.html"} == params
+        assert {"filename*": "foo.html"} == params
+
+    def test_attwithfn2231abspath(self) -> None:
+        disptype, params = parse_content_disposition(
+            "attachment; filename*=UTF-8''%2Ffoo.html"
+        )
+        assert "attachment" == disptype
+        assert {"filename*": "foo.html"} == params
+
+    def test_attfncontabspath(self) -> None:
+        # The continuation parts are normalised once they are joined, so the
+        # separator survives parsing.
+        disptype, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "attachment" == disptype
+        assert {"filename*0": "/foo.", "filename*1": "html"} == params
 
     def test_attfncont(self) -> None:
         disptype, params = parse_content_disposition(
@@ -643,6 +685,32 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    def test_empty_param_value_no_crash(self) -> None:
+        """Empty param value (e.g. filename=) must not raise IndexError."""
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition("attachment; filename=")
+        assert disptype is None
+        assert {} == params
+
+    def test_empty_param_value_multiple(self) -> None:
+        """Multiple params where one has empty value must not raise IndexError."""
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition(
+                "attachment; name=foo; filename="
+            )
+        assert disptype is None
+        assert {} == params
+
+    def test_disptype_with_trailing_space_before_semicolon(self) -> None:
+        disptype, params = parse_content_disposition('form-data ; name="field"')
+        assert disptype == "form-data"
+        assert params == {"name": "field"}
+
+    def test_disptype_with_trailing_space_no_params(self) -> None:
+        disptype, params = parse_content_disposition("inline ")
+        assert disptype == "inline"
+        assert params == {}
+
 
 class TestContentDispositionFilename:
     # http://greenbytes.de/tech/tc2231/
@@ -659,9 +727,27 @@ class TestContentDispositionFilename:
         params = {"filename*": "файл.html"}
         assert "файл.html" == content_disposition_filename(params)
 
+    def test_filename_ext_abspath(self) -> None:
+        _, params = parse_content_disposition(
+            'form-data; name="f"; filename="/etc/evil"; filename*=UTF-8\'\'%2Fetc%2Fevil'
+        )
+        assert "etc/evil" == content_disposition_filename(params)
+
     def test_attfncont(self) -> None:
         params = {"filename*0": "foo.", "filename*1": "html"}
         assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontabspath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontinnerpath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="dir"; filename*1="/foo.html"'
+        )
+        assert "dir/foo.html" == content_disposition_filename(params)
 
     def test_attfncontqs(self) -> None:
         params = {"filename*0": "foo", "filename*1": "bar.html"}
@@ -670,6 +756,28 @@ class TestContentDispositionFilename:
     def test_attfncontenc(self) -> None:
         params = {"filename*0*": "UTF-8''foo-%c3%a4", "filename*1": ".html"}
         assert "foo-ä.html" == content_disposition_filename(params)
+
+    @pytest.mark.parametrize(
+        "params",
+        (
+            {"filename*0*": "UTF-8''%2Ffoo-%c3%a4", "filename*1": ".html"},
+            {"filename*0*": "UTF-8''%5cfoo-%c3%a4", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontencabspath(self, params: dict[str, str]) -> None:
+        assert "foo-ä.html" == content_disposition_filename(params)
+
+    @pytest.mark.parametrize(
+        "params",
+        (
+            # Unknown charset name raises the builtin LookupError.
+            {"filename*0*": "unknown-8bit''foo-%c3%a4", "filename*1": ".html"},
+            # Undecodable octets raise UnicodeDecodeError.
+            {"filename*0*": "UTF-8''%ff", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontenc_baddecode(self, params: dict[str, str]) -> None:
+        assert content_disposition_filename(params) is None
 
     def test_attfncontlz(self) -> None:
         params = {"filename*0": "foo", "filename*01": "bar"}

@@ -1847,6 +1847,108 @@ async def test_http1_pipelined_queue_resumes_after_drain(
     assert len(handled) == pipelined_requests + 1
 
 
+async def test_http1_pipelined_behind_declined_upgrade_served_once(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Requests pipelined behind a declined upgrade are each served once.
+
+    The bytes following an upgrade request are buffered whole, then re-fed once
+    the handler answers it normally. More of them than the queue holds must
+    still be served, and none of them twice.
+    """
+    pipelined_requests = MAX_MSG_QUEUE_SIZE + 8
+    handled: list[str] = []
+    all_handled = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        if len(handled) == pipelined_requests + 1:
+            all_handled.set()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    def raw_get(path: str) -> bytes:
+        return (
+            f"GET {path} HTTP/1.1\r\nHost: localhost\r\n"
+            "Connection: keep-alive\r\n\r\n"
+        ).encode("ascii")
+
+    # An upgrade the handler answers normally, then the pipeline, in one write.
+    upgrade = (
+        b"GET /upgrade HTTP/1.1\r\nHost: localhost\r\n"
+        b"Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+    )
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            upgrade + b"".join(raw_get(f"/r{i}") for i in range(pipelined_requests))
+        )
+        await writer.drain()
+        await asyncio.wait_for(all_handled.wait(), 10)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert len(handled) == pipelined_requests + 1
+    assert len(set(handled)) == len(handled)
+
+
+async def test_declined_websocket_upgrade_reads_body(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    body_read = b""
+
+    async def ws_handler(request: web.Request) -> web.Response:
+        nonlocal body_read
+        # Decline the upgrade; read the body as a normal handler may.
+        body_read = await request.read()
+        return web.Response(text="declined")
+
+    async def after_handler(request: web.Request) -> web.Response:
+        return web.Response(text="after")
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/after", after_handler)
+    server = await aiohttp_server(app)
+
+    body = b"FooBarBaz\r\n\r\n"
+    # Use raw connection in order to pipeline requests.
+    pipeline = (
+        (
+            b"GET /ws HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Content-Length: %d\r\n\r\n" % len(body)
+        )
+        + body
+        + b"GET /after HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+    )
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(pipeline)
+        await writer.drain()
+        # The trailing request sends Connection: close, so the server closes
+        # once it has answered it -- reading to EOF gathers both responses.
+        response = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert body_read == body
+    # Both the upgrade request and the pipelined request were served.
+    assert response.count(b"HTTP/1.") == 2, response
+    assert response.count(b" 200 ") == 2, response
+
+
 @pytest.mark.parametrize("decompressed_size", [4 * 1024 * 1024, 32 * 1024 * 1024])
 async def test_unread_compressed_body_drain_is_bounded(
     aiohttp_server: AiohttpServer,
@@ -2427,7 +2529,7 @@ async def test_bad_method_for_c_http_parser_not_hangs(
     aiohttp_client: AiohttpClient,
 ) -> None:
     app = web.Application()
-    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    timeout = aiohttp.ClientTimeout(sock_read=3)
     client = await aiohttp_client(app, timeout=timeout)
     resp = await client.request("GET1", "/")
     assert 400 == resp.status

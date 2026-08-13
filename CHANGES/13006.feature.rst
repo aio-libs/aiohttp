@@ -1,0 +1,4 @@
+Added the ``ssl`` parameter to :class:`~aiohttp.ClientSession`, setting the
+default SSL validation mode for every request made through the session; a
+per-request ``ssl`` argument still takes precedence -- by
+:user:`rodrigobnogueira`.

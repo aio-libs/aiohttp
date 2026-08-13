@@ -55,6 +55,8 @@ Anton Zhdan-Pushkin
 Arcadiy Ivanov
 Arie Bovenberg
 Arseny Timoniq
+Arsh Smith
+Arshiya Tabasum
 Artem Yushkovskiy
 Arthur Darcet
 Ashutosh Kumar Singh
@@ -123,6 +125,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+dxbjavid
 Earle Lowe
 Eduard Iskandarov
 Eli Ribble
@@ -195,6 +198,7 @@ Jan Buchar
 Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
+Javid Khan
 Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
@@ -249,6 +253,7 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lukshya Supyal
 Lénárd Szolnoki
 Makc Belousow
 Manuel Miranda
@@ -297,6 +302,7 @@ Oisin Aylward
 Olaf Conradi
 Oleg Höfling
 Omkar Kabde
+oppnc
 Pahaz Blinov
 Panagiotis Kolokotronis
 Pankaj Pandey
@@ -343,6 +349,7 @@ Sebastian Hanula
 Sebastian Hüther
 Sebastien Geffroy
 SeongSoo Cho
+Sergei Grachev
 Sergey Ninua
 Sergey Skripnick
 Serhii Charykov
@@ -367,6 +374,7 @@ Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
 Taha Jahangir
+Taras Kozlov
 Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
@@ -427,6 +435,7 @@ Ye Cao
 Yegor Roganov
 Yifei Kong
 Young-Ho Cha
+Yuri Sukhov
 Yuriy Shatrov
 Yury Novikov
 Yury Pliner

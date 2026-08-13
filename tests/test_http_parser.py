@@ -184,6 +184,24 @@ def test_max_msg_queue_size_caps_emitted_messages(
     assert not upgraded
 
 
+def test_max_msg_queue_size_keeps_tail_to_itself(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    """The remainder is buffered for the next feed, so it must not be returned.
+
+    Handing it back as well gives the caller a second copy of bytes the parser
+    is already holding, and both copies get parsed.
+    """
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+
+    messages, _upgraded, tail = parser.feed_data(_PIPELINED_GET * 10)
+
+    assert len(messages) == 4
+    assert tail == b""
+
+
 def test_max_msg_queue_size_resumes_after_consume(
     request_cls: type[HttpRequestParser],
     protocol: BaseProtocol,
@@ -311,6 +329,41 @@ def test_invalid_linebreak(
                      ^""")
     with pytest.raises(http_exceptions.BadHttpMessage, match=error_detail):
         parser.feed_data(text)
+
+
+def test_partial_request_split_still_parses(parser: HttpRequestParser) -> None:
+    """A legitimate request split mid-line must still stream."""
+    messages, _, _ = parser.feed_data(b"GET /split HTTP/1.1\r\nHo")
+    assert not messages
+    messages, _, _ = parser.feed_data(b"st: a\r\n\r\n")
+    assert len(messages) == 1
+    assert messages[0][0].path == "/split"
+
+
+@pytest.mark.parametrize(
+    "attacker",
+    (
+        pytest.param(
+            b"GET /attacker HTTP/1.1\nHost: a\nX-Foo: bar\n\n", id="request_line"
+        ),
+        pytest.param(
+            b"POST /attacker HTTP/1.1\r\nHost: a\r\n"
+            b"Transfer-Encoding: chunked\r\n\r\n5\n",
+            id="chunk_size",
+        ),
+        pytest.param(
+            b"POST /attacker HTTP/1.1\r\nHost: a\r\n"
+            b"Transfer-Encoding: chunked\r\n\r\n0\r\nX-Trailer: bad\n",
+            id="trailer",
+        ),
+    ),
+)
+def test_reject_bare_lf_at_point_seen(
+    parser: HttpRequestParser, attacker: bytes
+) -> None:
+    """A bare LF where CRLF is required is rejected at the point it's seen."""
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(attacker)
 
 
 def test_cve_2023_37276(parser: HttpRequestParser) -> None:
@@ -610,6 +663,15 @@ def test_whitespace_before_header(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_whitespace_around_header_value(parser: HttpRequestParser) -> None:
+    text = b"GET / HTTP/1.1\r\nHost: a\r\ntest: \t value \t \r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.headers["test"] == "value"
+    assert msg.raw_headers == ((b"Host", b"a"), (b"test", b"value"))
+
+
 @pytest.fixture
 def xfail_c_parser_status(request: pytest.FixtureRequest) -> None:
     if isinstance(request.getfixturevalue("parser"), HttpRequestParserPy):
@@ -630,9 +692,32 @@ def test_parse_unusual_request_line(parser: HttpRequestParser) -> None:
     msg, _ = messages[0]
     assert msg.compression is None
     assert not msg.upgrade
-    assert msg.method == "#smol"
+    assert msg.method == "#SMOL"
     assert msg.path == "//a"
     assert msg.version == (1, 3)
+
+
+def test_py_parser_normalises_method_to_uppercase(
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
+) -> None:
+    """Test Python parser canonicalises method tokens.
+
+    llhttp rejects lowercase upstream, so this only applies to the Python parser.
+    """
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserPy(
+        protocol,
+        event_loop,
+        2**16,
+        max_line_size=8190,
+        max_field_size=8190,
+    )
+    protocol._parser = parser
+    text = b"get /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, _upgrade, _tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, _ = messages[0]
+    assert msg.method == "GET"
 
 
 def test_parse(parser: HttpRequestParser) -> None:
@@ -646,6 +731,21 @@ def test_parse(parser: HttpRequestParser) -> None:
     assert msg.path == "/test"
     assert msg.version == (1, 1)
     assert msg.headers["Host"] == "a"
+
+
+def test_parse_query_method(parser: HttpRequestParser) -> None:
+    """QUERY has the highest llhttp method id; both parsers must decode its name.
+
+    Regression test for a stale hand-maintained method count in the C parser
+    that mapped the last method(s) to "<unknown>".
+    """
+    text = b"QUERY /test HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg = messages[0][0]
+    assert msg.method == "QUERY"
+    assert msg.path == "/test"
+    assert msg.version == (1, 1)
 
 
 async def test_parse_body(parser: HttpRequestParser) -> None:
@@ -847,6 +947,34 @@ def test_upgrade_header_non_ascii(parser: HttpRequestParser) -> None:
     assert not upgrade
 
 
+@pytest.mark.parametrize(
+    ("connection", "expected"),
+    [
+        ("upgrade", True),
+        ("upgrade, keep-alive", True),  # other tokens alongside upgrade
+        ("keep-alive, upgrade", True),  # upgrade not first
+        ("Upgrade, Keep-Alive", True),  # case-insensitive
+        ("keep-alive", False),  # no upgrade token
+        ("keep-alive, notupgrade", False),  # substring is not a token
+    ],
+)
+def test_response_upgrade_token_in_connection_list(
+    response: HttpResponseParser, connection: str, expected: bool
+) -> None:
+    # RFC 9110 §7.6.1: Connection is a comma-separated token list, so the parser
+    # must set msg.upgrade for a 101 response whenever "upgrade" appears as a
+    # token, regardless of position, case, or neighbouring tokens.
+    text = (
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: " + connection.encode() + b"\r\n\r\n"
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg = messages[0][0]
+    assert msg.upgrade == expected
+    assert upgrade == expected
+
+
 def test_request_te_chunked_with_content_length(parser: HttpRequestParser) -> None:
     text = (
         b"GET /test HTTP/1.1\r\n"
@@ -1045,6 +1173,12 @@ def test_url_absolute(parser: HttpRequestParser) -> None:
     assert not upgrade
     assert msg.method == "GET"
     assert msg.url == URL("https://www.google.com/path/to.html")
+
+
+def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
 
 
 def test_headers_old_websocket_key1(parser: HttpRequestParser) -> None:
@@ -1276,6 +1410,52 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert result == b"ok"
 
 
+async def test_decompress_error_while_draining_pending_data(
+    response: HttpResponseParser,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Decompressor failure on the pending-data drain must not crash.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13203
+    where the C parser segfaulted on Python 3.12+ when the decompressor
+    raised while draining pending decompressed data, as brotlicffi 1.2
+    does on its empty-input drain call.
+    """
+
+    class _BrokenDecompressor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self._calls = 0
+
+        def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+            self._calls += 1
+            if self._calls > 1:
+                raise ValueError("decoder is broken")
+            # Must be large enough to exceed the high water mark so the
+            # parser pauses with pending data still available.
+            return b"x" * (1024 * 1024)
+
+        @property
+        def data_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("aiohttp.http_parser.ZLibDecompressor", _BrokenDecompressor)
+
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: 100\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+    # First byte 0x78 keeps the zlib header sniff from swapping decompressors.
+    msgs, upgrade, tail = response.feed_data(headers + b"\x78\x9c" + b"a" * 8)
+    payload = msgs[0][-1]
+
+    # The next feed drains pending data first, which hits the broken decoder.
+    # The parser must not raise; the error is delivered via the payload.
+    response.feed_data(b"b" * 10)
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+
+
 async def test_two_content_length_responses_in_one_call(
     response: HttpResponseParser,
 ) -> None:
@@ -1351,6 +1531,37 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
     assert result == original
 
 
+async def test_compressed_chunked_split_chunk_size_line(
+    response: HttpResponseParser,
+) -> None:
+    """First chunk-size line arrives in a feed that carries no body bytes.
+
+    Regression test for an ``IndexError`` in the pure-Python parser: the
+    chunked parser fed an empty chunk to ``DeflateBuffer`` before any data
+    had been decoded, and the deflate header sniff indexed ``chunk[0]`` on it.
+    """
+    original = b"Hello, world! " * 4
+    compressed = zlib.compress(original)
+    size_line = hex(len(compressed))[2:].encode() + b"\r\n"
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers)
+    payload = msgs[0][-1]
+    # The chunk-size line lands with no body bytes in the same feed, so the
+    # parser transitions into the chunk body with an empty buffer.
+    response.feed_data(size_line)
+    response.feed_data(compressed + b"\r\n0\r\n\r\n")
+
+    result = await payload.read()
+    assert result == original
+    assert payload.exception() is None
+
+
 async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
     """Test read-until-eof + compressed with pause."""
     # Must be large enough to exceed high water mark.
@@ -1369,6 +1580,79 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+async def test_content_length_eof_while_paused(response: HttpResponseParser) -> None:
+    """EOF right after a fully received content-length body must complete it.
+
+    Regression test for #13348:
+    feeding the final body bytes pauses the parser for flow control before
+    the message can complete; a server closing the connection in that state
+    raised ContentLengthError despite received == expected.
+    """
+    # Must be large enough to exceed the high water mark so the parser
+    # pauses with the message not yet complete.
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body)
+
+    msgs, upgrade, tail = response.feed_data(headers + body)
+    payload = msgs[0][-1]
+    # The server has sent everything and closed the connection.
+    response.feed_eof()
+
+    result = await payload.read()
+    assert result == body
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_compressed_content_length_eof_while_paused(
+    response: HttpResponseParser,
+) -> None:
+    """EOF with pending decompressed data on a complete content-length body.
+
+    Like test_content_length_eof_while_paused, but the decompressor still
+    holds pending data at EOF, so completion is deferred until the reader
+    drains it.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 5 * 1024 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    response.feed_eof()
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) <= (2 * 1024 * 1024)
+
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_content_length_eof_while_paused_incomplete(
+    response: HttpResponseParser,
+) -> None:
+    """EOF on a paused parser with a genuinely incomplete body still raises."""
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % (len(body) + 1)
+
+    response.feed_data(headers + body)
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError,
+        match=r"received 1048576 of 1048577 bytes",
+    ):
+        response.feed_eof()
 
 
 async def test_compressed_until_eof_high_water(
@@ -1568,6 +1852,54 @@ async def test_http_request_upgrade_unknown(parser: HttpRequestParser) -> None:
     assert not msg.chunked
     assert tail == b""
     assert await messages[0][-1].read() == b"{}"
+
+
+@pytest.mark.parametrize("chunked", (False, True), ids=("content-length", "chunked"))
+async def test_http_request_upgrade_with_body_read(
+    parser: HttpRequestParser, chunked: bool
+) -> None:
+    body_request = b"foobarbaz\r\n\r\n"
+    if chunked:
+        framing = b"Transfer-Encoding: chunked\r\n"
+        body = b"%x\r\n%s\r\n0\r\n\r\n" % (len(body_request), body_request)
+    else:
+        framing = b"Content-Length: %d\r\n" % len(body_request)
+        body = body_request
+    after = b"GET /after HTTP/1.1\r\nHost: a\r\n\r\n"
+    text = (
+        b"GET /ws HTTP/1.1\r\nHost: a\r\n"
+        b"Connection: Upgrade\r\nUpgrade: websocket\r\n"
+        + framing
+        + b"\r\n"
+        + body
+        + after
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    assert len(messages) == 1
+    msg, payload = messages[0]
+    assert msg.method == "GET"
+    assert msg.path == "/ws"
+    assert msg.upgrade
+    assert await payload.read() == body_request
+    # The connection switches protocols only after the body is fully read.
+    assert upgrade
+    assert tail == after
+
+
+def test_http_request_upgrade_empty_body_allowed(parser: HttpRequestParser) -> None:
+    text = (
+        b"GET /ws HTTP/1.1\r\n"
+        b"Host: a\r\n"
+        b"Connection: Upgrade\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Content-Length: 0\r\n\r\n"
+        b"some raw data"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.upgrade
+    assert upgrade
+    assert tail == b"some raw data"
 
 
 @pytest.fixture
@@ -1936,6 +2268,99 @@ async def test_http_response_parser_bad_chunked_strict_c() -> None:
     )
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(text)
+
+
+# The C parser builds its error message from a snippet of the fed buffer. That
+# snippet must be sliced out of the bounded ``data`` bytes object; materializing the
+# raw llhttp error-position pointer instead runs strlen past the end of the buffer.
+# These tests pin the snippet to bytes that lie inside the fed input, and cover error
+# positions right at the buffer end where the over-read used to happen.
+
+_CHUNKED_RESP_HDR = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+
+# (malformed body appended to a chunked response header, expected error snippet,
+# llhttp error reason)
+_BAD_CHUNKED_RESPONSES = [
+    (b"0\rX\r\n\r\n", b"0\rX", "Expected LF after chunk size"),
+    (b"5\r\nhello\rX\r\n0\r\n\r\n", b"hello\rX", "Expected LF after chunk data"),
+    (b"5\r\nhelloXY\r\n0\r\n\r\n", b"helloXY", "Expected LF after chunk data"),
+    (b"1\r\nA\rB\r\n0\r\n\r\n", b"A\rB", "Expected LF after chunk data"),
+    (b"0_2e\r\n\r\n", b"0_2e", "Invalid character in chunk size"),
+]
+
+# Same, but the buffer ends exactly at the offending byte so the error position sits
+# at the end of the input with no trailing CRLF to bound the old strlen-based slice.
+_BAD_CHUNKED_RESPONSES_AT_END = [
+    (b"0\rX", b"0\rX", "Expected LF after chunk size"),
+    (b"5\r\nhello\rX", b"hello\rX", "Expected LF after chunk data"),
+    (b"0_", b"0_", "Invalid character in chunk size"),
+]
+
+_BAD_REQUESTS_AT_END = [
+    (b"GET / HTTP/1.1\r\nHost: x\n", b"Host: x\n"),
+    (b"POST / HTTP/1.1\r\nHost: x\r\nA: b\x01", b"A: b\x01"),
+]
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(
+    ("body", "snippet", "reason"),
+    _BAD_CHUNKED_RESPONSES + _BAD_CHUNKED_RESPONSES_AT_END,
+)
+async def test_c_parser_error_snippet_bounded_response(
+    body: bytes, snippet: bytes, reason: str
+) -> None:
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = HttpResponseParserC(
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = response
+    text = _CHUNKED_RESP_HDR + body
+    assert snippet in text
+    match = f"{re.escape(reason)}[\\s\\S]*{re.escape(repr(snippet))}"
+    with pytest.raises(http_exceptions.BadHttpMessage, match=match):
+        response.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(("text", "snippet"), _BAD_REQUESTS_AT_END)
+def test_c_parser_error_snippet_at_buffer_end_request(
+    event_loop: asyncio.AbstractEventLoop,
+    server: Server[Request],
+    text: bytes,
+    snippet: bytes,
+) -> None:
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserC(
+        protocol, event_loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = parser
+    assert snippet in text
+    with pytest.raises(http_exceptions.BadHttpMessage, match=re.escape(repr(snippet))):
+        parser.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize("split", [1, 2, 3, 5])
+@pytest.mark.parametrize(("body", "snippet", "reason"), _BAD_CHUNKED_RESPONSES)
+async def test_c_parser_error_snippet_fragmented_response(
+    body: bytes, snippet: bytes, reason: str, split: int
+) -> None:
+    # Feed the malformed body in two pieces so the second feed runs through the
+    # tail-prepend path before the error is reported; the parser must report a clean
+    # error rather than reading past the buffer. The snippet offset shifts with the
+    # split, so pin the stable llhttp reason instead.
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = HttpResponseParserC(
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = response
+    response.feed_data(_CHUNKED_RESP_HDR)
+    with pytest.raises(http_exceptions.BadHttpMessage, match=re.escape(reason)):
+        response.feed_data(body[:split])
+        response.feed_data(body[split:])
 
 
 async def test_http_response_parser_notchunked(
@@ -2371,6 +2796,19 @@ def test_parse_uri_utf8_percent_encoded(parser: HttpRequestParser) -> None:
     assert msg.url.fragment == "фраг"
 
 
+def test_parse_uri_empty_query_with_fragment(parser: HttpRequestParser) -> None:
+    # Origin-form target with an empty query but a fragment: the ``#`` sits
+    # immediately after ``?``. Regression for the C parser folding ``#frag``
+    # into the query string instead of the fragment.
+    text = b"GET /path?#frag HTTP/1.1\r\nHost: a\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.url.path == "/path"
+    assert msg.url.query == {}
+    assert msg.url.fragment == "frag"
+
+
 @pytest.mark.skipif(
     "HttpRequestParserC" not in dir(aiohttp.http_parser),
     reason="C based HTTP parser not available",
@@ -2461,6 +2899,41 @@ class TestParsePayload:
             match=r"received 45 of 100 bytes",
         ):
             p.feed_eof()
+
+    async def test_parse_length_payload_eof_completes_after_pause(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """feed_eof() completes a fully received length payload despite a pause.
+
+        Regression test for #13348:
+        The parser paused for flow control with pending decompressed data
+        when EOF arrived; the fully received body must complete instead of
+        raising ContentLengthError.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        original = b"x" * (1024 * 1024)
+        compressed = zlib.compress(original)
+
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="deflate",
+            headers_parser=HeadersParser(),
+        )
+        p.pause_reading()  # flow control kicked in before the final bytes
+        state, tail = p.feed_data(compressed)
+        assert state is PayloadState.PAYLOAD_HAS_PENDING_INPUT
+        assert not p.done
+
+        # All bytes were received, so EOF drains the pending data and
+        # completes the payload.
+        p.feed_eof()
+
+        assert p.done
+        assert out.is_eof()  # type: ignore[unreachable]
+        assert out.exception() is None
+        result = await out.read()
+        assert result == original
 
     async def test_parse_chunked_payload_size_error(
         self, protocol: BaseProtocol
@@ -2915,6 +3388,26 @@ class TestParsePayload:
         p.feed_data(payload)
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
+
+    async def test_http_payload_gzip_empty_member_flood(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A body of many empty members is rejected, not decoded.
+
+        Empty members decode to nothing, so must fail from the member limit.
+        """
+        payload = gzip.compress(b"") * 20000
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(payload),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            p.feed_data(payload)
 
 
 class TestDeflateBuffer:

@@ -21,6 +21,7 @@ from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     _gen_default_accept_encoding,
 )
@@ -119,6 +120,12 @@ async def test_version_1_0(make_client_request: _RequestMaker) -> None:
 async def test_version_default(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://python.org/"))
     assert req.version == (1, 1)
+
+
+async def test_timeout_property(make_client_request: _RequestMaker) -> None:
+    timeout = ClientTimeout(total=42)
+    req = make_client_request("get", URL("http://python.org/"), timeout=timeout)
+    assert req.timeout is timeout
 
 
 async def test_request_info(make_client_request: _RequestMaker) -> None:
@@ -240,6 +247,16 @@ async def test_host_port_err(make_client_request: _RequestMaker) -> None:
 async def test_hostname_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_client_request("get", URL("http://:8080/"))
+
+
+@pytest.mark.parametrize("scheme", ("socks5", "socks5h"))
+async def test_proxy_scheme_err(
+    make_client_request: _RequestMaker, scheme: str
+) -> None:
+    with pytest.raises(ValueError, match=f"'{scheme}'"):
+        make_client_request(
+            "get", URL("http://py.org/"), proxy=URL(f"{scheme}://127.0.0.1:80")
+        )
 
 
 async def test_host_header_host_first(make_client_request: _RequestMaker) -> None:
@@ -1545,6 +1562,8 @@ def test_terminate_with_closed_loop(
     async def go() -> None:
         nonlocal req, resp, writer
         # Can't use make_client_request here, due to closing the loop mid-test.
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         req = ClientRequest(
             "get",
             URL("http://python.org"),
@@ -1560,7 +1579,20 @@ def test_terminate_with_closed_loop(
             expect100=False,
             response_class=ClientResponse,
             proxy=None,
-            timer=TimerNoop(),
+            response_params={
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+                "max_headers": 128,
+            },
+            timer=timer,
+            timeout=timeout,
             session=None,  # type: ignore[arg-type]
             ssl=True,
             proxy_headers=None,

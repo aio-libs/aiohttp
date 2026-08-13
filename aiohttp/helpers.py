@@ -112,11 +112,18 @@ NO_EXTENSIONS = bool(os.environ.get("AIOHTTP_NO_EXTENSIONS"))
 EMPTY_BODY_STATUS_CODES = frozenset((204, 304, *range(100, 200)))
 # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.1
 # https://datatracker.ietf.org/doc/html/rfc9112#section-6.3-2.2
-EMPTY_BODY_METHODS = hdrs.METH_HEAD_ALL
+EMPTY_BODY_METHODS = frozenset({hdrs.METH_HEAD})
 
 DEBUG = sys.flags.dev_mode or (
     not sys.flags.ignore_environment and bool(os.environ.get("PYTHONASYNCIODEBUG"))
 )
+
+
+EMPTY_SCHEMA_SET = frozenset({""})
+HTTP_SCHEMA_SET = frozenset({"http", "https"})
+WS_SCHEMA_SET = frozenset({"ws", "wss"})
+HTTP_AND_EMPTY_SCHEMA_SET = HTTP_SCHEMA_SET | EMPTY_SCHEMA_SET
+HIGH_LEVEL_SCHEMA_SET = HTTP_AND_EMPTY_SCHEMA_SET | WS_SCHEMA_SET
 
 
 CHAR = {chr(i) for i in range(0, 128)}
@@ -325,7 +332,7 @@ def parse_mimetype(mimetype: str) -> MimeType:
     parts = mimetype.split(";")
     params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
-        if not item:
+        if not item.strip():
             continue
         key, _, value = item.partition("=")
         params.add(key.lower().strip(), value.strip(' "'))
@@ -1157,7 +1164,7 @@ def must_be_empty_body(method: str, code: int) -> bool:
     return (
         code in EMPTY_BODY_STATUS_CODES
         or method in EMPTY_BODY_METHODS
-        or (200 <= code < 300 and method in hdrs.METH_CONNECT_ALL)
+        or (200 <= code < 300 and method == hdrs.METH_CONNECT)
     )
 
 
@@ -1169,5 +1176,5 @@ def should_remove_content_length(method: str, code: int) -> bool:
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-8
     # https://www.rfc-editor.org/rfc/rfc9110.html#section-15.4.5-4
     return code in EMPTY_BODY_STATUS_CODES or (
-        200 <= code < 300 and method in hdrs.METH_CONNECT_ALL
+        200 <= code < 300 and method == hdrs.METH_CONNECT
     )

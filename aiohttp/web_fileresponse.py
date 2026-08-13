@@ -9,7 +9,7 @@ from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
-from typing import IO, TYPE_CHECKING, Any, Final, Optional
+from typing import TYPE_CHECKING, BinaryIO, Final, Optional
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -29,6 +29,11 @@ __all__ = ("FileResponse",)
 
 if TYPE_CHECKING:
     from .web_request import BaseRequest
+
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
 
 
 _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
@@ -92,12 +97,12 @@ class FileResponse(StreamResponse):
         self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
 
-    def _seek_and_read(self, fobj: IO[Any], offset: int, chunk_size: int) -> bytes:
+    def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
-        return fobj.read(chunk_size)  # type: ignore[no-any-return]
+        return fobj.read(chunk_size)
 
     async def _sendfile_fallback(
-        self, writer: AbstractStreamWriter, fobj: IO[Any], offset: int, count: int
+        self, writer: AbstractStreamWriter, fobj: BinaryIO, offset: int, count: int
     ) -> AbstractStreamWriter:
         # To keep memory usage low,fobj is transferred in chunks
         # controlled by the constructor's chunk_size argument.
@@ -118,7 +123,7 @@ class FileResponse(StreamResponse):
         return writer
 
     async def _sendfile(
-        self, request: "BaseRequest", fobj: IO[Any], offset: int, count: int
+        self, request: "BaseRequest", fobj: BinaryIO, offset: int, count: int
     ) -> AbstractStreamWriter:
         writer = await super().prepare(request)
         assert writer is not None
@@ -132,7 +137,10 @@ class FileResponse(StreamResponse):
             raise ConnectionResetError("Connection lost")
 
         try:
-            await loop.sendfile(transport, fobj, offset, count)
+            if aiofastnet is not None:
+                await aiofastnet.sendfile(loop, transport, fobj, offset, count)
+            else:
+                await loop.sendfile(transport, fobj, offset, count)  # type: ignore[unreachable]
         except NotImplementedError:
             return await self._sendfile_fallback(writer, fobj, offset, count)
 

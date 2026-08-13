@@ -23,7 +23,6 @@ from types import TracebackType
 from typing import (
     TYPE_CHECKING,
     Any,
-    Final,
     Generic,
     Literal,
     TypedDict,
@@ -69,34 +68,30 @@ from .client_exceptions import (
     WSMessageTypeError,
     WSServerHandshakeError,
 )
-from .client_middlewares import ClientMiddlewareType, build_client_middlewares
+from .client_middlewares import ClientMiddlewareType, _cached_build_client_middlewares
 from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientResponse,
+    ClientTimeout,
     Fingerprint,
     RequestInfo,
+    ResponseParams,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
     ClientWebSocketResponse,
     ClientWSTimeout,
 )
-from .connector import (
-    HTTP_AND_EMPTY_SCHEMA_SET,
-    BaseConnector,
-    NamedPipeConnector,
-    TCPConnector,
-    UnixConnector,
-)
+from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
 from .cookiejar import CookieJar
 from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
+    HTTP_AND_EMPTY_SCHEMA_SET,
     TimeoutHandle,
     _auth_header_from_netrc,
-    frozen_dataclass_decorator,
     get_env_proxy_for_url,
     netrc_from_env,
     sentinel,
@@ -189,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     read_until_eof: bool
     proxy: StrOrURL | None
     timeout: "ClientTimeout | _SENTINEL | None"
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     trace_request_ctx: object
@@ -213,48 +208,18 @@ class _WSConnectOptions(TypedDict, total=False):
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
     max_msg_size: int
 
 
-@frozen_dataclass_decorator
-class ClientTimeout:
-    total: float | None = None
-    connect: float | None = None
-    sock_read: float | None = None
-    sock_connect: float | None = None
-    ceil_threshold: float = 5
-
-    # pool_queue_timeout: Optional[float] = None
-    # dns_resolution_timeout: Optional[float] = None
-    # socket_connect_timeout: Optional[float] = None
-    # connection_acquiring_timeout: Optional[float] = None
-    # new_connection_timeout: Optional[float] = None
-    # http_header_timeout: Optional[float] = None
-    # response_body_timeout: Optional[float] = None
-
-    # to create a timeout specific for a single request, either
-    # - create a completely new one to overwrite the default
-    # - or use https://docs.python.org/3/library/dataclasses.html#dataclasses.replace
-    # to overwrite the defaults
-
-    def __post_init__(self) -> None:
-        if self.total is not None and self.total == 0:
-            raise ValueError(
-                "total timeout must be a positive number or None to disable, "
-                "got 0. Using 0 to disable timeouts is no longer supported, "
-                "use None instead."
-            )
-
-
-# 5 Minute default read timeout
-DEFAULT_TIMEOUT: Final[ClientTimeout] = ClientTimeout(total=5 * 60, sock_connect=30)
-
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+# https://www.rfc-editor.org/info/rfc10008/#section-1-12
+IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE", "QUERY"}
+)
 
 _RetType_co = TypeVar(
     "_RetType_co",
@@ -262,6 +227,31 @@ _RetType_co = TypeVar(
     covariant=True,
 )
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
+
+
+# Module-level (not a closure) so it has a stable identity for the
+# ``_cached_build_client_middlewares`` cache key.
+async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
+    connector = req._session._connector
+    assert connector is not None
+    try:
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+    except asyncio.TimeoutError as exc:
+        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+
+    assert conn.protocol is not None
+    conn.protocol.set_response_params(**req._response_params)
+    try:
+        resp = await req._send(conn)
+        try:
+            await resp.start(conn)
+        except BaseException:
+            resp.close()
+            raise
+    except BaseException:
+        conn.close()
+        raise
+    return resp
 
 
 @final
@@ -296,6 +286,7 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
+        "_default_ssl",
         "_retry_connection",
         "_middlewares",
     )
@@ -308,6 +299,7 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
         skip_auto_headers: Iterable[str] | None = None,
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
@@ -344,10 +336,16 @@ class ClientSession:
         if self._base_url is not None and not self._base_url.path.endswith("/"):
             raise ValueError("base_url must have a trailing '/'")
 
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                f"got {ssl!r} instead."
+            )
+
         loop = asyncio.get_running_loop()
 
         if timeout is sentinel or timeout is None:
-            timeout = DEFAULT_TIMEOUT
+            timeout = ClientTimeout()
         if not isinstance(timeout, ClientTimeout):
             raise ValueError(
                 f"timeout parameter cannot be of {type(timeout)} type, "
@@ -420,8 +418,9 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
+        self._default_ssl = ssl
         self._retry_connection: bool = True
-        self._middlewares = middlewares
+        self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
         raise TypeError(
@@ -485,7 +484,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -503,6 +502,10 @@ class ClientSession:
         if self.closed:
             raise RuntimeError("Session is closed")
 
+        method = method.upper()
+
+        if ssl is sentinel:
+            ssl = self._default_ssl
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
@@ -598,6 +601,7 @@ class ClientSession:
             await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
+        req: ClientRequest | None = None
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
@@ -667,6 +671,19 @@ class ClientSession:
                                     {hdrs.PROXY_AUTHORIZATION: env_proxy_auth}
                                 )
 
+                    response_params: ResponseParams = {
+                        "timer": timer,
+                        "skip_payload": method in EMPTY_BODY_METHODS,
+                        "read_until_eof": read_until_eof,
+                        "auto_decompress": auto_decompress,
+                        "read_timeout": real_timeout.sock_read,
+                        "read_bufsize": read_bufsize,
+                        "timeout_ceil_threshold": self._connector._timeout_ceil_threshold,
+                        "max_line_size": max_line_size,
+                        "max_field_size": max_field_size,
+                        "max_headers": max_headers,
+                    }
+
                     req = self._request_class(
                         method,
                         url,
@@ -682,7 +699,9 @@ class ClientSession:
                         loop=self._loop,
                         response_class=self._response_class,
                         proxy=proxy_,
+                        response_params=response_params,
                         timer=timer,
+                        timeout=real_timeout,
                         session=self,
                         ssl=ssl,
                         server_hostname=server_hostname,
@@ -691,52 +710,13 @@ class ClientSession:
                         trust_env=self.trust_env,
                     )
 
-                    async def _connect_and_send_request(
-                        req: ClientRequest,
-                    ) -> ClientResponse:
-                        # connection timeout
-                        assert self._connector is not None
-                        try:
-                            conn = await self._connector.connect(
-                                req, traces=traces, timeout=real_timeout
-                            )
-                        except asyncio.TimeoutError as exc:
-                            raise ConnectionTimeoutError(
-                                f"Connection timeout to host {req.url}"
-                            ) from exc
-
-                        assert conn.protocol is not None
-                        conn.protocol.set_response_params(
-                            timer=timer,
-                            skip_payload=req.method in EMPTY_BODY_METHODS,
-                            read_until_eof=read_until_eof,
-                            auto_decompress=auto_decompress,
-                            read_timeout=real_timeout.sock_read,
-                            read_bufsize=read_bufsize,
-                            timeout_ceil_threshold=self._connector._timeout_ceil_threshold,
-                            max_line_size=max_line_size,
-                            max_field_size=max_field_size,
-                            max_headers=max_headers,
-                        )
-                        try:
-                            resp = await req._send(conn)
-                            try:
-                                await resp.start(conn)
-                            except BaseException:
-                                resp.close()
-                                raise
-                        except BaseException:
-                            conn.close()
-                            raise
-                        return resp
-
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
-                        self._middlewares if middlewares is None else middlewares
+                        self._middlewares if middlewares is None else tuple(middlewares)
                     )
 
                     if effective_middlewares:
-                        handler = build_client_middlewares(
+                        handler = _cached_build_client_middlewares(
                             _connect_and_send_request, effective_middlewares
                         )
                     else:
@@ -753,10 +733,18 @@ class ClientSession:
                     ):
                         raise
                     except (ClientOSError, ServerDisconnectedError):
-                        if retry_persistent_connection:
-                            retry_persistent_connection = False
-                            continue
-                        raise
+                        if not retry_persistent_connection:
+                            raise
+                        retry_persistent_connection = False
+                        if data is not None:
+                            # Rebuilding from `data` would resend only the unread
+                            # remainder of a file object; reuse the payload, which
+                            # rewinds itself once the cancelled writer has settled.
+                            await req._close()
+                            if req._body.consumed:
+                                raise
+                            data = req._body
+                        continue
                     except ClientError:
                         raise
                     except OSError as exc:
@@ -860,9 +848,9 @@ class ClientSession:
 
                         if url.origin() != redirect_origin:
                             cookies = None
-                            headers.pop(hdrs.AUTHORIZATION, None)
-                            headers.pop(hdrs.COOKIE, None)
-                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
+                            headers.popall(hdrs.AUTHORIZATION, None)
+                            headers.popall(hdrs.COOKIE, None)
+                            headers.popall(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -903,6 +891,9 @@ class ClientSession:
             if handle:
                 handle.cancel()
                 handle = None
+
+            if req is not None and req._body is not None:
+                await req._body.close()
 
             for trace in traces:
                 await trace.send_request_exception(
@@ -954,7 +945,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1029,7 +1020,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1085,7 +1076,7 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+        if ssl is not sentinel and not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
                 f"got {ssl!r} instead."
@@ -1124,7 +1115,7 @@ class ClientSession:
                     headers=resp.headers,
                 )
 
-            if resp.headers.get(hdrs.CONNECTION, "").lower() != "upgrade":
+            if not resp._upgraded:
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
@@ -1219,7 +1210,12 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser = WebSocketReader(reader, max_msg_size, decode_text=decode_text)
+            parser = WebSocketReader(
+                reader,
+                max_msg_size,
+                compress=bool(compress),
+                decode_text=decode_text,
+            )
             cb = None if heartbeat is None else ws_resp._on_data_received
             conn_proto.set_parser(parser, reader, data_received_cb=cb)
             return ws_resp

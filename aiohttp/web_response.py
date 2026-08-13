@@ -267,6 +267,8 @@ class StreamResponse(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
             )
         elif isinstance(value, datetime.datetime):
+            if value.microsecond:
+                value = value.replace(microsecond=0) + datetime.timedelta(seconds=1)
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple()
             )
@@ -708,7 +710,7 @@ class Response(StreamResponse):
                 body_len = len(self._body) if self._body else "0"
                 # https://www.rfc-editor.org/rfc/rfc9110.html#section-8.6-7
                 if body_len != "0" or (
-                    self.status != 304 and request.method not in hdrs.METH_HEAD_ALL
+                    self.status != 304 and request.method != hdrs.METH_HEAD
                 ):
                     self._headers[hdrs.CONTENT_LENGTH] = str(body_len)
 

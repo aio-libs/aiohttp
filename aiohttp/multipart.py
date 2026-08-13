@@ -1,5 +1,6 @@
 import base64
 import binascii
+import builtins
 import json
 import re
 import sys
@@ -81,7 +82,7 @@ def parse_content_disposition(
         return bool(string) and TOKEN >= set(string)
 
     def is_quoted(string: str) -> bool:
-        return string[0] == string[-1] == '"'
+        return len(string) >= 2 and string[0] == string[-1] == '"'
 
     def is_rfc5987(string: str) -> bool:
         return is_token(string) and string.count("'") == 2
@@ -102,7 +103,9 @@ def parse_content_disposition(
     if not header:
         return None, {}
 
+    # https://www.rfc-editor.org/info/rfc9110/#section-5.6.6-2
     disptype, *parts = header.split(";")
+    disptype = disptype.strip()
     if not is_token(disptype):
         warnings.warn(BadContentDispositionHeader(header))
         return None, {}
@@ -147,16 +150,20 @@ def parse_content_disposition(
                 continue
 
             try:
-                value = unquote(value, encoding, "strict")
-            except UnicodeDecodeError:  # pragma: nocover
+                value = unquote(value, encoding, "strict").lstrip("\\/")
+            except (builtins.LookupError, UnicodeDecodeError):
+                # The charset is attacker-controlled here; an unknown name
+                # raises the builtin LookupError (the bare name is shadowed in
+                # this module by payload.LookupError).
                 warnings.warn(BadContentDispositionParam(item))
                 continue
 
         else:
             failed = True
-            if is_quoted(value):
+            rstripped = value.rstrip()
+            if is_quoted(rstripped):
                 failed = False
-                value = unescape(value[1:-1].lstrip("\\/"))
+                value = unescape(rstripped[1:-1].lstrip("\\/"))
             elif is_token(value):
                 failed = False
             elif parts:
@@ -206,8 +213,15 @@ def content_disposition_filename(
         if "'" in value:
             encoding, _, value = value.split("'", 2)
             encoding = encoding or "utf-8"
-            return unquote(value, encoding, "strict")
-        return value
+            try:
+                return unquote(value, encoding, "strict").lstrip("\\/")
+            except (builtins.LookupError, UnicodeDecodeError):
+                # Both the charset name and the octets are attacker-controlled
+                # here; an unknown encoding raises the builtin LookupError
+                # (shadowed in this module by payload.LookupError) and
+                # undecodable bytes raise UnicodeDecodeError.
+                return None
+        return value.lstrip("\\/")
 
 
 class MultipartResponseWrapper:
@@ -649,6 +663,10 @@ class BodyPartReaderPayload(Payload):
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         field = self._value
+        # Reading the part drains the underlying stream irreversibly, so mark the
+        # payload consumed up front: even an interrupted write leaves nothing that
+        # a retry or redirect could replay.
+        self._consumed = True
         while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
             async for d in field.decode_iter(chunk):
                 await writer.write(d)
@@ -929,6 +947,11 @@ class MultipartWriter(Payload):
         exc_tb: TracebackType | None,
     ) -> None:
         pass
+
+    @property
+    def consumed(self) -> bool:
+        """Whether the writer or any of its parts can no longer be replayed."""
+        return self._consumed or any(part.consumed for part, _, _ in self._parts)
 
     def __iter__(self) -> Iterator[_Part]:
         return iter(self._parts)

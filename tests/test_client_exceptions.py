@@ -1,5 +1,6 @@
 import errno
 import pickle
+import sys
 
 import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -7,6 +8,11 @@ from yarl import URL
 
 from aiohttp import client, client_reqrep
 from aiohttp.helpers import HeadersDictProxy
+from aiohttp.http_parser import RawResponseMessage
+from aiohttp.typedefs import StrOrURL
+
+if sys.version_info >= (3, 11):
+    from typing import assert_type
 
 
 class TestClientResponseError:
@@ -20,6 +26,10 @@ class TestClientResponseError:
     def test_default_status(self) -> None:
         err = client.ClientResponseError(history=(), request_info=self.request_info)
         assert err.status == 0
+        if sys.version_info >= (3, 11):
+            assert_type(
+                err.args, tuple[client.RequestInfo, tuple[client.ClientResponse, ...]]
+            )
 
     def test_status(self) -> None:
         err = client.ClientResponseError(
@@ -108,6 +118,8 @@ class TestClientConnectorError:
         assert err.host == "example.com"
         assert err.port == 8080
         assert err.ssl is True
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[client_reqrep.ConnectionKey, OSError])
 
     def test_pickle(self) -> None:
         err = client.ClientConnectorError(
@@ -165,6 +177,8 @@ class TestClientConnectorCertificateError:
         assert err.host == "example.com"
         assert err.port == 8080
         assert err.ssl is False
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[client_reqrep.ConnectionKey, Exception])
 
     def test_pickle(self) -> None:
         certificate_error = Exception("Bad certificate")
@@ -218,6 +232,8 @@ class TestServerDisconnectedError:
 
         err = client.ServerDisconnectedError(message="No connection")
         assert err.message == "No connection"
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[RawResponseMessage | str])
 
     def test_pickle(self) -> None:
         err = client.ServerDisconnectedError(message="No connection")
@@ -252,6 +268,8 @@ class TestServerFingerprintMismatch:
         assert err.got == b"got"
         assert err.host == "example.com"
         assert err.port == 8080
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[bytes, bytes, str, int])
 
     def test_pickle(self) -> None:
         err = client.ServerFingerprintMismatch(
@@ -280,6 +298,8 @@ class TestInvalidURL:
         err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert err.url == ":wrong:url:"
         assert err.description == ":description:"
+        if sys.version_info >= (3, 11):
+            assert_type(err.args, tuple[StrOrURL] | tuple[StrOrURL, str])
 
     def test_pickle(self) -> None:
         err = client.InvalidURL(url=":wrong:url:")

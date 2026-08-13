@@ -9,7 +9,16 @@ import types
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Final,
+    Optional,
+    TypedDict,
+    TypeVar,
+    cast,
+    overload,
+)
 from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
@@ -70,6 +79,12 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
+class _CloneKwargs(TypedDict, total=False):
+    scheme: str
+    host: str
+    remote: str
+
+
 @frozen_dataclass_decorator
 class FileField:
     name: str
@@ -112,6 +127,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
     _read_bytes: bytes | None = None
+    _pre_handler_error: HTTPBadRequest | None = None
 
     def __init__(
         self,
@@ -127,10 +143,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         scheme: str | None = None,
         host: str | None = None,
         remote: str | None = None,
+        pre_handler_error: HTTPBadRequest | None = None,
     ) -> None:
         self._message = message
         self._protocol = protocol
         self._payload_writer = payload_writer
+        if pre_handler_error is not None:
+            self._pre_handler_error = pre_handler_error
 
         self._payload = payload
         self._headers: HeadersDictProxy = message.headers
@@ -207,7 +226,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         message = self._message._replace(**dct)
 
-        kwargs: dict[str, str] = {}
+        kwargs: _CloneKwargs = {}
         if scheme is not sentinel:
             kwargs["scheme"] = scheme
         if host is not sentinel:
@@ -226,6 +245,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._loop,
             client_max_size=client_max_size,
             state=self._state.copy(),
+            pre_handler_error=self._pre_handler_error,
             **kwargs,
         )
 
@@ -248,6 +268,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     @property
     def client_max_size(self) -> int:
         return self._client_max_size
+
+    @property
+    def pre_handler_error(self) -> HTTPBadRequest | None:
+        return self._pre_handler_error
 
     @reify
     def rel_url(self) -> URL:
@@ -441,7 +465,26 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
         E.g., ``/my%2Fpath%7Cwith%21some%25strange%24characters``
         """
-        return self._message.path
+        path = self._message.path
+
+        # An absolute-form target carries a "scheme://authority" that must not
+        # leak into the path. Strip it, keeping the remainder byte-for-byte,
+        # exactly as an origin-form target. Authority-form is used only by
+        # CONNECT and is left unchanged.
+        # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-9
+        # https://www.rfc-editor.org/info/rfc9112/#name-authority-form
+        if self._message.url.absolute and self._method != "CONNECT":
+            # absolute-form always contains "://" (guaranteed by the parser).
+            scheme_sep = path.find("://")
+            assert scheme_sep != -1
+            cursor = scheme_sep + 3
+            rel = len(path)
+            for delimiter in "/?#":
+                found = path.find(delimiter, cursor)
+                if found != -1:
+                    rel = min(rel, found)
+            return path[rel:]
+        return path
 
     @reify
     def query(self) -> MultiDictProxy[str]:
@@ -641,7 +684,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         encoding = self.charset or "utf-8"
         try:
             return bytes_body.decode(encoding)
-        except LookupError:
+        except (LookupError, UnicodeDecodeError):
             raise HTTPUnsupportedMediaType()
 
     async def json(
@@ -766,7 +809,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 bytes_query = data.rstrip()
                 try:
                     query = bytes_query.decode(charset)
-                except LookupError:
+                except (LookupError, UnicodeDecodeError):
                     raise HTTPUnsupportedMediaType()
                 out.extend(
                     parse_qsl(qs=query, keep_blank_values=True, encoding=charset)
@@ -868,8 +911,7 @@ class Request(BaseRequest):
 
     async def _prepare_hook(self, response: StreamResponse) -> None:
         match_info = self._match_info
-        if match_info is None:
-            return
+        assert match_info is not None
         for app in match_info._apps:
             if on_response_prepare := app.on_response_prepare:
                 await on_response_prepare.send(self, response)

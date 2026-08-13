@@ -1,0 +1,2 @@
+Parameterized test_simple_web_file_response and test_simple_web_file_response_fallback benchmarks by file size (small, large)
+Previously, benchmarks only ran for a small (around 11 kb) file. -- by :user:`tarasko`.

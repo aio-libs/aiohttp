@@ -1,0 +1,1 @@
+Changed default value of ``ClientTimeout.total`` to 5 minutes so it is always present unless explicitly disabled with ``total=None``. ``total`` is also raised to match any larger ``connect``, ``sock_connect``, or ``sock_read`` so a more specific timeout is not silently capped.

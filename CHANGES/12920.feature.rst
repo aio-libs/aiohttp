@@ -1,0 +1,1 @@
+Narrowed the ``args`` type on aiohttp exception classes -- by :user:`Dreamsorcerer`.

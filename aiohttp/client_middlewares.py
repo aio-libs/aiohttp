@@ -1,6 +1,7 @@
 """Client middleware support."""
 
-from collections.abc import Awaitable, Callable, Sequence
+from collections.abc import Awaitable, Callable
+from functools import lru_cache
 
 from .client_reqrep import ClientRequest, ClientResponse
 
@@ -17,7 +18,7 @@ ClientMiddlewareType = Callable[
 
 def build_client_middlewares(
     handler: ClientHandlerType,
-    middlewares: Sequence[ClientMiddlewareType],
+    middlewares: tuple[ClientMiddlewareType, ...],
 ) -> ClientHandlerType:
     """
     Apply middlewares to request handler.
@@ -25,8 +26,7 @@ def build_client_middlewares(
     The middlewares are applied in reverse order, so the first middleware
     in the list wraps all subsequent middlewares and the handler.
 
-    This implementation avoids using partial/update_wrapper to minimize overhead
-    and doesn't cache to avoid holding references to stateful middleware.
+    This implementation avoids using partial/update_wrapper to minimize overhead.
     """
     # Optimize for single middleware case
     if len(middlewares) == 1:
@@ -53,3 +53,6 @@ def build_client_middlewares(
         current_handler = make_wrapper(middleware, current_handler)
 
     return current_handler
+
+
+_cached_build_client_middlewares = lru_cache(maxsize=64)(build_client_middlewares)

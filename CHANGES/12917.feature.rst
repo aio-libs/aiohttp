@@ -1,0 +1,2 @@
+Changed ``StaticResource.set_options_route()`` to return the
+created ``ResourceRoute``, matching ``Resource.add_route`` -- by :user:`Dreamsorcerer`.

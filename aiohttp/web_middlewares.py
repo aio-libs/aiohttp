@@ -3,10 +3,14 @@ import warnings
 from typing import TYPE_CHECKING, TypeVar
 
 from .typedefs import Handler, Middleware
-from .web_exceptions import HTTPMove, HTTPPermanentRedirect
+from .web_exceptions import (
+    HTTPMethodNotAllowed,
+    HTTPMove,
+    HTTPNotFound,
+    HTTPPermanentRedirect,
+)
 from .web_request import Request
 from .web_response import StreamResponse
-from .web_urldispatcher import SystemRoute
 
 __all__ = (
     "middleware",
@@ -81,7 +85,9 @@ def normalize_path_middleware(
     assert correct_configuration, "Cannot both remove and append slash"
 
     async def impl(request: Request, handler: Handler) -> StreamResponse:
-        if isinstance(request.match_info.route, SystemRoute):
+        if isinstance(
+            request.match_info.http_exception, (HTTPNotFound, HTTPMethodNotAllowed)
+        ):
             paths_to_check = []
             if "?" in request.raw_path:
                 path, query = request.raw_path.split("?", 1)

@@ -4,6 +4,7 @@ import gc
 import ipaddress
 import itertools
 import sys
+import time
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -72,6 +73,27 @@ from aiohttp.helpers import (
             "text/plain;base64",
             helpers.MimeType(
                 "text", "plain", "", MultiDictProxy(MultiDict({"base64": ""}))
+            ),
+        ),
+        (
+            "text/html; ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;  ",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html;\t",
+            helpers.MimeType("text", "html", "", MultiDictProxy(MultiDict())),
+        ),
+        (
+            "text/html; charset=utf-8; ",
+            helpers.MimeType(
+                "text",
+                "html",
+                "",
+                MultiDictProxy(MultiDict({"charset": "utf-8"})),
             ),
         ),
     ],
@@ -331,6 +353,10 @@ def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
+@pytest.mark.skipif(
+    time.get_clock_info("monotonic").resolution > 0.001,
+    reason="loop.time() resolution is coarser than the test's 1ms tolerance",
+)
 def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
 
@@ -1163,6 +1189,8 @@ def test_method_must_be_empty_body() -> None:
     assert "HEAD" in EMPTY_BODY_METHODS
     # CONNECT is only empty on a successful response
     assert "CONNECT" not in EMPTY_BODY_METHODS
+    # Callers are expected to pass already-normalised (uppercase) methods.
+    assert "head" not in EMPTY_BODY_METHODS
 
 
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:

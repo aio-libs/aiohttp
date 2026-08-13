@@ -60,7 +60,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: >-
@@ -71,11 +71,11 @@ jobs:
         make sync-direct-runtime-deps
         git diff --exit-code -- requirements/runtime-deps.in
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: 3.11
     - name: Cache PyPI
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@v6.1.0
       with:
         key: pip-lint-${{ hashFiles('requirements/*.txt') }}
         path: ~/.cache/pip
@@ -103,9 +103,13 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
-        PR_BODY: ${{ github.event.pull_request.body }}
       run: |
         set -euo pipefail
+        # Fetch the body fresh: github.event.pull_request.body is frozen at
+        # the webhook payload and stale on re-runs after a body edit.
+        PR_BODY=$(
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
+        )
         added=$(
           gh api --paginate \
             "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
@@ -150,18 +154,18 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@v6.1.0
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: 18
     - name: Generate llhttp sources
@@ -207,7 +211,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -215,7 +219,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v9.0.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -312,7 +316,7 @@ jobs:
             archs: arm64_iphonesimulator
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -320,7 +324,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v9.0.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -336,6 +340,14 @@ jobs:
     - name: Cythonize
       run: |
         make cythonize
+    - name: Free up disk space for Android emulator
+      if: ${{ matrix.config.platform == 'android' }}
+      uses: BRAINSia/free-disk-space@v2.1.3
+      with:
+        android: false
+        docker-images: false
+        mandb: false
+        large-packages: false
     - name: Enable KVM group perms for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
       # This is normally done by cibuildwheel automatically, when it detects Github Actions. But by unsetting GITHUB_ACTIONS
@@ -376,7 +388,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python ${{ matrix.pyver }}
@@ -384,7 +396,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.2.0
+      uses: astral-sh/setup-uv@v9.0.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -448,12 +460,12 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout project
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python 3.13.2
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: 3.13.2
         cache: pip
@@ -471,8 +483,17 @@ jobs:
         make cythonize
     - name: Install self
       run: python -m pip install -e .
+    - name: Load kernel TLS module
+      if: runner.os == 'Linux'
+      run: sudo modprobe tls
+    - name: Show kernel and OpenSSL build information
+      if: runner.os == 'Linux'
+      run: |
+        lsb_release -a
+        uname -r
+        openssl version -a
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v4
+      uses: CodSpeedHQ/action@v5.0.3
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
@@ -491,12 +512,12 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -581,11 +602,11 @@ jobs:
     needs: pre-deploy
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
     - name: Install build tooling and cython
       run: >-
         python -m
@@ -661,7 +682,7 @@ jobs:
           platform: ios
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Set up QEMU
@@ -686,7 +707,7 @@ jobs:
         fi
       shell: bash
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: 3.x
     - name: Install build tooling and cython
@@ -702,7 +723,7 @@ jobs:
       run: |
         make cythonize
     - name: Build wheels
-      uses: pypa/cibuildwheel@v4.0.0
+      uses: pypa/cibuildwheel@v4.2.0
       with:
         # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
         # available on the runner for Windows and macOS. Installing
@@ -751,7 +772,7 @@ jobs:
 
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Login
@@ -810,7 +831,7 @@ jobs:
         skip-existing: true
 
     - name: Sign the dists with Sigstore
-      uses: sigstore/gh-action-sigstore-python@v3.3.0
+      uses: sigstore/gh-action-sigstore-python@v3.5.0
       with:
         inputs: >-
           ./dist/*.tar.gz
@@ -820,8 +841,8 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v3
+      uses: softprops/action-gh-release@v3.0.2
       with:
-        # dist/ contains the built packages, which smoketest-artifacts/
-        # contains the signatures and certificates.
+        # dist/ contains the built packages plus the Sigstore signatures
+        # and certificates emitted alongside them by the signing step above.
         files: dist/**

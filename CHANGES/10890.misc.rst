@@ -1,0 +1,1 @@
+Improved client middleware performance by allowing the chain of middlewares to be cached across requests -- by :user:`Dreamsorcerer`.

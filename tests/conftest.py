@@ -32,7 +32,7 @@ try:
 except ImportError:  # For downstreams only  # pragma: no cover
     HAS_BLOCKBUSTER = False
 
-from aiohttp.client import ClientSession
+from aiohttp.client import ClientSession, ClientTimeout
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientResponse
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
@@ -109,6 +109,11 @@ def blockbuster(request: pytest.FixtureRequest) -> Iterator[None]:
         # synchronization in async code.
         # Allow lock.acquire calls to prevent these false positives
         bb.functions["threading.Lock.acquire"].deactivate()
+
+        # aiofastnet uses os.sendfile only on non-blocking sockets.
+        # aiofastnet transports set non-blocking flag for all received socket objects.
+        # blockbuster triggers anyway.
+        bb.functions["os.sendfile"].deactivate()
         yield
 
 
@@ -439,6 +444,8 @@ async def make_client_request() -> (
     ) -> ClientRequest:
         session = ClientSession()
         sessions.append(session)
+        timer = TimerNoop()
+        timeout = ClientTimeout()
         default_args: ClientRequestArgs = {
             "loop": asyncio.get_running_loop(),
             "params": {},
@@ -452,7 +459,20 @@ async def make_client_request() -> (
             "expect100": False,
             "response_class": ClientResponse,
             "proxy": None,
-            "timer": TimerNoop(),
+            "response_params": {
+                "timer": timer,
+                "skip_payload": True,
+                "read_until_eof": True,
+                "auto_decompress": True,
+                "read_timeout": timeout.sock_read,
+                "read_bufsize": 2**16,
+                "timeout_ceil_threshold": 5,
+                "max_line_size": 8190,
+                "max_field_size": 8190,
+                "max_headers": 128,
+            },
+            "timer": timer,
+            "timeout": timeout,
             "session": session,
             "ssl": True,
             "proxy_headers": None,

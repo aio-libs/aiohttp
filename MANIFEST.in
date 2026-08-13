@@ -17,5 +17,6 @@ global-exclude *.lib
 global-exclude *.dll
 global-exclude *.a
 global-exclude *.obj
+global-exclude *.hash
 exclude aiohttp/*.html
 prune docs/_build

@@ -6,7 +6,7 @@ from collections import deque
 from typing import Final
 
 from ..base_protocol import BaseProtocol
-from ..compression_utils import ZLibDecompressor
+from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
@@ -143,8 +143,8 @@ class WebSocketReader:
         self,
         queue: WebSocketDataQueue,
         max_msg_size: int,
-        compress: bool = True,
-        decode_text: bool = True,
+        compress: bool,
+        decode_text: bool,
     ) -> None:
         self.queue = queue
         self._max_msg_size = max_msg_size
@@ -158,6 +158,9 @@ class WebSocketReader:
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
         self._payload_fragments: list[bytes] = []
+        # Limit number of fragments, so a large number of tiny fragments
+        # doesn't exceed reasonable memory usage.
+        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -245,14 +248,20 @@ class WebSocketReader:
                 # but internally buffer more data such that the payload is
                 # >max_length, so we return one extra byte and if we're able
                 # to do that, then the message is too big.
-                payload_merged = self._decompressobj.decompress_sync(
-                    assembled_payload + WS_DEFLATE_TRAILING,
-                    (
-                        self._max_msg_size + 1
-                        if self._max_msg_size
-                        else self._max_msg_size
-                    ),
-                )
+                try:
+                    payload_merged = self._decompressobj.decompress_sync(
+                        assembled_payload + WS_DEFLATE_TRAILING,
+                        (
+                            self._max_msg_size + 1
+                            if self._max_msg_size
+                            else self._max_msg_size
+                        ),
+                    )
+                except TooManyMembersError as exc:
+                    raise WebSocketError(
+                        WSCloseCode.MESSAGE_TOO_BIG,
+                        "Compressed message has too many deflate members",
+                    ) from exc
                 if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
@@ -293,7 +302,10 @@ class WebSocketReader:
             payload_len = len(payload)
             if payload_len >= 2:
                 close_code = UNPACK_CLOSE_CODE(payload[:2])[0]
-                if close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES:
+                # https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.2
+                if close_code > 4999 or (
+                    close_code < 3000 and close_code not in ALLOWED_CLOSE_CODES
+                ):
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         f"Invalid close code: {close_code}",
@@ -399,18 +411,30 @@ class WebSocketReader:
                         "Control frame payload cannot be larger than 125 bytes",
                     )
 
-                # Set compress status if last package is FIN
-                # OR set compress status if this is first fragment
-                # Raise error if not first fragment with rsv1 = 0x1
-                if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
-                    self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
-                elif rsv1:
-                    raise WebSocketError(
-                        WSCloseCode.PROTOCOL_ERROR,
-                        "Received frame with non-zero reserved bits",
-                    )
+                # Control frames (opcode > 0x7) may be interleaved between the
+                # fragments of a data message and never carry the per-message
+                # compressed bit, so they must not touch the compression state.
+                # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+                # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
+                if opcode > 0x7:
+                    if rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Received frame with non-zero reserved bits",
+                        )
+                else:
+                    # Set compress status if last package is FIN
+                    # OR set compress status if this is first fragment
+                    # Raise error if not first fragment with rsv1 = 0x1
+                    if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
+                        self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
+                    elif rsv1:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "Received frame with non-zero reserved bits",
+                        )
+                    self._frame_fin = bool(fin)
 
-                self._frame_fin = bool(fin)
                 self._frame_opcode = opcode
                 self._has_mask = bool(has_mask)
                 self._payload_len_flag = length
@@ -478,6 +502,12 @@ class WebSocketReader:
                     # If we don't have a complete frame, we need to save the
                     # data for the next call to feed_data.
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if (
+                        self._max_fragments
+                        and len(self._payload_fragments) > self._max_fragments
+                        and not self.queue._protocol._reading_paused
+                    ):
+                        self.queue._protocol.pause_reading()
                     break
 
                 payload: bytes | bytearray

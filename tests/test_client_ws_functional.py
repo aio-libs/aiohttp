@@ -2,7 +2,7 @@ import asyncio
 import json
 import struct
 import sys
-from contextlib import suppress
+import zlib
 from typing import Literal, NoReturn
 from unittest import mock
 
@@ -18,10 +18,10 @@ from aiohttp import (
     hdrs,
     web,
 )
-from aiohttp._websocket.models import WSMessageBinary
+from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
-from aiohttp.http import WSCloseCode
+from aiohttp.http import WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -897,24 +897,8 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
         # surface as a timeout/closure on the client side.
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
-
-        assert ws._writer is not None
-        transport = ws._writer.transport
-
-        # Server-to-client frames are not masked.
-        length = len(payload)  # payload is fixed length of 2048 bytes
-        header = bytes((0x82, 126)) + struct.pack("!H", length)
-
-        frame = header + payload
-        for i in range(0, len(frame), chunk_size):
-            transport.write(frame[i : i + chunk_size])
-            await asyncio.sleep(delay)
-
-        # Ensure the server side is cleaned up.
-        with suppress(asyncio.TimeoutError):
-            await ws.receive(timeout=1.0)
-        with suppress(Exception):
-            await ws.close()
+        # Keep the connection open until the client tears it down.
+        await ws.receive()
         return ws
 
     app = web.Application()
@@ -922,15 +906,43 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     client = await aiohttp_client(app)
 
     async with client.ws_connect("/", heartbeat=heartbeat) as resp:
-        # If heartbeat were not reset on incoming bytes, the client would send
-        # a PING while this frame is still being streamed.
-        with mock.patch.object(
-            resp._writer, "send_frame", wraps=resp._writer.send_frame
-        ) as sf:
-            msg = await resp.receive()
+        assert resp._conn is not None
+        protocol = resp._conn.protocol
+        assert protocol is not None
+
+        # A server->client BINARY frame (unmasked, 16-bit length form).
+        header = bytes((0x82, 126)) + struct.pack("!H", len(payload))
+        frame = header + payload
+
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        # Drive the clock so the result cannot depend on wall-clock scheduling.
+        with (
+            mock.patch.object(loop, "time") as loop_time,
+            mock.patch.object(
+                resp._writer, "send_frame", wraps=resp._writer.send_frame
+            ) as sf,
+        ):
+            loop_time.return_value = now
+            # If heartbeat were not reset on incoming bytes, the client would
+            # send a PING while this frame is still being streamed.
+            for i in range(0, len(frame), chunk_size):
+                # Deliver a chunk via the real receive path, then advance the
+                # clock by less than the heartbeat so the reset stays ahead.
+                protocol.data_received(frame[i : i + chunk_size])
+                now += delay
+                loop_time.return_value = now
+                # Two ticks: run the coalesced reset, then let the heartbeat
+                # timer re-evaluate its deadline against the advanced clock.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+
             assert (
                 sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
             ), "Heartbeat PING sent while data was still being received"
+
+        # Clock restored: the fully-received frame arrives as one BINARY message.
+        msg = await resp.receive()
         assert msg.type is WSMsgType.BINARY
         assert msg.data == payload
         assert not resp.closed
@@ -1618,3 +1630,51 @@ async def test_receive_json_with_orjson_style_loads(
         # receive_json() with orjson-style loads should work with bytes
         data = await ws.receive_json(loads=orjson_style_loads)
         assert data == {"value": 42}
+
+
+async def test_client_rejects_compressed_frame_without_negotiation(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A client that never negotiated permessage-deflate must reject RSV1 frames.
+
+    Per RFC 6455 section 5.2, a non-zero reserved bit with no negotiated
+    extension defining it MUST fail the connection. The client used to build its
+    WebSocketReader without passing ``compress``, so the reader defaulted to
+    ``compress=True`` and silently decompressed server frames with compression
+    off.
+    """
+    payload = b"this frame should never be decompressed by the client"
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        transport = request.transport
+        assert transport is not None
+        # Compress the payload the permessage-deflate way (raw DEFLATE minus the
+        # trailing 00 00 ff ff) and frame it with FIN + RSV1 set, even though the
+        # handshake never negotiated permessage-deflate.
+        compressor = zlib.compressobj(
+            zlib.Z_DEFAULT_COMPRESSION, zlib.DEFLATED, -zlib.MAX_WBITS
+        )
+        compressed = compressor.compress(payload)
+        compressed += compressor.flush(zlib.Z_SYNC_FLUSH)
+        compressed = compressed.removesuffix(WS_DEFLATE_TRAILING)
+        first_byte = 0x80 | 0x40 | WSMsgType.TEXT.value  # FIN + RSV1 + TEXT
+        frame = struct.pack("!BB", first_byte, len(compressed)) + compressed
+        transport.write(frame)
+        # Keep the connection open until the client tears it down.
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as ws:
+        # Default compress=0: no permessage-deflate offered or negotiated.
+        assert ws.compress == 0
+        msg = await ws.receive()
+
+    assert msg.type is WSMsgType.ERROR, msg
+    assert isinstance(msg.data, WebSocketError)
+    assert msg.data.code == WSCloseCode.PROTOCOL_ERROR

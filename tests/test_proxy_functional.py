@@ -5,7 +5,7 @@ import platform
 import ssl
 import sys
 from collections.abc import Awaitable, Callable, Iterator
-from contextlib import suppress
+from contextlib import ExitStack, suppress
 from re import match as match_regex
 from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
@@ -217,6 +217,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     )
 
     with (
+        mock.patch.object(aiohttp.connector, "aiofastnet", None),
         pytest.warns(
             RuntimeWarning,
             match=expected_warning_text,
@@ -246,8 +247,11 @@ async def test_https_proxy_unsupported_tls_in_tls(
 # Filter out the warning from
 # https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
 # otherwise this test will fail because the proxy will die with an error.
+# Parameterizing on use_aiofastnet improves test coverage
 @pytest.mark.asyncio(loop_factories=("uvloop",))
+@pytest.mark.parametrize("use_aiofastnet", [True, False], ids=["aiofastnet", "native"])
 async def test_uvloop_secure_https_proxy(
+    use_aiofastnet: bool,
     client_ssl_ctx: ssl.SSLContext,
     ssl_ctx: ssl.SSLContext,
     secure_proxy_url: URL,
@@ -267,11 +271,17 @@ async def test_uvloop_secure_https_proxy(
     conn = aiohttp.TCPConnector(force_close=True)
     sess = aiohttp.ClientSession(connector=conn)
     try:
-        async with sess.get(
-            url, proxy=secure_proxy_url, ssl=client_ssl_ctx
-        ) as response:
-            assert response.status == 200
-            assert await response.text() == payload
+        with ExitStack() as stack:
+            if not use_aiofastnet:
+                stack.enter_context(
+                    mock.patch.object(aiohttp.connector, "aiofastnet", None)
+                )
+
+            async with sess.get(
+                url, proxy=secure_proxy_url, ssl=client_ssl_ctx
+            ) as response:
+                assert response.status == 200
+                assert await response.text() == payload
     finally:
         await sess.close()
         await conn.close()
