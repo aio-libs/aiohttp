@@ -22,7 +22,7 @@ from contextlib import suppress
 import atheris  # noqa: I900
 
 with atheris.instrument_imports():
-    from aiohttp import BodyPartReader
+    from aiohttp import BodyPartReader, StreamReader
     from aiohttp.hdrs import CONTENT_TYPE
     from aiohttp.helpers import HeadersDictProxy
 
@@ -49,7 +49,7 @@ async def fuzz_bodypart_reader(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)
     obj = BodyPartReader(
         b"--:",
-        HeadersDictProxy({CONTENT_TYPE: fdp.ConsumeUnicode(30)}),
+        HeadersDictProxy(CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)})),
         FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),
     )
     if not obj.at_eof():
