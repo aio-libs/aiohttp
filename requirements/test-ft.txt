@@ -170,7 +170,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.2
+typing-inspection==0.4.3
     # via pydantic
 yarl==1.24.5
     # via
