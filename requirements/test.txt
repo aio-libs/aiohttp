@@ -170,7 +170,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.2
+typing-inspection==0.4.3
     # via pydantic
 uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
