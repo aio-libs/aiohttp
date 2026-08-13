@@ -96,7 +96,6 @@ class WebSocketDataQueue:
     ) -> None:
         self._eof = True
         self._exception = exc
-        self._stalled_reader = None  # Nothing more will be parsed
         if (waiter := self._waiter) is not None:
             self._waiter = None
             set_exception(waiter, exc, exc_cause)

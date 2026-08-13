@@ -79,6 +79,83 @@ async def test_pipelined_request_after_failed_websocket_upgrade(
     assert b"426" in data
 
 
+async def test_stashed_frames_survive_connection_loss(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Frames stashed by receive-queue backpressure outlive the connection.
+
+    A peer can pack far more complete frames into one read than the queue's
+    high-water mark allows, so the parser stops part-way and leaves the rest
+    in its tail. ``connection_lost()`` then drops the protocol's reference to
+    the parser, so only ``WebSocketResponse._parser`` keeps it alive; without
+    that the queue's weak link dies with the connection and every stashed
+    frame is silently lost.
+    """
+    sent = 8000
+    received: asyncio.Future[int] = asyncio.get_running_loop().create_future()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        count = 0
+        try:
+            queue = ws._reader
+            assert queue is not None
+            # Wait for the parser to stall with frames still stashed in its
+            # tail. Note the transport is paused at this point, so the peer's
+            # FIN cannot be observed until reading resumes.
+            for _ in range(1000):
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
+            assert queue._stalled_reader is not None, "parser never stalled"
+
+            # Drop the connection synchronously, exactly as the event loop
+            # does when the peer vanishes. This releases the protocol's only
+            # reference to the parser, leaving ws._parser holding it.
+            protocol = request.protocol
+            protocol.connection_lost(ConnectionResetError("Connection lost"))
+            assert protocol._payload_parser is None
+
+            while True:
+                msg = await ws.receive()
+                if msg.type is not WSMsgType.TEXT:
+                    break
+                count += 1
+        finally:
+            if not received.done():
+                received.set_result(count)
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET / HTTP/1.1\r\n"
+            b"Host: localhost\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n"
+            b"\r\n"
+        )
+        await writer.drain()
+        await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+
+        # One oversized read: empty masked TEXT frames, 6 bytes each.
+        writer.write(b"\x81\x80\x00\x00\x00\x00" * sent)
+        await writer.drain()
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError):
+            await writer.wait_closed()
+
+    assert await asyncio.wait_for(received, timeout=10) == sent
+
+
 async def test_partial_pipelined_request_after_failed_websocket_upgrade(
     aiohttp_server: AiohttpServer,
 ) -> None:

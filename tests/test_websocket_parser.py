@@ -23,6 +23,7 @@ from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp._websocket.reader_py import MSG_SIZE_OVERHEAD
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
 from aiohttp.http_websocket import (
     WebSocketReader,
@@ -1073,15 +1074,38 @@ async def test_stalled_reader_reference_released_after_drain(
     for _ in range(4):
         await asyncio.wait_for(out.read(), 5)
 
-    # Dropping this reference is what keeps reader <-> queue from becoming a
-    # cycle that outlives the connection.
     assert out._stalled_reader is None
 
 
-async def test_stalled_reader_reference_released_on_error(
+async def test_set_exception_still_delivers_stashed_frames(
     protocol: BaseProtocol,
 ) -> None:
-    # A parse error is terminal, so the stashed-reader reference must go too.
+    # set_exception() is also the transport-died hook (WebSocketResponse._cancel).
+    # _read_from_buffer() only raises once the buffer is empty, so complete
+    # frames the parser stopped short of must still be delivered first, exactly
+    # as they were before the parser learned to stall.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    stalled = len(out._buffer)
+    assert stalled < sent
+
+    out.set_exception(ConnectionResetError())
+
+    received = 0
+    with pytest.raises(ConnectionResetError):
+        while True:
+            await asyncio.wait_for(out.read(), 5)
+            received += 1
+    assert received == sent
+
+
+async def test_parse_error_abandons_the_stash(protocol: BaseProtocol) -> None:
+    # A parse error poisons the reader, so re-driving it from a drain is a
+    # no-op and the error surfaces once the buffer is empty.
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
@@ -1097,9 +1121,6 @@ async def test_stalled_reader_reference_released_on_error(
         await asyncio.wait_for(out.read(), 5)
     with pytest.raises(WebSocketError):
         await asyncio.wait_for(out.read(), 5)
-
-    # As above: the terminal state must release the reference too.
-    assert out._stalled_reader is None
 
 
 async def test_queue_does_not_keep_stalled_reader_alive(

@@ -1,5 +1,9 @@
 import asyncio
+import base64
+import contextlib
+import hashlib
 import json
+import socket
 import struct
 import sys
 import zlib
@@ -31,6 +35,82 @@ else:
 
 class PatchableWebSocketDataQueue(WebSocketDataQueue):
     """A WebSocketDataQueue that can be patched."""
+
+
+async def test_stashed_frames_survive_connection_loss(
+    unused_port_socket: socket.socket,
+) -> None:
+    """Frames stashed by receive-queue backpressure outlive the connection.
+
+    Mirror of the server-side test: a peer can pack more complete frames into
+    one read than the queue's high-water mark allows, so the parser stalls
+    with the rest in its tail. ``connection_lost()`` drops the protocol's
+    reference to the parser, so only ``ClientWebSocketResponse._parser`` keeps
+    it alive; without that the queue's weak link dies and the stash is lost.
+    """
+    sent = 8000
+    ws_guid = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+    writers: list[asyncio.StreamWriter] = []
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writers.append(writer)
+        request = await reader.readuntil(b"\r\n\r\n")
+        key = next(
+            line.split(b":", 1)[1].strip()
+            for line in request.split(b"\r\n")
+            if line.lower().startswith(b"sec-websocket-key")
+        )
+        accept = base64.b64encode(hashlib.sha1(key + ws_guid).digest())
+        writer.write(
+            b"HTTP/1.1 101 Switching Protocols\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+            # One oversized read: empty unmasked TEXT frames, 2 bytes each.
+            + b"\x81\x00" * sent
+        )
+        await writer.drain()
+
+    server = await asyncio.start_server(raw_server, sock=unused_port_socket)
+    port = unused_port_socket.getsockname()[1]
+    try:
+        async with aiohttp.ClientSession() as session:
+            ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
+            queue = ws._reader
+            for _ in range(1000):
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
+            assert queue._stalled_reader is not None, "parser never stalled"
+
+            # Drop the connection synchronously, as the event loop does when
+            # the peer vanishes; the transport is paused here, so the peer's
+            # FIN would not be observed on its own.
+            connection = ws._conn
+            assert connection is not None
+            protocol = connection.protocol
+            assert protocol is not None
+            protocol.connection_lost(ConnectionResetError("Connection lost"))
+            assert protocol._payload_parser is None
+
+            count = 0
+            while True:
+                msg = await ws.receive()
+                if msg.type is not WSMsgType.TEXT:
+                    break
+                count += 1
+    finally:
+        for writer in writers:
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+        server.close()
+        await server.wait_closed()
+
+    assert count == sent
 
 
 async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
