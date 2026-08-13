@@ -27,7 +27,6 @@ with atheris.instrument_imports():
     from aiohttp import BodyPartReader, StreamReader
     from aiohttp.hdrs import CONTENT_TYPE
     from aiohttp.helpers import HeadersDictProxy
-    from aiohttp.streams import StreamReader
 
 
 class FuzzStream(StreamReader):
