@@ -24,7 +24,7 @@ import atheris  # noqa: I900
 with atheris.instrument_imports():
     from multidict import CIMultiDict
 
-    from aiohttp import BodyPartReader
+    from aiohttp import BodyPartReader, StreamReader
     from aiohttp.hdrs import CONTENT_TYPE
     from aiohttp.helpers import HeadersDictProxy
     from aiohttp.streams import StreamReader
