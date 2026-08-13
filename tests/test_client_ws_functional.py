@@ -86,15 +86,21 @@ async def test_stashed_frames_survive_connection_loss(
                 await asyncio.sleep(0.01)
             assert queue._stalled_reader is not None, "parser never stalled"
 
-            # Drop the connection synchronously, as the event loop does when
-            # the peer vanishes; the transport is paused here, so the peer's
-            # FIN would not be observed on its own.
+            # Tear the connection down for real: closing the transport is what
+            # drives connection_lost(), which drops the protocol's reference to
+            # the parser. A paused transport never sees the peer's FIN, so this
+            # cannot be triggered by the peer going away.
             connection = ws._conn
             assert connection is not None
             protocol = connection.protocol
             assert protocol is not None
-            protocol.connection_lost(ConnectionResetError("Connection lost"))
-            assert protocol._payload_parser is None
+            assert protocol.transport is not None
+            protocol.transport.close()
+            for _ in range(1000):
+                if protocol._payload_parser is None:
+                    break
+                await asyncio.sleep(0)
+            assert protocol._payload_parser is None, "connection_lost never ran"
 
             count = 0
             while True:

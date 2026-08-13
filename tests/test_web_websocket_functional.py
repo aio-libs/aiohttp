@@ -3,6 +3,7 @@
 import asyncio
 import contextlib
 import json
+import socket
 import sys
 import weakref
 from typing import Literal, NoReturn
@@ -80,7 +81,7 @@ async def test_pipelined_request_after_failed_websocket_upgrade(
 
 
 async def test_stashed_frames_survive_connection_loss(
-    aiohttp_server: AiohttpServer,
+    unused_port_socket: socket.socket,
 ) -> None:
     """Frames stashed by receive-queue backpressure outlive the connection.
 
@@ -110,50 +111,71 @@ async def test_stashed_frames_survive_connection_loss(
                 await asyncio.sleep(0.01)
             assert queue._stalled_reader is not None, "parser never stalled"
 
-            # Drop the connection synchronously, exactly as the event loop
-            # does when the peer vanishes. This releases the protocol's only
+            # Tear the connection down for real: closing the transport is what
+            # drives connection_lost(), which drops the protocol's only
             # reference to the parser, leaving ws._parser holding it.
             protocol = request.protocol
-            protocol.connection_lost(ConnectionResetError("Connection lost"))
-            assert protocol._payload_parser is None
+            assert protocol.transport is not None
+            protocol.transport.close()
+            for _ in range(1000):
+                if protocol._payload_parser is None:
+                    break
+                await asyncio.sleep(0)
+            assert protocol._payload_parser is None, "connection_lost never ran"
 
             while True:
                 msg = await ws.receive()
                 if msg.type is not WSMsgType.TEXT:
                     break
                 count += 1
-        finally:
+        except BaseException as exc:
+            # Surface handler failures in the test rather than reporting a
+            # misleading count; the server would otherwise just log them.
+            if not received.done():
+                received.set_exception(exc)
+            raise
+        else:
             if not received.done():
                 received.set_result(count)
         return ws
 
+    # A plain AppRunner, not the aiohttp_server fixture: TestServer forces
+    # handler_cancellation=True, which kills the handler on connection loss.
+    # Production defaults to False, and that is the case where the stash
+    # still has to be drainable.
     app = web.Application()
     app.router.add_route("GET", "/", handler)
-    server = await aiohttp_server(app)
-
-    reader, writer = await asyncio.open_connection(server.host, server.port)
+    runner = web.AppRunner(app)
+    await runner.setup()
     try:
-        writer.write(
-            b"GET / HTTP/1.1\r\n"
-            b"Host: localhost\r\n"
-            b"Upgrade: websocket\r\n"
-            b"Connection: Upgrade\r\n"
-            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-            b"Sec-WebSocket-Version: 13\r\n"
-            b"\r\n"
-        )
-        await writer.drain()
-        await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        await web.SockSite(runner, unused_port_socket).start()
+        port = unused_port_socket.getsockname()[1]
 
-        # One oversized read: empty masked TEXT frames, 6 bytes each.
-        writer.write(b"\x81\x80\x00\x00\x00\x00" * sent)
-        await writer.drain()
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        try:
+            writer.write(
+                b"GET / HTTP/1.1\r\n"
+                b"Host: localhost\r\n"
+                b"Upgrade: websocket\r\n"
+                b"Connection: Upgrade\r\n"
+                b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                b"Sec-WebSocket-Version: 13\r\n"
+                b"\r\n"
+            )
+            await writer.drain()
+            await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+
+            # One oversized read: empty masked TEXT frames, 6 bytes each.
+            writer.write(b"\x81\x80\x00\x00\x00\x00" * sent)
+            await writer.drain()
+
+            assert await asyncio.wait_for(received, timeout=10) == sent
+        finally:
+            writer.close()
+            with contextlib.suppress(ConnectionResetError):
+                await writer.wait_closed()
     finally:
-        writer.close()
-        with contextlib.suppress(ConnectionResetError):
-            await writer.wait_closed()
-
-    assert await asyncio.wait_for(received, timeout=10) == sent
+        await runner.cleanup()
 
 
 async def test_partial_pipelined_request_after_failed_websocket_upgrade(
