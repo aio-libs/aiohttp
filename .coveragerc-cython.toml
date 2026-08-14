@@ -1,20 +1,69 @@
-[run]
-branch = true
-plugins = [
-  'Cython.Coverage',
-]
-omit = [
-  'site-packages',
+[html]
+show_contexts = true
+skip_covered = false
+
+[paths]
+_site-packages-to-src-mapping = [
+  '.',
+  '*/lib/pypy*/site-packages',
+  '*/lib/python*/site-packages',
+  '*\Lib\site-packages',
 ]
 
 [report]
-partial_also = [
-  'if not TYPE_CHECKING',
-]
 exclude_also = [
   'if TYPE_CHECKING',
   'assert False',
   ': \.\.\.(\s*#.*)?$',
   '^ +\.\.\.$',
-  'pytest.fail\('
+  'pytest.fail\(',
+  '^\s*@pytest\.mark\.xfail',
+]
+# fail_under = 100
+partial_also = [
+  'if not TYPE_CHECKING',
+]
+show_missing = true
+skip_covered = true
+skip_empty = true
+
+[run]
+branch = true
+# NOTE: `ctrace` tracing method is needed because the `sysmon` tracer
+# NOTE: which is default on Python 3.14, causes unprecedented slow-down
+# NOTE: of the test runs. Also, Cython the `Cython.Coverage` plugin does
+# NOTE: not support `sysmon`.
+# Ref: https://github.com/coveragepy/coveragepy/issues/2099
+core = 'ctrace'
+cover_pylib = false
+# NOTE: `disable_warnings` is needed when `pytest-cov` runs in tandem
+# NOTE: with `pytest-xdist`. These warnings are false negative in this
+# NOTE: context.
+#
+# NOTE: It's `coveragepy` that emits the warnings and previously they
+# NOTE: wouldn't get on the radar of `pytest`'s `filterwarnings`
+# NOTE: mechanism. This changed, however, with `pytest >= 8.4`. And
+# NOTE: since we set `filterwarnings = error`, those warnings are being
+# NOTE: raised as exceptions, cascading into `pytest`'s internals and
+# NOTE: causing tracebacks and crashes of the test sessions.
+#
+# Ref:
+# * https://github.com/pytest-dev/pytest-cov/issues/693
+# * https://github.com/pytest-dev/pytest-cov/pull/695
+# * https://github.com/pytest-dev/pytest-cov/pull/696
+disable_warnings = [
+  'module-not-measured',
+]
+# https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
+# dynamic_context = 'test_function'  # conflicts with `pytest-cov` if set here
+parallel = true
+plugins = [
+  'Cython.Coverage',
+]
+relative_files = true
+source = [
+  '.',
+]
+source_pkgs = [
+  'aiohttp',
 ]
