@@ -24,10 +24,8 @@ import atheris  # noqa: I900
 with atheris.instrument_imports():
     from aiohttp.base_protocol import BaseProtocol
     from aiohttp.http_exceptions import BadHttpMessage
-    from aiohttp.http_parser import HttpRequestParserC, HttpRequestParserPy
+    from aiohttp.http_parser import HttpRequestParser
 
-AIOHTTP_VAL = 0
-HttpRequestParser = HttpRequestParserC if AIOHTTP_VAL == 0 else HttpRequestParserPy
 LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True)
 PROTOCOL = BaseProtocol(LOOP)
 
