@@ -17,7 +17,7 @@ exclude_also = [
   ': \.\.\.(\s*#.*)?$',
   '^ +\.\.\.$',
   'pytest.fail\(',
-  '^\s*@pytest\.mark\.xfail',
+  # '^\s*@pytest\.mark\.xfail',  # important for Dreamsorcerer
 ]
 # fail_under = 100
 partial_also = [
