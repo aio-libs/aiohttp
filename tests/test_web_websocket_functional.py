@@ -107,7 +107,7 @@ async def test_stashed_frames_survive_connection_loss(
         # Wait for the parser to stall with frames still stashed in its tail.
         # The transport is paused from here, so the peer's FIN cannot be
         # observed until reading resumes.
-        for _ in range(1000):
+        for _ in range(1000):  # pragma: no branch
             if queue._stalled_reader is not None:
                 break
             await asyncio.sleep(0.01)
