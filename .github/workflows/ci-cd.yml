@@ -209,7 +209,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/
+        pytest --junitxml=junit.xml --numprocesses=auto --cov
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
@@ -226,14 +226,8 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
         PYTHONDEVMODE: 1
-      run: pytest -m dev_mode --cov=aiohttp/ --cov=tests/ --cov-append
+      run: pytest -m dev_mode --cov --cov-append --cov-report=xml
       shell: bash
-    - name: Turn coverage into xml
-      env:
-        COLOR: 'yes'
-        PIP_USER: 1
-      run: |
-        python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
@@ -385,14 +379,9 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --cov=aiohttp/ --cov=tests/ --timeout=0 -m autobahn
+        pytest --junitxml=junit.xml --cov --cov-report=xml
+        --timeout=0 -m autobahn
       shell: bash
-    - name: Turn coverage into xml
-      env:
-        COLOR: 'yes'
-        PIP_USER: 1
-      run: |
-        python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
@@ -499,12 +488,11 @@ jobs:
         PIP_USER: 1
       run: >-
         pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
-        --cov-config=.coveragerc-cython.toml --cov=aiohttp/ --cov=tests/ --numprocesses=auto
+        --cov-config=.coveragerc-cython.toml --cov
+        --cov-report=xml:cython-coverage.xml
+        --numprocesses=auto
         -m 'not dev_mode and not autobahn'
       shell: bash
-    - name: Turn coverage into xml
-      run: |
-        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v6
       with:
