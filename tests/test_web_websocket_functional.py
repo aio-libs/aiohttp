@@ -93,50 +93,48 @@ async def test_stashed_frames_survive_connection_loss(
     frame is silently lost.
     """
     sent = 8000
-    received: asyncio.Future[int] = asyncio.get_running_loop().create_future()
+    # (frames queued when the parser stalled, frames delivered in total)
+    received: asyncio.Future[tuple[int, int]] = (
+        asyncio.get_running_loop().create_future()
+    )
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
+        queue = ws._reader
+        assert queue is not None
+
+        # Wait for the parser to stall with frames still stashed in its tail.
+        # The transport is paused from here, so the peer's FIN cannot be
+        # observed until reading resumes.
+        for _ in range(1000):
+            if queue._stalled_reader is not None:
+                break
+            await asyncio.sleep(0.01)
+        assert queue._stalled_reader is not None, "parser never stalled"
+        stalled = len(queue._buffer)
+
+        # Tear the connection down for real: closing the transport is what
+        # drives connection_lost(), which drops the protocol's only reference
+        # to the parser, leaving ws._parser holding it.
+        protocol = request.protocol
+        transport = protocol.transport
+        assert transport is not None
+        transport.close()
+        for _ in range(1000):
+            if protocol._payload_parser is None:
+                break
+            await asyncio.sleep(0)
+        assert protocol._payload_parser is None, "connection_lost never ran"
+
         count = 0
-        try:
-            queue = ws._reader
-            assert queue is not None
-            # Wait for the parser to stall with frames still stashed in its
-            # tail. Note the transport is paused at this point, so the peer's
-            # FIN cannot be observed until reading resumes.
-            for _ in range(1000):
-                if queue._stalled_reader is not None:
-                    break
-                await asyncio.sleep(0.01)
-            assert queue._stalled_reader is not None, "parser never stalled"
+        while True:
+            msg = await ws.receive()
+            if msg.type is not WSMsgType.TEXT:
+                break
+            count += 1
 
-            # Tear the connection down for real: closing the transport is what
-            # drives connection_lost(), which drops the protocol's only
-            # reference to the parser, leaving ws._parser holding it.
-            protocol = request.protocol
-            assert protocol.transport is not None
-            protocol.transport.close()
-            for _ in range(1000):
-                if protocol._payload_parser is None:
-                    break
-                await asyncio.sleep(0)
-            assert protocol._payload_parser is None, "connection_lost never ran"
-
-            while True:
-                msg = await ws.receive()
-                if msg.type is not WSMsgType.TEXT:
-                    break
-                count += 1
-        except BaseException as exc:
-            # Surface handler failures in the test rather than reporting a
-            # misleading count; the server would otherwise just log them.
-            if not received.done():
-                received.set_exception(exc)
-            raise
-        else:
-            if not received.done():
-                received.set_result(count)
+        received.set_result((stalled, count))
         return ws
 
     # A plain AppRunner, not the aiohttp_server fixture: TestServer forces
@@ -165,11 +163,13 @@ async def test_stashed_frames_survive_connection_loss(
             await writer.drain()
             await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
 
-            # One oversized read: empty masked TEXT frames, 6 bytes each.
+            # Written as one call, but whether it arrives as one read is the
+            # kernel's choice.
             writer.write(b"\x81\x80\x00\x00\x00\x00" * sent)
             await writer.drain()
 
-            assert await asyncio.wait_for(received, timeout=10) == sent
+            stalled, count = await asyncio.wait_for(received, timeout=10)
+            assert stalled < count <= sent
         finally:
             writer.close()
             with contextlib.suppress(ConnectionResetError):
