@@ -56,6 +56,9 @@ disable_warnings = [
 ]
 # https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
 # dynamic_context = 'test_function'  # conflicts with `pytest-cov` if set here
+omit = [
+  'setup.py',
+]
 # NOTE: tests/autobahn/test_autobahn.py::test_{client,server}
 # NOTE: pass `-a|--append` to `coverage run` wich conflicts
 # NOTE: with `-p|--parallel-mode`. We cannot override it on
