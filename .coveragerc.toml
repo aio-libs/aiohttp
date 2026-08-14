@@ -56,7 +56,12 @@ disable_warnings = [
 ]
 # https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
 # dynamic_context = 'test_function'  # conflicts with `pytest-cov` if set here
-parallel = true
+# NOTE: tests/autobahn/test_autobahn.py::test_{client,server}
+# NOTE: pass `-a|--append` to `coverage run` wich conflicts
+# NOTE: with `-p|--parallel-mode`. We cannot override it on
+# NOTE: the CLI level, which is why it's unset here.
+# Ref: https://discord.com/channels/267624335836053506/1253355750684753950/1537906072474488973
+# parallel = true
 # plugins = [
 #   'covdefaults',
 # ]
