@@ -601,11 +601,11 @@ jobs:
       shell: bash
     - name: Turn coverage into xml
       run: |
-        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
+        python -m coverage xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v7
       with:
-        files: ./cython-coverage.xml
+        files: ./coverage.xml
         disable_search: true
         flags: cython-coverage
         token: ${{ secrets.CODECOV_TOKEN }}
