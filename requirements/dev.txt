@@ -170,7 +170,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.1
+pre-commit==4.6.2
     # via -r requirements/lint.in
 propcache==0.5.2
     # via
