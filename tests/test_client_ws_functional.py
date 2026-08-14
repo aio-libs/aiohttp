@@ -93,7 +93,7 @@ async def test_stashed_frames_survive_connection_loss(
             assert protocol is not None
             assert protocol.transport is not None
             protocol.transport.close()
-            for _ in range(1000):
+            for _ in range(1000):  # pragma: no branch
                 if protocol._payload_parser is None:
                     break
                 await asyncio.sleep(0)
