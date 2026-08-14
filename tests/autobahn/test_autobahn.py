@@ -1,7 +1,9 @@
 import json
+import os
 import pprint
 import socket
 import subprocess
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -105,6 +107,8 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         wait_for_port(9001)
         subprocess.run(
             (
+                sys.executable,
+                "-m",
                 "coverage",
                 "run",
                 "--append",
@@ -112,6 +116,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             ),
             env={
                 "COVERAGE_PARALLEL_MODE": "false",
+                **os.environ.copy(),
             },
         )
     finally:
@@ -152,6 +157,8 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     server = subprocess.Popen(
         (
+            sys.executable,
+            "-m",
             "coverage",
             "run",
             "--append",
@@ -159,6 +166,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
         ),
         env={
             "COVERAGE_PARALLEL_MODE": "false",
+            **os.environ.copy(),
         },
     )
     try:
