@@ -1,1 +1,1 @@
-Fixed an integer overflow on oversized messages -- by :user:`Dreamsorcerer`.
+Fixed an integer overflow on too large messages -- by :user:`Dreamsorcerer`.
