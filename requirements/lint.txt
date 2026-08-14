@@ -88,7 +88,7 @@ platformdirs==4.11.1
     # via virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.6.1
+pre-commit==4.6.2
     # via -r requirements/lint.in
 propcache==0.5.2
     # via
