@@ -171,12 +171,6 @@ test-command = ""
 # don't build PyPy wheels, install from source instead
 skip = "pp*"
 
-[tool.cibuildwheel.environment]
-PIP_BUILD_CONSTRAINT = "requirements/cython.txt"
-PIP_CONSTRAINT = "requirements/cython.txt"
-UV_BUILD_CONSTRAINT = "requirements/cython.txt"
-UV_CONSTRAINT = "requirements/cython.txt"
-
 [tool.cibuildwheel.ios]
 # iOS currently does not support build[uv]
 build-frontend = "build"
