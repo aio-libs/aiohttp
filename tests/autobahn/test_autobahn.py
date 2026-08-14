@@ -103,7 +103,17 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
     try:
         wait_for_port(9001)
-        subprocess.run(("coverage", "run", "-a", "tests/autobahn/client/client.py"))
+        subprocess.run(
+            (
+                "coverage",
+                "run",
+                "--append",
+                "tests/autobahn/client/client.py",
+            ),
+            env={
+                "COVERAGE_PARALLEL_MODE": "false",
+            },
+        )
     finally:
         autobahn_container.stop()
 
@@ -141,7 +151,15 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 @pytest.mark.autobahn
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     server = subprocess.Popen(
-        ("coverage", "run", "-a", "tests/autobahn/server/server.py")
+        (
+            "coverage",
+            "run",
+            "--append",
+            "tests/autobahn/server/server.py",
+        ),
+        env={
+            "COVERAGE_PARALLEL_MODE": "false",
+        },
     )
     try:
         wait_for_port(9001)

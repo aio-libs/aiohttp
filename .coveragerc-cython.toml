@@ -62,9 +62,13 @@ omit = [
 # NOTE: tests/autobahn/test_autobahn.py::test_{client,server}
 # NOTE: pass `-a|--append` to `coverage run` wich conflicts
 # NOTE: with `-p|--parallel-mode`. We cannot override it on
-# NOTE: the CLI level, which is why it's unset here.
-# Ref: https://discord.com/channels/267624335836053506/1253355750684753950/1537906072474488973
-# parallel = true
+# NOTE: the CLI level, but instead define an environment
+# NOTE: variable to implement this.
+#
+# Refs:
+# * https://discord.com/channels/267624335836053506/1253355750684753950/1537906072474488973
+# * https://discord.com/channels/267624335836053506/1253355750684753950/1537914331629486130
+parallel = '${COVERAGE_PARALLEL_MODE-true}'
 plugins = [
   'Cython.Coverage',
 ]
