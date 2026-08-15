@@ -6105,14 +6105,21 @@ async def test_payload_upload_progress(aiohttp_client: AiohttpClient) -> None:
 
     post_task = asyncio.create_task(do_post())
     samples: list[int] = []
-    for _ in range(num_chunks):
-        await next_chunk.wait()
-        next_chunk.clear()
-        samples.append(p.bytes_written)
-        assert not p.upload_complete.done()
-        sample_taken.set()
-    await p.upload_complete
-    await post_task
+    try:
+        for _ in range(num_chunks):
+            await next_chunk.wait()
+            next_chunk.clear()
+            samples.append(p.bytes_written)
+            assert not p.upload_complete.done()
+            sample_taken.set()
+        # Awaited first so an upload failure surfaces as the underlying
+        # ClientError rather than the cancellation of upload_complete.
+        await post_task
+        await p.upload_complete
+    finally:
+        post_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await post_task
 
     # Each sample reflects exactly one more chunk of the payload, with no
     # transport framing overhead included.
