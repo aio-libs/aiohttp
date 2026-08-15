@@ -822,7 +822,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         ff = FileField(
                             field.name,
                             field.filename,
-                            cast(io.BufferedReader, tmp),
+                            tmp,
                             field_ct,
                             field.headers,
                         )
