@@ -6313,6 +6313,61 @@ async def test_payload_shared_by_overlapping_requests(
     assert p.upload_complete.done()
 
 
+async def test_empty_payload_overlap_keeps_tracking_ownership(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A bodyless fast-path request must not steal another upload's tracking.
+
+    A zero-length payload can be owned by an expect100 request whose writer
+    is parked waiting for 100 Continue while a second bodyless request using
+    the same payload completes via the no-write path.
+    """
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/fast", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"")
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True) as resp:
+            assert resp.status == 200
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        # The slow request's writer owns the tracking, parked at 100-continue.
+        await parked.wait()
+
+        # A fast bodyless request sharing the payload completes meanwhile.
+        async with client.post("/fast", data=p) as resp:
+            assert resp.status == 200
+
+        # It must not have resolved the parked upload's future.
+        assert not fut.done()
+    finally:
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # Interrupting the parked upload still cancels its future.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
 async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()

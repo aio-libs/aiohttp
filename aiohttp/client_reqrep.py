@@ -1470,7 +1470,8 @@ class ClientRequest(ClientRequestBase):
         )
 
     def _mark_body_sent(self) -> None:
-        if (body := self._body) is not self._EMPTY_BODY:
+        body = self._body
+        if body is not self._EMPTY_BODY and body._start_upload():
             body._finish_upload()
 
     async def _write_bytes(
