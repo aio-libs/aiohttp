@@ -787,16 +787,34 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
                         tmp = SpooledTemporaryFile(_FILE_SPOOL_MAX_SIZE)
+                        # rolled means the temp file now uses the disk, at
+                        # which point we want to run in the executor.
+                        rolled = False
                         while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
                             # Bounds one part, mid-read.
                             if 0 < max_size < payload.total_bytes:
-                                await self._loop.run_in_executor(None, tmp.close)
+                                if rolled:
+                                    await self._loop.run_in_executor(None, tmp.close)
+                                else:
+                                    tmp.close()
                                 raise HTTPRequestEntityTooLarge(max_size)
                             async for decoded_chunk in field.decode_iter(chunk):
-                                await self._loop.run_in_executor(
-                                    None, tmp.write, decoded_chunk
+                                # Update before writing, so we know if next
+                                # write is going to hit the disk.
+                                rolled = rolled or (
+                                    tmp.tell() + len(decoded_chunk)
+                                    > _FILE_SPOOL_MAX_SIZE
                                 )
-                        await self._loop.run_in_executor(None, tmp.seek, 0)
+                                if rolled:
+                                    await self._loop.run_in_executor(
+                                        None, tmp.write, decoded_chunk
+                                    )
+                                else:
+                                    tmp.write(decoded_chunk)
+                        if rolled:
+                            await self._loop.run_in_executor(None, tmp.seek, 0)
+                        else:
+                            tmp.seek(0)
 
                         if field_ct is None:
                             field_ct = "application/octet-stream"
