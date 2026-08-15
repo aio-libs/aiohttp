@@ -6220,6 +6220,49 @@ async def test_payload_reuse_two_requests(aiohttp_client: AiohttpClient) -> None
     assert p.upload_complete.done()
 
 
+async def test_payload_shared_by_overlapping_requests(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Overlapping requests sharing a payload track only one upload."""
+    release = asyncio.Event()
+    waiting = 0
+    received: list[int] = []
+
+    async def expect_handler(request: web.Request) -> None:
+        # Hold both uploads at the 100-continue wait, after progress
+        # tracking has started, to guarantee the uploads overlap.
+        nonlocal waiting
+        waiting += 1
+        if waiting == 2:
+            release.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        received.append(len(await request.read()))
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 1024
+    p = aiohttp.BytesPayload(body)
+    resp1, resp2 = await asyncio.gather(
+        client.post("/", data=p, expect100=True),
+        client.post("/", data=p, expect100=True),
+    )
+    assert resp1.status == 200
+    assert resp2.status == 200
+    resp1.release()
+    resp2.release()
+
+    assert received == [len(body), len(body)]
+    # The counter reflects exactly the tracked upload, not a mix of both.
+    assert p.bytes_written == len(body)
+    assert p.upload_complete.done()
+
+
 async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()

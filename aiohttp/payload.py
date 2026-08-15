@@ -143,8 +143,12 @@ class Payload(ABC):
     _consumed: bool = False  # Default: payload has not been consumed yet
     _autoclose: bool = False  # Default: assume resource needs explicit closing
     # Upload progress bookkeeping (client requests); see bytes_written.
+    # Tracking is exclusive: only one upload of a payload is tracked at a
+    # time, so overlapping requests sharing an instance cannot corrupt the
+    # owner's counter or complete its future (they run untracked instead).
     _bytes_written: int = 0
     _upload_future: "asyncio.Future[None] | None" = None
+    _upload_active: bool = False
     _upload_finished: bool = False
     _upload_aborted: bool = False
 
@@ -243,6 +247,8 @@ class Payload(ABC):
         is uploading this payload, before any transport-level transformation
         (compression, chunked framing). Reset when a new upload of the same
         payload starts, e.g. when a redirect causes the body to be resent.
+        Only one upload of a payload is tracked at a time: when overlapping
+        requests share an instance, later uploads are not counted.
         """
         return self._bytes_written
 
@@ -254,7 +260,8 @@ class Payload(ABC):
         fully written, or is cancelled if the upload is interrupted (e.g.
         connection error or request cancellation). If the payload is sent
         again (e.g. a redirected request resends the body), a new future
-        is returned for the new upload.
+        is returned for the new upload. When overlapping requests share a
+        payload, the future tracks the first upload only.
 
         Must be accessed from within the event loop.
         """
@@ -266,8 +273,15 @@ class Payload(ABC):
                 self._upload_future.set_result(None)
         return self._upload_future
 
-    def _start_upload(self) -> None:
-        """Reset upload progress state before the payload is written."""
+    def _start_upload(self) -> bool:
+        """Try to begin tracking a new upload of this payload.
+
+        Returns False when another upload is already being tracked; the
+        caller must then write the payload without progress tracking.
+        """
+        if self._upload_active:
+            return False
+        self._upload_active = True
         self._bytes_written = 0
         self._upload_finished = False
         self._upload_aborted = False
@@ -277,9 +291,11 @@ class Payload(ABC):
             # request is resent after a redirect); track the new upload with
             # a fresh future created lazily on the next upload_complete access.
             self._upload_future = None
+        return True
 
     def _finish_upload(self) -> None:
         """Mark the payload as fully written to the connection."""
+        self._upload_active = False
         self._upload_finished = True
         fut = self._upload_future
         if fut is not None and not fut.done():
@@ -289,6 +305,7 @@ class Payload(ABC):
         """Mark an unfinished upload as aborted, cancelling upload_complete."""
         if self._upload_finished:
             return
+        self._upload_active = False
         self._upload_aborted = True
         fut = self._upload_future
         if fut is not None and not fut.done():

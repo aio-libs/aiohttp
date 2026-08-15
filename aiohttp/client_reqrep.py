@@ -1508,9 +1508,10 @@ class ClientRequest(ClientRequestBase):
 
         """
         body = self._body
-        track_progress = body is not self._EMPTY_BODY
+        # Progress tracking is exclusive per payload; when overlapping
+        # requests share one instance, later uploads run untracked.
+        track_progress = body is not self._EMPTY_BODY and body._start_upload()
         if track_progress:
-            body._start_upload()
             writer = payload._ProgressWriter(writer, body)
         try:
             # 100 response
@@ -1554,7 +1555,8 @@ class ClientRequest(ClientRequestBase):
             else:
                 # Successfully wrote the body, signal EOF and start response timeout
                 await writer.write_eof()
-                body._finish_upload()
+                if track_progress:
+                    body._finish_upload()
                 protocol.start_timeout()
         finally:
             if track_progress:

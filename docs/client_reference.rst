@@ -2745,6 +2745,10 @@ request and cancel it when the request completes::
         with contextlib.suppress(asyncio.CancelledError):
             await progress
 
+A payload tracks a single upload at a time. If the same payload instance
+is shared between overlapping requests, progress is reported only for the
+first upload; the others are sent without tracking.
+
 .. class:: Payload
    :canonical: aiohttp.payload.Payload
 
