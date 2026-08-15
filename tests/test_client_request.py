@@ -3,6 +3,7 @@ import hashlib
 import io
 import pathlib
 import sys
+import threading
 from collections.abc import AsyncIterator, Callable, Iterable
 from http.cookies import BaseCookie, SimpleCookie
 from typing import Any
@@ -695,6 +696,66 @@ async def test_update_cookies_with_quoted_existing_header(
         req.headers["COOKIE"]
         == 'new_cookie=new_value; session="value;with;semicolon"; token=abc123'
     )
+
+
+async def test_send_from_other_loop_does_not_eager_start(
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    """Regression test for #13346.
+
+    The request-body writer is only created as an eager task when the
+    current thread is running the request's own loop. When ``_send`` runs
+    inside a different loop/thread, the writer must be scheduled normally
+    instead of being stepped synchronously in the calling thread (which
+    corrupts the session's loop state).
+    """
+    loop = asyncio.get_running_loop()
+    req = make_client_request("get", URL("http://python.org/"), loop=loop)
+
+    writer = mock.AsyncMock()
+    writer.write_headers = mock.AsyncMock()
+
+    eager_starts: list[bool] = []
+    real_task = asyncio.Task
+
+    def spy_task(coro, *, loop=None, name=None, context=None, eager_start=False):
+        eager_starts.append(eager_start)
+        return real_task(
+            coro, loop=loop, name=name, context=context, eager_start=eager_start
+        )
+
+    result: dict[str, object] = {}
+
+    def other_thread() -> None:
+        other_loop = asyncio.new_event_loop()
+        try:
+            asyncio.set_event_loop(other_loop)
+            other_loop.run_until_complete(req._send(conn))
+        except Exception as exc:  # pragma: no cover - failure path
+            result["error"] = repr(exc)
+        finally:
+            other_loop.close()
+
+    with mock.patch.object(req, "_create_writer", return_value=writer):
+        with mock.patch.object(req, "_should_write", return_value=True):
+            with mock.patch("aiohttp.client_reqrep.asyncio.Task", side_effect=spy_task):
+                with mock.patch.object(
+                    loop, "create_task", wraps=loop.create_task
+                ) as create_task:
+                    thread = threading.Thread(target=other_thread)
+                    thread.start()
+                    thread.join()
+
+    assert "error" not in result, result["error"]
+    assert (
+        not eager_starts
+    ), "eager_start must not be used when sending from another loop"
+    assert create_task.called
+
+    if req._writer is not None:
+        req._writer.cancel()
+    await req._close()
 
 
 async def test_connection_header(

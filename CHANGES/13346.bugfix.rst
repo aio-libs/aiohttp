@@ -1,0 +1,4 @@
+Fixed a bug where sending a request from a different thread/loop than the
+one the ``ClientSession`` was created on could step the request-body writer
+synchronously in the calling thread (Python 3.12+ ``eager_start``
+optimization) and corrupt the session's event loop state.

@@ -985,8 +985,19 @@ class ClientRequestBase:
             if sys.version_info >= (3, 12):
                 # Optimization for Python 3.12, try to write
                 # bytes immediately to avoid having to schedule
-                # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                # the task on the event loop. Only safe when the current
+                # thread is running the request's own loop: eager_start
+                # would otherwise run the coroutine synchronously in the
+                # calling thread and corrupt the session's event loop
+                # (see issue #13346).
+                try:
+                    running_loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    running_loop = None
+                if running_loop is self.loop:
+                    task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                else:
+                    task = self.loop.create_task(coro)
             else:
                 task = self.loop.create_task(coro)
             if task.done():
