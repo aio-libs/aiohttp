@@ -6146,6 +6146,33 @@ async def test_payload_upload_complete_empty_body(
     assert p2.upload_complete.done()
 
 
+async def test_empty_body_shared_payload_not_mutated(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Bodyless requests never touch the shared empty-payload singleton.
+
+    With expect100 the writer task runs even for an empty body, so the
+    write path must skip progress tracking for the class-level payload.
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", expect100=True) as resp:
+        assert resp.status == 200
+
+    empty = aiohttp.ClientRequest._EMPTY_BODY
+    assert empty._upload_active is False
+    assert empty._upload_finished is False
+    assert empty._upload_aborted is False
+    assert empty._bytes_written == 0
+    assert empty._upload_future is None
+
+
 async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
     """An interrupted upload cancels upload_complete instead of resolving it."""
 
