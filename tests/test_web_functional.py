@@ -2240,8 +2240,6 @@ async def test_post_file_fields_descriptor_cost(
     """Only a part past the spool size may cost a descriptor."""
 
     async def handler(request: web.Request) -> web.Response:
-        # Count descriptors opened across post(), not a net delta: unrelated
-        # harness churn can close one while the request is being read.
         before = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
         data = await request.post()
         after = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
