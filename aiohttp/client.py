@@ -895,6 +895,14 @@ class ClientSession:
             if req is not None and req._body is not None:
                 await req._body.close()
 
+            # Ensure we abort when the write never started.
+            if req is not None:
+                body = None if req._body is req._EMPTY_BODY else req._body
+            else:
+                body = data if isinstance(data, payload.Payload) else None
+            if body is not None and not body._upload_active:
+                body._abort_upload()
+
             for trace in traces:
                 await trace.send_request_exception(
                     method, url.update_query(params), headers, e

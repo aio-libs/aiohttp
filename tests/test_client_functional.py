@@ -6168,6 +6168,22 @@ async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
     assert p.upload_complete.cancelled()
 
 
+async def test_payload_upload_aborted_before_write() -> None:
+    """A request failing before the body write starts cancels upload_complete."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Bound but not listening: connecting is refused, and the port
+        # cannot be taken by another test in the meantime.
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        p = aiohttp.BytesPayload(b"x" * 1024)
+        fut = p.upload_complete
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientConnectorError):
+                await session.post(f"http://127.0.0.1:{port}/", data=p)
+        assert fut.cancelled()
+        assert p.upload_complete.cancelled()
+
+
 async def test_payload_reused_after_redirect(aiohttp_client: AiohttpClient) -> None:
     """A body resent after a redirect restarts the progress tracking."""
     received: list[int] = []
