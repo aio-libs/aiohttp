@@ -1,0 +1,17 @@
+Synchronized the ``coverage.py`` configuration (:file:`.coveragerc.toml` and
+:file:`.coveragerc-cython.toml`) with the pattern already established in
+:external+yarl:doc:`yarl <index>`, :external+multidict:doc:`multidict
+<index>`, ``frozenlist`` and other sibling projects
+-- by :user:`webknjaz`.
+
+Both files now anchor package discovery through ``source_pkgs`` instead of
+relying on a same-named directory happening to exist relative to the
+working directory, and add a ``[paths]`` mapping so coverage recorded
+against an installed copy of ``aiohttp`` still combines correctly with
+coverage recorded from the Git checkout. CI now lets ``pytest-cov`` write
+``coverage.xml`` directly via ``--cov-report=xml`` instead of a separate
+``coverage xml`` step, and the Autobahn testsuite's subprocess-based
+coverage collection (which uses ``coverage run --append``, incompatible
+with parallel mode) now opts out per-invocation via a
+``COVERAGE_PARALLEL_MODE`` environment variable instead of trying to
+override it on the command line.
