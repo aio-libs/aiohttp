@@ -170,7 +170,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.1
+pre-commit==4.6.2
     # via -r requirements/lint.in
 propcache==0.5.2
     # via
@@ -321,7 +321,7 @@ uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.3
+virtualenv==21.7.4
     # via pre-commit
 wheel==0.47.0
     # via pip-tools
