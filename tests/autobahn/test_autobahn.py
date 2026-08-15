@@ -1,6 +1,8 @@
 import json
+import os
 import pprint
 import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -76,11 +78,17 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
             "-s",
             "localhost:9001",
             "--",
+            sys.executable,
+            "-m",
             "coverage",
             "run",
-            "-a",
+            "--append",
             "tests/autobahn/client/client.py",
-        )
+        ),
+        env={
+            "COVERAGE_PARALLEL_MODE": "false",
+            **os.environ.copy(),
+        },
     )
     try:
         autobahn_container = docker.run(
@@ -135,7 +143,18 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 @pytest.mark.autobahn
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     server = subprocess.Popen(
-        ("coverage", "run", "-a", "tests/autobahn/server/server.py")
+        (
+            sys.executable,
+            "-m",
+            "coverage",
+            "run",
+            "--append",
+            "tests/autobahn/server/server.py",
+        ),
+        env={
+            "COVERAGE_PARALLEL_MODE": "false",
+            **os.environ.copy(),
+        },
     )
     try:
         docker.run(
