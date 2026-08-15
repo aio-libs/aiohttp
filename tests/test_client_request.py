@@ -334,6 +334,45 @@ async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) ->
 
 
 @pytest.mark.parametrize(
+    "zone_form",
+    ("%eth0", "%25eth0"),
+    ids=("raw", "encoded"),
+)
+async def test_proxy_request_line_ipv6_link_local_zone_id_stripped(
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+    zone_form: str,
+) -> None:
+    # RFC 6874 §4: the zone id of an IPv6 link-local address only has local
+    # significance at the sending host, so it must be stripped from the
+    # absolute-form request target sent to an HTTP proxy.
+    req = make_client_request(
+        "get",
+        URL(f"http://[fe80::1{zone_form}]:8092/SerialNumber"),
+        proxy=URL("http://proxy.example.com:8080"),
+    )
+    status_lines: list[str] = []
+    original_write_headers = aiohttp.http_writer.StreamWriter.write_headers
+
+    async def capturing_write_headers(
+        self: aiohttp.http_writer.StreamWriter,
+        status_line: str,
+        headers: CIMultiDict[str],
+    ) -> None:
+        status_lines.append(status_line)
+        await original_write_headers(self, status_line, headers)
+
+    with mock.patch.object(
+        aiohttp.http_writer.StreamWriter, "write_headers", capturing_write_headers
+    ):
+        resp = await req._send(conn)
+    await req._close()
+    resp.close()
+    assert status_lines
+    assert status_lines[0] == "GET http://[fe80::1]:8092/SerialNumber HTTP/1.1"
+
+
+@pytest.mark.parametrize(
     ("url", "headers", "expected"),
     (
         pytest.param(

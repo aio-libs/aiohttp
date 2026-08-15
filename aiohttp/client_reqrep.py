@@ -946,7 +946,14 @@ class ClientRequestBase:
             assert connect_host is not None
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
-            path = str(self.url)
+            # RFC 6874 §4: the zone id of an IPv6 link-local address only has
+            # local significance at the sending host, so it must be stripped
+            # from the absolute-form request target sent to a proxy.
+            url = self.url
+            raw_host = url.raw_host
+            if raw_host is not None and "%" in raw_host:
+                url = url.with_host(raw_host.split("%", 1)[0])
+            path = str(url)
         else:
             path = self.url.raw_path_qs
 

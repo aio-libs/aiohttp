@@ -1,0 +1,2 @@
+Strip the IPv6 link-local zone id from the absolute-form request
+target sent to an HTTP proxy, per :rfc:`6874` -- by :user:`Swastikbhat-lab`.
