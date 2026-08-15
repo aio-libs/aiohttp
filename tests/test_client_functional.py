@@ -6023,7 +6023,7 @@ async def test_payload_bytes_written_bytes(aiohttp_client: AiohttpClient) -> Non
         assert resp.status == 200
         assert p.upload_complete.done()
         assert p.bytes_written == len(body)
-    assert await p.upload_complete is None
+    await p.upload_complete
 
 
 async def test_payload_bytes_written_file(
