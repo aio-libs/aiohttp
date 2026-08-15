@@ -142,6 +142,11 @@ class Payload(ABC):
     _size: int | None = None
     _consumed: bool = False  # Default: payload has not been consumed yet
     _autoclose: bool = False  # Default: assume resource needs explicit closing
+    # Upload progress bookkeeping (client requests); see bytes_written.
+    _bytes_written: int = 0
+    _upload_future: "asyncio.Future[None] | None" = None
+    _upload_finished: bool = False
+    _upload_aborted: bool = False
 
     def __init__(
         self,
@@ -229,6 +234,65 @@ class Payload(ABC):
         explicit closing. If False, callers must await close() to release resources.
         """
         return self._autoclose
+
+    @property
+    def bytes_written(self) -> int:
+        """Number of bytes of this payload written to the connection so far.
+
+        Counts the bytes handed to the transport while a client request
+        is uploading this payload, before any transport-level transformation
+        (compression, chunked framing). Reset when a new upload of the same
+        payload starts, e.g. when a redirect causes the body to be resent.
+        """
+        return self._bytes_written
+
+    @property
+    def upload_complete(self) -> "asyncio.Future[None]":
+        """Future resolved when a request finishes uploading this payload.
+
+        The future completes with ``None`` once the request body has been
+        fully written, or is cancelled if the upload is interrupted (e.g.
+        connection error or request cancellation). If the payload is sent
+        again (e.g. a redirected request resends the body), a new future
+        is returned for the new upload.
+
+        Must be accessed from within the event loop.
+        """
+        if self._upload_future is None:
+            self._upload_future = asyncio.get_running_loop().create_future()
+            if self._upload_aborted:
+                self._upload_future.cancel()
+            elif self._upload_finished:
+                self._upload_future.set_result(None)
+        return self._upload_future
+
+    def _start_upload(self) -> None:
+        """Reset upload progress state before the payload is written."""
+        self._bytes_written = 0
+        self._upload_finished = False
+        self._upload_aborted = False
+        fut = self._upload_future
+        if fut is not None and fut.done():
+            # A previous upload of this payload already completed (e.g. the
+            # request is resent after a redirect); track the new upload with
+            # a fresh future created lazily on the next upload_complete access.
+            self._upload_future = None
+
+    def _finish_upload(self) -> None:
+        """Mark the payload as fully written to the connection."""
+        self._upload_finished = True
+        fut = self._upload_future
+        if fut is not None and not fut.done():
+            fut.set_result(None)
+
+    def _abort_upload(self) -> None:
+        """Mark an unfinished upload as aborted, cancelling upload_complete."""
+        if self._upload_finished:
+            return
+        self._upload_aborted = True
+        fut = self._upload_future
+        if fut is not None and not fut.done():
+            fut.cancel()
 
     def set_content_disposition(
         self,
@@ -335,6 +399,79 @@ class Payload(ABC):
         In the future, this will be the only close method supported.
         """
         self._close()
+
+
+class _ProgressWriter(AbstractStreamWriter):
+    """Proxy for AbstractStreamWriter to count written bytes on a Payload.
+
+    Used by the client request machinery so that Payload.bytes_written
+    reflects how much of the payload has been handed to the transport.
+    """
+
+    def __init__(self, writer: AbstractStreamWriter, payload: "Payload") -> None:
+        self._writer = writer
+        self._payload = payload
+
+    def __getattr__(self, name: str) -> Any:
+        # Forward non-interface attributes of the wrapped writer
+        # (e.g. StreamWriter.transport) for duck-typing compatibility.
+        return getattr(self._writer, name)
+
+    @property
+    def buffer_size(self) -> int:
+        return self._writer.buffer_size
+
+    @buffer_size.setter
+    def buffer_size(self, value: int) -> None:
+        self._writer.buffer_size = value
+
+    @property
+    def output_size(self) -> int:
+        return self._writer.output_size
+
+    @output_size.setter
+    def output_size(self, value: int) -> None:
+        self._writer.output_size = value
+
+    @property
+    def length(self) -> int | None:
+        return self._writer.length
+
+    @length.setter
+    def length(self, value: int | None) -> None:
+        self._writer.length = value
+
+    async def write(
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+    ) -> None:
+        await self._writer.write(chunk)
+        self._payload._bytes_written += (
+            chunk.nbytes if isinstance(chunk, memoryview) else len(chunk)
+        )
+
+    async def write_eof(self, chunk: bytes = b"") -> None:
+        await self._writer.write_eof(chunk)
+        if chunk:
+            self._payload._bytes_written += len(chunk)
+
+    async def drain(self) -> None:
+        await self._writer.drain()
+
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int | None = None
+    ) -> None:
+        self._writer.enable_compression(encoding, strategy)
+
+    def enable_chunking(self) -> None:
+        self._writer.enable_chunking()
+
+    async def write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
+        await self._writer.write_headers(status_line, headers)
+
+    def send_headers(self) -> None:
+        self._writer.send_headers()
 
 
 class BytesPayload(Payload):

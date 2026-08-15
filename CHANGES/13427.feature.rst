@@ -1,0 +1,4 @@
+Added :attr:`Payload.bytes_written <aiohttp.Payload.bytes_written>` and
+:attr:`Payload.upload_complete <aiohttp.Payload.upload_complete>` for tracking
+upload progress of a request body
+-- by :user:`Dreamsorcerer`.

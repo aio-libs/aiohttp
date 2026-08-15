@@ -1565,30 +1565,6 @@ Response object
 
       .. versionadded:: 3.2
 
-   .. attribute:: output_size
-
-      Number of bytes sent for this request.
-
-      Pair with :attr:`upload_complete` to display upload progress::
-
-          async with session.post(url, data=mpwriter) as resp:
-              while not resp.upload_complete.done():
-                  print(f"uploaded {resp.output_size} bytes")
-                  await asyncio.sleep(0.5)
-              print(f"upload complete: {resp.output_size} bytes")
-
-      .. versionadded:: 3.14
-
-   .. attribute:: upload_complete
-
-      An :class:`asyncio.Future` set when the request body has been fully sent.
-
-      Use ``await resp.upload_complete`` to block until the upload finishes, or
-      ``resp.upload_complete.done()`` to poll from a progress-sampling loop
-      (see :attr:`output_size`).
-
-      .. versionadded:: 3.14
-
    .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
@@ -2691,6 +2667,121 @@ on being called.
                      - :class:`io.IOBase`, e.g. a file-like object
                      - :class:`multidict.MultiDict` or :class:`multidict.MultiDictProxy`
                      - :class:`tuple` or :class:`list` of length two, containing a name-value pair
+
+Payload
+^^^^^^^
+
+The ``data`` argument of :meth:`ClientSession.request` accepts a
+:class:`Payload`, which streams the request body to the server. Other
+supported ``data`` types are wrapped in an appropriate payload
+automatically; ``aiohttp.get_payload(data)`` performs the same conversion
+explicitly. :class:`MultipartWriter` and the payload returned by calling
+a :class:`FormData` instance are payloads as well.
+
+Creating the payload explicitly gives access to the state of the upload.
+For example, to track upload progress, start a task watching the payload
+while the request runs::
+
+    async def report(p: aiohttp.Payload) -> None:
+        while not p.upload_complete.done():
+            print(f"uploaded {p.bytes_written} bytes")
+            await asyncio.sleep(1)
+        print(f"upload complete: {p.bytes_written} bytes")
+
+    data = aiohttp.BytesPayload(b"some large body")
+    progress = asyncio.create_task(report(data))
+    async with session.post(url, data=data) as resp:
+        print(await resp.text())
+    await progress
+
+To upload a file object, build the payload with ``aiohttp.get_payload()``
+(``disposition=None`` avoids adding a ``Content-Disposition`` header)::
+
+    with open("massive-body", "rb") as f:
+        file_payload = aiohttp.get_payload(f, disposition=None)
+        progress = asyncio.create_task(report(file_payload))
+        async with session.post(url, data=file_payload) as resp:
+            print(await resp.text())
+        await progress
+
+A :class:`MultipartWriter` can be tracked directly. Progress is tracked
+on the payload passed as ``data``, not on the individual parts::
+
+    with aiohttp.MultipartWriter("form-data") as mpwriter:
+        mpwriter.append(open("report.xls", "rb"))
+
+    progress = asyncio.create_task(report(mpwriter))
+    async with session.post(url, data=mpwriter) as resp:
+        print(await resp.text())
+    await progress
+
+Similarly, :class:`FormData` can be converted to a trackable payload by
+calling it: ``data = form()``.
+
+If the upload is interrupted, :attr:`Payload.upload_complete` is
+cancelled rather than resolved, and the error is raised by the request
+itself.
+
+The body may be sent more than once during a single request, e.g. when a
+307 or 308 redirect is followed or the request is retried on a new
+connection. Each send restarts the tracking: :attr:`Payload.bytes_written`
+returns to ``0`` and :attr:`Payload.upload_complete` is replaced by a
+future for the new attempt, so a reporter waiting on
+:attr:`Payload.upload_complete` finishes with the first attempt. To keep
+reporting across resends, run the reporter for the lifetime of the
+request and cancel it when the request completes::
+
+    async def report(p: aiohttp.Payload) -> None:
+        while True:
+            print(f"uploaded {p.bytes_written} bytes")
+            await asyncio.sleep(1)
+
+    progress = asyncio.create_task(report(data))
+    try:
+        async with session.post(url, data=data) as resp:
+            print(await resp.text())
+    finally:
+        progress.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await progress
+
+.. class:: Payload
+   :canonical: aiohttp.payload.Payload
+
+   Base class for request body payloads.
+
+   .. attribute:: size
+
+      Size of the payload body in bytes, or ``None`` if the size is
+      unknown (the request body is then sent using chunked transfer
+      encoding).
+
+   .. attribute:: bytes_written
+
+      Number of bytes of this payload written to the connection so far.
+
+      The payload's bytes are counted as they are handed to the
+      transport, before transport-level transformations such as
+      compression or chunked framing, so a finished upload satisfies
+      ``payload.bytes_written == payload.size`` when :attr:`size` is
+      known. Restarts from ``0`` if the body is sent again, e.g. when a
+      redirected request resends the body.
+
+      .. versionadded:: 3.14.4
+
+   .. attribute:: upload_complete
+
+      An :class:`asyncio.Future` completed when the request body has been
+      fully sent. The future resolves to ``None`` once the upload
+      finishes, and is cancelled instead if the upload is interrupted by
+      a connection error or cancellation (the error itself is raised by
+      the request). If the body is sent again, e.g. when a redirected
+      request resends it, the attribute is a new future tracking the new
+      upload.
+
+      Must be accessed from within the event loop.
+
+      .. versionadded:: 3.14.4
 
 Client exceptions
 -----------------
