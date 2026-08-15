@@ -1,4 +1,3 @@
 Deprecated ``ClientResponse.output_size`` and ``ClientResponse.upload_complete``;
-use :attr:`Payload.bytes_written <aiohttp.Payload.bytes_written>` and
-:attr:`Payload.upload_complete <aiohttp.Payload.upload_complete>` instead
+use ``Payload.bytes_written`` and ``Payload.upload_complete`` instead
 -- by :user:`Dreamsorcerer`.
