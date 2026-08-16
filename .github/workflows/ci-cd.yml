@@ -214,6 +214,14 @@ jobs:
       uses: actions/checkout@v7
       with:
         submodules: true
+    - name: DEBUG:unsymlink-aiohttp._websocket.reader_c
+      run: |
+        set -x
+        ls -lah aiohttp/_websocket/reader_c.py aiohttp/_websocket/reader_py.py
+        rm -fv aiohttp/_websocket/reader_c.py
+        cp -v aiohttp/_websocket/reader_py.py aiohttp/_websocket/reader_c.py
+        ls -slah aiohttp/_websocket/reader_c.py aiohttp/_websocket/reader_py.py
+      shell: bash
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
