@@ -6107,7 +6107,15 @@ async def test_payload_upload_progress(aiohttp_client: AiohttpClient) -> None:
     samples: list[int] = []
     try:
         for _ in range(num_chunks):
-            await next_chunk.wait()
+            waiter = asyncio.create_task(next_chunk.wait())
+            # Race the event against the request so a failed upload fails
+            # the test immediately instead of blocking on an event that
+            # will never be set.
+            await asyncio.wait({waiter, post_task}, return_when=asyncio.FIRST_COMPLETED)
+            if not waiter.done():
+                waiter.cancel()
+                await post_task  # raises the underlying error
+                pytest.fail("request completed before sampling finished")
             next_chunk.clear()
             samples.append(p.bytes_written)
             assert not p.upload_complete.done()
@@ -6349,7 +6357,12 @@ async def test_empty_payload_overlap_keeps_tracking_ownership(
     slow_task = asyncio.create_task(slow_post())
     try:
         # The slow request's writer owns the tracking, parked at 100-continue.
-        await parked.wait()
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        if not waiter.done():
+            waiter.cancel()
+            await slow_task  # raises the underlying error
+            pytest.fail("slow request completed before parking")
 
         # A fast bodyless request sharing the payload completes meanwhile.
         async with client.post("/fast", data=p) as resp:
