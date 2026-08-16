@@ -252,7 +252,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
-        pytest --junitxml=junit.xml --numprocesses=auto --cov -m 'not dev_mode and not autobahn'
+        python -Im pytest --junitxml=junit.xml --numprocesses=auto --cov -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -260,7 +260,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov -vvvvv --lf && exit 1
+        python -Im pytest --no-cov -vvvvv --lf && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
@@ -268,7 +268,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
         PYTHONDEVMODE: 1
-      run: pytest -m dev_mode --cov --cov-append --cov-report=xml
+      run: python -Im pytest -m dev_mode --cov --cov-append --cov-report=xml
       shell: bash
     - name: Upload coverage
       uses: codecov/codecov-action@v7
