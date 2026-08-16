@@ -245,7 +245,16 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
-      run: uv pip install -e .
+      run: uv pip install .
+    - name: DEBUG:resymlink-aiohttp._websocket.reader_c @ venv
+      run: |
+        set -x
+        wsd="$(ls -1d .venv/lib/python*/site-packages/aiohttp/_websocket)"
+        echo wsd=${wsd}
+        rm -fv "${wsd}/reader_c.py"
+        (cd "${wsd}"; ln -s reader_c.py reader_py.py)
+        ls -alh "${wsd}/"
+      shell: bash
     - name: Run unittests
       env:
         COLOR: yes
