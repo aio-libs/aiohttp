@@ -245,7 +245,7 @@ jobs:
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
-      run: uv pip install -e .
+      run: uv pip install .
     - name: Run unittests
       env:
         COLOR: yes
