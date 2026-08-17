@@ -1,0 +1,6 @@
+Handled a multipart/form-data text field whose ``Content-Type`` charset
+is unknown or whose bytes do not decode by raising
+:exc:`~aiohttp.web.HTTPUnsupportedMediaType` from :meth:`BaseRequest.post()
+<aiohttp.web.BaseRequest.post>`, matching the urlencoded body and
+:meth:`~aiohttp.web.BaseRequest.text` paths instead of surfacing an
+uncaught error -- by :user:`dxbjavid`.
