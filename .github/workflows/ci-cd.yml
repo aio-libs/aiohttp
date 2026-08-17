@@ -169,6 +169,9 @@ jobs:
         make doc-spelling
 
   lint-from-sdist:
+    permissions:
+      pull-requests: read  # to read PR metadata (verify change fragments step)
+
     name: Lint / sdist
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -210,6 +213,34 @@ jobs:
     - name: Run linters
       run: |
         make mypy
+    - name: Verify CHANGES fragment references PR
+      if: github.event_name == 'pull_request'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        # Fetch the body fresh: github.event.pull_request.body is frozen at
+        # the webhook payload and stale on re-runs after a body edit.
+        PR_BODY=$(
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
+        )
+        added=$(
+          gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | select(.status=="added") | .filename' \
+          | grep '^CHANGES/' || true
+        )
+        failed=0
+        for f in $added; do
+          num=$(basename "$f" | cut -d. -f1)
+          [[ "$num" =~ ^[0-9]+$ ]] || continue
+          if [[ "$num" == "$PR_NUMBER" ]]; then continue; fi
+          if grep -qE "(^|[^0-9])#${num}([^0-9]|$)" <<<"$PR_BODY"; then continue; fi
+          echo "::error file=$f::Change fragment ($num) must reference PR #$PR_NUMBER or an issue this PR fixes"
+          failed=1
+        done
+        exit $failed
     - name: Run twine checker
       run: |
         twine check --strict dist/*
