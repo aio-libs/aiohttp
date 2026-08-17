@@ -36,6 +36,24 @@ def test_set_parser_does_not_call_data_received_cb_for_tail(
     dummy_reader[1].feed_data.assert_called_once_with(b"tail")
 
 
+def test_set_parser_resumes_msg_queue_reading_after_upgrade(
+    event_loop: asyncio.AbstractEventLoop,
+    dummy_manager: Server[BaseRequest],
+    dummy_reader: tuple[WebSocketReader, mock.Mock],
+) -> None:
+    handler = RequestHandler(dummy_manager, loop=event_loop)
+    transport = mock.Mock()
+    handler.transport = transport
+    handler._upgraded = True
+    handler._msg_queue_paused = True
+    handler._reading_paused = False
+
+    handler.set_parser(dummy_reader[0])
+
+    assert handler._msg_queue_paused is False
+    transport.resume_reading.assert_called_once_with()
+
+
 def test_data_received_calls_data_received_cb(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],

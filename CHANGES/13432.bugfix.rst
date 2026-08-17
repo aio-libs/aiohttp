@@ -1,0 +1,1 @@
+Fixed WebSocket connections remaining paused after an upgraded request in a pipelined HTTP burst -- by :user:`mmdverse`.

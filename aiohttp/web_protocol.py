@@ -454,6 +454,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
 
+        if self._msg_queue_paused:
+            self._resume_msg_queue_reading()
+
     def eof_received(self) -> None:
         pass
 

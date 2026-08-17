@@ -79,6 +79,63 @@ async def test_pipelined_request_after_failed_websocket_upgrade(
     assert b"426" in data
 
 
+async def test_pipelined_websocket_upgrade_resumes_paused_transport(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def plain(_request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+    async def websocket(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        return ws
+
+    def request(port: int, upgrade: bool) -> bytes:
+        if upgrade:
+            return (
+                f"GET /ws HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n"
+                "Upgrade: websocket\r\nConnection: Upgrade\r\n"
+                "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+                "Sec-WebSocket-Version: 13\r\n\r\n"
+            ).encode()
+        return f"GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n\r\n".encode()
+
+    async def read_response(reader: asyncio.StreamReader) -> bytes:
+        head = await reader.readuntil(b"\r\n\r\n")
+        content_length = 0
+        for line in head.split(b"\r\n"):
+            if line.lower().startswith(b"content-length:"):
+                content_length = int(line.split(b":", 1)[1].strip())
+        if content_length:
+            await reader.readexactly(content_length)
+        return head
+
+    app = web.Application()
+    app.router.add_get("/", plain)
+    app.router.add_get("/ws", websocket)
+    server = await aiohttp_server(app)
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"".join(
+                request(server.port, index == 32) for index in range(1, 65)
+            )
+        )
+        await writer.drain()
+
+        for _ in range(32):
+            head = await asyncio.wait_for(read_response(reader), timeout=5)
+        assert b"101 Switching Protocols" in head
+
+        writer.write(b"\x89\x00")
+        await writer.drain()
+        assert await asyncio.wait_for(reader.readexactly(2), timeout=5) == b"\x8a\x00"
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
 async def test_partial_pipelined_request_after_failed_websocket_upgrade(
     aiohttp_server: AiohttpServer,
 ) -> None:
