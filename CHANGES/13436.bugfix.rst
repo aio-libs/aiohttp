@@ -1,0 +1,1 @@
+Rejected legacy hexadecimal IPv4 literals such as ``0x7f000001`` in :class:`~aiohttp.TCPConnector` host resolution, matching the existing rejection of the decimal and octal forms so they cannot be resolved past a connector-level host policy -- by :user:`arshsmith1`.

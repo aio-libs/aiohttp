@@ -47,6 +47,7 @@ from .helpers import (
     ceil_timeout,
     is_canonical_ipv4_address,
     is_ip_address,
+    is_ipv4_literal,
     sentinel,
     set_exception,
     set_result,
@@ -1123,10 +1124,11 @@ class TCPConnector(BaseConnector):
         self, host: str, port: int, traces: Sequence["Trace"] | None = None
     ) -> list[ResolveResult]:
         """Resolve host and return list of addresses."""
-        if is_ip_address(host):
-            # Reject legacy numeric IPv4 forms (e.g. 2130706433, 127.1) that
-            # socket would map onto an address, slipping past a connector-level
-            # policy that only sees the raw host.
+        if is_ip_address(host) or is_ipv4_literal(host):
+            # Reject legacy numeric IPv4 forms (e.g. 2130706433, 0x7f000001,
+            # 127.1) that socket would map onto an address, slipping past a
+            # connector-level policy that only sees the raw host. is_ip_address
+            # does not recognise the hex forms, so is_ipv4_literal catches them.
             if ":" not in host and not is_canonical_ipv4_address(host):
                 raise InvalidUrlClientError(host, "is not a canonical IPv4 address")
             return [
