@@ -2718,9 +2718,9 @@ on the payload passed as ``data``, not on the individual parts::
 Similarly, :class:`FormData` can be converted to a trackable payload by
 calling it: ``data = form()``.
 
-If the upload is interrupted, :attr:`Payload.upload_complete` is
-cancelled rather than resolved, and the error is raised by the request
-itself.
+If the upload fails, :attr:`Payload.upload_complete` completes with the
+same error the request raises; if the request is cancelled, the future is
+cancelled too.
 
 The body may be sent more than once during a single request, e.g. when a
 307 or 308 redirect is followed or the request is retried on a new
@@ -2777,9 +2777,9 @@ first upload; the others are sent without tracking.
 
       An :class:`asyncio.Future` completed when the request body has been
       fully sent. The future resolves to ``None`` once the upload
-      finishes, and is cancelled instead if the upload is interrupted by
-      a connection error or cancellation (the error itself is raised by
-      the request). If the body is sent again, e.g. when a redirected
+      finishes. If the upload fails, it completes with the same error the
+      request raises; if the request is cancelled, the future is
+      cancelled. If the body is sent again, e.g. when a redirected
       request resends it, the attribute is a new future tracking the new
       upload.
 

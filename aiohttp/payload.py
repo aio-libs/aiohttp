@@ -151,6 +151,7 @@ class Payload(ABC):
     _upload_active: bool = False
     _upload_finished: bool = False
     _upload_aborted: bool = False
+    _upload_abort_exc: "BaseException | None" = None
 
     def __init__(
         self,
@@ -257,21 +258,31 @@ class Payload(ABC):
         """Future resolved when a request finishes uploading this payload.
 
         The future completes with ``None`` once the request body has been
-        fully written, or is cancelled if the upload is interrupted (e.g.
-        connection error or request cancellation). If the payload is sent
-        again (e.g. a redirected request resends the body), a new future
-        is returned for the new upload. When overlapping requests share a
-        payload, the future tracks the first upload only.
+        fully written. If the upload fails, it completes with the same
+        error the request raises; if the request is cancelled, the future
+        is cancelled. If the payload is sent again (e.g. a redirected
+        request resends the body), a new future is returned for the new
+        upload. When overlapping requests share a payload, the future
+        tracks the first upload only.
 
         Must be accessed from within the event loop.
         """
         if self._upload_future is None:
             self._upload_future = asyncio.get_running_loop().create_future()
             if self._upload_aborted:
-                self._upload_future.cancel()
+                self._resolve_aborted(self._upload_future)
             elif self._upload_finished:
                 self._upload_future.set_result(None)
         return self._upload_future
+
+    def _resolve_aborted(self, fut: "asyncio.Future[None]") -> None:
+        if self._upload_abort_exc is None:
+            fut.cancel()
+        else:
+            fut.set_exception(self._upload_abort_exc)
+            # Consume the exception: the request raises it as well, so an
+            # unawaited future must not log it at garbage collection.
+            fut.exception()
 
     def _start_upload(self) -> bool:
         """Try to begin tracking a new upload of this payload.
@@ -285,6 +296,7 @@ class Payload(ABC):
         self._bytes_written = 0
         self._upload_finished = False
         self._upload_aborted = False
+        self._upload_abort_exc = None
         fut = self._upload_future
         if fut is not None and fut.done():
             # A previous upload of this payload already completed (e.g. the
@@ -301,15 +313,21 @@ class Payload(ABC):
         if fut is not None and not fut.done():
             fut.set_result(None)
 
-    def _abort_upload(self) -> None:
-        """Mark an unfinished upload as aborted, cancelling upload_complete."""
-        if self._upload_finished:
+    def _abort_upload(self, exc: BaseException | None = None) -> None:
+        """Mark an unfinished upload as failed or cancelled.
+
+        With an exception, upload_complete reports the upload error;
+        without one (or on cancellation), the future is cancelled.
+        """
+        if self._upload_finished or self._upload_aborted:
             return
         self._upload_active = False
         self._upload_aborted = True
+        if exc is not None and not isinstance(exc, asyncio.CancelledError):
+            self._upload_abort_exc = exc
         fut = self._upload_future
         if fut is not None and not fut.done():
-            fut.cancel()
+            self._resolve_aborted(fut)
 
     def set_content_disposition(
         self,

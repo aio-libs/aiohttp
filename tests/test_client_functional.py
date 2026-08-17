@@ -6189,7 +6189,7 @@ async def test_empty_body_shared_payload_not_mutated(
 
 
 async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
-    """An interrupted upload cancels upload_complete instead of resolving it."""
+    """A failed upload completes upload_complete with the request's error."""
 
     async def handler(request: web.Request) -> web.Response:
         await request.read()
@@ -6207,11 +6207,13 @@ async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
     with pytest.raises(aiohttp.ClientError):
         async with client.post("/", data=p):
             pass
-    assert p.upload_complete.cancelled()
+    assert p.upload_complete.done()
+    assert not p.upload_complete.cancelled()
+    assert isinstance(p.upload_complete.exception(), aiohttp.ClientConnectionError)
 
 
 async def test_payload_upload_aborted_before_write() -> None:
-    """A request failing before the body write starts cancels upload_complete."""
+    """A request failing before the body write starts reports the error."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         # Bound but not listening: connecting is refused, and the port
         # cannot be taken by another test in the meantime.
@@ -6220,10 +6222,11 @@ async def test_payload_upload_aborted_before_write() -> None:
         p = aiohttp.BytesPayload(b"x" * 1024)
         fut = p.upload_complete
         async with aiohttp.ClientSession() as session:
-            with pytest.raises(aiohttp.ClientConnectorError):
+            with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
                 await session.post(f"http://127.0.0.1:{port}/", data=p)
-        assert fut.cancelled()
-        assert p.upload_complete.cancelled()
+        # The future holds the same error the request raised.
+        assert fut.exception() is excinfo.value
+        assert p.upload_complete.exception() is excinfo.value
 
 
 async def test_payload_reused_after_redirect(aiohttp_client: AiohttpClient) -> None:
@@ -6379,6 +6382,64 @@ async def test_empty_payload_overlap_keeps_tracking_ownership(
     # Interrupting the parked upload still cancels its future.
     await asyncio.wait([fut], timeout=5)
     assert fut.cancelled()
+
+
+async def test_empty_payload_reused_after_aborted_upload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A successful resend after an aborted attempt gets a fresh resolved future.
+
+    The no-write fast path must clear the aborted state left by a previous
+    attempt, otherwise upload_complete stays cancelled despite the success.
+    """
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/plain", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"")
+    first = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True) as resp:
+            assert resp.status == 200
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        if not waiter.done():
+            waiter.cancel()
+            await slow_task  # raises the underlying error
+            pytest.fail("slow request completed before parking")
+    finally:
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    await asyncio.wait([first], timeout=5)
+    assert first.cancelled()  # the first attempt was aborted
+
+    # Reusing the payload on the no-write fast path succeeds and yields a
+    # fresh resolved future in place of the cancelled one.
+    async with client.post("/plain", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete is not first
+    assert p.upload_complete.done()
+    assert not p.upload_complete.cancelled()
 
 
 async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:

@@ -1540,19 +1540,20 @@ class ClientRequest(ClientRequestBase):
                     )
 
                 set_exception(protocol, reraised_exc, underlying_exc)
+                if track_progress:
+                    body._abort_upload(reraised_exc)
             except asyncio.CancelledError:
                 # Body hasn't been fully sent, so connection can't be reused
                 conn.close()
                 raise
             except Exception as underlying_exc:
-                set_exception(
-                    protocol,
-                    ClientConnectionError(
-                        "Failed to send bytes into the underlying connection "
-                        f"{conn !s}: {underlying_exc!r}",
-                    ),
-                    underlying_exc,
+                conn_exc = ClientConnectionError(
+                    "Failed to send bytes into the underlying connection "
+                    f"{conn !s}: {underlying_exc!r}",
                 )
+                set_exception(protocol, conn_exc, underlying_exc)
+                if track_progress:
+                    body._abort_upload(conn_exc)
             else:
                 # Successfully wrote the body, signal EOF and start response timeout
                 await writer.write_eof()
@@ -1561,7 +1562,8 @@ class ClientRequest(ClientRequestBase):
                 protocol.start_timeout()
         finally:
             if track_progress:
-                # No-op when the upload finished; cancels upload_complete otherwise.
+                # No-op when already finished or failed; cancels
+                # upload_complete on cancellation and any bypassed failure.
                 body._abort_upload()
 
     async def _close(self) -> None:

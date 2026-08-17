@@ -901,7 +901,7 @@ class ClientSession:
             else:
                 body = data if isinstance(data, payload.Payload) else None
             if body is not None and not body._upload_active:
-                body._abort_upload()
+                body._abort_upload(e)
 
             for trace in traces:
                 await trace.send_request_exception(
