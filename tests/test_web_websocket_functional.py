@@ -118,9 +118,7 @@ async def test_pipelined_websocket_upgrade_resumes_paused_transport(
     reader, writer = await asyncio.open_connection(server.host, server.port)
     try:
         writer.write(
-            b"".join(
-                request(server.port, index == 32) for index in range(1, 65)
-            )
+            b"".join(request(server.port, index == 32) for index in range(1, 65))
         )
         await writer.drain()
 
