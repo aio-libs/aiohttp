@@ -1288,6 +1288,10 @@ class ClientRequest(ClientRequestBase):
                 body = FormData(body, boundary=boundary)()
 
         self._body = body
+        # A payload may be reused from an earlier request (redirects,
+        # retries, or explicit reuse): drop that attempt's upload state so
+        # a failure of this request cannot be masked by a stale outcome.
+        body._reset_upload()
 
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:

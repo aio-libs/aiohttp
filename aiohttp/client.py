@@ -522,6 +522,12 @@ class ClientSession:
             else:
                 data = payload.JsonPayload(json, dumps=self._json_serialize)
 
+        if isinstance(data, payload.Payload):
+            # Reused payloads carry a previous attempt's upload state; drop
+            # it before this attempt so failures raised prior to building
+            # the request are reported through upload_complete as well.
+            data._reset_upload()
+
         redirects = 0
         history: list[ClientResponse] = []
         version = self._version

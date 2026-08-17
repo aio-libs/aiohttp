@@ -6229,6 +6229,38 @@ async def test_payload_upload_aborted_before_write() -> None:
         assert p.upload_complete.exception() is excinfo.value
 
 
+async def test_payload_reused_after_success_reports_new_failure(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A pre-write failure on a reused payload replaces the stale success state."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete.done()
+    assert p.bytes_written == len(p._value)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Bound but not listening: connecting is refused.
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
+                await session.post(f"http://127.0.0.1:{port}/", data=p)
+
+    # The payload reports the new attempt's failure, not the stale success.
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
 async def test_payload_reused_after_redirect(aiohttp_client: AiohttpClient) -> None:
     """A body resent after a redirect restarts the progress tracking."""
     received: list[int] = []

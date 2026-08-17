@@ -284,15 +284,16 @@ class Payload(ABC):
             # unawaited future must not log it at garbage collection.
             fut.exception()
 
-    def _start_upload(self) -> bool:
-        """Try to begin tracking a new upload of this payload.
+    def _reset_upload(self) -> None:
+        """
+        Forget a previous attempt's upload state.
 
-        Returns False when another upload is already being tracked; the
-        caller must then write the payload without progress tracking.
+        Called when the payload is attached to a new request, so state
+        left by an earlier attempt cannot be mistaken for the outcome of
+        the new one. Does nothing while another upload is in progress.
         """
         if self._upload_active:
-            return False
-        self._upload_active = True
+            return
         self._bytes_written = 0
         self._upload_finished = False
         self._upload_aborted = False
@@ -303,6 +304,17 @@ class Payload(ABC):
             # request is resent after a redirect); track the new upload with
             # a fresh future created lazily on the next upload_complete access.
             self._upload_future = None
+
+    def _start_upload(self) -> bool:
+        """Try to begin tracking a new upload of this payload.
+
+        Returns False when another upload is already being tracked; the
+        caller must then write the payload without progress tracking.
+        """
+        if self._upload_active:
+            return False
+        self._reset_upload()
+        self._upload_active = True
         return True
 
     def _finish_upload(self) -> None:
