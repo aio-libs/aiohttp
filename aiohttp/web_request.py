@@ -9,6 +9,7 @@ from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Final,
@@ -117,7 +118,7 @@ _FILE_SPOOL_MAX_SIZE: Final[int] = 1024**2
 class FileField:
     name: str
     filename: str
-    file: io.BufferedReader
+    file: IO[bytes]
     content_type: str
     headers: HeadersDictProxy
 
