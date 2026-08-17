@@ -12,7 +12,7 @@ babel==2.18.0
     # via sphinx
 certifi==2026.7.22
     # via requests
-charset-normalizer==3.4.9
+charset-normalizer==3.5.0
     # via requests
 click==8.4.2
     # via towncrier
