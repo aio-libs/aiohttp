@@ -525,7 +525,7 @@ class WebSocketReader:
                 elif self._has_mask:
                     assert self._frame_mask is not None
                     payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
-                    if type(payload_bytearray) is not bytearray:  # pragma: no branch
+                    if type(payload_bytearray) is not bytearray:
                         # Cython will do the conversion for us
                         # but we need to do it for Python and we
                         # will always get here in Python
