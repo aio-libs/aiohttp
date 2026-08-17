@@ -807,11 +807,24 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         prematurely.
         """
         request._finish()
-        if self._parser is not None:
+
+        # Handle feeding the message tail following an upgrade request that
+        # was declined.
+        # The upgrade request is the last request before the parser paused,
+        # so wait for self._messages to be empty.
+        # payload_parser is not None if the upgrade was accepted.
+        if (
+            self._upgraded
+            and not self._messages
+            and self._payload_parser is None
+            and self._parser is not None
+        ):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
+                messages, upgraded, tail = self._parser.feed_data(self._message_tail)
+                # A further upgrade request in the tail buffers its own remainder.
+                self._upgraded = upgraded
                 self._message_tail = tail
                 for msg, payload in messages:
                     self._request_count += 1
