@@ -6193,7 +6193,7 @@ async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
 
     async def handler(request: web.Request) -> web.Response:
         await request.read()
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6206,7 +6206,7 @@ async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
     p = aiohttp.AsyncIterablePayload(failing_body())
     with pytest.raises(aiohttp.ClientError):
         async with client.post("/", data=p):
-            pass
+            assert False
     assert p.upload_complete.done()
     assert not p.upload_complete.cancelled()
     assert isinstance(p.upload_complete.exception(), aiohttp.ClientConnectionError)
@@ -6387,7 +6387,7 @@ async def test_empty_payload_overlap_keeps_tracking_ownership(
 
     async def slow_post() -> None:
         async with client.post("/", data=p, expect100=True) as resp:
-            assert resp.status == 200
+            assert False
 
     slow_task = asyncio.create_task(slow_post())
     try:
@@ -6444,7 +6444,7 @@ async def test_empty_payload_reused_after_aborted_upload(
 
     async def slow_post() -> None:
         async with client.post("/", data=p, expect100=True) as resp:
-            assert resp.status == 200
+            assert False
 
     slow_task = asyncio.create_task(slow_post())
     try:
