@@ -1,0 +1,4 @@
+Stripped ``Content-Length`` from chunked responses when the header was set
+directly through ``resp.headers`` after calling
+:meth:`~aiohttp.web.StreamResponse.enable_chunked_encoding` -- by
+:user:`silentiris`.
