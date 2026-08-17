@@ -1518,6 +1518,7 @@ class ClientRequest(ClientRequestBase):
         track_progress = body is not self._EMPTY_BODY and body._start_upload()
         if track_progress:
             writer = payload._ProgressWriter(writer, body)
+        abort_exc: BaseException | None = None
         try:
             # 100 response
             if self._continue is not None:
@@ -1544,20 +1545,17 @@ class ClientRequest(ClientRequestBase):
                     )
 
                 set_exception(protocol, reraised_exc, underlying_exc)
-                if track_progress:
-                    body._abort_upload(reraised_exc)
+                abort_exc = reraised_exc
             except asyncio.CancelledError:
                 # Body hasn't been fully sent, so connection can't be reused
                 conn.close()
                 raise
             except Exception as underlying_exc:
-                conn_exc = ClientConnectionError(
+                abort_exc = ClientConnectionError(
                     "Failed to send bytes into the underlying connection "
                     f"{conn !s}: {underlying_exc!r}",
                 )
-                set_exception(protocol, conn_exc, underlying_exc)
-                if track_progress:
-                    body._abort_upload(conn_exc)
+                set_exception(protocol, abort_exc, underlying_exc)
             else:
                 # Successfully wrote the body, signal EOF and start response timeout
                 await writer.write_eof()
@@ -1566,9 +1564,10 @@ class ClientRequest(ClientRequestBase):
                 protocol.start_timeout()
         finally:
             if track_progress:
-                # No-op when already finished or failed; cancels
-                # upload_complete on cancellation and any bypassed failure.
-                body._abort_upload()
+                # No-op when the upload finished; reports the write error
+                # otherwise, or cancels upload_complete when there is none
+                # (cancellation or a failure that bypassed the handlers).
+                body._abort_upload(abort_exc)
 
     async def _close(self) -> None:
         if self._writer_task is not None:

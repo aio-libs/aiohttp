@@ -6470,6 +6470,63 @@ async def test_empty_payload_reused_after_aborted_upload(
     assert not p.upload_complete.cancelled()
 
 
+@pytest.mark.parametrize("exc_type", [OSError, RuntimeError])
+async def test_untracked_upload_failure_leaves_owner_state(
+    aiohttp_client: AiohttpClient, exc_type: type[Exception]
+) -> None:
+    """A failing untracked write must not settle the tracking owner's future."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/fail", handler)
+    client = await aiohttp_client(app)
+
+    async def failing_body() -> AsyncIterator[bytes]:
+        yield b"z" * 16
+        raise exc_type("body source failed")
+
+    p = aiohttp.AsyncIterablePayload(failing_body())
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True) as resp:
+            assert resp.status == 200
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        # The slow request's writer acquires the tracking before parking.
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+
+        # The second request runs untracked and its write fails.
+        with pytest.raises(aiohttp.ClientError):
+            async with client.post("/fail", data=p):
+                pass
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the loser's error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
 async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
