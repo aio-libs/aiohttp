@@ -59,7 +59,7 @@ jobs:
     timeout-minutes: 5
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Cache llhttp generated files
@@ -468,7 +468,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout project
-      uses: actions/checkout@v6  # despite sdist, codspeed needs Git
+      uses: actions/checkout@v7  # despite sdist, codspeed needs Git
     - name: Retrieve the sdist and unpack it into the workspace
       uses: re-actors/checkout-python-sdist@release/v3
       with:
@@ -526,7 +526,7 @@ jobs:
     timeout-minutes: 15
     steps:
     - name: Checkout
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Setup Python
@@ -778,7 +778,7 @@ jobs:
       # Only the release-creating group needs the repo (create-release reads
       # CHANGES.rst and aiohttp/__init__.py); the others only touch dist/.
       if: ${{ strategy.job-index == 0 }}
-      uses: actions/checkout@v6
+      uses: actions/checkout@v7
       with:
         submodules: true
     - name: Login
