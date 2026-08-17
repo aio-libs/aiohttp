@@ -736,6 +736,51 @@ def test_route_dynamic_quoting(router: web.UrlDispatcher) -> None:
     )
 
 
+async def test_dynamic_match_with_percent_encoded_fixed_part(
+    router: web.UrlDispatcher,
+) -> None:
+    """A dynamic route with a percent-encodable fixed segment is resolvable.
+
+    Regression test for #13433: the fixed part was percent-encoded at
+    registration time and used for both the regex pattern and the resource
+    index key, but the resolver walks the *decoded* path.  The encoded
+    index key was never probed, so the resource was never a candidate.
+    """
+    handler = make_handler()
+    router.add_route("GET", "/hello world/{name}", handler)
+
+    req = make_mocked_request("GET", "/hello%20world/john")
+    match_info = await router.resolve(req)
+    assert {"name": "john"} == match_info
+
+
+async def test_dynamic_url_for_round_trip_with_percent_encoded_fixed_part(
+    router: web.UrlDispatcher,
+) -> None:
+    """url_for() produces a URL that the router can resolve back."""
+    handler = make_handler()
+    route = router.add_route("GET", "/hello world/{name}", handler)
+
+    url = route.url_for(name="john")
+    assert str(url) == "/hello%20world/john"
+
+    req = make_mocked_request("GET", str(url))
+    match_info = await router.resolve(req)
+    assert {"name": "john"} == match_info
+
+
+async def test_static_match_with_percent_encoded_prefix(
+    router: web.UrlDispatcher, tmp_path: pathlib.Path
+) -> None:
+    """A static route with a percent-encodable prefix is resolvable."""
+    (tmp_path / "file.txt").write_text("hello")
+    router.add_static("/static files", tmp_path)
+
+    req = make_mocked_request("GET", "/static%20files/file.txt")
+    match_info = await router.resolve(req)
+    assert match_info["filename"] == "file.txt"
+
+
 async def test_regular_match_info(router: web.UrlDispatcher) -> None:
     handler = make_handler()
     router.add_route("GET", "/get/{name}", handler)

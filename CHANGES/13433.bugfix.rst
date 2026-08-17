@@ -1,0 +1,4 @@
+Fixed dynamic and static routes with percent-encodable fixed path segments
+(spaces, non-ASCII) being unreachable — the resolver walked the decoded path
+but the resource index key and regex pattern used the percent-encoded form
+-- by :user:`silentiris`.

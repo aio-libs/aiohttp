@@ -409,25 +409,31 @@ class DynamicResource(Resource):
         self._orig_path = path
         pattern = ""
         formatter = ""
+        canonical = ""
         for part in ROUTE_RE.split(path):
             match = self.DYN.fullmatch(part)
             if match:
                 pattern += "(?P<{}>{})".format(match.group("var"), self.GOOD)
                 formatter += "{" + match.group("var") + "}"
+                canonical += "{" + match.group("var") + "}"
                 continue
 
             match = self.DYN_WITH_RE.fullmatch(part)
             if match:
                 pattern += "(?P<{var}>{re})".format(**match.groupdict())
                 formatter += "{" + match.group("var") + "}"
+                canonical += "{" + match.group("var") + "}"
                 continue
 
             if "{" in part or "}" in part:
                 raise ValueError(f"Invalid path '{path}'['{part}']")
 
-            part = _requote_path(part)
-            formatter += part
+            # Use the decoded part for the regex pattern so it matches
+            # the decoded path_safe used by the resolver.  The formatter
+            # uses the encoded form so url_for() produces valid URLs.
             pattern += re.escape(part)
+            formatter += _requote_path(part)
+            canonical += part
 
         try:
             compiled = re.compile(pattern)
@@ -437,17 +443,19 @@ class DynamicResource(Resource):
         assert formatter.startswith("/")
         self._pattern = compiled
         self._formatter = formatter
+        self._canonical = canonical
 
     @property
     def canonical(self) -> str:
-        return self._formatter
+        return self._canonical
 
     def add_prefix(self, prefix: str) -> None:
         assert prefix.startswith("/")
         assert not prefix.endswith("/")
         assert len(prefix) > 1
         self._pattern = re.compile(re.escape(prefix) + self._pattern.pattern)
-        self._formatter = prefix + self._formatter
+        self._formatter = _requote_path(prefix) + self._formatter
+        self._canonical = prefix + self._canonical
 
     def _match(self, path: str) -> dict[str, str] | None:
         match = self._pattern.fullmatch(path)
@@ -477,8 +485,8 @@ class PrefixResource(AbstractResource):
         assert not prefix or prefix.startswith("/"), prefix
         assert prefix in ("", "/") or not prefix.endswith("/"), prefix
         super().__init__(name=name)
-        self._prefix = _requote_path(prefix)
-        self._prefix2 = self._prefix + "/"
+        self._prefix = prefix
+        self._prefix2 = prefix + "/"
 
     @property
     def canonical(self) -> str:
@@ -546,7 +554,7 @@ class StaticResource(PrefixResource):
             append_version = self._append_version
         filename = str(filename).lstrip("/")
 
-        url = URL.build(path=self._prefix, encoded=True)
+        url = URL.build(path=_requote_path(self._prefix), encoded=True)
         # filename is not encoded
         url = url / filename
 
