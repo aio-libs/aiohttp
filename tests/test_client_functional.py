@@ -6386,7 +6386,7 @@ async def test_empty_payload_overlap_keeps_tracking_ownership(
     fut = p.upload_complete
 
     async def slow_post() -> None:
-        async with client.post("/", data=p, expect100=True) as resp:
+        async with client.post("/", data=p, expect100=True):
             assert False
 
     slow_task = asyncio.create_task(slow_post())
@@ -6443,7 +6443,7 @@ async def test_empty_payload_reused_after_aborted_upload(
     first = p.upload_complete
 
     async def slow_post() -> None:
-        async with client.post("/", data=p, expect100=True) as resp:
+        async with client.post("/", data=p, expect100=True):
             assert False
 
     slow_task = asyncio.create_task(slow_post())
