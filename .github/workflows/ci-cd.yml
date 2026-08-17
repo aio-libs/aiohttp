@@ -717,7 +717,7 @@ jobs:
         fi
       shell: bash
     - name: Build wheels
-      uses: pypa/cibuildwheel@v4.1.1
+      uses: pypa/cibuildwheel@v4.2.0
       with:
         package-dir: >-  # not necessarily a dir, we pass an acceptable sdist
           dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
