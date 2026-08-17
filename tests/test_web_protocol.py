@@ -44,12 +44,13 @@ def test_set_parser_resumes_msg_queue_reading_after_upgrade(
     handler = RequestHandler(dummy_manager, loop=event_loop)
     transport = mock.Mock()
     handler.transport = transport
-    handler._upgraded = True
+    handler._upgraded = False
     handler._msg_queue_paused = True
     handler._reading_paused = False
 
     handler.set_parser(dummy_reader[0])
 
+    assert handler._upgraded is True
     assert handler._msg_queue_paused is False
     transport.resume_reading.assert_called_once_with()
 

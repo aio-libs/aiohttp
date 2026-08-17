@@ -86,9 +86,11 @@ async def test_pipelined_websocket_upgrade_resumes_paused_transport(
         return web.Response(text="ok")
 
     async def websocket(request: web.Request) -> web.WebSocketResponse:
-        ws = web.WebSocketResponse()
+        ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
-        await ws.receive()
+        message = await ws.receive()
+        assert message.type is WSMsgType.PING
+        await ws.pong(message.data)
         return ws
 
     def request(port: int, upgrade: bool) -> bytes:
@@ -122,8 +124,9 @@ async def test_pipelined_websocket_upgrade_resumes_paused_transport(
         )
         await writer.drain()
 
-        for _ in range(32):
-            head = await asyncio.wait_for(read_response(reader), timeout=5)
+        for _ in range(31):
+            await asyncio.wait_for(read_response(reader), timeout=5)
+        head = await asyncio.wait_for(read_response(reader), timeout=5)
         assert b"101 Switching Protocols" in head
 
         writer.write(b"\x89\x00")

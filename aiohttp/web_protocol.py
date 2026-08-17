@@ -449,6 +449,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         self._payload_parser = parser
         self._data_received_cb = data_received_cb
+        self._upgraded = True
 
         if self._message_tail:
             self._payload_parser.feed_data(self._message_tail)
