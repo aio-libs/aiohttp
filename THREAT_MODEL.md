@@ -582,7 +582,7 @@ client-side, the writer adds masks to outgoing frames.
   fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
   backpressure once exceeded, mirroring the HTTP chunk-splits limit in
   `StreamReader` (PR #11894).
-- **PR #13487** — that fragment-count backpressure paused the transport in
+- **PR #13488** — that fragment-count backpressure paused the transport in
   the middle of a frame, which cannot be undone: the frame only completes
   once more data arrives, and the only resume is a read off the WebSocket
   queue, still empty because no message has been queued yet. A peer that
