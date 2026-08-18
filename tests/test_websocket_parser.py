@@ -1097,7 +1097,7 @@ async def test_set_exception_still_delivers_stashed_frames(
 
     received = 0
     with pytest.raises(ConnectionResetError):
-        while True:
+        for _ in range(sent + 1):
             await asyncio.wait_for(out.read(), 5)
             received += 1
     assert received == sent
