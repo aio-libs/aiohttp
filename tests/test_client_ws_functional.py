@@ -1796,15 +1796,16 @@ async def test_stalled_parser_outlives_connection_lost(
     transport = protocol.transport
     assert transport is not None
     protocol.data_received(b"\x81\x00" * sent)
-    assert ws._reader is not None
-    assert len(ws._reader._buffer) < sent
+    assert ws._reader._stalled_reader is not None, "parser never stalled"
 
     # Simulate the peer vanishing: the socket is gone and the protocol drops
     # its reference to the parser, exactly as the event loop would do it.
     transport.abort()
     protocol.connection_lost(None)
-    gc.collect()
+    for _ in range(3):  # PyPy can need more than one pass
+        gc.collect()
 
-    for _ in range(sent):
-        assert (await ws.receive()).type is WSMsgType.TEXT
-    assert (await ws.receive()).type is WSMsgType.CLOSED
+    count = 0
+    while (await ws.receive()).type is not WSMsgType.CLOSED:
+        count += 1
+    assert count == sent

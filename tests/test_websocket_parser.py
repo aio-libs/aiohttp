@@ -952,7 +952,6 @@ async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None
     # Zero-length messages are not free: each one is a queued object. They used
     # to add nothing to the queue's byte counter, so a peer could stream empty
     # frames forever without the transport ever being paused.
-    high_water = 2 * 2**16
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
@@ -962,7 +961,8 @@ async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None
 
     assert protocol._reading_paused is True
     assert len(out._buffer) < sent
-    assert len(out._buffer) * MSG_SIZE_OVERHEAD <= high_water + MSG_SIZE_OVERHEAD
+    # Overshoot is capped at the one message that crossed the mark.
+    assert out._size <= out._limit + MSG_SIZE_OVERHEAD
 
 
 async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> None:
@@ -984,7 +984,7 @@ async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> N
     # Overshoot is capped at the one message that crossed the mark, not the
     # 16 MiB the peer asked us to inflate.
     assert len(out._buffer) == 1
-    assert sum(msg.size for msg in out._buffer) == len(payload)
+    assert out._buffer[0].size == len(payload)
 
 
 async def test_read_arriving_over_high_water_inflates_nothing(

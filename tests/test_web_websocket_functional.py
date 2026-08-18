@@ -2047,14 +2047,20 @@ async def test_stalled_parser_outlives_connection_lost(
         # each one is charged MSG_SIZE_OVERHEAD in the queue, so a single read
         # crosses the high-water mark and the parser stalls part way through.
         protocol.data_received(b"\x81\x80\x00\x00\x00\x00" * sent)
-        assert ws._reader is not None
-        assert len(ws._reader._buffer) < sent
+        queue = ws._reader
+        assert queue is not None
+        assert queue._stalled_reader is not None, "parser never stalled"
 
         # Simulate the peer vanishing: the socket is gone and the protocol
         # drops its reference to the parser, as the event loop would do it.
+        # Detach the handler task first: TestServer forces
+        # handler_cancellation=True (production defaults to False), and the
+        # cancellation would land on this very task at its next yield.
+        protocol._task_handler = None
         transport.abort()
         protocol.connection_lost(None)
-        gc.collect()
+        for _ in range(3):  # PyPy can need more than one pass
+            gc.collect()
 
         count = 0
         while (await ws.receive()).type is not WSMsgType.CLOSED:

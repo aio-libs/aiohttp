@@ -48,7 +48,7 @@ cdef class WebSocketDataQueue:
 
     cdef public unsigned int _size
     cdef public object _protocol
-    cdef unsigned int _limit
+    cdef public unsigned int _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
