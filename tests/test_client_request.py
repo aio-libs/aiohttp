@@ -244,6 +244,29 @@ async def test_host_port_err(make_client_request: _RequestMaker) -> None:
         make_client_request("get", URL("http://python.org:123e/"))
 
 
+def test_strip_ipv6_zone_id() -> None:
+    """Host zone IDs must be stripped per RFC 6874 §4."""
+    from aiohttp.client_reqrep import _strip_ipv6_zone_id
+
+    assert _strip_ipv6_zone_id("[fe80::1%eth0]:8080") == "[fe80::1]:8080"
+    assert _strip_ipv6_zone_id("[fe80::1%25eth0]:8080") == "[fe80::1]:8080"
+    assert _strip_ipv6_zone_id("[fe80::1%wlan0]") == "[fe80::1]"
+    assert _strip_ipv6_zone_id("[fe80::1]") == "[fe80::1]"
+    assert _strip_ipv6_zone_id("[::1]:8080") == "[::1]:8080"
+    assert _strip_ipv6_zone_id("example.org:80") == "example.org:80"
+    assert _strip_ipv6_zone_id(None) is None
+
+
+async def test_host_header_strips_ipv6_zone_id(
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://[fe80::1%25eth0]:8080/path"))
+    assert req.headers["Host"] == "[fe80::1]:8080"
+
+    req2 = make_client_request("get", URL("http://[fe80::1%25eth0]/"))
+    assert req2.headers["Host"] == "[fe80::1]"
+
+
 async def test_hostname_err(make_client_request: _RequestMaker) -> None:
     with pytest.raises(ValueError):
         make_client_request("get", URL("http://:8080/"))

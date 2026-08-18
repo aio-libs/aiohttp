@@ -1,0 +1,1 @@
+Fixed IPv6 link-local zone IDs (``%eth0`` etc.) being sent verbatim in the ``Host`` header, per RFC 6874 §4. The zone ID is now stripped from the host before the request is sent, so strict servers (e.g. nginx >= 1.29.4) no longer reject such requests with ``400 Bad Request``.
