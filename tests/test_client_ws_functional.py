@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import contextlib
+import gc
 import hashlib
 import json
 import socket
@@ -1760,3 +1761,50 @@ async def test_client_rejects_compressed_frame_without_negotiation(
     assert msg.type is WSMsgType.ERROR, msg
     assert isinstance(msg.data, WebSocketError)
     assert msg.data.code == WSCloseCode.PROTOCOL_ERROR
+
+
+async def test_stalled_parser_outlives_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Frames the parser stopped short of are delivered after the peer vanishes.
+
+    Once the queue is over its high-water mark the parser stops mid-read and
+    parks the rest of the read on itself, reachable from the queue only through
+    a weak reference. Connection loss releases the protocol's reference to the
+    parser, so the response has to be the owner or those frames are collected
+    and the application silently sees a short stream.
+    """
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/")
+
+    # Empty server->client TEXT frames: two bytes on the wire, but each one is
+    # charged MSG_SIZE_OVERHEAD in the queue, so a single read crosses the
+    # high-water mark and the parser stalls part way through it.
+    sent = 8000
+    assert ws._conn is not None
+    protocol = ws._conn.protocol
+    assert protocol is not None
+    transport = protocol.transport
+    assert transport is not None
+    protocol.data_received(b"\x81\x00" * sent)
+    assert ws._reader is not None
+    assert len(ws._reader._buffer) < sent
+
+    # Simulate the peer vanishing: the socket is gone and the protocol drops
+    # its reference to the parser, exactly as the event loop would do it.
+    transport.abort()
+    protocol.connection_lost(None)
+    gc.collect()
+
+    for _ in range(sent):
+        assert (await ws.receive()).type is WSMsgType.TEXT
+    assert (await ws.receive()).type is WSMsgType.CLOSED

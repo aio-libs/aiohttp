@@ -2,6 +2,7 @@
 
 import asyncio
 import contextlib
+import gc
 import json
 import socket
 import sys
@@ -2019,3 +2020,51 @@ async def test_prepare_after_client_disconnect(aiohttp_client: AiohttpClient) ->
         aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError
     ):
         await request_task
+
+
+async def test_stalled_parser_outlives_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Frames the parser stopped short of are delivered after the peer vanishes.
+
+    Once the queue is over its high-water mark the parser stops mid-read and
+    parks the rest of the read on itself, reachable from the queue only through
+    a weak reference. Connection loss releases the protocol's reference to the
+    parser, so the response has to be the owner or those frames are collected
+    and the handler silently sees a short stream.
+    """
+    sent = 8000
+    received: asyncio.Future[int] = asyncio.get_running_loop().create_future()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        protocol = request.protocol
+        transport = request.transport
+        assert transport is not None
+        # Empty masked client->server TEXT frames: six bytes on the wire, but
+        # each one is charged MSG_SIZE_OVERHEAD in the queue, so a single read
+        # crosses the high-water mark and the parser stalls part way through.
+        protocol.data_received(b"\x81\x80\x00\x00\x00\x00" * sent)
+        assert ws._reader is not None
+        assert len(ws._reader._buffer) < sent
+
+        # Simulate the peer vanishing: the socket is gone and the protocol
+        # drops its reference to the parser, as the event loop would do it.
+        transport.abort()
+        protocol.connection_lost(None)
+        gc.collect()
+
+        count = 0
+        while (await ws.receive()).type is not WSMsgType.CLOSED:
+            count += 1
+        received.set_result(count)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    await client.ws_connect("/")
+
+    assert await asyncio.wait_for(received, 10) == sent
