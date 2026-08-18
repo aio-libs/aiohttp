@@ -377,9 +377,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         value += port
                     elem[name.lower()] = value
                     pos += len(match.group(0))
-                elif not field_value[pos : field_value.find(";", pos)].strip(" \t"):
+                elif (semi := field_value.find(";", pos)) == -1:
+                    # No further pair to parse; a trailing empty or malformed
+                    # value ends this field-value.
+                    break
+                elif not field_value[pos:semi].strip(" \t"):
                     # Empty value
-                    pos = field_value.find(";", pos) + 1
+                    pos = semi + 1
                 else:
                     # bad syntax here, skip to next field value
                     break
