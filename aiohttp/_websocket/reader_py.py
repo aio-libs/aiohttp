@@ -158,8 +158,8 @@ class WebSocketReader:
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
         self._payload_fragments: list[bytes] = []
-        # Limit number of fragments, so a large number of tiny fragments
-        # doesn't exceed reasonable memory usage.
+        # Collapse the fragments once there are more than this many, so a
+        # large number of tiny fragments doesn't exceed reasonable memory usage.
         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._frame_payload_len = 0
 
@@ -505,9 +505,19 @@ class WebSocketReader:
                     if (
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
-                        and not self.queue._protocol._reading_paused
                     ):
-                        self.queue._protocol.pause_reading()
+                        # A peer dribbling one frame across many tiny reads
+                        # would otherwise pin per-object overhead for every
+                        # chunk; collapsing them bounds it to the frame, which
+                        # _max_msg_size already caps. Pausing the transport
+                        # here cannot bound it: the frame only completes once
+                        # more data arrives, and the only resume is a read off
+                        # a queue that is still empty, so the connection would
+                        # strand. Joins are amortised by the cap scaling with
+                        # _max_msg_size.
+                        self._payload_fragments[:] = (
+                            b"".join(self._payload_fragments),
+                        )
                     break
 
                 payload: bytes | bytearray
