@@ -1,0 +1,3 @@
+Stopped the benchmark CI job from hanging in the CodSpeed runner's apt
+install by preinstalling ``libc6-dbg`` with a bounded retry, and raised the
+job timeout from 15 to 30 minutes -- by :user:`bdraco`.
