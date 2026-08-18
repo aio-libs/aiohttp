@@ -591,7 +591,10 @@ client-side, the writer adds masks to outgoing frames.
   `_tail`, the queue keeps only a weakref to the stalled reader, and
   drains re-drive it at a `_limit // 2` low-water mark (each resume
   re-slices the tail, so per-pop resumes would make draining a tiny-frame
-  burst quadratic CPU). Callers constructing a `WebSocketReader` for
+  burst quadratic CPU), and the transport stays paused until the stash is
+  exhausted (resuming earlier would admit a fresh socket read into `_tail`
+  per couple of drained messages, relocating the memory bound there).
+  Callers constructing a `WebSocketReader` for
   `set_parser()` must hold a strong reference to it (both in-tree response
   classes do, via `_parser`).
 

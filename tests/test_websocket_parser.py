@@ -1063,6 +1063,32 @@ async def test_drain_resumes_parsing_in_batches(protocol: BaseProtocol) -> None:
     assert out._size > out._limit
 
 
+async def test_transport_stays_paused_while_stash_remains(
+    protocol: BaseProtocol,
+) -> None:
+    # Resuming the transport before the stash is exhausted would admit a
+    # fresh socket read into the tail for every couple of messages drained,
+    # moving the memory bound from the queue into the tail.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    assert protocol._reading_paused is True
+
+    count = 0
+    while out._stalled_reader is not None:
+        await asyncio.wait_for(out.read(), 5)
+        count += 1
+        if out._stalled_reader is not None:
+            assert protocol._reading_paused is True, f"resumed after {count} pops"
+    assert count < sent
+
+    # The pop that exhausted the stash resumed the transport.
+    assert protocol._reading_paused is False
+
+
 async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
     # A peer that bursts and then disconnects must not lose the tail: at EOF
     # there is no resume to ride on, so draining has to keep driving the parser.

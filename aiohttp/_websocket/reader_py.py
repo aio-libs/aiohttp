@@ -162,7 +162,14 @@ class WebSocketDataQueue:
                     ws_logger.warning(STALLED_READER_COLLECTED)
                     if self._exception is None:
                         self.set_exception(RuntimeError(STALLED_READER_COLLECTED))
-            if self._size < self._limit and self._protocol._reading_paused:
+            # Resuming the transport while a stash remains would admit
+            # another socket read into the tail for every couple of messages
+            # drained, moving the memory bound from the queue into the tail.
+            if (
+                self._stalled_reader is None
+                and self._size < self._limit
+                and self._protocol._reading_paused
+            ):
                 self._protocol.resume_reading()
             return data
         if self._exception is not None:
