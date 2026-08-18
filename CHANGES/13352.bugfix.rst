@@ -1,1 +1,1 @@
-Capped the number of per-read payload fragments the WebSocket reader retains in memory -- by :user:`Dreamsorcerer`.
+Capped the per-read fragment overhead the WebSocket reader retains while reassembling a frame delivered across many small reads, collapsing the pending fragments into a single buffer once the count is high rather than retaining one object per read -- by :user:`Dreamsorcerer` and :user:`bdraco`.

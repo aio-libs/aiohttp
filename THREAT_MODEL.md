@@ -548,7 +548,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
-| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) `WebSocketReader.__init__` caps the retained fragment count at `max(1024, max_msg_size // 256)`, joining them into one buffer once exceeded, so per-read object overhead cannot outgrow the frame itself. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
+| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) `WebSocketReader.__init__` caps the retained fragment count at `max(1024, max_msg_size // 256)`, joining them into one buffer once exceeded, so retained per-read overhead is bounded by that fragment count (about a quarter of the frame at the 4 MiB default, and at most ~70 KB when the 1024 floor applies). | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
 | 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
 | 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Documented design decision: keep the RFC 7692 default (context takeover). **Document the memory tradeoff in user-facing WebSocket docs.** **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
 | 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
@@ -586,7 +586,8 @@ client-side, the writer adds masks to outgoing frames.
   reads retained one `bytes` object per read. The reader now collapses the
   pending fragments into a single buffer once the count exceeds
   `max(1024, max_msg_size // 256)`, bounding the retained per-read overhead
-  to the frame that `max_msg_size` already caps.
+  to that fragment count (about a quarter of the frame at the 4 MiB default,
+  and at most ~70 KB when the 1024 floor applies).
 
 ---
 

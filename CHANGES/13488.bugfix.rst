@@ -1,1 +1,1 @@
-Improved WebSocket frame reassembly to keep held memory proportional to the frame size when a frame is delivered across a large number of small reads; the per-read fragments are collapsed into a single buffer once the fragment count is high, rather than retaining one object per read -- by :user:`bdraco`.
+13352.bugfix.rst

@@ -918,32 +918,36 @@ async def test_incomplete_frame_collapses_when_fragment_limit_exceeded(
     assert msg.data == b"x" * payload_len
 
 
+@pytest.mark.parametrize("mask", [False, True])
 async def test_fragment_limit_delivers_frame_split_across_many_reads(
-    protocol: BaseProtocol,
+    protocol: BaseProtocol, mask: bool
 ) -> None:
     """A frame split past the fragment limit is still assembled and delivered.
 
-    Reading is not paused mid-frame, so the frame completes normally once the
-    remaining bytes arrive.
+    Reading is not paused mid-frame. The masked case drives the server-side
+    reassembly path through the collapse: the fragments are joined and then
+    unmasked, so a collapse that reordered or dropped fragments would corrupt
+    the varied payload.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
-    payload_len = 8 * 1024
-    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    payload = bytes(range(256)) * 32  # 8 KiB of varied, distinctive bytes
+    frame = build_frame(payload, WSMsgType.BINARY, mask=mask)
 
-    # Two bytes per read, so the fragment count runs well past the cap
-    # (4096 reads against a cap of 1024) before the frame completes.
-    for _ in range(payload_len // 2 - 1):
-        parser.feed_data(b"xx")
+    # Two bytes per read drives the payload-fragment count well past the cap
+    # (~4096 reads against a cap of 1024), so the collapse fires several times.
+    chunks = [frame[i : i + 2] for i in range(0, len(frame), 2)]
+    for chunk in chunks[:-1]:
+        parser.feed_data(chunk)
         assert not out._buffer
         assert protocol._reading_paused is False
 
-    parser.feed_data(b"xx")
+    parser.feed_data(chunks[-1])
     msg = await out.read()
-    assert msg.data == b"x" * payload_len
+    assert msg.data == payload
 
 
 async def test_incomplete_frame_not_paused_for_normal_reads(

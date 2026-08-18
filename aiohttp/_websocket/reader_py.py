@@ -509,8 +509,8 @@ class WebSocketReader:
                         # A frame delivered across many tiny reads would
                         # otherwise retain per-object overhead for every
                         # chunk; collapse them into one buffer, which bounds
-                        # the overhead to the frame that _max_msg_size already
-                        # caps. Joins are amortised by the cap scaling with
+                        # the retained overhead to _max_fragments objects.
+                        # Joins are amortised by the cap scaling with
                         # _max_msg_size. Pausing here is not an option: the
                         # only resume is a read off the queue, which stays
                         # empty until a frame completes.
