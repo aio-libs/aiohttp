@@ -2178,21 +2178,28 @@ async def test_post_max_client_size_counts_multipart_headers(
         assert resp.status == 413
 
 
+@pytest.mark.parametrize(
+    "max_size",
+    (_FILE_SPOOL_MAX_SIZE, 2 * _FILE_SPOOL_MAX_SIZE),
+    ids=("spooled", "rolled-over"),
+)
 async def test_post_max_client_size_within_single_part(
-    aiohttp_client: AiohttpClient,
+    aiohttp_client: AiohttpClient, max_size: int
 ) -> None:
     async def handler(request: web.Request) -> NoReturn:
         await request.post()
         assert False
 
-    app = web.Application(client_max_size=1024**2)
+    app = web.Application(client_max_size=max_size)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
     # A sole oversized part is never followed by a boundary, so only the
-    # per-chunk check can reject it, and it must do so before buffering.
+    # per-chunk check can reject it, and it must do so before buffering. The
+    # larger limit lets the part reach the disk first, so the spool is then
+    # closed off the event loop too.
     data = FormData()
-    with io.BytesIO(b"x" * (2 * 1024**2)) as file_handle:
+    with io.BytesIO(b"x" * (3 * _FILE_SPOOL_MAX_SIZE)) as file_handle:
         data.add_field("file", file_handle, filename="x.bin")
         async with client.post("/", data=data) as resp:
             assert resp.status == 413
