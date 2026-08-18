@@ -545,9 +545,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             if self._waiting:
                 assert self._loop is not None
                 assert self._close_wait is None
-                self._close_wait = close_wait = self._loop.create_future()
+                self._close_wait = self._loop.create_future()
                 reader.feed_data(WS_CLOSING_MESSAGE)
-                await close_wait
+                await self._close_wait
 
             if self._closing:
                 self._close_transport()
