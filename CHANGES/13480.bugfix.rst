@@ -1,0 +1,5 @@
+Fixed :class:`~aiohttp.web.FileResponse` ignoring the entity-tag form of the
+``If-Range`` request header, which caused a ``Range`` request with a stale
+``If-Range: "<etag>"`` validator to be served a ``206`` partial from a changed
+file instead of the full ``200`` representation, per :rfc:`9110#section-13.1.5`
+-- by :user:`arshsmith1`.
