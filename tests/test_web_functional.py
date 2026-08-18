@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import io
 import json
+import os
 import pathlib
 import socket
 import sys
@@ -31,6 +33,7 @@ from aiohttp.pytest_plugin import AiohttpClient, AiohttpServer
 from aiohttp.streams import StreamReader
 from aiohttp.typedefs import Handler
 from aiohttp.web_protocol import MAX_MSG_QUEUE_SIZE, RequestHandler
+from aiohttp.web_request import _FILE_SPOOL_MAX_SIZE
 
 try:
     import brotlicffi as brotli
@@ -2123,8 +2126,167 @@ async def test_post_max_client_size_for_file(aiohttp_client) -> None:
     await resp.release()
 
 
-async def test_response_with_bodypart(aiohttp_client) -> None:
-    async def handler(request):
+def _multipart_file_parts(count: int, body: bytes = b"") -> bytes:
+    """Raw multipart/form-data body of ``count`` file parts, boundary ``b``."""
+    return (
+        b"".join(
+            b'--b\r\nContent-Disposition: form-data; name="f%d"; '
+            b'filename="x"\r\n\r\n' % index + body + b"\r\n"
+            for index in range(count)
+        )
+        + b"--b--\r\n"
+    )
+
+
+async def test_post_max_client_size_counts_multipart_headers(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application(client_max_size=1)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    body = _multipart_file_parts(55)
+    assert len(body) > 1
+    async with client.post(
+        "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
+    ) as resp:
+        assert resp.status == 413
+
+
+@pytest.mark.parametrize(
+    "max_size",
+    (_FILE_SPOOL_MAX_SIZE, 2 * _FILE_SPOOL_MAX_SIZE),
+    ids=("spooled", "rolled-over"),
+)
+async def test_post_max_client_size_within_single_part(
+    aiohttp_client: AiohttpClient, max_size: int
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application(client_max_size=max_size)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # A sole oversized part is never followed by a boundary, so only the
+    # per-chunk check can reject it, and it must do so before buffering. The
+    # larger limit lets the part reach the disk first, so the spool is then
+    # closed off the event loop too.
+    data = FormData()
+    with io.BytesIO(b"x" * (3 * _FILE_SPOOL_MAX_SIZE)) as file_handle:
+        data.add_field("file", file_handle, filename="x.bin")
+        async with client.post("/", data=data) as resp:
+            assert resp.status == 413
+
+
+@pytest.mark.parametrize("filename", (b"", b'; filename="x"'), ids=("field", "file"))
+async def test_post_max_client_size_counts_undecoded_bytes(
+    aiohttp_client: AiohttpClient, filename: bytes
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    limit = 64 * 1024
+    app = web.Application(client_max_size=limit)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # base64 decodes to exactly the limit but arrives 4/3 larger. The limit is
+    # on the request body, so both kinds of part must reject it alike.
+    encoded = base64.b64encode(b"A" * limit)
+    assert len(encoded) > limit
+    body = (
+        b'--b\r\nContent-Disposition: form-data; name="f"' + filename + b"\r\n"
+        b"Content-Transfer-Encoding: base64\r\n\r\n" + encoded + b"\r\n--b--\r\n"
+    )
+    async with client.post(
+        "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
+    ) as resp:
+        assert resp.status == 413
+
+
+@pytest.mark.skipif(not os.path.isdir("/dev/fd"), reason="needs /dev/fd to count fds")
+@pytest.mark.parametrize(
+    ("parts", "part_body", "expected_fds"),
+    (
+        (55, b"payload", 0),
+        (1, b"x" * (_FILE_SPOOL_MAX_SIZE + 1), 1),
+    ),
+    ids=("many-small-parts", "one-oversized-part"),
+)
+async def test_post_file_fields_descriptor_cost(
+    aiohttp_client: AiohttpClient, parts: int, part_body: bytes, expected_fds: int
+) -> None:
+    """Only a part past the spool size may cost a descriptor."""
+
+    async def handler(request: web.Request) -> web.Response:
+        before = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        data = await request.post()
+        after = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        assert len(data) == parts
+        return web.Response(text=str(len(after - before)))
+
+    app = web.Application(client_max_size=8 * 1024**2)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    with io.BytesIO(_multipart_file_parts(parts, part_body)) as body:
+        async with client.post(
+            "/",
+            data=body,
+            headers={CONTENT_TYPE: "multipart/form-data; boundary=b"},
+        ) as resp:
+            assert resp.status == 200
+            assert await resp.text() == str(expected_fds)
+
+
+@pytest.mark.parametrize(
+    "size",
+    (
+        0,
+        1,
+        _FILE_SPOOL_MAX_SIZE - 1,
+        _FILE_SPOOL_MAX_SIZE,
+        _FILE_SPOOL_MAX_SIZE + 1,
+    ),
+)
+async def test_post_file_field_spool_rollover(
+    aiohttp_client: AiohttpClient, size: int
+) -> None:
+    """A part is byte-identical either side of the spool/temp-file boundary."""
+    payload = (b"0123456789abcdef" * (size // 16 + 1))[:size]
+
+    async def handler(request: web.Request) -> web.Response:
+        field = (await request.post())["file"]
+        assert isinstance(field, aiohttp.web_request.FileField)
+        assert isinstance(field.file, io.IOBase)
+        assert field.file.readable()
+        assert field.file.writable()
+        assert field.file.seekable()
+        content = await asyncio.to_thread(field.file.read)
+        assert len(content) == size
+        assert content == payload
+        return web.Response()
+
+    app = web.Application(client_max_size=8 * 1024**2)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    with io.BytesIO(payload) as file_handle:
+        data.add_field("file", file_handle, filename="x.bin")
+        async with client.post("/", data=data) as resp:
+            assert resp.status == 200
+
+
+async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
         reader = await request.multipart()
         part = await reader.next()
         return web.Response(body=part)
