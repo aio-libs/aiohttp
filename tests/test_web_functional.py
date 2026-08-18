@@ -2126,10 +2126,6 @@ async def test_post_max_client_size_for_file(aiohttp_client) -> None:
     await resp.release()
 
 
-<<<<<<< HEAD
-async def test_response_with_bodypart(aiohttp_client) -> None:
-    async def handler(request):
-=======
 def _multipart_file_parts(count: int, body: bytes = b"") -> bytes:
     """Raw multipart/form-data body of ``count`` file parts, boundary ``b``."""
     return (
@@ -2291,7 +2287,6 @@ async def test_post_file_field_spool_rollover(
 
 async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
->>>>>>> c92ed4c48 (Reduce number of file descriptors needed in multipart messages (#13426))
         reader = await request.multipart()
         part = await reader.next()
         return web.Response(body=part)
