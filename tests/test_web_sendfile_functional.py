@@ -986,6 +986,41 @@ async def test_static_file_if_range_future_with_range(
     await client.close()
 
 
+async def test_static_file_if_range_etag_match_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    resp = await client.get("/")
+    assert 200 == resp.status
+    etag = resp.headers["ETag"]
+    resp.release()
+
+    resp = await client.get("/", headers={"If-Range": etag, "Range": "bytes=2-"})
+    assert 206 == resp.status
+    assert resp.headers["Content-Range"] == "bytes 2-12/13"
+    assert resp.headers["Content-Length"] == "11"
+    resp.close()
+    resp.release()
+    await client.close()
+
+
+async def test_static_file_if_range_stale_etag_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    resp = await client.get(
+        "/", headers={"If-Range": '"stale-etag"', "Range": "bytes=2-"}
+    )
+    assert 200 == resp.status
+    assert resp.headers["Content-Length"] == "13"
+    assert "Content-Range" not in resp.headers
+    resp.close()
+    resp.release()
+    await client.close()
+
+
 async def test_static_file_if_unmodified_since_past_without_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
