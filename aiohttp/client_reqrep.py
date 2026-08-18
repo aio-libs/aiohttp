@@ -1562,11 +1562,16 @@ class ClientRequest(ClientRequestBase):
                 if track_progress:
                     body._finish_upload()
                 protocol.start_timeout()
+        except BaseException as underlying_exc:
+            # Failures escaping the inner handlers (100-continue preamble,
+            # write_eof) must still complete upload_complete with the error;
+            # _abort_upload treats CancelledError as cancellation.
+            abort_exc = underlying_exc
+            raise
         finally:
             if track_progress:
-                # No-op when the upload finished; reports the write error
-                # otherwise, or cancels upload_complete when there is none
-                # (cancellation or a failure that bypassed the handlers).
+                # No-op when the upload finished; reports the failure or,
+                # on cancellation, cancels upload_complete.
                 body._abort_upload(abort_exc)
 
     async def _close(self) -> None:
