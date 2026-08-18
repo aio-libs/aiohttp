@@ -1175,6 +1175,26 @@ async def test_collected_stalled_reader_surfaces_contract_error(
         await out.read()
 
 
+async def test_collected_stalled_reader_preserves_existing_exception(
+    protocol: BaseProtocol,
+) -> None:
+    # set_exception() is also the transport-died hook; losing the reader on
+    # top of that must not replace the real cause with the contract error.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    out.set_exception(ConnectionResetError())
+    del parser
+    for _ in range(3):
+        gc.collect()
+
+    for _ in range(len(out._buffer)):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(ConnectionResetError):
+        await out.read()
+
+
 async def test_burst_under_high_water_is_parsed_in_one_read(
     protocol: BaseProtocol,
 ) -> None:

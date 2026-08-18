@@ -136,6 +136,8 @@ async def test_stashed_frames_survive_connection_loss(
                 if msg.type is not WSMsgType.TEXT:
                     break
                 count += 1
+            # A clean drain ends with the queue's close, not an error.
+            assert msg.type is WSMsgType.CLOSED
 
             received.set_result((stalled, count))
         except Exception as exc:  # pragma: no cover

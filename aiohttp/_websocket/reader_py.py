@@ -145,15 +145,17 @@ class WebSocketDataQueue:
                 else:
                     # The stash died with the reader. Deliver what was already
                     # queued, then surface the contract violation on the next
-                    # read instead of hanging.
+                    # read instead of hanging. A real failure that was already
+                    # recorded stays the reported cause.
                     self._stalled_reader = None
-                    self.set_exception(
-                        RuntimeError(
-                            "WebSocketReader was garbage collected while "
-                            "stalled; callers of set_parser() must hold a "
-                            "strong reference"
+                    if self._exception is None:
+                        self.set_exception(
+                            RuntimeError(
+                                "WebSocketReader was garbage collected while "
+                                "stalled; callers of set_parser() must hold a "
+                                "strong reference"
+                            )
                         )
-                    )
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
