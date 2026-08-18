@@ -501,7 +501,7 @@ jobs:
     if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
     - name: Checkout project
       uses: actions/checkout@v7  # despite sdist, codspeed needs Git
@@ -541,6 +541,25 @@ jobs:
         lsb_release -a
         uname -r
         openssl version -a
+    - name: Install libc6-dbg
+      # The CodSpeed runner installs this itself with a plain apt-get call
+      # that has no timeout, so a slow apt mirror hangs the job until
+      # timeout-minutes kills it. Installing it here with a bounded retry
+      # also lets the runner find it already present after restoring
+      # valgrind from its cache and skip apt entirely.
+      run: |
+        for attempt in 1 2 3; do
+          if timeout 300 sudo apt-get update \
+            && timeout 300 sudo DEBIAN_FRONTEND=noninteractive \
+              apt-get install -y libc6-dbg
+          then
+            exit 0
+          fi
+          echo "apt-get attempt ${attempt} failed, retrying"
+          sudo dpkg --configure -a || true
+          sleep 10
+        done
+        exit 1
     - name: Run benchmarks
       uses: CodSpeedHQ/action@v5.0.3
       with:
