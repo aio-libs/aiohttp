@@ -1,0 +1,1 @@
+Removed the ``aiohttp/_websocket/reader_c.py`` symlink from the source tree; the ``aiohttp._websocket.reader_c`` extension is now compiled directly from ``reader_py.py`` using ``cython --module-name``, so distributions no longer include a ``reader_c.py`` file that showed up as an uncovered module in coverage reports -- by :user:`bdraco`.
