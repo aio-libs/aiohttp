@@ -511,10 +511,10 @@ class WebSocketReader:
                         # chunk; collapse them into one buffer, which bounds
                         # the overhead to the frame that _max_msg_size already
                         # caps. Joins are amortised by the cap scaling with
-                        # _max_msg_size.
-                        self._payload_fragments[:] = (
-                            b"".join(self._payload_fragments),
-                        )
+                        # _max_msg_size. Pausing here is not an option: the
+                        # only resume is a read off the queue, which stays
+                        # empty until a frame completes.
+                        self._payload_fragments[:] = [b"".join(self._payload_fragments)]
                     break
 
                 payload: bytes | bytearray

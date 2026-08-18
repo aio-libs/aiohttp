@@ -579,9 +579,9 @@ client-side, the writer adds masks to outgoing frames.
   `max_msg_size` byte cap still let a size-legal frame dribbled in tiny
   transport reads pin ~28x its on-wire size in per-read `bytes` objects
   (`_payload_fragments`). `WebSocketReader` now caps the retained
-  fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
-  backpressure once exceeded, mirroring the HTTP chunk-splits limit in
-  `StreamReader` (PR #11894).
+  fragment count (`max(1024, max_msg_size // 256)`); this originally paused
+  reading once exceeded, which PR #13488 below replaced with a collapse into
+  one buffer (both unreleased, so the pause never shipped).
 - **PR #13488** — reassembling a frame delivered across many small transport
   reads retained one `bytes` object per read. The reader now collapses the
   pending fragments into a single buffer once the count exceeds
