@@ -1089,6 +1089,32 @@ async def test_transport_stays_paused_while_stash_remains(
     assert protocol._reading_paused is False
 
 
+async def test_read_ending_on_frame_boundary_does_not_stall(
+    protocol: BaseProtocol,
+) -> None:
+    # A read that crosses the high-water mark but ends exactly on a frame
+    # boundary leaves nothing stashed, so the parser must not arm the stall;
+    # ordinary backpressure then resumes at the queue limit, not the low-water
+    # mark reserved for draining a stash.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 1024, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    # 17 empty frames * MSG_SIZE_OVERHEAD crosses out._limit (2048); the whole
+    # burst is complete frames, so parsing ends with an empty tail.
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * 17)
+    assert out._size > out._limit
+    assert protocol._reading_paused is True
+    assert out._stalled_reader is None, "empty-tail read must not arm the stall"
+
+    # Draining back under the limit resumes well above _limit // 2, so the
+    # low-water mark reserved for stashes is not in play.
+    await asyncio.wait_for(out.read(), 5)
+    await asyncio.wait_for(out.read(), 5)
+    assert out._limit // 2 < out._size < out._limit
+    assert protocol._reading_paused is False
+
+
 async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
     # A peer that bursts and then disconnects must not lose the tail: at EOF
     # there is no resume to ride on, so draining has to keep driving the parser.

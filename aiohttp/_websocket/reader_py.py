@@ -394,8 +394,11 @@ class WebSocketReader:
         data_cstr = data
 
         while True:
-            if self.queue._size > self.queue._limit:
-                # Over the high-water mark, stop before parsing.
+            if start_pos < data_len and self.queue._size > self.queue._limit:
+                # Over the high-water mark with unparsed bytes left: stash the
+                # remainder and stall. Gating on unparsed bytes keeps a read
+                # that ended on a frame boundary from arming an empty stall,
+                # which would hold the transport paused with nothing to drain.
                 self.queue._stalled_reader = self._weak_self
                 break
 

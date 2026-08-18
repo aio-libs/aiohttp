@@ -46,9 +46,9 @@ cdef unsigned int MSG_SIZE_OVERHEAD
 
 cdef class WebSocketDataQueue:
 
-    cdef public unsigned int _size
+    cdef readonly unsigned int _size
     cdef public object _protocol
-    cdef public unsigned int _limit
+    cdef readonly unsigned int _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
@@ -56,7 +56,7 @@ cdef class WebSocketDataQueue:
     cdef public object _buffer
     cdef object _get_buffer
     cdef object _put_buffer
-    cdef public object _stalled_reader
+    cdef readonly object _stalled_reader
 
     cdef void _release_waiter(self)
 
