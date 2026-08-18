@@ -582,15 +582,11 @@ client-side, the writer adds masks to outgoing frames.
   fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
   backpressure once exceeded, mirroring the HTTP chunk-splits limit in
   `StreamReader` (PR #11894).
-- **PR #13488** — that fragment-count backpressure paused the transport in
-  the middle of a frame, which cannot be undone: the frame only completes
-  once more data arrives, and the only resume is a read off the WebSocket
-  queue, still empty because no message has been queued yet. A peer that
-  split one frame across more reads than the cap wedged the connection
-  permanently and the process stopped reading that socket for good
-  (unreleased; the pause landed in PR #13352). The cap now collapses the
-  pending fragments into a single buffer instead of pausing, which bounds
-  the retained overhead to the frame that `max_msg_size` already caps.
+- **PR #13488** — reassembling a frame delivered across many small transport
+  reads retained one `bytes` object per read. The reader now collapses the
+  pending fragments into a single buffer once the count exceeds
+  `max(1024, max_msg_size // 256)`, bounding the retained per-read overhead
+  to the frame that `max_msg_size` already caps.
 
 ---
 

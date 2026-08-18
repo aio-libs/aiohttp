@@ -918,16 +918,13 @@ async def test_incomplete_frame_collapses_when_fragment_limit_exceeded(
     assert msg.data == b"x" * payload_len
 
 
-async def test_fragment_limit_does_not_strand_reading(
+async def test_fragment_limit_delivers_frame_split_across_many_reads(
     protocol: BaseProtocol,
 ) -> None:
-    """A frame split past the fragment limit must still be delivered.
+    """A frame split past the fragment limit is still assembled and delivered.
 
-    Pausing the transport in the middle of a frame cannot be undone: the
-    frame only completes once more data arrives, and the only resume is a
-    read off the queue -- which is empty, because no message has been
-    queued yet. A peer that dribbles one frame across enough reads would
-    otherwise wedge the connection permanently.
+    Reading is not paused mid-frame, so the frame completes normally once the
+    remaining bytes arrive.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -941,7 +938,6 @@ async def test_fragment_limit_does_not_strand_reading(
     # (4096 reads against a cap of 1024) before the frame completes.
     for _ in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
-        # Nothing is queued yet, so nothing can undo a pause taken here.
         assert not out._buffer
         assert protocol._reading_paused is False
 

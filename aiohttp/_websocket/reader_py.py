@@ -506,14 +506,11 @@ class WebSocketReader:
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
                     ):
-                        # A peer dribbling one frame across many tiny reads
-                        # would otherwise pin per-object overhead for every
-                        # chunk; collapsing them bounds it to the frame, which
-                        # _max_msg_size already caps. Pausing the transport
-                        # here cannot bound it: the frame only completes once
-                        # more data arrives, and the only resume is a read off
-                        # a queue that is still empty, so the connection would
-                        # strand. Joins are amortised by the cap scaling with
+                        # A frame delivered across many tiny reads would
+                        # otherwise retain per-object overhead for every
+                        # chunk; collapse them into one buffer, which bounds
+                        # the overhead to the frame that _max_msg_size already
+                        # caps. Joins are amortised by the cap scaling with
                         # _max_msg_size.
                         self._payload_fragments[:] = (
                             b"".join(self._payload_fragments),
