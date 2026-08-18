@@ -6105,16 +6105,20 @@ async def test_payload_upload_progress(aiohttp_client: AiohttpClient) -> None:
             assert resp.status == 200
 
     post_task = asyncio.create_task(do_post())
-    waiter: asyncio.Task[bool] | None = None
     samples: list[int] = []
     try:
         for _ in range(num_chunks):
             waiter = asyncio.create_task(next_chunk.wait())
-            # Race the event against the request so a failed upload fails
-            # the test immediately instead of blocking on an event that
-            # will never be set; the finally surfaces the actual error.
-            await asyncio.wait({waiter, post_task}, return_when=asyncio.FIRST_COMPLETED)
-            assert waiter.done(), "request finished before sampling"
+            try:
+                # Race the event against the request so a failed upload fails
+                # the test immediately instead of blocking on an event that
+                # will never be set; the finally surfaces the actual error.
+                await asyncio.wait(
+                    {waiter, post_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                assert waiter.done(), "request finished before sampling"
+            finally:
+                waiter.cancel()
             next_chunk.clear()
             samples.append(p.bytes_written)
             assert not p.upload_complete.done()
@@ -6124,8 +6128,6 @@ async def test_payload_upload_progress(aiohttp_client: AiohttpClient) -> None:
         await post_task
         await p.upload_complete
     finally:
-        if waiter is not None:
-            waiter.cancel()
         post_task.cancel()
         with suppress(asyncio.CancelledError):
             await post_task
@@ -6683,3 +6685,50 @@ async def test_upload_complete_deprecated(aiohttp_client: AiohttpClient) -> None
         with pytest.warns(DeprecationWarning, match="upload_complete"):
             fut = resp.upload_complete
         assert fut.done()
+
+
+async def test_deprecated_progress_attrs_while_uploading(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """The deprecated attributes still track an upload that is still running."""
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        # Flush headers so the client has a response while it is still
+        # uploading, which is the only way to observe a live writer.
+        await response.write(b"x")
+        await request.read()
+        return response
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    chunk_sent = asyncio.Event()
+    sampled = asyncio.Event()
+
+    async def gated_body() -> AsyncIterator[bytes]:
+        yield b"z" * 4096
+        chunk_sent.set()
+        await sampled.wait()
+        yield b"z" * 4096
+
+    async with client.post("/", data=gated_body()) as resp:
+        await chunk_sent.wait()
+        with pytest.warns(DeprecationWarning, match="output_size"):
+            mid = resp.output_size
+        assert mid >= 4096
+
+        with pytest.warns(DeprecationWarning, match="upload_complete"):
+            fut = resp.upload_complete
+        assert not fut.done()
+        with pytest.warns(DeprecationWarning, match="upload_complete"):
+            assert resp.upload_complete is fut
+
+        sampled.set()
+        await fut
+
+        with pytest.warns(DeprecationWarning, match="output_size"):
+            assert resp.output_size > mid
+        await resp.read()
