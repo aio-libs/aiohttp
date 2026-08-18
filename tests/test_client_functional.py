@@ -6559,9 +6559,9 @@ async def test_untracked_upload_failure_leaves_owner_state(
         await release.wait()
         await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> NoReturn:
         await request.read()
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler, expect_handler=expect_handler)
@@ -6576,8 +6576,8 @@ async def test_untracked_upload_failure_leaves_owner_state(
     fut = p.upload_complete
 
     async def slow_post() -> None:
-        async with client.post("/", data=p, expect100=True) as resp:
-            assert resp.status == 200
+        async with client.post("/", data=p, expect100=True):
+            assert False
 
     slow_task = asyncio.create_task(slow_post())
     try:
@@ -6589,7 +6589,7 @@ async def test_untracked_upload_failure_leaves_owner_state(
         # The second request runs untracked and its write fails.
         with pytest.raises(aiohttp.ClientError):
             async with client.post("/fail", data=p):
-                pass
+                assert False
         assert not fut.done()
     finally:
         waiter.cancel()
