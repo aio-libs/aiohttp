@@ -4,7 +4,6 @@ import io
 import re
 import string
 import sys
-import tempfile
 import types
 import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
