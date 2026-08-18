@@ -501,7 +501,9 @@ class WebSocketReader:
                 if self._payload_bytes_to_read != 0:
                     # Frame still incomplete: append this read to the buffer and
                     # wait for the rest. Growing one bytearray keeps the cost
-                    # linear no matter how small the reads are.
+                    # linear no matter how small the reads are. Do not pause
+                    # reading here: the only resume is a queue read, which stays
+                    # empty until a frame completes, so the pause could not lift.
                     self._payload_buffer += data_cstr[f_start_pos:f_end_pos]
                     break
 
