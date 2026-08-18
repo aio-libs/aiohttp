@@ -71,8 +71,13 @@ def _discover_path_importables(
         if pkg_dir_path.parts[-1] == "__pycache__":
             continue
 
-        if all(Path(_).suffix != ".py" for _ in file_names):
-            continue
+        if all(Path(_).suffix != ".py" for _ in file_names):  # pragma: no branch
+            # NOTE: This is only possible when testing editable installs where
+            # NOTE: the directory lookup encounters the `aiohttp/.hash/` cache
+            # NOTE: directory with files like `_http_parser.pyx.hash` in it that
+            # NOTE: never get included into source distributions or wheels and so
+            # NOTE: the module discovery mechanism never hits this code branch.
+            continue  # pragma: no cover
 
         rel_pt = pkg_dir_path.relative_to(pkg_pth)
         pkg_pref = ".".join((pkg_name,) + rel_pt.parts)

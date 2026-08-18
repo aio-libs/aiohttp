@@ -1,0 +1,1 @@
+Switched multipart handling to use spooled temporary files to reduce number of file descriptors needed -- by :user:`Dreamsorcerer`.
