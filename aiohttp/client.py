@@ -611,8 +611,10 @@ class ClientSession:
                     method, url.update_query(params), headers
                 )
         except BaseException as e:
-            if isinstance(data, payload.Payload) and not data._upload_active:
-                data._abort_upload(e)
+            if isinstance(data, payload.Payload):
+                if not data._upload_active:
+                    data._abort_upload(e)
+                data._mark_upload_error_propagated()
             raise
 
         timer = tm.timer()
@@ -915,8 +917,10 @@ class ClientSession:
                 body = None if req._body is req._EMPTY_BODY else req._body
             else:
                 body = data if isinstance(data, payload.Payload) else None
-            if body is not None and not body._upload_active:
-                body._abort_upload(e)
+            if body is not None:
+                if not body._upload_active:
+                    body._abort_upload(e)
+                body._mark_upload_error_propagated()
 
             for trace in traces:
                 await trace.send_request_exception(

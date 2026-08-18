@@ -6212,7 +6212,46 @@ async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
             assert False
     assert p.upload_complete.done()
     assert not p.upload_complete.cancelled()
+    # The request raised the failure, so the future's copy is consumed and
+    # will not log a never-retrieved warning at garbage collection.
+    assert not p.upload_complete._log_traceback
     assert isinstance(p.upload_complete.exception(), aiohttp.ClientConnectionError)
+
+
+async def test_upload_error_after_completed_response(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A request can succeed while its upload fails; the error stays on the future."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Respond without ever reading the request body.
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    response_received = asyncio.Event()
+
+    async def failing_body() -> AsyncIterator[bytes]:
+        yield b"z" * 16
+        await response_received.wait()
+        raise RuntimeError("body source failed")
+
+    p = aiohttp.AsyncIterablePayload(failing_body())
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+        await resp.read()
+        response_received.set()
+        await asyncio.wait([p.upload_complete], timeout=5)
+
+    fut = p.upload_complete
+    assert fut.done()
+    # Depending on connection teardown timing the unfinished upload is
+    # either failed by its own body source or cancelled with the writer
+    # task; it must never report success.
+    if not fut.cancelled():
+        assert isinstance(fut.exception(), aiohttp.ClientConnectionError)
 
 
 async def test_payload_upload_aborted_before_write() -> None:
@@ -6227,7 +6266,9 @@ async def test_payload_upload_aborted_before_write() -> None:
         async with aiohttp.ClientSession() as session:
             with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
                 await session.post(f"http://127.0.0.1:{port}/", data=p)
-        # The future holds the same error the request raised.
+        # The future holds the same error the request raised; the raise
+        # consumed the future's copy, so it will not log at collection.
+        assert not fut._log_traceback
         assert fut.exception() is excinfo.value
         assert p.upload_complete.exception() is excinfo.value
 

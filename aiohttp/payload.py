@@ -152,6 +152,7 @@ class Payload(ABC):
     _upload_finished: bool = False
     _upload_aborted: bool = False
     _upload_abort_exc: "BaseException | None" = None
+    _upload_error_propagated: bool = False
 
     def __init__(
         self,
@@ -258,11 +259,13 @@ class Payload(ABC):
         """Future resolved when a request finishes uploading this payload.
 
         The future completes with ``None`` once the request body has been
-        fully written. If the upload fails, it completes with the same
-        error the request raises; if the request is cancelled, the future
-        is cancelled. If the payload is sent again (e.g. a redirected
-        request resends the body), a new future is returned for the new
-        upload. When overlapping requests share a payload, the future
+        fully written. If the upload fails, it completes with the upload
+        error (normally also raised by the request; a request can still
+        succeed if the server responded before reading the whole body).
+        If the request is cancelled, the future is cancelled. If the
+        payload is sent again (e.g. a redirected request resends the
+        body), a new future is returned for the new upload. When
+        overlapping requests share a payload, the future
         tracks the first upload only.
 
         Must be accessed from within the event loop.
@@ -280,8 +283,19 @@ class Payload(ABC):
             fut.cancel()
         else:
             fut.set_exception(self._upload_abort_exc)
-            # Consume the exception: the request raises it as well, so an
-            # unawaited future must not log it at garbage collection.
+            if self._upload_error_propagated:
+                # The request raised this failure to its caller, so the
+                # future's copy is supplementary: consume it to avoid a
+                # duplicate never-retrieved log at garbage collection.
+                # When the request succeeded despite the failed upload,
+                # the future is the only holder and the log must stay armed.
+                fut.exception()
+
+    def _mark_upload_error_propagated(self) -> None:
+        """Record that the request raised the upload failure to its caller."""
+        self._upload_error_propagated = True
+        fut = self._upload_future
+        if fut is not None and fut.done() and not fut.cancelled():
             fut.exception()
 
     def _reset_upload(self) -> None:
@@ -298,6 +312,7 @@ class Payload(ABC):
         self._upload_finished = False
         self._upload_aborted = False
         self._upload_abort_exc = None
+        self._upload_error_propagated = False
         fut = self._upload_future
         if fut is not None and fut.done():
             # A previous upload of this payload already completed (e.g. the

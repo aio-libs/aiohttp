@@ -2719,8 +2719,9 @@ Similarly, :class:`FormData` can be converted to a trackable payload by
 calling it: ``data = form()``.
 
 If the upload fails, :attr:`Payload.upload_complete` completes with the
-same error the request raises; if the request is cancelled, the future is
-cancelled too.
+upload error — normally the same error the request raises, though a
+request can still succeed if the server responded before reading the
+whole body. If the request is cancelled, the future is cancelled too.
 
 The body may be sent more than once during a single request, e.g. when a
 307 or 308 redirect is followed or the request is retried on a new
@@ -2777,11 +2778,12 @@ first upload; the others are sent without tracking.
 
       An :class:`asyncio.Future` completed when the request body has been
       fully sent. The future resolves to ``None`` once the upload
-      finishes. If the upload fails, it completes with the same error the
-      request raises; if the request is cancelled, the future is
-      cancelled. If the body is sent again, e.g. when a redirected
-      request resends it, the attribute is a new future tracking the new
-      upload.
+      finishes. If the upload fails, it completes with the upload error
+      (normally also raised by the request; a request can still succeed
+      if the server responded before reading the whole body); if the
+      request is cancelled, the future is cancelled. If the body is sent
+      again, e.g. when a redirected request resends it, the attribute is
+      a new future tracking the new upload.
 
       Must be accessed from within the event loop.
 

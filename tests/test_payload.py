@@ -1442,3 +1442,45 @@ async def test_empty_bytes_payload_is_reusable() -> None:
         assert empty_payload.size == 0, f"size changed on write {i+1}"
 
     assert empty_payload.headers == CIMultiDict(initial_headers)
+
+
+async def test_upload_error_unpropagated_keeps_gc_log_armed() -> None:
+    """Without request propagation the future must keep the GC log armed.
+
+    When the request succeeds despite the failed upload (server responded
+    without reading the body), the future is the only holder of the error.
+    """
+    p = payload.BytesPayload(b"x")
+    assert p._start_upload()
+    err = RuntimeError("upload failed")
+    p._abort_upload(err)
+    fut = p.upload_complete
+    assert fut._log_traceback
+    assert fut.exception() is err
+    assert not fut._log_traceback  # retrieved by this test
+
+
+async def test_upload_error_propagated_is_consumed() -> None:
+    """A request raising the failure consumes the future's duplicate copy."""
+    p = payload.BytesPayload(b"x")
+    assert p._start_upload()
+    err = RuntimeError("upload failed")
+    p._abort_upload(err)
+    p._mark_upload_error_propagated()
+    fut = p.upload_complete
+    assert not fut._log_traceback
+    assert fut.exception() is err
+
+
+async def test_upload_error_propagation_consumes_existing_future() -> None:
+    """Propagation marking consumes a future created before the failure."""
+    p = payload.BytesPayload(b"x")
+    fut = p.upload_complete
+    assert p._start_upload()
+    err = RuntimeError("upload failed")
+    p._abort_upload(err)
+    armed = fut._log_traceback
+    assert armed
+    p._mark_upload_error_propagated()
+    assert not fut._log_traceback
+    assert fut.exception() is err
