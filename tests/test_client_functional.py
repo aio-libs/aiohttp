@@ -17,6 +17,7 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
 
@@ -6257,6 +6258,81 @@ async def test_payload_reused_after_success_reports_new_failure(
                 await session.post(f"http://127.0.0.1:{port}/", data=p)
 
     # The payload reports the new attempt's failure, not the stale success.
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
+@pytest.mark.parametrize(
+    ("url", "proxy", "expected"),
+    (
+        ("ftp://example.com/", None, aiohttp.NonHttpUrlClientError),
+        ("http://example.com/", "http://[::1", aiohttp.InvalidURL),
+    ),
+    ids=("bad-scheme", "bad-proxy"),
+)
+async def test_payload_upload_aborted_before_request_built(
+    url: str, proxy: str | None, expected: type[Exception]
+) -> None:
+    """A failure before the request is even built resolves upload_complete.
+
+    These raise between the payload being adopted and the request loop, so
+    nothing else can report the outcome to a caller awaiting the future.
+    """
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(expected) as excinfo:
+            await session.post(url, data=p, proxy=proxy)
+
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
+async def test_payload_upload_aborted_by_request_start_trace() -> None:
+    """A trace callback raising before the request runs resolves the future."""
+    error = RuntimeError("trace failed")
+
+    async def on_request_start(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> NoReturn:
+        raise error
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
+        with pytest.raises(RuntimeError) as excinfo:
+            await session.post("http://example.com/", data=p)
+
+    assert excinfo.value is error
+    assert p.upload_complete.exception() is error
+
+
+async def test_payload_reused_aborted_before_request_built(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Resetting a reused payload must not strand its future when preflight fails."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete.done()
+
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(aiohttp.NonHttpUrlClientError) as excinfo:
+            await session.post("ftp://example.com/", data=p)
+
+    # The stale success was dropped by the reset, so this must replace it.
     assert p.upload_complete.exception() is excinfo.value
     assert p.bytes_written == 0
 

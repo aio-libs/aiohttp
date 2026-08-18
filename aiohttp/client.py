@@ -528,83 +528,92 @@ class ClientSession:
             # the request are reported through upload_complete as well.
             data._reset_upload()
 
-        redirects = 0
-        history: list[ClientResponse] = []
-        version = self._version
-        params = params or {}
-
-        # Merge with default headers and transform to CIMultiDict
-        headers = self._prepare_headers(headers)
-
         try:
-            url = self._build_url(str_or_url)
-        except ValueError as e:
-            raise InvalidUrlClientError(str_or_url) from e
+            redirects = 0
+            history: list[ClientResponse] = []
+            version = self._version
+            params = params or {}
 
-        assert self._connector is not None
-        if url.scheme not in self._connector.allowed_protocol_schema_set:
-            raise NonHttpUrlClientError(url)
+            # Merge with default headers and transform to CIMultiDict
+            headers = self._prepare_headers(headers)
 
-        skip_headers: Iterable[istr] | None
-        if skip_auto_headers is not None:
-            skip_headers = {
-                istr(i) for i in skip_auto_headers
-            } | self._skip_auto_headers
-        elif self._skip_auto_headers:
-            skip_headers = self._skip_auto_headers
-        else:
-            skip_headers = None
-
-        if proxy is None:
-            proxy = self._default_proxy
-
-        resolved_proxy_headers: CIMultiDict[str] | None
-        if proxy is None:
-            resolved_proxy_headers = None
-        else:
-            resolved_proxy_headers = self._prepare_headers(proxy_headers)
             try:
-                proxy = URL(proxy)
+                url = self._build_url(str_or_url)
             except ValueError as e:
-                raise InvalidURL(proxy) from e
+                raise InvalidUrlClientError(str_or_url) from e
 
-        if timeout is sentinel or timeout is None:
-            real_timeout: ClientTimeout = self._timeout
-        else:
-            real_timeout = timeout
-        # timeout is cumulative for all request operations
-        # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop, real_timeout.total, ceil_threshold=real_timeout.ceil_threshold
-        )
-        handle = tm.start()
+            assert self._connector is not None
+            if url.scheme not in self._connector.allowed_protocol_schema_set:
+                raise NonHttpUrlClientError(url)
 
-        if read_bufsize is None:
-            read_bufsize = self._read_bufsize
+            skip_headers: Iterable[istr] | None
+            if skip_auto_headers is not None:
+                skip_headers = {
+                    istr(i) for i in skip_auto_headers
+                } | self._skip_auto_headers
+            elif self._skip_auto_headers:
+                skip_headers = self._skip_auto_headers
+            else:
+                skip_headers = None
 
-        if auto_decompress is None:
-            auto_decompress = self._auto_decompress
+            if proxy is None:
+                proxy = self._default_proxy
 
-        if max_line_size is None:
-            max_line_size = self._max_line_size
+            resolved_proxy_headers: CIMultiDict[str] | None
+            if proxy is None:
+                resolved_proxy_headers = None
+            else:
+                resolved_proxy_headers = self._prepare_headers(proxy_headers)
+                try:
+                    proxy = URL(proxy)
+                except ValueError as e:
+                    raise InvalidURL(proxy) from e
 
-        if max_field_size is None:
-            max_field_size = self._max_field_size
-
-        if max_headers is None:
-            max_headers = self._max_headers
-
-        traces = [
-            Trace(
-                self,
-                trace_config,
-                trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
+            if timeout is sentinel or timeout is None:
+                real_timeout: ClientTimeout = self._timeout
+            else:
+                real_timeout = timeout
+            # timeout is cumulative for all request operations
+            # (request, redirects, responses, data consuming)
+            tm = TimeoutHandle(
+                self._loop,
+                real_timeout.total,
+                ceil_threshold=real_timeout.ceil_threshold,
             )
-            for trace_config in self._trace_configs
-        ]
+            handle = tm.start()
 
-        for trace in traces:
-            await trace.send_request_start(method, url.update_query(params), headers)
+            if read_bufsize is None:
+                read_bufsize = self._read_bufsize
+
+            if auto_decompress is None:
+                auto_decompress = self._auto_decompress
+
+            if max_line_size is None:
+                max_line_size = self._max_line_size
+
+            if max_field_size is None:
+                max_field_size = self._max_field_size
+
+            if max_headers is None:
+                max_headers = self._max_headers
+
+            traces = [
+                Trace(
+                    self,
+                    trace_config,
+                    trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
+                )
+                for trace_config in self._trace_configs
+            ]
+
+            for trace in traces:
+                await trace.send_request_start(
+                    method, url.update_query(params), headers
+                )
+        except BaseException as e:
+            if isinstance(data, payload.Payload):
+                data._abort_upload(e)
+            raise
 
         timer = tm.timer()
         req: ClientRequest | None = None
