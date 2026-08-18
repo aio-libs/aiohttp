@@ -634,14 +634,18 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             except asyncio.TimeoutError:
                 raise
             except EofStream:
+                # Queue exhausted; drop the parser and the stash it retains.
+                self._parser = None
                 self._close_code = WSCloseCode.OK
                 await self.close()
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
+                self._parser = None
                 self._close_code = exc.code
                 await self.close(code=exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
+                self._parser = None
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
                 await self.close()

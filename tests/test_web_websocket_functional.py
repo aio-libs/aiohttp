@@ -103,40 +103,45 @@ async def test_stashed_frames_survive_connection_loss(
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        queue = ws._reader
-        assert queue is not None
+        try:
+            queue = ws._reader
+            assert queue is not None
 
-        # Wait for the parser to stall with frames still stashed in its tail.
-        # The transport is paused from here, so the peer's FIN cannot be
-        # observed until reading resumes.
-        for _ in range(1000):  # pragma: no branch
-            if queue._stalled_reader is not None:
-                break
-            await asyncio.sleep(0.01)
-        assert queue._stalled_reader is not None, "parser never stalled"
-        stalled = len(queue._buffer)
+            # Wait for the parser to stall with frames still stashed in its
+            # tail. The transport is paused from here, so the peer's FIN
+            # cannot be observed until reading resumes.
+            for _ in range(1000):  # pragma: no branch
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
+            assert queue._stalled_reader is not None, "parser never stalled"
+            stalled = len(queue._buffer)
 
-        # Tear the connection down for real: closing the transport is what
-        # drives connection_lost(), which drops the protocol's only reference
-        # to the parser, leaving ws._parser holding it.
-        protocol = request.protocol
-        transport = protocol.transport
-        assert transport is not None
-        transport.close()
-        for _ in range(1000):  # pragma: no branch
-            if protocol._payload_parser is None:
-                break
-            await asyncio.sleep(0)
-        assert protocol._payload_parser is None, "connection_lost never ran"
+            # Tear the connection down for real: closing the transport is
+            # what drives connection_lost(), which drops the protocol's only
+            # reference to the parser, leaving ws._parser holding it.
+            protocol = request.protocol
+            transport = protocol.transport
+            assert transport is not None
+            transport.close()
+            for _ in range(1000):  # pragma: no branch
+                if protocol._payload_parser is None:
+                    break
+                await asyncio.sleep(0)
+            assert protocol._payload_parser is None, "connection_lost never ran"
 
-        count = 0
-        while True:
-            msg = await ws.receive()
-            if msg.type is not WSMsgType.TEXT:
-                break
-            count += 1
+            count = 0
+            while True:
+                msg = await ws.receive()
+                if msg.type is not WSMsgType.TEXT:
+                    break
+                count += 1
 
-        received.set_result((stalled, count))
+            received.set_result((stalled, count))
+        except Exception as exc:  # pragma: no cover
+            # Surface handler failures instead of an opaque timeout.
+            received.set_exception(exc)
+            raise
         return ws
 
     # A plain AppRunner, not the aiohttp_server fixture: TestServer forces
@@ -2039,33 +2044,40 @@ async def test_stalled_parser_outlives_connection_lost(
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
+        try:
+            protocol = request.protocol
+            transport = request.transport
+            assert transport is not None
+            # Empty masked client->server TEXT frames: six bytes on the wire,
+            # but each one is charged MSG_SIZE_OVERHEAD in the queue, so a
+            # single read crosses the high-water mark and the parser stalls
+            # part way through.
+            protocol.data_received(b"\x81\x80\x00\x00\x00\x00" * sent)
+            queue = ws._reader
+            assert queue is not None
+            assert queue._stalled_reader is not None, "parser never stalled"
 
-        protocol = request.protocol
-        transport = request.transport
-        assert transport is not None
-        # Empty masked client->server TEXT frames: six bytes on the wire, but
-        # each one is charged MSG_SIZE_OVERHEAD in the queue, so a single read
-        # crosses the high-water mark and the parser stalls part way through.
-        protocol.data_received(b"\x81\x80\x00\x00\x00\x00" * sent)
-        queue = ws._reader
-        assert queue is not None
-        assert queue._stalled_reader is not None, "parser never stalled"
+            # Simulate the peer vanishing: the socket is gone and the
+            # protocol drops its reference to the parser, as the event loop
+            # would do it. Detach the handler task first: TestServer forces
+            # handler_cancellation=True (production defaults to False), and
+            # the cancellation would land on this very task at its next yield.
+            protocol._task_handler = None
+            transport.abort()
+            protocol.connection_lost(None)
+            for _ in range(3):  # PyPy can need more than one pass
+                gc.collect()
 
-        # Simulate the peer vanishing: the socket is gone and the protocol
-        # drops its reference to the parser, as the event loop would do it.
-        # Detach the handler task first: TestServer forces
-        # handler_cancellation=True (production defaults to False), and the
-        # cancellation would land on this very task at its next yield.
-        protocol._task_handler = None
-        transport.abort()
-        protocol.connection_lost(None)
-        for _ in range(3):  # PyPy can need more than one pass
-            gc.collect()
-
-        count = 0
-        while (await ws.receive()).type is not WSMsgType.CLOSED:
-            count += 1
-        received.set_result(count)
+            count = 0
+            while (await ws.receive()).type is not WSMsgType.CLOSED:
+                count += 1
+            # Exhausting the queue releases the parser and its stash.
+            assert ws._parser is None
+            received.set_result(count)
+        except Exception as exc:  # pragma: no cover
+            # Surface handler failures instead of an opaque timeout.
+            received.set_exception(exc)
+            raise
         return ws
 
     app = web.Application()

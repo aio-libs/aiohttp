@@ -1154,6 +1154,27 @@ async def test_queue_does_not_keep_stalled_reader_alive(
     assert ref() is None, "queue kept the stalled reader alive"
 
 
+async def test_collected_stalled_reader_surfaces_contract_error(
+    protocol: BaseProtocol,
+) -> None:
+    # Every strong reference to the reader was dropped while it was stalled,
+    # so the stash is gone. Whatever was already queued is still delivered,
+    # then the contract violation surfaces instead of a silent short stream.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    parser.feed_eof()
+    del parser
+    for _ in range(3):
+        gc.collect()
+
+    for _ in range(len(out._buffer)):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(RuntimeError, match="must hold a strong reference"):
+        await out.read()
+
+
 async def test_burst_under_high_water_is_parsed_in_one_read(
     protocol: BaseProtocol,
 ) -> None:

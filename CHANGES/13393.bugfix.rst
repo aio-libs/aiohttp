@@ -1,1 +1,1 @@
-Fixed excessive memory consumption with small WebSocket messages. The receive queue now only holds a weak reference to the ``WebSocketReader`` while parsing is stalled, so code constructing a reader directly and passing it to ``set_parser()`` must keep its own strong reference to it -- by :user:`Dreamsorcerer`.
+Fixed excessive memory consumption with small WebSocket messages -- by :user:`Dreamsorcerer`.

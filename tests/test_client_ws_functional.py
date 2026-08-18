@@ -80,10 +80,10 @@ async def test_stashed_frames_survive_connection_loss(
         async with aiohttp.ClientSession() as session:
             ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
             queue = ws._reader
-            # The burst may arrive split across reads, and only the part that
-            # rode along with the 101 response is parsed by the time
-            # ws_connect() returns.
-            for _ in range(1000):  # pragma: no branch
+            # Usually the whole burst rides along with the 101 response and
+            # is parsed before ws_connect() returns, so the wait is a
+            # fallback for split reads only.
+            for _ in range(1000):  # pragma: no cover
                 if queue._stalled_reader is not None:
                     break
                 await asyncio.sleep(0.01)
@@ -1785,7 +1785,10 @@ async def test_stalled_parser_outlives_connection_lost(
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        await ws.receive()
+        # Hold the connection open. TestServer cancels the handler on
+        # connection loss; swallow it so the handler exits normally.
+        with contextlib.suppress(asyncio.CancelledError):
+            await ws.receive()
         return ws
 
     app = web.Application()
@@ -1816,3 +1819,5 @@ async def test_stalled_parser_outlives_connection_lost(
     while (await ws.receive()).type is not WSMsgType.CLOSED:
         count += 1
     assert count == sent
+    # Exhausting the queue releases the parser and the stash it retains.
+    assert ws._parser is None

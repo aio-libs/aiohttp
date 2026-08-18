@@ -140,12 +140,20 @@ class WebSocketDataQueue:
             self._size -= size + MSG_SIZE_OVERHEAD
             if self._stalled_reader is not None and self._size < self._limit:
                 # Resume parsing after a pause.
-                reader = self._stalled_reader()
-                assert reader is not None, (
-                    "WebSocketReader was garbage collected while stalled; "
-                    "callers of set_parser() must hold a strong reference"
-                )
-                reader.feed_data(b"")
+                if (reader := self._stalled_reader()) is not None:
+                    reader.feed_data(b"")
+                else:
+                    # The stash died with the reader. Deliver what was already
+                    # queued, then surface the contract violation on the next
+                    # read instead of hanging.
+                    self._stalled_reader = None
+                    self.set_exception(
+                        RuntimeError(
+                            "WebSocketReader was garbage collected while "
+                            "stalled; callers of set_parser() must hold a "
+                            "strong reference"
+                        )
+                    )
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
