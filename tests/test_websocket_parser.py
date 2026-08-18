@@ -892,13 +892,14 @@ def test_flow_control_multi_byte_text(
     assert protocol._reading_paused is True
 
 
-async def test_incomplete_frame_collapses_when_fragment_limit_exceeded(
+async def test_incomplete_frame_buffers_one_contiguous_payload(
     protocol: BaseProtocol,
 ) -> None:
-    """The pending fragments of one frame stay bounded in number.
+    """A frame arriving in many reads is held as one contiguous buffer.
 
-    Uses the pure-Python reader so the fragment list is reachable; the
-    Cython reader keeps it in a cdef attribute.
+    Uses the pure-Python reader so the buffer is reachable; the Cython reader
+    keeps it in a cdef attribute. Retained memory is the payload bytes, with
+    no per-read object overhead however small the reads are.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -908,14 +909,15 @@ async def test_incomplete_frame_collapses_when_fragment_limit_exceeded(
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
 
-    # Feed the payload two bytes per read so the collapse is
-    # driven purely by the fragment count, not the total byte count.
-    for _ in range(payload_len // 2):
+    # Two bytes per read: the buffer holds exactly the bytes received so far.
+    for i in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
-        assert len(parser._payload_fragments) <= parser._max_fragments
+        assert len(parser._payload_buffer) == (i + 1) * 2
 
+    parser.feed_data(b"xx")
     msg = await out.read()
     assert msg.data == b"x" * payload_len
+    assert len(parser._payload_buffer) == 0
 
 
 @pytest.mark.parametrize("mask", [False, True])

@@ -157,10 +157,10 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
-        self._payload_fragments: list[bytes] = []
-        # Collapse the fragments once there are more than this many, so a
-        # large number of tiny fragments doesn't exceed reasonable memory usage.
-        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
+        # Payload of a frame still arriving is assembled here, one growable
+        # buffer rather than one object per read, so the retained memory is the
+        # payload bytes (bounded by max_msg_size, checked before buffering).
+        self._payload_buffer = bytearray()
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -499,39 +499,31 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._payload_bytes_to_read != 0:
-                    # If we don't have a complete frame, we need to save the
-                    # data for the next call to feed_data.
-                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
-                    if (
-                        self._max_fragments
-                        and len(self._payload_fragments) > self._max_fragments
-                    ):
-                        # A frame delivered across many tiny reads would
-                        # otherwise retain per-object overhead for every
-                        # chunk; collapse them into one buffer, which bounds
-                        # the retained overhead to _max_fragments objects.
-                        # Joins are amortised by the cap scaling with
-                        # _max_msg_size. Pausing here is not an option: the
-                        # only resume is a read off the queue, which stays
-                        # empty until a frame completes.
-                        self._payload_fragments[:] = [b"".join(self._payload_fragments)]
+                    # Frame still incomplete: append this read to the buffer and
+                    # wait for the rest. Growing one bytearray keeps the cost
+                    # linear no matter how small the reads are.
+                    self._payload_buffer += data_cstr[f_start_pos:f_end_pos]
                     break
 
                 payload: bytes | bytearray
                 if had_fragments:
-                    # We have to join the payload fragments get the payload
-                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    # The frame arrived across several reads; the buffer holds
+                    # all but this final slice.
+                    self._payload_buffer += data_cstr[f_start_pos:f_end_pos]
                     if self._has_mask:
                         assert self._frame_mask is not None
-                        payload_bytearray = bytearray(b"".join(self._payload_fragments))
-                        websocket_mask(self._frame_mask, payload_bytearray)
-                        payload = payload_bytearray
+                        websocket_mask(self._frame_mask, self._payload_buffer)
+                        payload = self._payload_buffer
                     else:
-                        payload = b"".join(self._payload_fragments)
-                    self._payload_fragments.clear()
+                        payload = bytes(self._payload_buffer)
+                    # Detach with a fresh buffer instead of clearing: in the
+                    # masked case the delivered payload is this same object.
+                    self._payload_buffer = bytearray()
                 elif self._has_mask:
                     assert self._frame_mask is not None
-                    payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
+                    payload_bytearray: bytearray = data_cstr[  # type: ignore[assignment]
+                        f_start_pos:f_end_pos
+                    ]
                     if type(payload_bytearray) is not bytearray:
                         # Cython will do the conversion for us
                         # but we need to do it for Python and we
