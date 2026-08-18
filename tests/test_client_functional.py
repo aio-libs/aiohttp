@@ -57,7 +57,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimeoutHandle
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -6351,6 +6351,32 @@ async def test_payload_upload_aborted_by_request_start_trace() -> None:
 
     assert excinfo.value is error
     assert p.upload_complete.exception() is error
+
+
+async def test_preflight_failure_disarms_timeout(mocker: MockerFixture) -> None:
+    """A preflight failure closes the timeout handle and cancels its timer."""
+    close_spy = mocker.spy(TimeoutHandle, "close")
+    start_spy = mocker.spy(TimeoutHandle, "start")
+
+    async def on_request_start(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> NoReturn:
+        raise RuntimeError("trace failed")
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+
+    async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
+        with pytest.raises(RuntimeError):
+            await session.post("http://example.com/", data=b"x")
+
+    # The armed loop timer is cancelled, not left running until expiry.
+    close_spy.assert_called_once()
+    timer = start_spy.spy_return
+    assert timer is not None
+    assert timer.cancelled()
 
 
 async def test_payload_reused_aborted_before_request_built(

@@ -528,6 +528,18 @@ class ClientSession:
             # the request are reported through upload_complete as well.
             data._reset_upload()
 
+        real_timeout = (
+            self._timeout if timeout is sentinel or timeout is None else timeout
+        )
+        # timeout is cumulative for all request operations
+        # (request, redirects, responses, data consuming)
+        tm = TimeoutHandle(
+            self._loop,
+            real_timeout.total,
+            ceil_threshold=real_timeout.ceil_threshold,
+        )
+        handle: asyncio.TimerHandle | None = None
+
         try:
             redirects = 0
             history: list[ClientResponse] = []
@@ -569,17 +581,6 @@ class ClientSession:
                 except ValueError as e:
                     raise InvalidURL(proxy) from e
 
-            if timeout is sentinel or timeout is None:
-                real_timeout: ClientTimeout = self._timeout
-            else:
-                real_timeout = timeout
-            # timeout is cumulative for all request operations
-            # (request, redirects, responses, data consuming)
-            tm = TimeoutHandle(
-                self._loop,
-                real_timeout.total,
-                ceil_threshold=real_timeout.ceil_threshold,
-            )
             handle = tm.start()
 
             if read_bufsize is None:
@@ -611,6 +612,10 @@ class ClientSession:
                     method, url.update_query(params), headers
                 )
         except BaseException as e:
+            tm.close()
+            if handle is not None:
+                handle.cancel()
+                handle = None
             if isinstance(data, payload.Payload):
                 if not data._upload_active:
                     data._abort_upload(e)
