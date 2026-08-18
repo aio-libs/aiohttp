@@ -578,10 +578,8 @@ client-side, the writer adds masks to outgoing frames.
 - **PR #13352** (follow-up to CVE-2026-54274) — the per-frame
   `max_msg_size` byte cap still let a size-legal frame dribbled in tiny
   transport reads pin ~28x its on-wire size in per-read `bytes` objects
-  (`_payload_fragments`). `WebSocketReader` first capped the retained
-  fragment count (`max(1024, max_msg_size // 256)`) and paused reading once
-  exceeded; PR #13488 below removed both in favour of a single growable
-  buffer (all unreleased, so neither the cap nor the pause ever shipped).
+  (`_payload_fragments`); bounded by the single-buffer reassembly in
+  PR #13488 below.
 - **PR #13488** — reassembling a frame delivered across many small transport
   reads retained one `bytes` object per read. The reader now appends each read
   into a single growable `bytearray`, so retained memory is the payload bytes
