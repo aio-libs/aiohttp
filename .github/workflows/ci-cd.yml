@@ -214,7 +214,12 @@ jobs:
       run: |
         make mypy
     - name: Verify CHANGES fragment references PR
-      if: github.event_name == 'pull_request'
+      # Skipped on backport PRs: their fragments are numbered for the original
+      # PR/issue, so the check would never pass. The workflow itself stays
+      # identical across branches.
+      if: >-
+        github.event_name == 'pull_request'
+        && github.event.pull_request.base.ref == 'master'
       env:
         GH_TOKEN: ${{ github.token }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -639,35 +644,44 @@ jobs:
             echo "Predeploy step"
 
   build-wheels:
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }} ${{ matrix.musl }} ${{ matrix.platform }}
-    runs-on: ${{ matrix.os }}
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build platform-specific wheels${{ '' }}
     needs:
     - build-pure-python-dists
     - pre-deploy
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "windows-11-arm", "macos-latest", "ubuntu-24.04-arm"]
-        qemu: ['']
-        musl: [""]
-        platform: [""]
+        runner-vm-os:
+        - ubuntu-latest
+        - windows-latest
+        - windows-11-arm
+        - macos-latest
+        - ubuntu-24.04-arm
+        qemu:
+        - ''
+        musl:
+        - ''
+        platform:
+        - ''
         include:
-          # Split ubuntu/musl jobs for the sake of speed-up
-        - os: ubuntu-latest
+        # Split ubuntu/musl jobs for the sake of speed-up
+        - runner-vm-os: ubuntu-latest
           qemu: ppc64le
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: ppc64le
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           qemu: riscv64
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: riscv64
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           qemu: s390x
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: s390x
           musl: musllinux
         # armv7l builds on aarch64 hosts. We still register QEMU so
@@ -675,78 +689,48 @@ jobs:
         # whether the host kernel has CONFIG_COMPAT enabled. Even with
         # emulation, aarch64-on-aarch64 hosting beats x86_64 by a wide
         # margin.
-        - os: ubuntu-24.04-arm
+        - runner-vm-os: ubuntu-24.04-arm
           qemu: armv7l
-          musl: ""
-        - os: ubuntu-24.04-arm
+          musl: ''
+        - runner-vm-os: ubuntu-24.04-arm
           qemu: armv7l
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           musl: musllinux
-        - os: ubuntu-24.04-arm
+        - runner-vm-os: ubuntu-24.04-arm
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           platform: android
-        - os: macos-14
+        - runner-vm-os: macos-14
           platform: ios
-    steps:
-    - name: Download the source distribution
-      uses: actions/download-artifact@v8
-      with:
-        name: dist-pure
-        path: dist/
-    - name: Set up QEMU
-      if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v4
-      with:
-        platforms: all
-        # This should be temporary
-        # xref https://github.com/docker/setup-qemu-action/issues/188
-        # xref https://github.com/tonistiigi/binfmt/issues/215
-        image: tonistiigi/binfmt:qemu-v8.1.5
-      id: qemu
-    - name: Prepare emulation
-      run: |
-        if [[ -n "${{ matrix.qemu }}" ]]; then
-          # Build emulated architectures only if QEMU is set,
-          # use default "auto" otherwise
-          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
-          # Override pyproject.toml's `build[uv]`: the pypa odd-arch
-          # manylinux/musllinux containers do not ship `uv` preinstalled.
-          echo "CIBW_BUILD_FRONTEND=build" >> $GITHUB_ENV
-        fi
-      shell: bash
-    - name: Build wheels
-      uses: pypa/cibuildwheel@v4.2.0
-      with:
-        package-dir: >-  # not necessarily a dir, we pass an acceptable sdist
-          dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
-        # available on the runner for Windows and macOS. Installing
-        # cibuildwheel with the `uv` extra bundles uv with it; the
-        # tested-arch manylinux/musllinux containers also ship uv
-        # preinstalled. The odd-arch containers do not, so the
-        # `Prepare emulation` step above sets `CIBW_BUILD_FRONTEND=build`
-        # for those QEMU matrix cells.
-        extras: uv
-      env:
-        CIBW_PLATFORM: ${{ matrix.platform || 'auto' }}
-        CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
-        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-        CIBW_ARCHS_IOS: arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator
-        CIBW_ARCHS_ANDROID: arm64_v8a x86_64
-    - name: Upload wheels
-      uses: actions/upload-artifact@v7
-      with:
-        name: >-
-          dist-${{ matrix.os }}-${{ matrix.musl }}-${{
-            matrix.platform
-            && matrix.platform
-            || matrix.qemu
-            && matrix.qemu
-            || 'native'
-          }}
-        path: ./wheelhouse/*.whl
+    with:
+      check-name: >-
+        ${{ matrix.runner-vm-os }} ${{ matrix.qemu }}
+        ${{ matrix.musl }} ${{ matrix.platform }}
+      dists-artifact-name: dist-pure
+      environment-variables: |-
+        CIBW_ARCHS_ANDROID=arm64_v8a x86_64
+
+        CIBW_ARCHS_IOS=arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator
+
+        ${{ matrix.qemu && format('CIBW_ARCHS_LINUX={0}', matrix.qemu) || '' }}
+
+        CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        ${{ matrix.qemu && 'CIBW_BUILD_FRONTEND=build' || '' }}
+
+        CIBW_PLATFORM=${{ matrix.platform != '' && matrix.platform || 'auto' }}
+
+        CIBW_SKIP=pp* *${{
+          matrix.musl == 'musllinux'
+          && 'many'
+          || 'musl'
+        }}linux*
+      qemu: ${{ matrix.qemu != '' }}
+      runner-vm-os: ${{ matrix.runner-vm-os }}
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      timeout-minutes: ${{ matrix.qemu != '' && 35 || 15 }}
 
   deploy:
     name: Deploy
