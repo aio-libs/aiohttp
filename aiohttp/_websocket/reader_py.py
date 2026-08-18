@@ -141,7 +141,10 @@ class WebSocketDataQueue:
             if self._stalled_reader is not None and self._size < self._limit:
                 # Resume parsing after a pause.
                 reader = self._stalled_reader()
-                assert reader is not None
+                assert reader is not None, (
+                    "WebSocketReader was garbage collected while stalled; "
+                    "callers of set_parser() must hold a strong reference"
+                )
                 reader.feed_data(b"")
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()

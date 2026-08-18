@@ -80,6 +80,13 @@ async def test_stashed_frames_survive_connection_loss(
         async with aiohttp.ClientSession() as session:
             ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
             queue = ws._reader
+            # The burst may arrive split across reads, and only the part that
+            # rode along with the 101 response is parsed by the time
+            # ws_connect() returns.
+            for _ in range(1000):  # pragma: no branch
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
             assert queue._stalled_reader is not None, "parser never stalled"
             stalled = len(queue._buffer)
 
