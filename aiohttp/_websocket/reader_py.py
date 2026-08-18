@@ -162,6 +162,9 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
+        # Parked on the queue while parsing is stalled; created once so
+        # stalling does not allocate.
+        self._weak_self = weakref.ref(self)
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -367,7 +370,7 @@ class WebSocketReader:
         while True:
             if self.queue._size > self.queue._limit:
                 # Over the high-water mark, stop before parsing.
-                self.queue._stalled_reader = weakref.ref(self)
+                self.queue._stalled_reader = self._weak_self
                 break
 
             # read header

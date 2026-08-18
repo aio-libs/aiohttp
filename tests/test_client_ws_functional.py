@@ -25,7 +25,7 @@ from aiohttp import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
-from aiohttp.http import WebSocketError, WSCloseCode
+from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -49,7 +49,6 @@ async def test_stashed_frames_survive_connection_loss(
     it alive; without that the queue's weak link dies and the stash is lost.
     """
     sent = 8000
-    ws_guid = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
 
     writers: list[asyncio.StreamWriter] = []
 
@@ -63,7 +62,7 @@ async def test_stashed_frames_survive_connection_loss(
             for line in request.split(b"\r\n")
             if line.lower().startswith(b"sec-websocket-key")
         )
-        accept = base64.b64encode(hashlib.sha1(key + ws_guid).digest())
+        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
         writer.write(
             b"HTTP/1.1 101 Switching Protocols\r\n"
             b"Upgrade: websocket\r\n"

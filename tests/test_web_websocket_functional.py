@@ -143,7 +143,7 @@ async def test_stashed_frames_survive_connection_loss(
     # Production defaults to False, and that is the case where the stash
     # still has to be drainable.
     app = web.Application()
-    app.router.add_route("GET", "/", handler)
+    app.router.add_route("GET", "/ws", handler)
     runner = web.AppRunner(app)
     await runner.setup()
     try:
@@ -152,15 +152,7 @@ async def test_stashed_frames_survive_connection_loss(
 
         reader, writer = await asyncio.open_connection("127.0.0.1", port)
         try:
-            writer.write(
-                b"GET / HTTP/1.1\r\n"
-                b"Host: localhost\r\n"
-                b"Upgrade: websocket\r\n"
-                b"Connection: Upgrade\r\n"
-                b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
-                b"Sec-WebSocket-Version: 13\r\n"
-                b"\r\n"
-            )
+            writer.write(_RAW_UPGRADE)
             await writer.drain()
             await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
 

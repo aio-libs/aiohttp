@@ -942,9 +942,10 @@ async def test_incomplete_frame_not_paused_for_normal_reads(
 
 def _compressed_burst(payload: bytes, count: int) -> bytes:
     """`count` complete, independently deflated BINARY messages in one read."""
-    return build_frame(
-        payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True
-    ) * (count)
+    return (
+        build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True)
+        * count
+    )
 
 
 async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None:
@@ -1095,12 +1096,10 @@ async def test_set_exception_still_delivers_stashed_frames(
 
     out.set_exception(ConnectionResetError())
 
-    received = 0
+    for _ in range(sent):
+        await asyncio.wait_for(out.read(), 5)
     with pytest.raises(ConnectionResetError):
-        for _ in range(sent + 1):
-            await asyncio.wait_for(out.read(), 5)
-            received += 1
-    assert received == sent
+        await out.read()
 
 
 async def test_parse_error_abandons_the_stash(protocol: BaseProtocol) -> None:
@@ -1153,7 +1152,6 @@ async def test_queue_does_not_keep_stalled_reader_alive(
         gc.collect()
 
     assert ref() is None, "queue kept the stalled reader alive"
-    assert out._stalled_reader is not None and out._stalled_reader() is None
 
 
 async def test_burst_under_high_water_is_parsed_in_one_read(

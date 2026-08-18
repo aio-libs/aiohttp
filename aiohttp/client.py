@@ -1210,8 +1210,6 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            # Owned by ws_resp so a stalled reader parked on the queue by
-            # weakref stays alive while the response can still be drained.
             ws_resp._parser = parser = WebSocketReader(
                 reader,
                 max_msg_size,
