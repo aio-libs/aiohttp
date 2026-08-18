@@ -1820,3 +1820,22 @@ async def test_stalled_parser_outlives_connection_lost(
     assert count == sent
     # Exhausting the queue releases the parser and the stash it retains.
     assert ws._parser is None
+
+
+async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
+    """A normal close handshake releases the parser and the state it holds."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()  # the peer's CLOSE
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    assert resp._parser is not None
+    await resp.close()
+    assert resp._parser is None

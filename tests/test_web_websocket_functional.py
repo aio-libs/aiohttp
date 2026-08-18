@@ -2085,3 +2085,24 @@ async def test_stalled_parser_outlives_connection_lost(
     await client.ws_connect("/")
 
     assert await asyncio.wait_for(received, 10) == sent
+
+
+async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
+    """A normal close handshake releases the parser and the state it holds."""
+    released: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        assert ws._parser is not None
+        await ws.close()
+        released.set_result(ws._parser is None)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/")
+
+    await ws.receive()  # the server's CLOSE
+    assert await asyncio.wait_for(released, 5) is True
