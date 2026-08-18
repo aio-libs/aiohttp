@@ -1,0 +1,3 @@
+Fixed a WebSocket connection hanging permanently when a peer split a single frame across more transport reads than the per-message fragment cap -- by :user:`bdraco`.
+
+The cap paused reading in the middle of the frame, which could never be resumed: the frame only completes once more data arrives, and reading only resumes when a message is read off the queue, which was still empty. The pending fragments are now joined into a single buffer instead, keeping the same memory bound.

@@ -18,6 +18,7 @@ from aiohttp._websocket.helpers import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
+from aiohttp._websocket.reader_py import WebSocketReader as PyWebSocketReader
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
 from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMsgType
@@ -891,30 +892,62 @@ def test_flow_control_multi_byte_text(
     assert protocol._reading_paused is True
 
 
-async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
+async def test_incomplete_frame_collapses_when_fragment_limit_exceeded(
     protocol: BaseProtocol,
 ) -> None:
+    """The pending fragments of one frame stay bounded in number.
+
+    Uses the pure-Python reader so the fragment list is reachable; the
+    Cython reader keeps it in a cdef attribute.
+    """
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = PyWebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    payload_len = 32 * 1024
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+
+    # Feed the payload two bytes per read so the collapse is
+    # driven purely by the fragment count, not the total byte count.
+    for _ in range(payload_len // 2):
+        parser.feed_data(b"xx")
+        assert len(parser._payload_fragments) <= parser._max_fragments
+
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
+
+
+async def test_fragment_limit_does_not_strand_reading(
+    protocol: BaseProtocol,
+) -> None:
+    """A frame split past the fragment limit must still be delivered.
+
+    Pausing the transport in the middle of a frame cannot be undone: the
+    frame only completes once more data arrives, and the only resume is a
+    read off the queue -- which is empty, because no message has been
+    queued yet. A peer that dribbles one frame across enough reads would
+    otherwise wedge the connection permanently.
+    """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
-    payload_len = 32 * 1024
+    payload_len = 8 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
-    assert protocol._reading_paused is False
 
-    # Feed the payload two bytes per read so the pause is
-    # driven purely by the fragment count, not the total byte count.
-    paused_after = None
-    for i in range(payload_len // 2 - 1):  # pragma: no branch
+    # Two bytes per read, so the fragment count runs well past the cap
+    # (4096 reads against a cap of 1024) before the frame completes.
+    for _ in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
-        if protocol._reading_paused:
-            paused_after = i + 1  # type: ignore[unreachable]
-            break
+        # Nothing is queued yet, so nothing can undo a pause taken here.
+        assert not out._buffer
+        assert protocol._reading_paused is False
 
-    assert paused_after is not None
-    # Paused long before the frame could complete (16384 two-byte reads).
-    assert paused_after < payload_len // 2  # type: ignore[unreachable]
+    parser.feed_data(b"xx")
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
 
 
 async def test_incomplete_frame_not_paused_for_normal_reads(
