@@ -243,6 +243,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._closed:
             return
         self._set_closed()
+        # close() is never reached after this; release the parser here.
+        self._parser = None
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
         if self._waiting and not self._closing and self._reader is not None:

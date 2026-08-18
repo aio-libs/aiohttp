@@ -1154,6 +1154,21 @@ async def test_queue_does_not_keep_stalled_reader_alive(
     assert ref() is None, "queue kept the stalled reader alive"
 
 
+def _queue_with_collected_reader(
+    protocol: BaseProtocol, loop: asyncio.AbstractEventLoop, *, eof: bool
+) -> WebSocketDataQueue:
+    """A queue whose reader stalled on a burst and was then collected."""
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    if eof:
+        parser.feed_eof()
+    del parser
+    for _ in range(3):
+        gc.collect()
+    return out
+
+
 async def test_collected_stalled_reader_surfaces_contract_error(
     protocol: BaseProtocol,
 ) -> None:
@@ -1161,13 +1176,7 @@ async def test_collected_stalled_reader_surfaces_contract_error(
     # so the stash is gone. Whatever was already queued is still delivered,
     # then the contract violation surfaces instead of a silent short stream.
     loop = asyncio.get_running_loop()
-    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
-    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
-    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
-    parser.feed_eof()
-    del parser
-    for _ in range(3):
-        gc.collect()
+    out = _queue_with_collected_reader(protocol, loop, eof=True)
 
     for _ in range(len(out._buffer)):
         await asyncio.wait_for(out.read(), 5)
@@ -1181,13 +1190,8 @@ async def test_collected_stalled_reader_preserves_existing_exception(
     # set_exception() is also the transport-died hook; losing the reader on
     # top of that must not replace the real cause with the contract error.
     loop = asyncio.get_running_loop()
-    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
-    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
-    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    out = _queue_with_collected_reader(protocol, loop, eof=False)
     out.set_exception(ConnectionResetError())
-    del parser
-    for _ in range(3):
-        gc.collect()
 
     for _ in range(len(out._buffer)):
         await asyncio.wait_for(out.read(), 5)

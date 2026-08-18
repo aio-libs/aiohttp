@@ -131,10 +131,7 @@ async def test_stashed_frames_survive_connection_loss(
             assert protocol._payload_parser is None, "connection_lost never ran"
 
             count = 0
-            while True:
-                msg = await ws.receive()
-                if msg.type is not WSMsgType.TEXT:
-                    break
+            while (msg := await ws.receive()).type is WSMsgType.TEXT:
                 count += 1
             # A clean drain ends with the queue's close, not an error.
             assert msg.type is WSMsgType.CLOSED

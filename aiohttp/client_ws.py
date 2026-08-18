@@ -219,6 +219,8 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if self._closed:
             return
         self._set_closed()
+        # close() is never reached after this; release the parser here.
+        self._parser = None
         self._close_code = WSCloseCode.ABNORMAL_CLOSURE
         self._exception = exc
         self._response.close()
