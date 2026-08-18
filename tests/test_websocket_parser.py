@@ -921,15 +921,15 @@ async def test_incomplete_frame_buffers_one_contiguous_payload(
 
 
 @pytest.mark.parametrize("mask", [False, True])
-async def test_fragment_limit_delivers_frame_split_across_many_reads(
+async def test_frame_split_across_many_reads_is_delivered_intact(
     protocol: BaseProtocol, mask: bool
 ) -> None:
-    """A frame split past the fragment limit is still assembled and delivered.
+    """A frame arriving two bytes at a time is reassembled and delivered whole.
 
     Reading is not paused mid-frame. The masked case drives the server-side
-    reassembly path through the collapse: the fragments are joined and then
-    unmasked, so a collapse that reordered or dropped fragments would corrupt
-    the varied payload.
+    reassembly path: the accumulated buffer is masked in place and handed off,
+    so a buffer-reuse mistake or any ordering error would corrupt the varied
+    payload.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -939,8 +939,7 @@ async def test_fragment_limit_delivers_frame_split_across_many_reads(
     payload = bytes(range(256)) * 32  # 8 KiB of varied, distinctive bytes
     frame = build_frame(payload, WSMsgType.BINARY, mask=mask)
 
-    # Two bytes per read drives the payload-fragment count well past the cap
-    # (~4096 reads against a cap of 1024), so the collapse fires several times.
+    # Two bytes per read, so the payload accumulates across ~4096 reads.
     chunks = [frame[i : i + 2] for i in range(0, len(frame), 2)]
     for chunk in chunks[:-1]:
         parser.feed_data(chunk)
@@ -961,10 +960,11 @@ async def test_incomplete_frame_not_paused_for_normal_reads(
     parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
     # Normal traffic (a frame delivered in a handful of reasonably sized reads)
-    # must never trip the fragment-limit backpressure.
+    # must never pause reading mid-frame; the only resume is a queue read,
+    # which cannot happen before the frame produces a message.
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
-    # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
+    # 32 KiB in 4 KiB reads.
     for _ in range(payload_len // 4096):
         parser.feed_data(b"x" * 4096)
     assert protocol._reading_paused is False
