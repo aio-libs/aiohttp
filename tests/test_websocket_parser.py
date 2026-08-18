@@ -1038,6 +1038,31 @@ async def test_backpressure_does_not_drop_stashed_frames(
     assert protocol._reading_paused is False
 
 
+async def test_drain_resumes_parsing_in_batches(protocol: BaseProtocol) -> None:
+    # The parser is re-driven only at the low-water mark. Each resume
+    # re-slices the whole unparsed tail, so re-driving on every pop would
+    # make draining a burst of tiny messages quadratic in its size.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    stalled = len(out._buffer)
+    assert stalled < sent
+
+    # Above the low-water mark a pop must not re-drive the parser.
+    await asyncio.wait_for(out.read(), 5)
+    assert len(out._buffer) == stalled - 1
+
+    # The pop that reaches the low-water mark refills the queue in one batch.
+    low_water_msgs = (out._limit // 2) // MSG_SIZE_OVERHEAD
+    for _ in range(stalled - 1 - low_water_msgs):
+        await asyncio.wait_for(out.read(), 5)
+    assert len(out._buffer) > low_water_msgs
+    assert out._size > out._limit
+
+
 async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
     # A peer that bursts and then disconnects must not lose the tail: at EOF
     # there is no resume to ride on, so draining has to keep driving the parser.

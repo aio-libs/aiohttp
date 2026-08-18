@@ -144,8 +144,11 @@ class WebSocketDataQueue:
             data = self._get_buffer()
             size = data.size
             self._size -= size + MSG_SIZE_OVERHEAD
-            if self._stalled_reader is not None and self._size < self._limit:
-                # Resume parsing after a pause.
+            if self._stalled_reader is not None and self._size <= self._limit // 2:
+                # Resume parsing once the queue drains to the low-water mark.
+                # Each resume re-slices the parser's unparsed tail, so waiting
+                # for headroom makes a drain cost one copy per batch of
+                # messages instead of one per message.
                 if (reader := self._stalled_reader()) is not None:
                     reader.feed_data(b"")
                 else:

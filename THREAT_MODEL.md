@@ -589,7 +589,9 @@ client-side, the writer adds masks to outgoing frames.
   (`MSG_SIZE_OVERHEAD`) and the reader stalls at a frame boundary once the
   queue is over the mark: the unparsed remainder stays compressed in
   `_tail`, the queue keeps only a weakref to the stalled reader, and
-  drains re-drive it. Callers constructing a `WebSocketReader` for
+  drains re-drive it at a `_limit // 2` low-water mark (each resume
+  re-slices the tail, so per-pop resumes would make draining a tiny-frame
+  burst quadratic CPU). Callers constructing a `WebSocketReader` for
   `set_parser()` must hold a strong reference to it (both in-tree response
   classes do, via `_parser`).
 
