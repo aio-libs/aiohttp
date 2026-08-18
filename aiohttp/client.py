@@ -611,7 +611,7 @@ class ClientSession:
                     method, url.update_query(params), headers
                 )
         except BaseException as e:
-            if isinstance(data, payload.Payload):
+            if isinstance(data, payload.Payload) and not data._upload_active:
                 data._abort_upload(e)
             raise
 

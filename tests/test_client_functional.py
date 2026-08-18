@@ -6603,6 +6603,58 @@ async def test_untracked_upload_failure_leaves_owner_state(
     assert fut.cancelled()
 
 
+async def test_untracked_preflight_failure_leaves_owner_state(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A preflight failure must not settle an overlapping request's future."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"z" * 16)
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+        assert p._upload_active
+
+        # The overlapping request fails before its request is even built.
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.NonHttpUrlClientError):
+                await session.post("ftp://example.com/", data=p)
+
+        assert p._upload_active
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the preflight error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
 async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
