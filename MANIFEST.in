@@ -3,6 +3,9 @@ include CHANGES.rst
 include README.rst
 include CONTRIBUTORS.txt
 include Makefile
+include .mypy.ini
+include .coveragerc.toml
+include .coveragerc-cython.toml
 graft aiohttp
 graft docs
 graft examples
