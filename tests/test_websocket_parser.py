@@ -1170,16 +1170,18 @@ def _queue_with_collected_reader(
 
 
 async def test_collected_stalled_reader_surfaces_contract_error(
-    protocol: BaseProtocol,
+    protocol: BaseProtocol, caplog: pytest.LogCaptureFixture
 ) -> None:
     # Every strong reference to the reader was dropped while it was stalled,
     # so the stash is gone. Whatever was already queued is still delivered,
     # then the contract violation surfaces instead of a silent short stream.
+    # It is also logged, for callers that stop reading before the exception.
     loop = asyncio.get_running_loop()
     out = _queue_with_collected_reader(protocol, loop, eof=True)
 
     for _ in range(len(out._buffer)):
         await asyncio.wait_for(out.read(), 5)
+    assert "must hold a strong reference" in caplog.text
     with pytest.raises(RuntimeError, match="must hold a strong reference"):
         await out.read()
 

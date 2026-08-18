@@ -9,6 +9,7 @@ from typing import Final
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
+from ..log import ws_logger
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
@@ -58,6 +59,11 @@ TUPLE_NEW = tuple.__new__
 # Overhead added to each message to ensure that tiny messages can't use
 # unreasonable amounts of memory.
 MSG_SIZE_OVERHEAD: Final[int] = 128
+
+STALLED_READER_COLLECTED: Final[str] = (
+    "WebSocketReader was garbage collected while stalled; "
+    "callers of set_parser() must hold a strong reference"
+)
 
 cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
 
@@ -145,17 +151,14 @@ class WebSocketDataQueue:
                 else:
                     # The stash died with the reader. Deliver what was already
                     # queued, then surface the contract violation on the next
-                    # read instead of hanging. A real failure that was already
-                    # recorded stays the reported cause.
+                    # read instead of hanging. Log as well, since a caller that
+                    # stops reading early never sees the deferred exception. A
+                    # real failure that was already recorded stays the reported
+                    # cause.
                     self._stalled_reader = None
+                    ws_logger.warning(STALLED_READER_COLLECTED)
                     if self._exception is None:
-                        self.set_exception(
-                            RuntimeError(
-                                "WebSocketReader was garbage collected while "
-                                "stalled; callers of set_parser() must hold a "
-                                "strong reference"
-                            )
-                        )
+                        self.set_exception(RuntimeError(STALLED_READER_COLLECTED))
             if self._size < self._limit and self._protocol._reading_paused:
                 self._protocol.resume_reading()
             return data
