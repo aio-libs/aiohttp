@@ -1,0 +1,1 @@
+Fixed base64 multipart body parts declaring a ``Content-Length`` reading past the declared part length into the boundary and the following parts -- by :user:`arshsmith1`.

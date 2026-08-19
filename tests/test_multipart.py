@@ -418,6 +418,30 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
+    async def test_read_chunk_base64_content_length_no_overread(self) -> None:
+        # A base64 part whose Content-Length is not a multiple of 4 must not
+        # let the base64 realignment loop read past the declared length into
+        # the boundary and the parts that follow.
+        b64 = b"VGltZSB0byBSZWxheCE"  # 19 chars, 19 % 4 == 3 (unpadded)
+        secret = b"secret-from-next-part"
+        rest = b"\r\n--:\r\nContent-Length: %d\r\n\r\n%s\r\n--:--\r\n" % (
+            len(secret),
+            secret,
+        )
+        h = HeadersDictProxy(
+            CIMultiDict(
+                {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
+            )
+        )
+        with Stream(b64 + rest) as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(8192)
+            assert chunk == b64
+            assert obj.at_eof()
+            assert secret not in chunk
+            # The following part is left intact on the stream.
+            assert secret in await stream.read()
+
     async def test_decode_with_content_transfer_encoding_base64(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         with Stream(b"VG\r\r\nltZSB0byBSZ\r\nWxheCE=\r\n--:--") as stream:
