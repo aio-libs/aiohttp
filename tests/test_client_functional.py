@@ -6711,6 +6711,10 @@ async def test_untracked_preflight_failure_leaves_owner_state(
                 await session.post("ftp://example.com/", data=p)
 
         assert p._upload_active
+        # The sharer's failure must not mark the owner's error as
+        # propagated, or a later unpropagated owner failure would have its
+        # never-retrieved log wrongly disarmed.
+        assert not p._upload_error_propagated
         assert not fut.done()
     finally:
         waiter.cancel()
@@ -6720,6 +6724,63 @@ async def test_untracked_preflight_failure_leaves_owner_state(
         release.set()
 
     # The owner's outcome is its own cancellation, not the preflight error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
+async def test_untracked_request_failure_does_not_mark_owner(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A built request's failure must not mark an overlapping owner's payload."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"z" * 16)
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+        assert p._upload_active
+
+        # The overlapping request fails after being built: connecting to a
+        # bound but not listening port is refused.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+            async with aiohttp.ClientSession() as session:
+                with pytest.raises(aiohttp.ClientConnectorError):
+                    await session.post(f"http://127.0.0.1:{port}/", data=p)
+
+        assert p._upload_active
+        assert not p._upload_error_propagated
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the sharer's error.
     await asyncio.wait([fut], timeout=5)
     assert fut.cancelled()
 

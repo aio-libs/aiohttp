@@ -616,9 +616,8 @@ class ClientSession:
             if handle is not None:
                 handle.cancel()
                 handle = None
-            if isinstance(data, payload.Payload):
-                if not data._upload_active:
-                    data._abort_upload(e)
+            if isinstance(data, payload.Payload) and not data._upload_active:
+                data._abort_upload(e)
                 data._mark_upload_error_propagated()
             raise
 
@@ -919,12 +918,12 @@ class ClientSession:
 
             # Ensure we abort when the write never started.
             if req is not None:
-                body = None if req._body is req._EMPTY_BODY else req._body
+                # Use class (not instance) attribute to protect against test autospecs.
+                body = None if req._body is ClientRequest._EMPTY_BODY else req._body
             else:
                 body = data if isinstance(data, payload.Payload) else None
-            if body is not None:
-                if not body._upload_active:
-                    body._abort_upload(e)
+            if body is not None and not body._upload_active:
+                body._abort_upload(e)
                 body._mark_upload_error_propagated()
 
             for trace in traces:
