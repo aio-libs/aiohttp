@@ -504,9 +504,14 @@ class _ProgressWriter(AbstractStreamWriter):
         self._writer.length = value
 
     async def write(
-        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+        self,
+        chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]",
+        **kwargs: Any,
     ) -> None:
-        await self._writer.write(chunk)
+        # Keyword arguments are forwarded untouched so payloads written
+        # against a concrete writer's extended signature keep working
+        # (e.g. StreamWriter's write(chunk, drain=False)).
+        await self._writer.write(chunk, **kwargs)
         self._payload._bytes_written += (
             chunk.nbytes if isinstance(chunk, memoryview) else len(chunk)
         )
