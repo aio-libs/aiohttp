@@ -1,0 +1,5 @@
+Fixed :meth:`MultipartWriter.as_bytes() <aiohttp.MultipartWriter.as_bytes>`
+returning raw part content for parts that declare ``Content-Encoding`` or
+``Content-Transfer-Encoding``, while ``write()`` sends the compressed/encoded
+content on the wire. The mismatch also produced an incorrect entity hash for
+digest authentication with ``qop=auth-int`` -- by :user:`2sumtech`.
