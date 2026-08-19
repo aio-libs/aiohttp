@@ -504,7 +504,8 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._payload_bytes_to_read != 0:
-                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if f_start_pos < f_end_pos:  # skip a header-only read
+                        self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if (
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
