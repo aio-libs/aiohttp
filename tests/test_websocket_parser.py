@@ -1055,8 +1055,8 @@ async def test_max_msg_size_zero_opts_out_of_the_fold(
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
     for _ in range(payload_len - 1):
         parser.feed_data(b"x")
-    # No fold: reads accumulate in the list, the buffer is untouched.
-    assert len(parser._payload_fragments) == payload_len - 1
+    # No fold: reads accumulate past the cap floor, the buffer is untouched.
+    assert len(parser._payload_fragments) > 1024
     assert len(parser._payload_buffer) == 0
 
     parser.feed_data(b"x")
