@@ -2721,7 +2721,9 @@ calling it: ``data = form()``.
 If the upload fails, :attr:`Payload.upload_complete` completes with the
 upload error — normally the same error the request raises, though a
 request can still succeed if the server responded before reading the
-whole body. If the request is cancelled, the future is cancelled too.
+whole body. If the body is never fully sent — e.g. the request is
+cancelled, or a middleware answers it without sending — the future is
+cancelled too.
 
 The body may be sent more than once during a single request, e.g. when a
 307 or 308 redirect is followed or the request is retried on a new
@@ -2781,7 +2783,8 @@ first upload; the others are sent without tracking.
       finishes. If the upload fails, it completes with the upload error
       (normally also raised by the request; a request can still succeed
       if the server responded before reading the whole body); if the
-      request is cancelled, the future is cancelled. If the body is sent
+      body is never fully sent (e.g. the request is cancelled or answered
+      without sending it), the future is cancelled. If the body is sent
       again, e.g. when a redirected request resends it, the attribute is
       a new future tracking the new upload.
 

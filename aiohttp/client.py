@@ -882,6 +882,13 @@ class ClientSession:
 
             if req._body is not None:
                 await req._body.close()
+                # Abort upload if a middleware returns a response without sending
+                # the request (e.g. a cache hit).
+                if (
+                    req._body is not ClientRequest._EMPTY_BODY
+                    and not req._body._upload_active
+                ):
+                    req._body._abort_upload()
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status

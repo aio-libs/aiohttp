@@ -262,7 +262,8 @@ class Payload(ABC):
         fully written. If the upload fails, it completes with the upload
         error (normally also raised by the request; a request can still
         succeed if the server responded before reading the whole body).
-        If the request is cancelled, the future is cancelled. If the
+        If the body is never fully sent (e.g. the request is cancelled or
+        answered without sending it), the future is cancelled. If the
         payload is sent again (e.g. a redirected request resends the
         body), a new future is returned for the new upload. When
         overlapping requests share a payload, the future
