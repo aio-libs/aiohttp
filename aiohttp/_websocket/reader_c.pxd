@@ -108,6 +108,7 @@ cdef class WebSocketReader:
         has_mask=bint,
         fin=bint,
         had_fragments=Py_ssize_t,
+        partial_len=Py_ssize_t,
         payload_bytearray=bytearray,
     )
     cpdef void _feed_data(self, bytes data) except *

@@ -828,6 +828,33 @@ def test_msg_too_large_text_after_non_fin_text(out: WebSocketDataQueue) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+def test_msg_too_large_declared_length_near_ssize_t_max(
+    out: WebSocketDataQueue,
+) -> None:
+    # Regression test: the header-time size check compares
+    # `payload_bytes_to_read + len(partial)` against max_msg_size. In the
+    # compiled Cython reader payload_bytes_to_read is a signed 64-bit C
+    # value, and RFC 6455 allows a declared length up to 2**63-1, so a
+    # naive addition can wrap around to a negative number and bypass the
+    # limit entirely once anything is already buffered in `partial`.
+    max_msg_size = 4 * 1024 * 1024
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    # Buffer one byte in `partial` via a non-fin fragment.
+    first = build_frame(b"a", WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(first)
+
+    # Continuation header alone declares the maximum length a signed
+    # 64-bit payload_bytes_to_read can hold: 2**63-1.
+    header = PACK_LEN3(WSMsgType.CONTINUATION, 127, 2**63 - 1)
+    with pytest.raises(
+        WebSocketError,
+        match=rf"^Message size {2**63} exceeds limit {max_msg_size}$",
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
 @pytest.mark.parametrize(
     "opcode",
     (0x3, 0x4, 0x5, 0x6, 0x7, 0xB, 0xC, 0xD, 0xE, 0xF),
