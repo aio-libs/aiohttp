@@ -1173,7 +1173,7 @@ class MultipartWriter(Payload):
             if te_encoding == "base64":
                 part_bytes = base64.b64encode(part_bytes)
             elif te_encoding == "quoted-printable":
-                part_bytes = binascii.b2a_qp(part_bytes)
+                part_bytes = _encode_quoted_printable(part_bytes)
 
             parts.append(part_bytes)
 
@@ -1240,6 +1240,27 @@ class MultipartWriter(Payload):
                     )
 
 
+def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
+    r"""Encode *data* as quoted-printable, one line at a time.
+
+    binascii.b2a_qp derives the line-ending convention, soft line-break
+    positions, and trailing-whitespace quoting from the whole buffer it
+    is given, so encoding a body in one call produces different bytes
+    than encoding it chunk by chunk.  Encoding each ``\n``-terminated
+    line separately makes the result a pure function of the payload
+    bytes, so the streamed wire bytes (MultipartPayloadWriter) and
+    as_bytes() stay identical no matter how the payload was chunked.
+    """
+    parts: list[bytes] = []
+    start = 0
+    while (end := data.find(b"\n", start)) != -1:
+        parts.append(binascii.b2a_qp(data[start : end + 1]))
+        start = end + 1
+    if start < len(data):
+        parts.append(binascii.b2a_qp(data[start:]))
+    return b"".join(parts)
+
+
 class MultipartPayloadWriter:
     def __init__(self, writer: AbstractStreamWriter) -> None:
         self._writer = writer
@@ -1253,6 +1274,7 @@ class MultipartPayloadWriter:
             self._encoding_buffer = bytearray()
         elif encoding == "quoted-printable":
             self._encoding = "quoted-printable"
+            self._encoding_buffer = bytearray()
 
     def enable_compression(
         self, encoding: str = "deflate", strategy: int | None = None
@@ -1273,6 +1295,11 @@ class MultipartPayloadWriter:
         if self._encoding == "base64":
             if self._encoding_buffer:
                 await self._writer.write(base64.b64encode(self._encoding_buffer))
+        elif self._encoding == "quoted-printable":
+            if self._encoding_buffer:
+                await self._writer.write(
+                    _encode_quoted_printable(self._encoding_buffer)
+                )
 
     async def write(self, chunk: bytes) -> None:
         if self._compress is not None:
@@ -1293,6 +1320,19 @@ class MultipartPayloadWriter:
                     b64chunk = base64.b64encode(enc_chunk)
                     await self._writer.write(b64chunk)
         elif self._encoding == "quoted-printable":
-            await self._writer.write(binascii.b2a_qp(chunk))
+            buf = self._encoding_buffer
+            assert buf is not None
+            buf.extend(chunk)
+
+            # b2a_qp output depends on seeing a complete line, so only
+            # encode up to the last newline and keep the partial line
+            # buffered until more data or write_eof() completes it.
+            last_newline = buf.rfind(b"\n")
+            if last_newline != -1:
+                enc_chunk, self._encoding_buffer = (
+                    buf[: last_newline + 1],
+                    buf[last_newline + 1 :],
+                )
+                await self._writer.write(_encode_quoted_printable(enc_chunk))
         else:
             await self._writer.write(chunk)
