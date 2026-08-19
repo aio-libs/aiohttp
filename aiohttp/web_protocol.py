@@ -183,6 +183,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_msg_queue_resume_size",
         "_msg_queue_paused",
         "_message_tail",
+        "_read_bufsize",
         "_handler_waiter",
         "_waiter",
         "_task_handler",
@@ -224,6 +225,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # Low-water mark: resume reading once the queue drains to half the limit
         # so we refill in batches instead of churning pause/resume per request.
         self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
+        self._read_bufsize = read_bufsize
         # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
         # if BaseProtocol ever triggers a resume during init.
         self._msg_queue_paused = False
@@ -454,6 +456,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
 
+        if self._msg_queue_paused:
+            self._resume_msg_queue_reading()
+
     def eof_received(self) -> None:
         pass
 
@@ -497,6 +502,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # no parser, just store
         elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
+            if (
+                not self._msg_queue_paused
+                and len(self._message_tail) >= self._read_bufsize
+            ):
+                self._pause_msg_queue_reading()
 
         # feed payload
         elif data:
@@ -520,6 +530,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 pass
 
     def _resume_msg_queue_reading(self) -> None:
+        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
+        if self._message_tail and len(self._message_tail) >= self._read_bufsize:
+            return
+
         if not self._upgraded:
             # Reparse buffered pipelined requests while still marked paused so
             # a refill past the limit does not re-pause an already-paused
@@ -822,19 +836,40 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._parser.set_upgraded(False)
             self._upgraded = False
             if self._message_tail:
-                messages, upgraded, tail = self._parser.feed_data(self._message_tail)
+                messages: Sequence[_MsgType]
+                try:
+                    messages, upgraded, tail = self._parser.feed_data(
+                        self._message_tail
+                    )
+                except HttpProcessingError as parse_exc:
+                    # Garbage (or an oversized request line) buffered behind the
+                    # upgrade: answer 400 instead of letting the error escape
+                    # and lose this response, like data_received() does.
+                    messages = [
+                        (
+                            _ErrInfo(
+                                status=400,
+                                exc=parse_exc,
+                                message=parse_exc.message,
+                            ),
+                            EMPTY_PAYLOAD,
+                        )
+                    ]
+                    upgraded = False
+                    tail = b""
                 # A further upgrade request in the tail buffers its own remainder.
                 self._upgraded = upgraded
                 self._message_tail = tail
                 for msg, payload in messages:
                     self._request_count += 1
                     self._messages.append((msg, payload))
-                # Pause the transport, like in data_received().
-                if (
-                    not self._msg_queue_paused
-                    and len(self._messages) >= self._max_msg_queue_size
-                ):
-                    self._pause_msg_queue_reading()
+                if len(self._messages) >= self._max_msg_queue_size:
+                    # Pause the transport, like in data_received().
+                    if not self._msg_queue_paused:
+                        self._pause_msg_queue_reading()
+                elif self._msg_queue_paused:
+                    # Resume reading now the tail has been parsed.
+                    self._resume_msg_queue_reading()
                 # This shouldn't be possible. If a future refactor results in this
                 # failing, then the code may need to be updated to set the waiter.
                 assert self._waiter is None
