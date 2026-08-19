@@ -296,6 +296,40 @@ def test_is_canonical_ipv4_address_rejects_non_canonical(host: str) -> None:
     assert not helpers.is_canonical_ipv4_address(host)
 
 
+# ------------------------------- is_ipv4_literal() -------------------------
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "127.0.0.1",  # canonical dotted-quad
+        "2130706433",  # decimal integer form
+        "017700000001",  # octal form
+        "127.1",  # short-hand form
+        "0177.0.0.1",  # octal leading-zero octet
+        "0x7f000001",  # hex form
+        "0X7F000001",  # upper-case hex form
+        "0x7f.0.0.1",  # dotted hex octet
+    ],
+)
+def test_is_ipv4_literal_accepts_numeric_forms(host: str) -> None:
+    assert helpers.is_ipv4_literal(host)
+
+
+@pytest.mark.parametrize(
+    "host",
+    [
+        "example.com",
+        "0xcafe.example.com",
+        "localhost",
+        "::1",
+        "",
+    ],
+)
+def test_is_ipv4_literal_rejects_names(host: str) -> None:
+    assert not helpers.is_ipv4_literal(host)
+
+
 def _ipaddress_accepts_ipv4(host: str) -> bool:
     """Oracle: does the stdlib accept ``host`` as a canonical IPv4 address?"""
     try:

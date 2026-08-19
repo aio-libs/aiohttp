@@ -12,6 +12,7 @@ import netrc
 import os
 import platform
 import re
+import socket
 import sys
 import time
 import warnings
@@ -511,6 +512,22 @@ def is_canonical_ipv4_address(host: str) -> bool:
             return False
         if int(part) > 255:
             return False
+    return True
+
+
+def is_ipv4_literal(host: str) -> bool:
+    """Check if host is an IPv4 address literal in any form ``socket`` accepts.
+
+    Unlike :func:`is_canonical_ipv4_address`, this also returns ``True`` for the
+    legacy hex (``0x7f000001``), octal (``0177.0.0.1``) and short (``127.1``)
+    forms that ``inet_aton`` maps onto an address. Those never reach DNS since
+    the resolver parses them numerically, so a caller that wants to reject
+    non-canonical literals has to recognise them here first.
+    """
+    try:
+        socket.inet_aton(host)
+    except (OSError, ValueError):
+        return False
     return True
 
 
