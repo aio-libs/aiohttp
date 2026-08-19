@@ -753,6 +753,41 @@ class TestContentDispositionFilename:
         params = {"filename*0": "foo", "filename*1": "bar.html"}
         assert "foobar.html" == content_disposition_filename(params)
 
+    def test_attfncont_single_section(self) -> None:
+        params = {"filename*0": "foo.html"}
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncont_many_sections(self) -> None:
+        # RFC 2231 Section 3 requires numeric ordering of the continuation
+        # sections, so "filename*10" must sort after "filename*2".
+        params = {f"filename*{i}": f"seg{i}-" for i in range(11)}
+        expected = "".join(f"seg{i}-" for i in range(11))
+        assert expected == content_disposition_filename(params)
+
+    def test_attfncont_many_sections_enc(self) -> None:
+        # The charset of the initial extended section applies to all
+        # later extended sections, including those numbered >= 10.
+        params: dict[str, str] = {"filename*0*": "UTF-8''foo-"}
+        params.update({f"filename*{i}": f"s{i}-" for i in range(1, 10)})
+        params["filename*10*"] = "%c3%a4.html"
+        expected = "foo-" + "".join(f"s{i}-" for i in range(1, 10)) + "ä.html"
+        assert expected == content_disposition_filename(params)
+
+    def test_attfncont_extended_after_quoted(self) -> None:
+        # RFC 2231 Section 4.1: each section is marked extended (and thus
+        # percent-encoded) individually, so a quoted initial section may be
+        # followed by extended ones.
+        params = {"filename*0": "foo", "filename*1*": "%20bar.html"}
+        assert "foo bar.html" == content_disposition_filename(params)
+
+    def test_attfncontqs_apostrophe(self) -> None:
+        # Apostrophes in quoted sections are plain characters, not an
+        # RFC 5987 charset'language' prefix.
+        params = {"filename*0": "it's", "filename*1": ".html"}
+        assert "it's.html" == content_disposition_filename(params)
+        params = {"filename*0": "a'b'c.html"}
+        assert "a'b'c.html" == content_disposition_filename(params)
+
     def test_attfncontenc(self) -> None:
         params = {"filename*0*": "UTF-8''foo-%c3%a4", "filename*1": ".html"}
         assert "foo-ä.html" == content_disposition_filename(params)
