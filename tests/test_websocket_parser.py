@@ -953,6 +953,32 @@ async def test_frame_split_across_many_reads_is_delivered_intact(
     assert msg.data == payload
 
 
+async def test_consecutive_folded_frames_do_not_bleed(
+    protocol: BaseProtocol,
+) -> None:
+    """Two frames each folded past the cap on one reader stay independent.
+
+    The buffer is detached with a fresh bytearray (not cleared) after each
+    frame, so the second frame's fold cannot inherit the first frame's bytes.
+    """
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    first = bytes(range(256)) * 32  # 8 KiB
+    second = bytes(reversed(range(256))) * 24  # 6 KiB, distinct content
+
+    for payload in (first, second):
+        frame = build_frame(payload, WSMsgType.BINARY, mask=True)
+        for i in range(0, len(frame), 2):  # two bytes per read exceeds the cap
+            parser.feed_data(frame[i : i + 2])
+        # A .clear() detach would deliver the first frame empty; reusing the
+        # buffer across frames would corrupt the second.
+        msg = await out.read()
+        assert msg.data == payload
+
+
 async def test_incomplete_frame_not_paused_for_normal_reads(
     protocol: BaseProtocol,
 ) -> None:
