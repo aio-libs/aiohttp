@@ -1001,6 +1001,31 @@ async def test_consecutive_folded_frames_do_not_bleed(
         assert msg.data == payload
 
 
+async def test_fragmented_message_survives_fold(protocol: BaseProtocol) -> None:
+    """A multi-frame message whose frames each fold reassembles correctly.
+
+    A non-final folded frame hands a bytearray to ``self._partial += payload``.
+    """
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    first = bytes(range(256)) * 32  # 8 KiB
+    second = bytes(reversed(range(256))) * 24  # 6 KiB
+    frames = [
+        build_frame(first, WSMsgType.BINARY, is_fin=False, mask=True),
+        build_frame(second, WSMsgType.CONTINUATION, is_fin=True, mask=True),
+    ]
+    for frame in frames:
+        assert len(frame) // 2 > _fold_cap(max_msg_size)
+        for i in range(0, len(frame), 2):
+            parser.feed_data(frame[i : i + 2])
+
+    msg = await out.read()
+    assert msg.data == first + second
+
+
 async def test_compressed_frame_survives_fold(protocol: BaseProtocol) -> None:
     """A PMCE frame folded past the cap still decompresses (folded bytearray path)."""
     max_msg_size = 64 * 1024
