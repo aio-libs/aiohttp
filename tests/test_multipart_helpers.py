@@ -794,6 +794,16 @@ class TestContentDispositionFilename:
         }
         assert "café.txt" == content_disposition_filename(params)
 
+    def test_attfncont_split_multibyte_over_three_sections(self) -> None:
+        # The three octets of a single character may even land in three
+        # different sections.
+        params = {
+            "filename*0*": "UTF-8''%e2",
+            "filename*1*": "%82",
+            "filename*2*": "%ac.html",
+        }
+        assert "€.html" == content_disposition_filename(params)
+
     def test_attfncont_split_multibyte_around_quoted(self) -> None:
         # Only runs of adjacent extended sections are joined; a quoted
         # section in between is literal text and ends the run.
