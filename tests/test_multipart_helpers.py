@@ -805,6 +805,22 @@ class TestContentDispositionFilename:
         }
         assert "ä-plain-ö.html" == content_disposition_filename(params)
 
+    def test_attfncont_non_numeric_section(self) -> None:
+        # Only numbered sections take part in the continuation; a section
+        # with a non-numeric index is not a continuation at all.
+        params = {"filename*0": "foo", "filename*x": "bar", "filename*1": ".html"}
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncont_undecodable_octets(self) -> None:
+        # Octets that are still invalid once the sections are joined are
+        # rejected rather than decoded with replacement characters.
+        params = {"filename*0*": "UTF-8''%ff", "filename*1*": "%fe.html"}
+        assert content_disposition_filename(params) is None
+
+    def test_attfncont_unknown_charset(self) -> None:
+        params = {"filename*0*": "bogus-charset''foo", "filename*1*": "%c3%a4"}
+        assert content_disposition_filename(params) is None
+
     def test_attfncontqs_apostrophe(self) -> None:
         # Apostrophes in quoted sections are plain characters, not an
         # RFC 5987 charset'language' prefix.
