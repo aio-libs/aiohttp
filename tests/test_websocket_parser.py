@@ -892,14 +892,15 @@ def test_flow_control_multi_byte_text(
     assert protocol._reading_paused is True
 
 
-async def test_incomplete_frame_buffers_one_contiguous_payload(
+async def test_incomplete_frame_retained_objects_stay_bounded(
     protocol: BaseProtocol,
 ) -> None:
-    """A frame arriving in many reads is held as one contiguous buffer.
+    """A frame dribbled across many tiny reads keeps a bounded object count.
 
-    Uses the pure-Python reader so the buffer is reachable; the Cython reader
-    keeps it in a cdef attribute. Retained memory is the payload bytes, with
-    no per-read object overhead however small the reads are.
+    Uses the pure-Python reader so the internals are reachable; the Cython
+    reader keeps them in cdef attributes. Reads are collected in a list and
+    folded into one buffer once they exceed the cap, so the retained object
+    count never grows without bound however small the reads are.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -909,14 +910,16 @@ async def test_incomplete_frame_buffers_one_contiguous_payload(
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
 
-    # Two bytes per read: the buffer holds exactly the bytes received so far.
-    for i in range(payload_len // 2 - 1):
+    # Two bytes per read runs well past the cap; the fragment list is folded
+    # into the buffer and never exceeds the cap.
+    for _ in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
-        assert len(parser._payload_buffer) == (i + 1) * 2
+        assert len(parser._payload_fragments) <= parser._max_fragments
 
     parser.feed_data(b"xx")
     msg = await out.read()
     assert msg.data == b"x" * payload_len
+    assert len(parser._payload_fragments) == 0
     assert len(parser._payload_buffer) == 0
 
 
@@ -926,10 +929,9 @@ async def test_frame_split_across_many_reads_is_delivered_intact(
 ) -> None:
     """A frame arriving two bytes at a time is reassembled and delivered whole.
 
-    Reading is not paused mid-frame. The masked case drives the server-side
-    reassembly path: the accumulated buffer is masked in place and handed off,
-    so a buffer-reuse mistake or any ordering error would corrupt the varied
-    payload.
+    Reading is not paused mid-frame. The read count here exceeds the fragment
+    cap, so the masked case drives the fold-and-mask path, where a buffer-reuse
+    mistake or any ordering error would corrupt the varied payload.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
