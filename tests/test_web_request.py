@@ -702,6 +702,25 @@ def test_forwarded_re_performance() -> None:
     assert match is None
 
 
+def test_forwarded_getall_performance() -> None:
+    # HeadersDictProxy.getall() splits the header into comma-separated
+    # elements before forwarded parses them. An unquoted element carrying a
+    # long whitespace run ahead of a non-space character made that split
+    # regex backtrack quadratically, so a single request header could stall
+    # the worker for seconds.
+    header = "for=a" + " " * 30000 + "b"
+    req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
+
+    start = time.perf_counter()
+    req.forwarded
+    elapsed = time.perf_counter() - start
+
+    assert elapsed < 0.5, (
+        f"Parsing took {elapsed * 1000:.1f}ms - potential ReDoS in the "
+        "Forwarded header split"
+    )
+
+
 @pytest.mark.parametrize(
     "forward_for_in, forward_for_out",
     [
