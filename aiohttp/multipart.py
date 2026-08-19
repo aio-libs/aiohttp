@@ -184,6 +184,23 @@ def parse_content_disposition(
     return disptype.lower(), params
 
 
+def _decode_continuations(sections: list[str], encoding: str) -> str | None:
+    """Percent-decode adjacent RFC 2231 extended sections as a single value.
+
+    The octets are joined before decoding so that a multibyte character
+    split across a section boundary is still decoded correctly.  Returns
+    ``None`` if the joined octets are not valid for ``encoding``.
+    """
+    try:
+        return unquote("".join(sections), encoding, "strict")
+    except (builtins.LookupError, UnicodeDecodeError):
+        # Both the charset name and the octets are attacker-controlled here;
+        # an unknown encoding raises the builtin LookupError (shadowed in this
+        # module by payload.LookupError) and undecodable bytes raise
+        # UnicodeDecodeError.
+        return None
+
+
 def content_disposition_filename(
     params: Mapping[str, str], name: str = "filename"
 ) -> str | None:
@@ -210,6 +227,9 @@ def content_disposition_filename(
             fnparams.append((int(tail), tail, extended, value))
         fnparams.sort()
         parts: list[str] = []
+        # Consecutive extended sections are decoded as one unit, because a
+        # single multibyte character may be split across a section boundary.
+        pending: list[str] = []
         encoding = "utf-8"
         for num, (_, tail, extended, value) in enumerate(fnparams):
             if tail != str(num):  # Missing section or leading zero.
@@ -221,16 +241,20 @@ def content_disposition_filename(
                 if num == 0 and value.count("'") >= 2:
                     encoding, _, value = value.split("'", 2)
                     encoding = encoding or "utf-8"
-                try:
-                    value = unquote(value, encoding, "strict")
-                except (builtins.LookupError, UnicodeDecodeError):
-                    # Both the charset name and the octets are
-                    # attacker-controlled here; an unknown encoding raises
-                    # the builtin LookupError (shadowed in this module by
-                    # payload.LookupError) and undecodable bytes raise
-                    # UnicodeDecodeError.
+                pending.append(value)
+                continue
+            if pending:
+                decoded = _decode_continuations(pending, encoding)
+                if decoded is None:
                     return None
+                parts.append(decoded)
+                pending.clear()
             parts.append(value)
+        if pending:
+            decoded = _decode_continuations(pending, encoding)
+            if decoded is None:
+                return None
+            parts.append(decoded)
         if not parts:
             return None
         return "".join(parts).lstrip("\\/")

@@ -1,4 +1,4 @@
-Fixed :func:`~aiohttp.content_disposition_filename` truncating filenames split
-into 10 or more RFC 2231 continuation sections by sorting the sections
-numerically instead of lexicographically, and decoding each section according
-to its own extended/quoted marker -- by :user:`2sumtech`.
+Fixed ``content_disposition_filename()`` truncating filenames split into 10 or
+more RFC 2231 continuation sections by sorting the sections numerically instead
+of lexicographically, and decoding each section according to its own
+extended/quoted marker -- by :user:`2sumtech`.

@@ -780,6 +780,31 @@ class TestContentDispositionFilename:
         params = {"filename*0": "foo", "filename*1*": "%20bar.html"}
         assert "foo bar.html" == content_disposition_filename(params)
 
+    def test_attfncont_split_multibyte(self) -> None:
+        # A multibyte character may straddle a section boundary, so the
+        # octets have to be joined before they are decoded.
+        params = {"filename*0*": "UTF-8''%c3", "filename*1*": "%a4.html"}
+        assert "ä.html" == content_disposition_filename(params)
+
+    def test_attfncont_split_multibyte_three_sections(self) -> None:
+        params = {
+            "filename*0*": "UTF-8''caf%c3",
+            "filename*1*": "%a9",
+            "filename*2*": ".txt",
+        }
+        assert "café.txt" == content_disposition_filename(params)
+
+    def test_attfncont_split_multibyte_around_quoted(self) -> None:
+        # Only runs of adjacent extended sections are joined; a quoted
+        # section in between is literal text and ends the run.
+        params = {
+            "filename*0*": "UTF-8''%c3",
+            "filename*1*": "%a4",
+            "filename*2": "-plain-",
+            "filename*3*": "%c3%b6.html",
+        }
+        assert "ä-plain-ö.html" == content_disposition_filename(params)
+
     def test_attfncontqs_apostrophe(self) -> None:
         # Apostrophes in quoted sections are plain characters, not an
         # RFC 5987 charset'language' prefix.
