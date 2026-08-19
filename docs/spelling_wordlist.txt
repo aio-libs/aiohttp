@@ -148,7 +148,6 @@ getall
 gethostbyname
 github
 google
-growable
 gunicorn
 gunicorn’s
 gzip
