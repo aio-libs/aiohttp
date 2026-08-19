@@ -587,7 +587,11 @@ client-side, the writer adds masks to outgoing frames.
   pending reads are folded into a single `bytearray` and cleared, so the
   retained object count stays bounded (bytes are already bounded by
   `max_msg_size`) and the fold stays linear rather than re-joining the whole
-  prefix per read.
+  prefix per read. This also removes the mid-frame `pause_reading()` that
+  PR #13352 took once the cap was exceeded, which could not be lifted: the
+  sole resume path (`WebSocketDataQueue._read_from_buffer`) needs a queued
+  message, and a pause taken mid-frame leaves the queue empty until the frame
+  completes.
 
 ---
 
