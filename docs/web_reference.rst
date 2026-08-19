@@ -2860,6 +2860,9 @@ application on specific TCP or Unix socket, e.g.::
    :param bool auto_decompress: Automatically decompress request body,
       ``True`` by default.
 
+      Supported codings and chained-coding behaviour match
+      :class:`~aiohttp.ClientSession`'s ``auto_decompress`` parameter.
+
       .. versionadded:: 3.8
 
 

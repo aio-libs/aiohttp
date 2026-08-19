@@ -31,7 +31,10 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer
+from .http_parser import (
+    DeflateBuffer as _DeflateBuffer,
+    parse_content_encoding as _parse_content_encoding,
+)
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -71,6 +74,7 @@ cdef object CONTENT_ENCODING = hdrs.CONTENT_ENCODING
 cdef object EMPTY_PAYLOAD = _EMPTY_PAYLOAD
 cdef object StreamReader = _StreamReader
 cdef object DeflateBuffer = _DeflateBuffer
+cdef object parse_content_encoding = _parse_content_encoding
 cdef tuple EMPTY_FEED_DATA_RESULT = ((), False, b"")
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
@@ -454,7 +458,12 @@ cdef class HttpParser:
                 raise BadHttpMessage("Too many headers received")
 
             if name is CONTENT_ENCODING:
-                self._content_encoding = value
+                if self._content_encoding is None:
+                    self._content_encoding = value
+                else:
+                    # Repeated Content-Encoding headers are equivalent to a
+                    # single comma-joined one, per RFC 9110 section 5.3.
+                    self._content_encoding = self._content_encoding + "," + value
 
             self._has_value = False
             self._header_name_size = 0
@@ -515,8 +524,7 @@ cdef class HttpParser:
         enc = self._content_encoding
         if enc is not None:
             self._content_encoding = None
-            if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-                encoding = enc
+            encoding = parse_content_encoding(enc, self._auto_decompress)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]
