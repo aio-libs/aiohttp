@@ -1013,3 +1013,25 @@ async def test_frame_split_under_cap_uses_list_without_folding(
 
     msg = await out.read()
     assert msg.data == b"x" * payload_len
+
+
+async def test_max_msg_size_zero_opts_out_of_the_fold(
+    protocol: BaseProtocol,
+) -> None:
+    """max_msg_size=0 disables every limit, including the fold."""
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = PyWebSocketReader(out, 0, compress=False, decode_text=False)
+    assert parser._max_fragments == 0
+
+    payload_len = 4096  # well past the 1024 floor
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    for _ in range(payload_len - 1):
+        parser.feed_data(b"x")
+    # No fold: reads accumulate in the list, the buffer is untouched.
+    assert len(parser._payload_fragments) == payload_len - 1
+    assert len(parser._payload_buffer) == 0
+
+    parser.feed_data(b"x")
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
