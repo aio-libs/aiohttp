@@ -379,7 +379,16 @@ class BodyPartReader:
                     self._prev_chunk = self._prev_chunk[len(over_chunk) :]
 
                 if len(over_chunk) != over_chunk_size:
-                    over_chunk += await self._content.read(4 - len(over_chunk))
+                    to_read = 4 - len(over_chunk)
+                    if self._length is not None:
+                        # A length-delimited part must never read past its
+                        # Content-Length: the bytes beyond it are the boundary
+                        # and the parts that follow, not this part's data.
+                        to_read = min(
+                            to_read, self._length - self._read_bytes - len(chunk)
+                        )
+                    if to_read > 0:
+                        over_chunk += await self._content.read(to_read)
 
                 if not over_chunk:
                     self._at_eof = True
