@@ -1,5 +1,9 @@
 Fixed :meth:`MultipartWriter.as_bytes() <aiohttp.MultipartWriter.as_bytes>`
 returning raw part content for parts that declare ``Content-Encoding`` or
 ``Content-Transfer-Encoding``, while ``write()`` sends the compressed/encoded
-content on the wire. The mismatch also produced an incorrect entity hash for
-digest authentication with ``qop=auth-int`` -- by :user:`2sumtech`.
+content on the wire. Quoted-printable parts are now encoded line by line, so
+the wire bytes no longer depend on how the payload was chunked (previously a
+line ending, long line, or trailing whitespace split across payload chunks was
+encoded differently, and a CRLF split across chunks could decode incorrectly).
+The mismatch also produced an incorrect entity hash for digest authentication
+with ``qop=auth-int`` -- by :user:`2sumtech`.
