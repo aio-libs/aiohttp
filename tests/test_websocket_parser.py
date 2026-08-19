@@ -895,12 +895,9 @@ def test_flow_control_multi_byte_text(
 async def test_incomplete_frame_retained_objects_stay_bounded(
     protocol: BaseProtocol,
 ) -> None:
-    """A frame dribbled across many tiny reads keeps a bounded object count.
+    """Reads fold into one buffer past the cap, bounding the object count.
 
-    Uses the pure-Python reader so the internals are reachable; the Cython
-    reader keeps them in cdef attributes. Reads are collected in a list and
-    folded into one buffer once they exceed the cap, so the retained object
-    count never grows without bound however small the reads are.
+    Uses the pure-Python reader so the internals are reachable.
     """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
@@ -910,8 +907,7 @@ async def test_incomplete_frame_retained_objects_stay_bounded(
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
 
-    # Two bytes per read runs well past the cap; the fragment list is folded
-    # into the buffer and never exceeds the cap.
+    # Two bytes per read runs past the cap; the list folds and stays bounded.
     for _ in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
         assert len(parser._payload_fragments) <= parser._max_fragments
@@ -934,12 +930,7 @@ def _fold_cap(max_msg_size: int) -> int:
 async def test_frame_split_across_many_reads_is_delivered_intact(
     protocol: BaseProtocol, mask: bool
 ) -> None:
-    """A frame arriving two bytes at a time is reassembled and delivered whole.
-
-    Reading is not paused mid-frame. The read count here exceeds the fragment
-    cap, so the masked case drives the fold-and-mask path, where a buffer-reuse
-    mistake or any ordering error would corrupt the varied payload.
-    """
+    """A frame arriving two bytes per read (past the fold cap) is delivered whole."""
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
@@ -948,8 +939,7 @@ async def test_frame_split_across_many_reads_is_delivered_intact(
     payload = bytes(range(256)) * 32  # 8 KiB of varied, distinctive bytes
     frame = build_frame(payload, WSMsgType.BINARY, mask=mask)
 
-    # Two bytes per read, so the payload accumulates across ~4096 reads; guard
-    # that this stays past the fold cap even if the cap constants change.
+    # Guard the reads stay past the fold cap even if the cap constants change.
     assert len(frame) // 2 > _fold_cap(max_msg_size)
     chunks = [frame[i : i + 2] for i in range(0, len(frame), 2)]
     for chunk in chunks[:-1]:
@@ -965,11 +955,7 @@ async def test_frame_split_across_many_reads_is_delivered_intact(
 async def test_consecutive_folded_frames_do_not_bleed(
     protocol: BaseProtocol,
 ) -> None:
-    """Two frames each folded past the cap on one reader stay independent.
-
-    The buffer is detached with a fresh bytearray (not cleared) after each
-    frame, so the second frame's fold cannot inherit the first frame's bytes.
-    """
+    """Two frames folded on one reader stay independent (buffer detached, not cleared)."""
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
@@ -981,21 +967,15 @@ async def test_consecutive_folded_frames_do_not_bleed(
     for payload in (first, second):
         frame = build_frame(payload, WSMsgType.BINARY, mask=True)
         assert len(frame) // 2 > _fold_cap(max_msg_size)  # reads exceed the cap
-        for i in range(0, len(frame), 2):  # two bytes per read exceeds the cap
+        for i in range(0, len(frame), 2):
             parser.feed_data(frame[i : i + 2])
-        # A .clear() detach would deliver the first frame empty; reusing the
-        # buffer across frames would corrupt the second.
+        # .clear() would deliver frame 1 empty; buffer reuse would corrupt frame 2.
         msg = await out.read()
         assert msg.data == payload
 
 
 async def test_compressed_frame_survives_fold(protocol: BaseProtocol) -> None:
-    """A PMCE frame dribbled past the fold cap decompresses correctly.
-
-    This is the one fold-path branch that changed payload type: the folded
-    ``bytearray`` reaches ``assembled_payload + WS_DEFLATE_TRAILING`` before
-    decompression.
-    """
+    """A PMCE frame folded past the cap still decompresses (folded bytearray path)."""
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
@@ -1016,11 +996,7 @@ async def test_compressed_frame_survives_fold(protocol: BaseProtocol) -> None:
 async def test_frame_split_under_cap_uses_list_without_folding(
     protocol: BaseProtocol,
 ) -> None:
-    """A frame split across few reads stays in the list and never folds.
-
-    The complement of the fold tests: under the cap the reader joins the list
-    once, without touching the buffer, and never pauses mid-frame.
-    """
+    """A frame under the cap stays in the list, never folds, never pauses."""
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)

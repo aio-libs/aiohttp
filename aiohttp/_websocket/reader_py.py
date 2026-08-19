@@ -157,12 +157,10 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
-        # Payload of a frame still arriving is collected here, one slice per
-        # read, and joined once when the frame completes.
+        # Reads of an in-flight frame, joined once when it completes.
         self._payload_fragments: list[bytes] = []
-        # If a frame dribbles in across more than this many reads, the batch is
-        # folded into _payload_buffer so the retained object count stays
-        # bounded (payload bytes are already bounded by max_msg_size).
+        # Fold reads into _payload_buffer past this count to bound the object
+        # count (bytes are bounded by max_msg_size).
         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._payload_buffer = bytearray()
         self._frame_payload_len = 0
@@ -503,45 +501,33 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._payload_bytes_to_read != 0:
-                    # Frame still incomplete: keep this read and wait for the
-                    # rest.
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if (
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
                     ):
-                        # Dribbled across many tiny reads: fold the batch into
-                        # the buffer so the retained object count stays bounded.
-                        # Each byte is joined and appended once, so this stays
-                        # linear; re-joining the whole prefix on every read
-                        # would be quadratic. Do not pause reading here: the
-                        # only resume is a queue read, which stays empty until a
-                        # frame completes, so the pause could not lift.
+                        # Fold to bound the object count. Not a pause: nothing
+                        # resumes reading until the frame is queued.
                         self._payload_buffer += b"".join(self._payload_fragments)
                         self._payload_fragments.clear()
                     break
 
                 payload: bytes | bytearray
                 if had_fragments:
-                    # The frame arrived across several reads.
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
-                    if self._payload_buffer:
-                        # Many-tiny-reads path: the prefix was folded into the
-                        # buffer; append the tail and hand the buffer off.
+                    if self._payload_buffer:  # folded prefix
                         self._payload_buffer += b"".join(self._payload_fragments)
                         if self._has_mask:
                             assert self._frame_mask is not None
                             websocket_mask(self._frame_mask, self._payload_buffer)
                         payload = self._payload_buffer
-                        # Detach: the delivered payload is this same object.
-                        self._payload_buffer = bytearray()
+                        self._payload_buffer = bytearray()  # detach; payload aliases it
                     elif self._has_mask:
                         assert self._frame_mask is not None
                         payload_bytearray = bytearray(b"".join(self._payload_fragments))
                         websocket_mask(self._frame_mask, payload_bytearray)
                         payload = payload_bytearray
                     else:
-                        # Join once, straight to bytes: one copy of the payload.
                         payload = b"".join(self._payload_fragments)
                     self._payload_fragments.clear()
                 elif self._has_mask:
