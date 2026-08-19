@@ -2674,9 +2674,9 @@ Payload
 The ``data`` argument of :meth:`ClientSession.request` accepts a
 :class:`Payload`, which streams the request body to the server. Other
 supported ``data`` types are wrapped in an appropriate payload
-automatically; ``aiohttp.get_payload(data)`` performs the same conversion
-explicitly. :class:`MultipartWriter` and the payload returned by calling
-a :class:`FormData` instance are payloads as well.
+automatically; ``aiohttp.get_payload(data, disposition=None)`` performs
+the same conversion explicitly. :class:`MultipartWriter` and the payload
+returned by calling a :class:`FormData` instance are payloads as well.
 
 Creating the payload explicitly gives access to the state of the upload.
 For example, to track upload progress, start a task watching the payload
