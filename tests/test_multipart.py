@@ -1445,6 +1445,58 @@ async def test_writer_content_transfer_encoding_quote_printable(
     )
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+@pytest.mark.parametrize("encoding", ["gzip", "deflate"])
+async def test_writer_as_bytes_applies_content_encoding(
+    buf: bytearray,
+    stream: AbstractStreamWriter,
+    writer: aiohttp.MultipartWriter,
+    encoding: str,
+) -> None:
+    """as_bytes() must apply part Content-Encoding just like write() does."""
+    writer.append("Time to Relax!", {CONTENT_ENCODING: encoding})
+    await writer.write(stream)
+    result = await writer.as_bytes()
+
+    assert result == bytes(buf)
+
+    _, message = result.split(b"\r\n\r\n", 1)
+    wbits = 16 + ZLibBackend.MAX_WBITS if encoding == "gzip" else -ZLibBackend.MAX_WBITS
+    decompressor = ZLibBackend.decompressobj(wbits=wbits)
+    data = decompressor.decompress(message.split(b"\r\n")[0])
+    data += decompressor.flush()
+    assert b"Time to Relax!" == data
+
+
+async def test_writer_as_bytes_applies_content_transfer_encoding_base64(
+    buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
+) -> None:
+    """as_bytes() must apply Content-Transfer-Encoding just like write() does."""
+    writer.append("Time to Relax!", {CONTENT_TRANSFER_ENCODING: "base64"})
+    await writer.write(stream)
+    result = await writer.as_bytes()
+
+    assert result == bytes(buf)
+    _, message = result.split(b"\r\n\r\n", 1)
+    assert b"VGltZSB0byBSZWxheCE=" == message.split(b"\r\n")[0]
+
+
+async def test_writer_as_bytes_applies_content_transfer_encoding_qp(
+    buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
+) -> None:
+    """as_bytes() must apply quoted-printable encoding just like write() does."""
+    writer.append("Привет, мир!", {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+    await writer.write(stream)
+    result = await writer.as_bytes()
+
+    assert result == bytes(buf)
+    _, message = result.split(b"\r\n\r\n", 1)
+    assert (
+        b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,"
+        b" =D0=BC=D0=B8=D1=80!" == message.split(b"\r\n")[0]
+    )
+
+
 def test_writer_content_transfer_encoding_unknown(
     buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
 ) -> None:

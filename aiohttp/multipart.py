@@ -1152,7 +1152,7 @@ class MultipartWriter(Payload):
         parts: list[bytes] = []
 
         # Process each part
-        for part, _e, _te in self._parts:
+        for part, part_encoding, te_encoding in self._parts:
             # Add boundary
             parts.append(b"--" + self._boundary + b"\r\n")
 
@@ -1161,6 +1161,20 @@ class MultipartWriter(Payload):
 
             # Add payload content using as_bytes for async safety
             part_bytes = await part.as_bytes(encoding, errors)
+
+            # Apply the same Content-Encoding/Content-Transfer-Encoding
+            # transformations that write() applies when sending to the network,
+            # so both produce the same body.
+            if part_encoding:
+                compressor = ZLibCompressor(
+                    encoding=part_encoding, suppress_deflate_header=True
+                )
+                part_bytes = await compressor.compress(part_bytes) + compressor.flush()
+            if te_encoding == "base64":
+                part_bytes = base64.b64encode(part_bytes)
+            elif te_encoding == "quoted-printable":
+                part_bytes = binascii.b2a_qp(part_bytes)
+
             parts.append(part_bytes)
 
             # Add trailing CRLF
