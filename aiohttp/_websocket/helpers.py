@@ -2,6 +2,7 @@
 
 import functools
 import re
+import sys
 from re import Pattern
 from struct import Struct
 from typing import TYPE_CHECKING, Final
@@ -66,6 +67,12 @@ else:
 
 _WS_EXT_RE: Final[Pattern[str]] = re.compile(
     r"^(?:;\s*(?:"
+    r"(server_no_context_takeover)|"
+    r"(client_no_context_takeover)|"
+    r"(server_max_window_bits(?:=(\d+))?)|"
+    r"(client_max_window_bits(?:=(\d+))?)))*$"
+    if sys.version_info < (3, 11)
+    else r"^(?>;\s*(?:"
     r"(server_no_context_takeover)|"
     r"(client_no_context_takeover)|"
     r"(server_max_window_bits(?:=(\d+))?)|"
