@@ -7,10 +7,8 @@ import hashlib
 import json
 import os
 import sys
-import time
 import traceback
 import warnings
-from collections import deque
 from collections.abc import (
     Awaitable,
     Callable,
@@ -100,8 +98,8 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .http2.adapter import get_version
+from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import (
     JSONBytesEncoder,

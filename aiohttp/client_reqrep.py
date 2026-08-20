@@ -817,6 +817,9 @@ class ClientRequestBase:
 
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
+    # HTTP/2 stream id
+    stream_id: int | None = None
+
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
     # because _writer is instance method, thus it keeps a reference to self.

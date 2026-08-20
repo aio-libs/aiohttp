@@ -9,8 +9,6 @@ Categories:
 """
 
 import asyncio
-import gzip
-import json
 import struct
 from typing import Any, Dict, Generator, List, Optional, Tuple
 from unittest.mock import MagicMock

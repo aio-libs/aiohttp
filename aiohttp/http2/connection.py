@@ -24,10 +24,21 @@ Usage:
 import asyncio
 import logging
 import struct
-from typing import Any, Dict, List, Optional, Set, Tuple, Callable
+from typing import Callable, Dict, Iterable, List, Optional, Set
 
 from hpack import Decoder, Encoder
+from yarl import URL
 
+from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_exceptions import ClientConnectionError, SocketTimeoutError
+from aiohttp.helpers import (
+    _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
+    BaseTimerContext,
+    set_exception as _set_exc,
+    set_result,
+)
+from aiohttp.http2.adapter import feed_response
 from aiohttp.http2.settings import (
     DEFAULT_SETTINGS,
     FlagData,
@@ -38,22 +49,8 @@ from aiohttp.http2.settings import (
     Setting,
 )
 from aiohttp.http2.stream import Stream, StreamState
-from aiohttp.http2.adapter import feed_response
+from aiohttp.http_parser import RawResponseMessage
 from aiohttp.streams import StreamReader
-from aiohttp.base_protocol import BaseProtocol
-from aiohttp.client_exceptions import (
-    ClientConnectionError,
-    ClientOSError,
-    ServerDisconnectedError,
-    SocketTimeoutError,
-)
-from aiohttp.helpers import (
-    _EXC_SENTINEL,
-    DEFAULT_CHUNK_SIZE,
-    BaseTimerContext,
-    set_exception as _set_exc,
-    set_result,
-)
 
 # ----------------------------------------------------------------------
 # Logging – plaintext wire‑format emission for debugging
@@ -165,7 +162,7 @@ class Http2Connection:
         self.close()
         return False
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
+    def connection_lost(self, exc: Optional[BaseException]) -> None:
         logger.debug(f"Connection lost: {exc}")
         # Cancel all pending streams (including those in the queue)
         for stream in list(self.streams.values()):
@@ -483,13 +480,23 @@ class Http2Connection:
             if self.session_outbound_window and stream.outbound_window:
                 self._flow_control_updated.set()
 
-    def send_headers(self, stream_id: int, method, url, headers, end_stream=False):
+    def send_headers(
+        self,
+        stream_id: int,
+        method: str,
+        url: URL,
+        headers: Iterable[tuple[str, str]],
+        end_stream: bool = False,
+    ) -> None:
         stream = self.streams[stream_id]
         path_and_query = url.path
         if url.query:
             path_and_query += "?" + url.raw_query_string
 
         # Build pseudo‑headers
+        assert url.scheme
+        assert url.host
+
         req_headers = [
             (":method", method),
             (":path", path_and_query),
@@ -557,9 +564,9 @@ class Http2Connection:
     def is_connected(self) -> bool:
         return not self._transport.is_closing()
 
+
 class Http2Protocol(BaseProtocol):
-    """BaseProtocol subclass bridging transport and Http2Connection.
-    """
+    """BaseProtocol subclass bridging transport and Http2Connection."""
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop, None)
@@ -602,7 +609,6 @@ class Http2Protocol(BaseProtocol):
     def should_close(self) -> bool:
         return bool(
             self._should_close
-            or self._payload_parser is not None
             or (self._connection is not None and self._connection.should_close)
         )
 
@@ -678,12 +684,7 @@ class Http2Protocol(BaseProtocol):
 
         if self._connection is not None:
             self._connection.close()
-            self._connection = None
-
-        transport = self.transport
-        if transport is not None:
-            transport.close()
-            self.transport = None
+            # maybe set self._connection to null?
 
     def abort(self) -> None:
         self.close()
@@ -691,7 +692,7 @@ class Http2Protocol(BaseProtocol):
     def is_connected(self) -> bool:
         if self._connection is not None:
             return self._connection.is_connected()
-        return self.transport is not None and not self.transport.is_closing()
+        return False
 
     # ------------------------------------------------------------------
     # Timeout handling
@@ -746,7 +747,6 @@ class Http2Protocol(BaseProtocol):
     ) -> None:
         self._should_close = True
         self._drop_timeout()
-        super().set_exception(exc, exc_cause)
 
     def set_response_params(
         self,
@@ -763,8 +763,8 @@ class Http2Protocol(BaseProtocol):
         max_headers: int = 128,
     ) -> None:
         # read_bufsize should be respected
-        del skip_payload, read_until_eof, read_bufsize, timeout_ceil_threshold # compat
-        del max_line_size, max_field_size, max_headers # HTTP/1.1
+        del skip_payload, read_until_eof, read_bufsize, timeout_ceil_threshold  # compat
+        del max_line_size, max_field_size, max_headers  # HTTP/1.1
 
         self._read_timeout = read_timeout
         self._auto_decompress = auto_decompress
@@ -772,12 +772,14 @@ class Http2Protocol(BaseProtocol):
     # ------------------------------------------------------------------
     # Existing HTTP/2 API
     # ------------------------------------------------------------------
-    async def create_stream(self):
+    async def create_stream(self) -> Stream:
         if self._connection is None:
             raise ConnectionError("Connection is not active")
         return await self._connection.create_stream()
 
-    async def read_stream(self, stream_id):
+    async def read_stream(
+        self, stream_id: int
+    ) -> tuple[RawResponseMessage, StreamReader]:
         if self._connection is None:
             raise ConnectionError("Connection is not active")
 
@@ -787,6 +789,7 @@ class Http2Protocol(BaseProtocol):
         _, headers, body = await self._connection.streams[stream_id].response_future
         return feed_response(
             StreamReader(self, DEFAULT_CHUNK_SIZE, loop=self._loop),
-            headers,
+            # does hpack have the wrong type in HeaderTuple (bytes instead of str)?
+            headers,  # type: ignore[arg-type]
             body,
         )
