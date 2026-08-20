@@ -466,11 +466,14 @@ class WebSocketReader:
                     OP_CODE_BINARY,
                     OP_CODE_CONTINUATION,
                 }:
-                    projected_size = self._payload_bytes_to_read + len(self._partial)
-                    if projected_size >= self._max_msg_size:
+                    # partial_len declared in reader_c.pxd to keep it in C.
+                    partial_len = len(self._partial)
+                    # payload_bytes_to_read is a signed 64-bit C value,
+                    # use subtraction here to avoid an integer overflow.
+                    if self._payload_bytes_to_read >= self._max_msg_size - partial_len:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
-                            f"Message size {projected_size} "
+                            f"Message size {int(self._payload_bytes_to_read) + partial_len} "
                             f"exceeds limit {self._max_msg_size}",
                         )
 
@@ -525,7 +528,7 @@ class WebSocketReader:
                 elif self._has_mask:
                     assert self._frame_mask is not None
                     payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
-                    if type(payload_bytearray) is not bytearray:  # pragma: no branch
+                    if type(payload_bytearray) is not bytearray:
                         # Cython will do the conversion for us
                         # but we need to do it for Python and we
                         # will always get here in Python
