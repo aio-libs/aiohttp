@@ -81,7 +81,7 @@ pycares==5.0.1 ; sys_platform != "android" and sys_platform != "ios"
     #   aiodns
 pycparser==3.0
     # via cffi
-pygments==2.20.0
+pygments==2.21.0
     # via pytest
 pytest==9.1.1
     # via

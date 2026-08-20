@@ -46,7 +46,7 @@ propcache==0.5.2
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pygments==2.20.0
+pygments==2.21.0
     # via pytest
 pytest==9.1.1
     # via
