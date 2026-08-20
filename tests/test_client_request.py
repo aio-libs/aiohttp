@@ -333,6 +333,22 @@ async def test_host_header_ipv6_with_port(make_client_request: _RequestMaker) ->
     assert req.headers["HOST"] == "[::2]:99"
 
 
+async def test_host_header_ipv6_link_local_zone_id_stripped(
+    make_client_request: _RequestMaker,
+) -> None:
+    # RFC 6874 §4: the zone id has only local significance at the
+    # sending host and must be stripped from the outgoing Host header.
+    req = make_client_request("get", URL("http://[fe80::1%eth0]/"))
+    assert req.headers["HOST"] == "[fe80::1]"
+
+
+async def test_host_header_ipv6_link_local_zone_id_with_port(
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request("get", URL("http://[fe80::1%eth0]:99/"))
+    assert req.headers["HOST"] == "[fe80::1]:99"
+
+
 @pytest.mark.parametrize(
     ("url", "headers", "expected"),
     (
