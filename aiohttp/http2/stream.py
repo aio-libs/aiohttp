@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional, Set, Tuple
 
 from hpack import HeaderTuple
 
-from .errors import ProtocolError
-from .settings import Setting
+from aiohttp.http2.errors import ProtocolError
+from aiohttp.http2.settings import Setting
 
 if TYPE_CHECKING:
     from .connection import Http2Connection

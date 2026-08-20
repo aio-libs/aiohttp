@@ -1,5 +1,5 @@
 """
-Complete HTTP/2 client implementation (RFC 7540) for asyncio.
+Complete HTTP/2 client implementation (RFC 7540).
 
 This module provides:
 - Frame-level binary wire protocol with debug logging.
@@ -24,12 +24,11 @@ Usage:
 import asyncio
 import logging
 import struct
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Callable
 
 from hpack import Decoder, Encoder
 
-from .response import Http2Response
-from .settings import (
+from aiohttp.http2.settings import (
     DEFAULT_SETTINGS,
     FlagData,
     FlagHeaders,
@@ -38,7 +37,23 @@ from .settings import (
     FrameType,
     Setting,
 )
-from .stream import Stream, StreamState
+from aiohttp.http2.stream import Stream, StreamState
+from aiohttp.http2.adapter import feed_response
+from aiohttp.streams import StreamReader
+from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_exceptions import (
+    ClientConnectionError,
+    ClientOSError,
+    ServerDisconnectedError,
+    SocketTimeoutError,
+)
+from aiohttp.helpers import (
+    _EXC_SENTINEL,
+    DEFAULT_CHUNK_SIZE,
+    BaseTimerContext,
+    set_exception as _set_exc,
+    set_result,
+)
 
 # ----------------------------------------------------------------------
 # Logging – plaintext wire‑format emission for debugging
@@ -423,9 +438,10 @@ class Http2Connection:
 
     # -------------------- Request sending --------------------
     async def send_data(
-        self, stream: Stream, data: bytes, end_stream: bool = True
+        self, stream_id: int, data: bytes, end_stream: bool = True
     ) -> None:
         """Asynchronously send DATA frames, respecting flow control windows."""
+        stream = self.streams[stream_id]
         max_frame_size = self.remote_settings[Setting.MAX_FRAME_SIZE]
         offset = 0
         total = len(data)
@@ -467,16 +483,8 @@ class Http2Connection:
             if self.session_outbound_window and stream.outbound_window:
                 self._flow_control_updated.set()
 
-    async def send_request(
-        self,
-        stream: Stream,
-        method: str,
-        url: Any,  # Usually a yarl.URL, but abstracted for mocking
-        headers: List[Tuple[str, str]],
-        body: Optional[bytes] = None,
-    ) -> None:
-        """Send HEADERS and optional DATA frames for a stream."""
-        # :path needs the query as well
+    def send_headers(self, stream_id: int, method, url, headers, end_stream=False):
+        stream = self.streams[stream_id]
         path_and_query = url.path
         if url.query:
             path_and_query += "?" + url.raw_query_string
@@ -504,7 +512,7 @@ class Http2Connection:
             req_headers.append((lname, value))
 
         hdrs = self.hpack_encoder.encode(req_headers)
-        end_stream = body is None or len(body) == 0
+
         flags = FlagHeaders.END_HEADERS
 
         # stream transitions
@@ -512,11 +520,7 @@ class Http2Connection:
         if end_stream:
             flags |= FlagHeaders.END_STREAM
             stream.transition(StreamState.HALF_CLOSED_LOCAL)
-
         self._send_frame(FrameType.HEADERS, flags, stream.stream_id, hdrs)
-
-        if body:
-            await self.send_data(stream, body, end_stream=True)
 
     # -------------------- Connection lifecycle --------------------
     def initiate_connection(self) -> None:
@@ -553,86 +557,236 @@ class Http2Connection:
     def is_connected(self) -> bool:
         return not self._transport.is_closing()
 
-
-# ----------------------------------------------------------------------
-# Protocol wrapper for asyncio.Transport (connector integration)
-# ----------------------------------------------------------------------
-class Http2Protocol(asyncio.Protocol):
-    """asyncio.Protocol subclass that bridges transport and Http2Connection.
-
-    This replaces aiohttp's ResponseHandler in the connector.
+class Http2Protocol(BaseProtocol):
+    """BaseProtocol subclass bridging transport and Http2Connection.
     """
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
-        self._loop = loop
-        self._connection: Optional[Http2Connection] = None
-        self._closed_future: asyncio.Future[None] = loop.create_future()
-        self.transport: Optional[asyncio.Transport] = None
+        super().__init__(loop, None)
 
+        self._connection: Optional[Http2Connection] = None
+        self._closed_future: Optional[asyncio.Future[None]] = None
+        self._connection_lost_called = False
+
+        self._should_close = False
+        self._upgraded = False
+
+        self._payload = None
+        self._payload_parser = None
+        self._data_received_cb: Optional[Callable[[], None]] = None
+
+        self._read_timeout: Optional[float] = None
+        self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
+
+        self._auto_decompress: bool = True
+
+    # ------------------------------------------------------------------
+    # Properties expected by connector
+    # ------------------------------------------------------------------
+    @property
+    def closed(self) -> Optional[asyncio.Future[None]]:
+        """Future that completes when the connection is closed.
+
+        Mirrors ``ResponseHandler.closed``. The future is created lazily
+        to avoid creating unused futures.
+        """
+        if self._closed_future is None and not self._connection_lost_called:
+            self._closed_future = self._loop.create_future()
+        return self._closed_future
+
+    @property
+    def upgraded(self) -> bool:
+        return self._upgraded
+
+    @property
+    def should_close(self) -> bool:
+        return bool(
+            self._should_close
+            or self._payload_parser is not None
+            or (self._connection is not None and self._connection.should_close)
+        )
+
+    @property
+    def read_timeout(self) -> Optional[float]:
+        return self._read_timeout
+
+    @read_timeout.setter
+    def read_timeout(self, read_timeout: Optional[float]) -> None:
+        self._read_timeout = read_timeout
+
+    # ------------------------------------------------------------------
+    # Connection lifecycle
+    # ------------------------------------------------------------------
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = transport  # type: ignore[assignment]
         self._connection = Http2Connection(self.transport, self._loop)  # type: ignore[arg-type]
         self._connection.initiate_connection()
 
     def data_received(self, data: bytes) -> None:
-        if self._connection:
+        if data:
+            self._reschedule_timeout()
+
+        if self._connection is not None:
             self._connection.data_received(data)
 
     def eof_received(self) -> bool:
-        if self._connection:
+        self._drop_timeout()
+        if self._connection is not None:
             self._connection.eof_received()
         return False
 
-    def connection_lost(self, exc: Optional[Exception]) -> None:
-        if self._connection:
+    def connection_lost(self, exc: Optional[BaseException]) -> None:
+        self._connection_lost_called = True
+        self._drop_timeout()
+
+        original_connection_error = exc
+        reraised_exc = exc
+        connection_closed_cleanly = exc is None
+
+        # Complete the closed future if anyone is waiting on it.
+        if self._closed_future is not None:
+            if connection_closed_cleanly:
+                set_result(self._closed_future, None)
+            else:
+                assert original_connection_error is not None
+                _set_exc(
+                    self._closed_future,
+                    ClientConnectionError(
+                        f"Connection lost: {original_connection_error !s}"
+                    ),
+                    original_connection_error,
+                )
+
+        # Let the HTTP/2 connection clean up its streams.
+        if self._connection is not None:
             self._connection.connection_lost(exc)
-        if not self._closed_future.done():
-            self._closed_future.set_result(None)
 
-    # Compatibility with connector's expectations
-    @property
-    def should_close(self) -> bool:
-        return self._connection.should_close if self._connection else False
+        self._should_close = True
+        self._connection = None
+        self._reading_paused = False
 
-    def is_connected(self) -> bool:
-        return self._connection.is_connected() if self._connection else False
+        super().connection_lost(reraised_exc)
 
-    @property
-    def closed(self) -> asyncio.Future[None]:
-        return self._closed_future
-
-    async def send(
-        self,
-        method: str,
-        url: Any,
-        headers: List[Tuple[str, str]],
-        body: Optional[bytes] = None,
-    ) -> Http2Response:
-        """Send an HTTP/2 request and return a compatible response."""
-        if self._connection is None:
-            raise RuntimeError("Connection not established")
-
-        # Obtain a stream from the pool
-        stream = await self._connection.create_stream()
-
-        await self._connection.send_request(stream, method, url, headers, body)
-
-        # Wait for the response future to be set by the stream when complete
-        _, resp_headers, resp_body = await stream.response_future
-
-        response = Http2Response(
-            headers=resp_headers,
-            body=resp_body,
-            method=method,
-            url=url,
-        )
-
-        return response
+    # ------------------------------------------------------------------
+    # Explicit close / abort
+    # ------------------------------------------------------------------
+    def force_close(self) -> None:
+        self._should_close = True
 
     def close(self) -> None:
-        if self._connection:
+        self._drop_timeout()
+
+        if self._connection is not None:
             self._connection.close()
-        self.transport = None
+            self._connection = None
+
+        transport = self.transport
+        if transport is not None:
+            transport.close()
+            self.transport = None
 
     def abort(self) -> None:
         self.close()
+
+    def is_connected(self) -> bool:
+        if self._connection is not None:
+            return self._connection.is_connected()
+        return self.transport is not None and not self.transport.is_closing()
+
+    # ------------------------------------------------------------------
+    # Timeout handling
+    # ------------------------------------------------------------------
+    def start_timeout(self) -> None:
+        self._reschedule_timeout()
+
+    def _drop_timeout(self) -> None:
+        if self._read_timeout_handle is not None:
+            self._read_timeout_handle.cancel()
+            self._read_timeout_handle = None
+
+    def _reschedule_timeout(self) -> None:
+        timeout = self._read_timeout
+        if self._read_timeout_handle is not None:
+            self._read_timeout_handle.cancel()
+
+        if timeout:
+            self._read_timeout_handle = self._loop.call_later(
+                timeout, self._on_read_timeout
+            )
+        else:
+            self._read_timeout_handle = None
+
+    def _on_read_timeout(self) -> None:
+        exc = SocketTimeoutError("Timeout on reading data from socket")
+        self.set_exception(exc)
+
+    # ------------------------------------------------------------------
+    # Backpressure
+    # ------------------------------------------------------------------
+    # XXX this doesn't interact with the connection at all at the present
+    # thus, it doesn't actually pause the TCP connection
+    # notice that we must pause streams individually in HTTP/2
+    def pause_reading(self) -> None:
+        super().pause_reading()
+        self._drop_timeout()
+
+    def resume_reading(self, resume_parser: bool = True) -> None:
+        was_paused = self._reading_paused
+        super().resume_reading(resume_parser)
+        if was_paused:
+            self._reschedule_timeout()
+
+    # ------------------------------------------------------------------
+    # Error injection
+    # ------------------------------------------------------------------
+    def set_exception(
+        self,
+        exc: type[BaseException] | BaseException,
+        exc_cause: BaseException = _EXC_SENTINEL,
+    ) -> None:
+        self._should_close = True
+        self._drop_timeout()
+        super().set_exception(exc, exc_cause)
+
+    def set_response_params(
+        self,
+        *,
+        timer: BaseTimerContext | None = None,
+        skip_payload: bool = False,
+        read_until_eof: bool = False,
+        auto_decompress: bool = True,
+        read_timeout: float | None = None,
+        read_bufsize: int = DEFAULT_CHUNK_SIZE,
+        timeout_ceil_threshold: float = 5,
+        max_line_size: int = 8190,
+        max_field_size: int = 8190,
+        max_headers: int = 128,
+    ) -> None:
+        # read_bufsize should be respected
+        del skip_payload, read_until_eof, read_bufsize, timeout_ceil_threshold # compat
+        del max_line_size, max_field_size, max_headers # HTTP/1.1
+
+        self._read_timeout = read_timeout
+        self._auto_decompress = auto_decompress
+
+    # ------------------------------------------------------------------
+    # Existing HTTP/2 API
+    # ------------------------------------------------------------------
+    async def create_stream(self):
+        if self._connection is None:
+            raise ConnectionError("Connection is not active")
+        return await self._connection.create_stream()
+
+    async def read_stream(self, stream_id):
+        if self._connection is None:
+            raise ConnectionError("Connection is not active")
+
+        # this creates a new StreamReader after reading the whole
+        # content
+        # the future should be replaced with the headers and a StreamReader with the body
+        _, headers, body = await self._connection.streams[stream_id].response_future
+        return feed_response(
+            StreamReader(self, DEFAULT_CHUNK_SIZE, loop=self._loop),
+            headers,
+            body,
+        )

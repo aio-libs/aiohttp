@@ -58,6 +58,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
+from .http2.adapter import Http2StreamWriter, get_version
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
@@ -277,6 +278,9 @@ class ClientResponse(HeadersMixin):
     _stream_writer: AbstractStreamWriter | None = None
     _output_size: int = 0
     _upload_complete: asyncio.Future[None] | None = None
+
+    # HTTP/2 stream id
+    stream_id: int | None = None
 
     def __init__(
         self,
@@ -523,7 +527,12 @@ class ClientResponse(HeadersMixin):
                 # read response
                 try:
                     protocol = self._protocol
-                    message, payload = await protocol.read()  # type: ignore[union-attr]
+                    # conditional branching to pass the stream id
+                    # to the protocol
+                    if get_version(protocol) == "h2":
+                        message, payload = await protocol.read_stream(self.stream_id)
+                    else:
+                        message, payload = await protocol.read()  # type: ignore[union-attr]
                 except HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
@@ -1420,6 +1429,8 @@ class ClientRequest(ClientRequestBase):
         )
 
     def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
+        if get_version(protocol) == "h2":
+            return Http2StreamWriter(protocol, self.loop, self)
         writer = StreamWriter(
             protocol,
             self.loop,

@@ -22,7 +22,6 @@ import aiohttp
 from aiohttp.connector import TCPConnector
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.errors import ProtocolError
-from aiohttp.http2.response import Http2Response
 from aiohttp.http2.settings import (
     FlagData,
     FlagHeaders,
@@ -206,28 +205,6 @@ class TestProtocolCompliance:
             and call[0][0][4] & FlagSettings.ACK
             for call in transport.write.call_args_list
         )
-
-    @pytest.mark.asyncio
-    async def test_receive_headers_for_new_stream(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        conn, _ = connection
-        # Create a stream from client side first (simulate request sent)
-        stream = await conn.create_stream()
-        await conn.send_request(stream, "GET", url_mock(), [])
-        stream.state = StreamState.OPEN  # skip real send, just set state
-
-        # Send response HEADERS with END_STREAM
-        headers = [(":status", "200"), ("content-type", "text/plain")]
-        frame = build_headers_frame(stream.stream_id, headers, end_stream=True)
-        conn.data_received(frame)
-
-        # Verify stream received response
-        assert stream.response_future.done()
-        sid, resp_headers, body = stream.response_future.result()
-        assert sid == stream.stream_id
-        assert dict(resp_headers)[":status"] == "200"
-        assert body == b""
 
     @pytest.mark.asyncio
     async def test_receive_data_flow_control(
@@ -563,7 +540,7 @@ class TestProtocolCompliance:
         stream.state = StreamState.OPEN
         conn.session_outbound_window = 100
         stream.outbound_window = 100
-        await conn.send_data(stream, b"x" * 10, end_stream=True)
+        await conn.send_data(stream.stream_id, b"x" * 10, end_stream=True)
         data_frames = [
             call[0][0]
             for call in transport.write.call_args_list
@@ -571,21 +548,6 @@ class TestProtocolCompliance:
         ]
         assert len(data_frames) == 1
         assert data_frames[0][4] & FlagData.END_STREAM
-
-    @pytest.mark.asyncio
-    async def test_send_request_with_body(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """send_request with body sends HEADERS (no END_STREAM) followed by DATA."""
-        conn, transport = connection
-        stream = await conn.create_stream()
-        await conn.send_request(stream, "POST", url_mock("/"), [], body=b"hello")
-        sent = [
-            FrameType(call[0][0][3]).name
-            for call in transport.write.call_args_list
-            if call[0][0][3] in (FrameType.HEADERS, FrameType.DATA)
-        ]
-        assert sent == ["HEADERS", "DATA"]
 
     @pytest.mark.asyncio
     async def test_create_stream_after_goaway(
@@ -636,7 +598,7 @@ class TestMiscellaneous:
         stream.outbound_window = 1_000_000
 
         async def send_chunk() -> None:
-            await conn.send_data(stream, b"x" * 100, end_stream=False)
+            await conn.send_data(stream.stream_id, b"x" * 100, end_stream=False)
 
         tasks = [asyncio.create_task(send_chunk()) for _ in range(5)]
         await asyncio.gather(*tasks, return_exceptions=True)
@@ -654,7 +616,7 @@ class TestMiscellaneous:
         stream.outbound_window = 0
 
         async def blocked_send() -> None:
-            await conn.send_data(stream, b"hello", end_stream=False)
+            await conn.send_data(stream.stream_id, b"hello", end_stream=False)
 
         task1 = asyncio.create_task(blocked_send())
         task2 = asyncio.create_task(blocked_send())
@@ -709,136 +671,6 @@ class TestMiscellaneous:
         proto, _ = protocol
         proto._connection = None
         proto.data_received(b"anything")  # must not raise
-
-
-# ----------------------------------------------------------------------
-# 3. Interface tests (high‑level features via Http2Protocol.send)
-# ----------------------------------------------------------------------
-class TestHighLevelInterface:
-    @pytest.mark.asyncio
-    async def test_json_response(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """send() returns a Http2Response with correct JSON body."""
-        proto, transport = protocol
-
-        async def do_request() -> Http2Response:
-            return await proto.send(
-                "GET", url_mock("/json"), headers=[("accept", "application/json")]
-            )
-
-        task = asyncio.create_task(do_request())
-        # Let it run until it creates a stream and sends HEADERS
-        await asyncio.sleep(0.01)
-        headers = [(":status", "200"), ("content-type", "application/json")]
-        body = b'{"key": "value"}'
-        resp_frame = build_headers_frame(
-            1, headers, end_stream=False
-        ) + build_data_frame(1, body, end_stream=True)
-        proto.data_received(resp_frame)
-        response = await task
-        assert response.status == 200
-        assert response.body == body
-        assert json.loads(response.body) == {"key": "value"}
-
-    @pytest.mark.asyncio
-    async def test_redirect_response(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """302 redirect headers are correctly returned."""
-        proto, transport = protocol
-        task = asyncio.create_task(proto.send("GET", url_mock("/redirect"), headers=[]))
-        await asyncio.sleep(0.01)
-        headers = [(":status", "302"), ("location", "/new")]
-        resp_frame = build_headers_frame(1, headers, end_stream=True)
-        proto.data_received(resp_frame)
-        resp = await task
-        assert resp.status == 302
-        assert dict(resp.headers).get("location") == "/new"
-
-    @pytest.mark.asyncio
-    async def test_compressed_body_delivery(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """Response with content-encoding: gzip delivers raw compressed bytes."""
-        proto, transport = protocol
-        task = asyncio.create_task(proto.send("GET", url_mock("/gzip"), headers=[]))
-        await asyncio.sleep(0.01)
-        raw_data = gzip.compress(b"uncompressed")
-        headers = [(":status", "200"), ("content-encoding", "gzip")]
-        frames = build_headers_frame(1, headers, end_stream=False) + build_data_frame(
-            1, raw_data, end_stream=True
-        )
-        proto.data_received(frames)
-        resp = await task
-        assert resp.body == b"uncompressed"
-
-    @pytest.mark.asyncio
-    async def test_multiple_requests_concurrently(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """Multiple send() calls create distinct streams and receive responses."""
-        proto, transport = protocol
-        tasks = []
-        for i in range(2):
-            tasks.append(asyncio.create_task(proto.send("GET", url_mock(f"/r{i}"), [])))
-        await asyncio.sleep(0.01)
-
-        # Stream 1 and 3 should have been created
-        # Respond to each
-        resp1 = build_headers_frame(1, [(":status", "200")], end_stream=True)
-        resp3 = build_headers_frame(3, [(":status", "201")], end_stream=True)
-        proto.data_received(resp1)
-        proto.data_received(resp3)
-
-        r1, r2 = await asyncio.gather(*tasks)
-        assert r1.status == 200
-        assert r2.status == 201
-
-    @pytest.mark.asyncio
-    async def test_response_all_methods(self) -> None:
-        """Cover Http2Response.read, .text, .json, .cookies, .raise_for_status, .release, .close, context manager."""
-        headers = [
-            (":status", "200"),
-            ("set-cookie", "a=b"),
-            ("content-type", "application/json"),
-        ]
-        body = b'{"ok":true}'
-        resp = Http2Response(headers, body, method="GET", url=url_mock("/"))
-        assert resp.status == 200
-        assert await resp.read() == body
-        assert await resp.text() == '{"ok":true}'
-        assert await resp.json() == {"ok": True}
-        assert "a" in resp.cookies
-        resp.raise_for_status()  # 200 is ok
-        resp.release()
-        resp.close()
-        async with resp:
-            pass
-
-    @pytest.mark.asyncio
-    async def test_response_raise_for_status_error(self) -> None:
-        """Http2Response.raise_for_status raises for 4xx."""
-        headers = [(":status", "404")]
-        resp = Http2Response(headers, b"", method="GET", url=url_mock("/"))
-        from aiohttp.client_exceptions import ClientResponseError
-
-        with pytest.raises(ClientResponseError):
-            resp.raise_for_status()
-
-    @pytest.mark.asyncio
-    async def test_send_with_body_through_protocol(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """Full send() with a body completes successfully."""
-        proto, transport = protocol
-        url = url_mock("/upload")
-        task = asyncio.create_task(proto.send("POST", url, [], body=b"data"))
-        await asyncio.sleep(0.01)
-        resp_frame = build_headers_frame(1, [(":status", "200")], end_stream=True)
-        proto.data_received(resp_frame)
-        response = await task
-        assert response.status == 200
 
 
 class TestStreamStateMachine:
@@ -1209,7 +1041,7 @@ class TestConnectionEdgeCases:
         stream.state = StreamState.HALF_CLOSED_REMOTE
         conn.session_outbound_window = 1000
         stream.outbound_window = 1000
-        await conn.send_data(stream, b"done", end_stream=True)
+        await conn.send_data(stream.stream_id, b"done", end_stream=True)
         # Stream should be CLOSED and removed
         assert stream.state == StreamState.CLOSED
         assert stream.stream_id not in conn.streams
@@ -1319,26 +1151,6 @@ class TestConnectionEdgeCases:
         assert FrameType.SETTINGS.to_bytes(1, "big") in written
 
     @pytest.mark.asyncio
-    async def test_create_stream_protocol_raises_without_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """Http2Protocol.create_stream raises RuntimeError if no connection."""
-        proto, _ = protocol
-        proto._connection = None
-        with pytest.raises(RuntimeError):
-            await proto.send("get", "", [])
-
-    @pytest.mark.asyncio
-    async def test_send_protocol_raises_without_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """Http2Protocol.send raises RuntimeError if no connection."""
-        proto, _ = protocol
-        proto._connection = None
-        with pytest.raises(RuntimeError):
-            await proto.send("GET", url_mock(), [])
-
-    @pytest.mark.asyncio
     async def test_send_data_flow_control_releases_waiters(
         self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
@@ -1349,6 +1161,6 @@ class TestConnectionEdgeCases:
         stream.outbound_window = 100
         # set event cleared before wait
         conn._flow_control_updated.clear()
-        await conn.send_data(stream, b"x" * 10, end_stream=False)
+        await conn.send_data(stream.stream_id, b"x" * 10, end_stream=False)
         # After send, there is still window space, so event should be set
         assert conn._flow_control_updated.is_set()

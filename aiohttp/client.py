@@ -101,6 +101,7 @@ from .helpers import (
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
+from .http2.adapter import get_version
 from .tracing import Trace, TraceConfig
 from .typedefs import (
     JSONBytesEncoder,
@@ -248,8 +249,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     assert conn.protocol is not None
     assert conn.protocol.transport is not None
 
-    ssl_object = conn.protocol.transport.get_extra_info("ssl_object")
-    alpn_protocol = ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
+    alpn_protocol = get_version(conn.protocol)
 
     resp = None
     started = False
@@ -265,23 +265,20 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
-            body = await req.body.as_bytes()
-            resp = await conn.protocol.send(  # type: ignore[attr-defined]
-                req.method,
-                req.url,
-                list(req.headers.items()),
-                body,
-            )
-
+            stream = await conn.protocol.create_stream()
+            req.stream_id = stream.stream_id
             # release again to clear the protocol from _acquired if required
             connector._release(conn._key, conn._protocol, should_close=False)
-            # we still have to null the protocol since we didn't close the connection
-            conn._protocol = None
+            resp = await req._send(conn)
+            resp.stream_id = stream.stream_id
         else:
             conn.protocol.set_response_params(**req._response_params)
             resp = await req._send(conn)
-            await resp.start(conn)
-        # h3 not implemented
+        await resp.start(conn)
+
+        if alpn_protocol == "h2":
+            # we still have to null the protocol since we didn't close the connection
+            conn._protocol = None
 
         started = True
     finally:
