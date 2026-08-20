@@ -46,7 +46,7 @@ packaging==26.3
     # via sphinx
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
-pygments==2.20.0
+pygments==2.21.0
     # via sphinx
 pyyaml==6.0.3
     # via
