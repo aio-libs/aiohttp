@@ -407,6 +407,11 @@ class StreamResponse(
                 elif not self._must_be_empty_body:
                     keep_alive = False
 
+        # RFC 9112 §6.3: a sender MUST NOT send Content-Length in a message
+        # that contains a Transfer-Encoding header field.
+        if hdrs.TRANSFER_ENCODING in headers:
+            headers.pop(hdrs.CONTENT_LENGTH, None)
+
         # HTTP 1.1: https://tools.ietf.org/html/rfc7230#section-3.3.2
         # HTTP 1.0: https://tools.ietf.org/html/rfc1945#section-10.4
         if self._must_be_empty_body:

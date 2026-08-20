@@ -463,6 +463,26 @@ def test_enable_chunked_encoding_with_content_length() -> None:
         resp.enable_chunked_encoding()
 
 
+async def test_chunked_encoding_strips_content_length_set_via_headers() -> None:
+    """Content-Length set via headers after enable_chunked_encoding is stripped.
+
+    RFC 9112 §6.3: a sender MUST NOT send Content-Length in a message that
+    contains a Transfer-Encoding header field. The enable_chunked_encoding()
+    guard only blocks the content_length setter; writing directly through
+    resp.headers bypasses it.
+    """
+    req = make_request("GET", "/")
+    resp = web.StreamResponse()
+    resp.enable_chunked_encoding()
+    # Bypass the content_length setter guard
+    resp.headers[hdrs.CONTENT_LENGTH] = "100"
+
+    await resp.prepare(req)
+
+    assert hdrs.CONTENT_LENGTH not in resp.headers
+    assert resp.headers[hdrs.TRANSFER_ENCODING] == "chunked"
+
+
 async def test_chunked_encoding_forbidden_for_http_10() -> None:
     req = make_request("GET", "/", version=HttpVersion10)
     resp = web.StreamResponse()
