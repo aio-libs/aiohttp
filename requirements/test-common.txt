@@ -8,7 +8,7 @@ annotated-types==0.8.0
     # via pydantic
 ast-serialize==0.8.0
     # via mypy
-blockbuster==1.5.26
+blockbuster==1.5.27
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
