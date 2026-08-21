@@ -30,6 +30,7 @@ from aiohttp import (
 )
 from aiohttp._websocket.writer import WebSocketWriter
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
@@ -2044,11 +2045,16 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
         # Encode client frames off to the side, as tests/test_websocket_writer.py
         # does, and put the bytes on the wire ourselves.
         encoded = bytearray()
-        frame_transport = mock.Mock()
+        frame_transport = mock.create_autospec(
+            asyncio.Transport, spec_set=True, instance=True
+        )
+        # Defaults to a truthy Mock, which WebSocketWriter reads as closing.
         frame_transport.is_closing.return_value = False
         frame_transport.write.side_effect = encoded.extend
         ws_writer = WebSocketWriter(
-            mock.Mock(_paused=False), frame_transport, use_mask=True
+            mock.create_autospec(BaseProtocol, spec_set=True, instance=True),
+            frame_transport,
+            use_mask=True,
         )
 
         for _ in range(frames):

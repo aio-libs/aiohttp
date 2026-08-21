@@ -109,7 +109,7 @@ def test_resume_msg_queue_reading_stays_paused_for_full_tail(
     then would let the buffer grow past its ceiling one read at a time.
     """
     handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
-    transport = mock.Mock()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
     handler._msg_queue_paused = True
@@ -127,7 +127,7 @@ def test_resume_msg_queue_reading_with_room_left_in_tail(
 ) -> None:
     """A tail under read_bufsize does not hold the transport paused."""
     handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
-    transport = mock.Mock()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
     handler._msg_queue_paused = True
@@ -149,7 +149,7 @@ def test_resume_msg_queue_reading_with_zero_read_bufsize(
     match an empty tail and wedge the connection paused for good.
     """
     handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=0)
-    transport = mock.Mock()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
     handler._msg_queue_paused = True
@@ -167,7 +167,7 @@ def test_set_parser_resumes_reading_paused_for_tail(
 ) -> None:
     """Handing a full tail to the upgraded protocol resumes reading."""
     handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
-    transport = mock.Mock()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
     handler._msg_queue_paused = True
