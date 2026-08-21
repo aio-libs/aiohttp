@@ -865,8 +865,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     self._messages.append((msg, payload))
                 if len(self._messages) >= self._max_msg_queue_size:
                     # Pause the transport, like in data_received().
-                    if not self._msg_queue_paused:
-                        self._pause_msg_queue_reading()
+                    self._pause_msg_queue_reading()
                 elif self._msg_queue_paused:
                     # Resume reading now the tail has been parsed.
                     self._resume_msg_queue_reading()
