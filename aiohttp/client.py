@@ -263,7 +263,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
-            stream = await conn.protocol.create_stream() # type: ignore[attr-defined]
+            stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
             req.stream_id = stream.stream_id
             # release again to clear the protocol from _acquired if required
             connector._release(conn._key, conn.protocol, should_close=False)

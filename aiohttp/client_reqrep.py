@@ -530,7 +530,7 @@ class ClientResponse(HeadersMixin):
                     # conditional branching to pass the stream id
                     # to the protocol
                     if get_version(protocol) == "h2":
-                        message, payload = await protocol.read_stream(self.stream_id) # type: ignore[union-attr]
+                        message, payload = await protocol.read_stream(self.stream_id)  # type: ignore[union-attr]
                     else:
                         message, payload = await protocol.read()  # type: ignore[union-attr]
                 except HttpProcessingError as exc:
@@ -942,7 +942,9 @@ class ClientRequestBase:
             stream_writer=stream_writer,
         )
 
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter | Http2StreamWriter:
+    def _create_writer(
+        self, protocol: BaseProtocol
+    ) -> StreamWriter | Http2StreamWriter:
         return StreamWriter(protocol, self.loop)
 
     def _should_write(self, protocol: BaseProtocol) -> bool:
@@ -1431,7 +1433,9 @@ class ClientRequest(ClientRequestBase):
             stream_writer=stream_writer,
         )
 
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter | Http2StreamWriter:
+    def _create_writer(
+        self, protocol: BaseProtocol
+    ) -> StreamWriter | Http2StreamWriter:
         if get_version(protocol) == "h2":
             return Http2StreamWriter(protocol, self.loop, self)
         writer = StreamWriter(
