@@ -24,7 +24,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.18
+idna==3.19
     # via yarl
 iniconfig==2.3.0
     # via pytest
