@@ -1980,7 +1980,7 @@ async def test_websocket_prepared_with_unread_body_does_not_stall(
         # Deliberately never reads request.content.
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        async for msg in ws:
+        async for msg in ws:  # pragma: no branch
             assert isinstance(msg.data, str)
             echoed.append(msg.data)
             await ws.send_str(f"echo:{msg.data}")
