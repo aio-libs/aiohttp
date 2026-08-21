@@ -9,7 +9,7 @@ import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
-from typing import NoReturn, cast
+from typing import NoReturn
 from unittest import mock
 
 import pytest
@@ -1919,7 +1919,7 @@ async def test_upgrade_tail_is_byte_limited(
     read_bufsize = 1024 * 1024
     handler_started = asyncio.Event()
     release_handler = asyncio.Event()
-    tail_observed = asyncio.Event()
+    reading_paused = asyncio.Event()
     max_tail = 0
     data_received = RequestHandler.data_received
 
@@ -1929,7 +1929,7 @@ async def test_upgrade_tail_is_byte_limited(
         if self._message_tail:
             max_tail = max(max_tail, len(self._message_tail))
             if self._msg_queue_paused:
-                tail_observed.set()
+                reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
 
@@ -1943,7 +1943,7 @@ async def test_upgrade_tail_is_byte_limited(
     server = await aiohttp_server(app, read_bufsize=read_bufsize)
 
     chunk = b"A" * (64 * 1024)
-    chunks = (8 * 1024 * 1024) // len(chunk)
+    chunks = (4 * 1024 * 1024) // len(chunk)
 
     reader, writer = await asyncio.open_connection(server.host, server.port)
     try:
@@ -1954,25 +1954,30 @@ async def test_upgrade_tail_is_byte_limited(
         await writer.drain()
         await asyncio.wait_for(handler_started.wait(), 1)
 
-        async def send_all() -> None:
+        async def send_until_paused() -> None:
             for _ in range(chunks):
+                if reading_paused.is_set():
+                    break
                 writer.write(chunk)
                 await writer.drain()
 
-        # Reading is paused, so drain() blocks once the socket buffers fill:
-        # backpressure, not an error. Either way the buffer stays bounded.
-        with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(send_all(), 5)
-        # Reading should be paused already; if it is not, the assertion below
-        # reports the buffer that was actually reached rather than timing out.
-        with suppress(asyncio.TimeoutError):
-            await asyncio.wait_for(tail_observed.wait(), 1)
+        sender = asyncio.create_task(send_until_paused())
+        try:
+            # Only elapses if nothing caps the buffer, in which case the
+            # assertions below report what was actually buffered.
+            with suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(reading_paused.wait(), 5)
+        finally:
+            sender.cancel()
+            with suppress(asyncio.CancelledError):
+                await sender
     finally:
         release_handler.set()
         writer.close()
         with suppress(ConnectionResetError, BrokenPipeError):
             await writer.wait_closed()
 
+    assert reading_paused.is_set(), f"reading never paused, buffered {max_tail} bytes"
     # pause_reading() only takes effect after the read in flight, and asyncio
     # reads at most DEFAULT_CHUNK_SIZE per call, so one extra chunk may land.
     assert read_bufsize <= max_tail < read_bufsize + DEFAULT_CHUNK_SIZE
@@ -2036,20 +2041,27 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
         await writer.drain()
         await asyncio.wait_for(handshake_seen.wait(), 1)
 
-        # WebSocketWriter only writes, so a write-only transport satisfies it.
+        # Encode client frames off to the side, as tests/test_websocket_writer.py
+        # does, and put the bytes on the wire ourselves.
+        encoded = bytearray()
+        frame_transport = mock.Mock()
+        frame_transport.is_closing.return_value = False
+        frame_transport.write.side_effect = encoded.extend
         ws_writer = WebSocketWriter(
-            mock.Mock(_paused=False),
-            cast(asyncio.Transport, writer.transport),
-            use_mask=True,
+            mock.Mock(_paused=False), frame_transport, use_mask=True
         )
+
         for _ in range(frames):
             await ws_writer.send_frame(frame_payload.encode(), WSMsgType.TEXT)
+        writer.write(encoded)
         await writer.drain()
         await asyncio.wait_for(reading_paused.wait(), 5)
 
         # Sent while reading is paused, so this frame is only ever read if the
         # handover to the websocket resumes the transport.
+        encoded.clear()
         await ws_writer.send_frame(b"last", WSMsgType.TEXT)
+        writer.write(encoded)
         await writer.drain()
         release_handler.set()
 
