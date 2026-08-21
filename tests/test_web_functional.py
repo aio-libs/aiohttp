@@ -1955,7 +1955,7 @@ async def test_upgrade_tail_is_byte_limited(
         await asyncio.wait_for(handler_started.wait(), 1)
 
         async def send_all() -> None:
-            for _ in range(chunks):
+            for _ in range(chunks):  # pragma: no branch
                 writer.write(chunk)
                 await writer.drain()
 
@@ -2008,7 +2008,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
         await release_handler.wait()
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        async for msg in ws:
+        async for msg in ws:  # pragma: no branch
             assert isinstance(msg.data, str)
             received.append(msg.data)
             if msg.data == "last":
