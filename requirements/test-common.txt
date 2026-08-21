@@ -18,7 +18,7 @@ attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
-blockbuster==1.5.26
+blockbuster==1.5.27
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
