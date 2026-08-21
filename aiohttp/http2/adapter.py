@@ -110,7 +110,7 @@ class Http2StreamWriter(AbstractStreamWriter):
 
     async def write(
         self,
-        chunk: Union[bytes, bytearray, memoryview, memoryview[bytes]],
+        chunk: Union[bytes, bytearray, memoryview, "memoryview[bytes]"],
         *,
         drain: bool = True,
         LIMIT: int = 0x10000,

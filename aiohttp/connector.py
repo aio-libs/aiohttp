@@ -139,7 +139,7 @@ async def create_connection(
 async def start_tls(
     loop: asyncio.AbstractEventLoop,
     transport: asyncio.Transport,
-    protocol: ResponseHandler,
+    protocol: HttpDispatcherProtocol | ResponseHandler,
     sslcontext: SSLContext,
     *,
     server_hostname: str | None,
@@ -407,7 +407,7 @@ class BaseConnector:
         # avoids duplicate connections to the
         # same host
         # (HTTP/2 doesn't need connection pooling to send multiple requests)
-        self.sem = asyncio.Semaphore(1)
+        self.semaphore = asyncio.Semaphore(1)
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:

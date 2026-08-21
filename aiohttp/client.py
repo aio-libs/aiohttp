@@ -236,7 +236,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
     try:
-        async with connector.sem:
+        async with connector.semaphore:
             # at most just one
             conn = await connector.connect(
                 req, traces=req._traces, timeout=req._timeout
@@ -254,19 +254,19 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
 
     if alpn_protocol == "h2":
         # release immediately to allow reuse
-        connector._release(conn._key, conn._protocol, should_close=False)
+        connector._release(conn._key, conn.protocol, should_close=False)
         # the protocol corresponding to the connection
         # remains (i.e., the count per host is always 1 for h2)
         # This is the number of TCP connections not the number of
         # streams
-        connector._acquired.add(conn._protocol)
+        connector._acquired.add(conn.protocol)
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
-            stream = await conn.protocol.create_stream()
+            stream = await conn.protocol.create_stream() # type: ignore[attr-defined]
             req.stream_id = stream.stream_id
             # release again to clear the protocol from _acquired if required
-            connector._release(conn._key, conn._protocol, should_close=False)
+            connector._release(conn._key, conn.protocol, should_close=False)
             resp = await req._send(conn)
             resp.stream_id = stream.stream_id
         else:
