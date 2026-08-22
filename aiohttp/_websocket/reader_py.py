@@ -2,6 +2,7 @@
 
 import asyncio
 import builtins
+import sys
 from collections import deque
 from typing import Final
 
@@ -32,6 +33,12 @@ READ_HEADER = 1
 READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
+
+# Largest declared payload length the reader can represent: the compiled
+# reader stores it in a Py_ssize_t, which holds 2**31-1 on the 32-bit builds
+# (the win32 and armv7l wheels) and 2**63-1 everywhere else.
+# TODO: Remove when we drop 32 bit support (and from reader_c.pxd).
+MAX_PAYLOAD_LEN = sys.maxsize
 
 WS_MSG_TYPE_BINARY = WSMsgType.BINARY
 WS_MSG_TYPE_TEXT = WSMsgType.TEXT
@@ -453,7 +460,16 @@ class WebSocketReader:
                 elif len_flag > 126:
                     if data_len - start_pos < 8:
                         break
-                    self._payload_bytes_to_read = UNPACK_LEN3(data, start_pos)[0]
+                    # The declared length is an unsigned 64-bit integer that
+                    # does not necessarily fit _payload_bytes_to_read.
+                    frame_len = UNPACK_LEN3(data, start_pos)[0]
+                    if frame_len > MAX_PAYLOAD_LEN:
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            f"Message size {int(frame_len) + len(self._partial)} "
+                            f"exceeds limit {self._max_msg_size or MAX_PAYLOAD_LEN}",
+                        )
+                    self._payload_bytes_to_read = frame_len
                     start_pos += 8
                 else:
                     self._payload_bytes_to_read = len_flag
@@ -468,7 +484,7 @@ class WebSocketReader:
                 }:
                     # partial_len declared in reader_c.pxd to keep it in C.
                     partial_len = len(self._partial)
-                    # payload_bytes_to_read is a signed 64-bit C value,
+                    # payload_bytes_to_read is a signed Py_ssize_t C value,
                     # use subtraction here to avoid an integer overflow.
                     if self._payload_bytes_to_read >= self._max_msg_size - partial_len:
                         raise WebSocketError(
