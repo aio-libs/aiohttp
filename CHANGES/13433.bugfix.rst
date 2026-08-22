@@ -1,0 +1,4 @@
+Fixed dynamic and static routes with spaces or non-ASCII characters in
+fixed path segments being unreachable — the resolver walked the decoded
+path but the resource index key and regex pattern used the encoded form
+-- by :user:`silentiris`.
