@@ -141,6 +141,19 @@ def _gen_default_accept_encoding() -> str:
     return ", ".join(encodings)
 
 
+def _strip_ipv6_zone_id(host: str | None) -> str | None:
+    """Strip zone ID from IPv6 link-local address per :rfc:`6874` §4.
+
+    Zone IDs have only local significance at the sending host and must be
+    removed by the client before sending the ``Host`` header.
+    """
+    if host is None:
+        return None
+    if "%" in host and "[" in host:
+        host = re.sub(r"%[^\]]+", "", host)
+    return host
+
+
 @frozen_dataclass_decorator
 class ContentDisposition:
     type: str | None
@@ -903,7 +916,7 @@ class ClientRequestBase:
         self.headers: CIMultiDict[str] = CIMultiDict()
 
         # Build the host header
-        host = self.url.host_port_subcomponent
+        host = _strip_ipv6_zone_id(self.url.host_port_subcomponent)
 
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
@@ -942,7 +955,7 @@ class ClientRequestBase:
         # - not CONNECT proxy must send absolute form URI
         # - most common is origin form URI
         if self.method == hdrs.METH_CONNECT:
-            connect_host = self.url.host_subcomponent
+            connect_host = _strip_ipv6_zone_id(self.url.host_subcomponent)
             assert connect_host is not None
             path = f"{connect_host}:{self.url.port}"
         elif self.proxy and not self.is_ssl():
