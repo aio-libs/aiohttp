@@ -50,7 +50,7 @@ def test_read_base64_part(
 
     @benchmark
     def _run() -> None:
-        loop.run_until_complete(_part(body, event_loop).read())
+        loop.run_until_complete(_part(body, loop).read())
 
 
 def test_read_chunk_base64_realignment(
@@ -67,6 +67,6 @@ def test_read_chunk_base64_realignment(
 
     @benchmark
     def _run() -> None:
-        event_loop.run_until_complete(
+        loop.run_until_complete(
             _part(body, loop).read_chunk(BodyPartReader.chunk_size)
         )
