@@ -500,20 +500,25 @@ class TestPartReader:
                 assert len(chunk) <= 8192
                 assert len(obj._prev_chunk or b"") <= 8192
 
-    @pytest.mark.parametrize("size", (3, 4, 5, 6))
-    async def test_align_base64_chunk_keeps_partial_boundary(self, size: int) -> None:
-        # When the allowance is shorter than the delimiter, find() cannot see
-        # the delimiter that _read_chunk_from_stream pushed back, and counting
-        # its prefix as payload would consume it -- leaving the remainder
-        # unrecognisable to every later scan and ending the part with
-        # ValueError("Reading after EOF").
-        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
-        with Stream(b"\r\n--:--\r\n") as stream:
-            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
-            obj._prev_chunk = b""
-            # One base64 character, so no whole quartet can be handed back.
-            assert await obj._align_base64_chunk(b"A", size) == b"A"
-            assert await stream.read() == b"\r\n--:--\r\n"
+    async def test_read_chunk_base64_length_delimited_defers_via_stream(self) -> None:
+        # A length-delimited part has no lookahead, so the partial quartet is
+        # pushed back to the stream instead. Read in sizes that land
+        # mid-quartet to exercise that, and check nothing is lost or reordered.
+        payload = b"z" * 300
+        b64 = base64.b64encode(payload)
+        h = HeadersDictProxy(
+            CIMultiDict(
+                {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
+            )
+        )
+        for size in (6, 7, 9, 13):
+            with Stream(b64 + b"\r\n--:--") as stream:
+                obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+                assert obj._prev_chunk is None
+                decoded = b""
+                while not obj.at_eof():
+                    decoded += obj.decode(await obj.read_chunk(size))
+                assert decoded == payload, size
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
