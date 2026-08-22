@@ -1080,6 +1080,10 @@ There are standard connectors:
    *HTTPS* schemes supported).
 2. :class:`UnixConnector` for connecting via UNIX socket (it's used mostly for
    testing purposes).
+3. :class:`FetchConnector` for dispatching requests through the JavaScript
+   ``fetch()`` API when running under Pyodide / Emscripten (WebAssembly),
+   where raw sockets are unavailable.  Selected automatically on that
+   platform.
 
 All connector classes should be derived from :class:`BaseConnector`.
 
@@ -1421,6 +1425,49 @@ is controlled by *force_close* constructor's parameter).
    .. attribute:: path
 
       Path to *UNIX socket*, read-only :class:`str` property.
+
+
+.. class:: FetchConnector(*, fetch=None, fetch_options=None, \
+                          limit=100, limit_per_host=0)
+   :canonical: aiohttp.pyodide.FetchConnector
+
+   JavaScript ``fetch()`` connector.
+
+   WebAssembly runtimes (Pyodide in browsers or Node.js) have no raw
+   sockets, so :class:`TCPConnector` cannot be used there.  This connector
+   performs each request through the JavaScript ``fetch()`` API instead.
+   When aiohttp runs under Emscripten, :class:`ClientSession` uses it as
+   the default connector, so it rarely needs to be created explicitly --
+   do so only to customize its parameters::
+
+      conn = aiohttp.FetchConnector(fetch_options={"credentials": "include"})
+      session = aiohttp.ClientSession(connector=conn)
+
+   :class:`FetchConnector` is inherited from :class:`BaseConnector`.
+
+   Because the JavaScript runtime manages the network, some aiohttp
+   features do not apply: proxies and connection upgrades (WebSockets)
+   raise :exc:`ClientConnectionError`, redirects are followed
+   transparently by ``fetch()`` before aiohttp sees the final response,
+   ``ssl`` arguments are ignored (the runtime's trust store applies), and
+   in browsers, cookies and CORS are enforced by the browser itself.
+
+   :param fetch: the ``fetch()`` implementation to use.  Defaults to the
+      global JavaScript ``fetch``; mainly useful for testing or wrapping
+      ``fetch()`` with custom behavior.
+
+   :param dict fetch_options: extra options merged into the ``fetch()``
+      *init* argument, e.g. ``{"credentials": "include"}``.  See the
+      `fetch documentation
+      <https://developer.mozilla.org/en-US/docs/Web/API/RequestInit>`_
+      for the available options.
+
+   :param int limit: total number of simultaneous in-flight requests.
+
+   :param int limit_per_host: limit of simultaneous requests to the same
+      endpoint (``0`` for no limit).
+
+   .. versionadded:: 4.0
 
 
 .. class:: Connection

@@ -55,6 +55,14 @@ else:
         "define_macros": [("LLHTTP_STRICT_MODE", 0)],
         "include_dirs": ["vendor/llhttp/build"],
     }
+    # When targeting Emscripten (Pyodide), llhttp's api.c expects
+    # JavaScript-provided wasm_on_* callbacks; provide no-op stubs so the
+    # extension has no undefined symbols (aiohttp uses llhttp_init() with
+    # its own callbacks instead).
+    if sys.platform == "emscripten" or "emscripten" in os.environ.get(
+        "_PYTHON_HOST_PLATFORM", ""
+    ):
+        llhttp_sources.append("aiohttp/_llhttp_wasm_shim.c")
 
 cython_trace_macros = [("CYTHON_TRACE", 1)] if CYTHON_TRACING else []
 if cython_trace_macros:
