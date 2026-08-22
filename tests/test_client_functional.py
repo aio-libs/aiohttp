@@ -17,6 +17,7 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
 
@@ -56,7 +57,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimeoutHandle
 from aiohttp.payload import (
     AsyncIterablePayload,
     BufferedReaderPayload,
@@ -6006,7 +6007,7 @@ async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> N
         assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
 
 
-async def test_output_size_bytes(aiohttp_client: AiohttpClient) -> None:
+async def test_payload_bytes_written_bytes(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
         return web.Response()
@@ -6016,11 +6017,21 @@ async def test_output_size_bytes(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
 
     body = b"x" * 1024
-    async with client.post("/", data=body) as resp:
-        assert resp.output_size >= len(body)
+    p = aiohttp.BytesPayload(body)
+    assert p.bytes_written == 0
+    assert not p.upload_complete.done()
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+        assert p.upload_complete.done()
+        assert p.bytes_written == len(body)
+    await p.upload_complete
 
 
-async def test_output_size_multipart(aiohttp_client: AiohttpClient) -> None:
+async def test_payload_bytes_written_file(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """A file payload counts the bytes streamed from the file."""
+
     async def handler(request: web.Request) -> web.Response:
         await request.read()
         return web.Response()
@@ -6029,55 +6040,44 @@ async def test_output_size_multipart(aiohttp_client: AiohttpClient) -> None:
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    mpwriter = aiohttp.MultipartWriter("form-data")
-    mpwriter.append(b"x" * 4096)
-    mpwriter.append(b"y" * 2048)
-    expected_body_size = mpwriter.size
-    assert expected_body_size is not None
+    file_path = tmp_path / "body.bin"
+    file_path.write_bytes(b"y" * 70000)
 
-    async with client.post("/", data=mpwriter) as resp:
-        assert resp.output_size >= expected_body_size
+    with file_path.open("rb") as f:
+        p = aiohttp.get_payload(f, disposition=None)
+        async with client.post("/", data=p) as resp:
+            assert resp.status == 200
+        assert p.upload_complete.done()
+        assert p.bytes_written == 70000
 
 
-async def test_output_size_keepalive_isolated(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    """Each request on a keep-alive connection has its own counter."""
-    transports: set[object] = set()
+async def test_payload_bytes_written_multipart(aiohttp_client: AiohttpClient) -> None:
+    """The multipart payload counts boundaries and part headers too."""
 
     async def handler(request: web.Request) -> web.Response:
-        transports.add(request.transport)
         await request.read()
         return web.Response()
 
     app = web.Application()
     app.router.add_post("/", handler)
-    connector = aiohttp.TCPConnector(limit=1, force_close=False)
-    client = await aiohttp_client(app, connector=connector)
-    body = b"x" * 65536
+    client = await aiohttp_client(app)
 
-    async with client.post("/", data=body) as resp1:
-        size1 = resp1.output_size
+    with aiohttp.MultipartWriter("form-data") as mpwriter:
+        mpwriter.append(b"x" * 4096)
+        mpwriter.append(b"y" * 2048)
 
-    async with client.post("/", data=body) as resp2:
-        size2 = resp2.output_size
-
-    assert len(transports) == 1  # Check keep-alive worked.
-    assert size1 >= len(body)
-    assert size1 == size2
+    async with client.post("/", data=mpwriter) as resp:
+        assert resp.status == 200
+    assert mpwriter.upload_complete.done()
+    assert mpwriter.bytes_written == mpwriter.size
 
 
-async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
-    """output_size advances by exactly one chunk per yield."""
+async def test_payload_upload_progress(aiohttp_client: AiohttpClient) -> None:
+    """bytes_written advances by exactly one chunk per yield."""
 
-    async def handler(request: web.Request) -> web.StreamResponse:
-        response = web.StreamResponse()
-        await response.prepare(request)
-        # Flush headers + a chunk so resp.start() returns on the client
-        # side before we read the body.
-        await response.write(b"x")
+    async def handler(request: web.Request) -> web.Response:
         await request.read()
-        return response
+        return web.Response()
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6092,45 +6092,700 @@ async def test_output_size_progress(aiohttp_client: AiohttpClient) -> None:
     async def gated_body() -> AsyncIterator[bytes]:
         for _ in range(num_chunks):
             yield chunk
+            # Resumed when the writer requests the next chunk, i.e. after
+            # the previous one has been fully handed to the transport.
             sample_taken.clear()
             next_chunk.set()
             await sample_taken.wait()
 
-    async with client.post("/", data=gated_body()) as resp:
-        samples: list[int] = []
+    p = aiohttp.AsyncIterablePayload(gated_body())
+
+    async def do_post() -> None:
+        async with client.post("/", data=p) as resp:
+            assert resp.status == 200
+
+    post_task = asyncio.create_task(do_post())
+    samples: list[int] = []
+    try:
         for _ in range(num_chunks):
-            await next_chunk.wait()
+            waiter = asyncio.create_task(next_chunk.wait())
+            try:
+                # Race the event against the request so a failed upload fails
+                # the test immediately instead of blocking on an event that
+                # will never be set; the finally surfaces the actual error.
+                await asyncio.wait(
+                    {waiter, post_task}, return_when=asyncio.FIRST_COMPLETED
+                )
+                assert waiter.done(), "request finished before sampling"
+            finally:
+                waiter.cancel()
             next_chunk.clear()
-            samples.append(resp.output_size)
-            assert not resp.upload_complete.done()
+            samples.append(p.bytes_written)
+            assert not p.upload_complete.done()
             sample_taken.set()
-        await resp.upload_complete
-        assert resp.upload_complete.done()
-        await resp.read()
+        # Awaited first so an upload failure surfaces as the underlying
+        # ClientError rather than the cancellation of upload_complete.
+        await post_task
+        await p.upload_complete
+    finally:
+        post_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await post_task
 
-    # Each sample after the first reflects exactly one more chunk on the wire.
-    chunked_framing = len(f"{chunk_size:x}".encode()) + 4
-    deltas = [samples[i] - samples[i - 1] for i in range(1, len(samples))]
-    assert deltas == [chunk_size + chunked_framing] * (num_chunks - 1)
+    # Each sample reflects exactly one more chunk of the payload, with no
+    # transport framing overhead included.
+    assert samples == [chunk_size * (i + 1) for i in range(num_chunks)]
 
 
-async def test_output_size_get_request(aiohttp_client: AiohttpClient) -> None:
-    """GET request with no body still reports the request header byte count."""
+async def test_payload_upload_complete_empty_body(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """An empty payload completes even though nothing is written."""
 
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
     app = web.Application()
-    app.router.add_get("/", handler)
+    app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    async with client.get("/") as resp:
-        assert resp.output_size >= 0
+    # Future requested before the request is made.
+    p1 = aiohttp.BytesPayload(b"")
+    fut = p1.upload_complete
+    async with client.post("/", data=p1) as resp:
+        assert resp.status == 200
+    assert fut.done()
+    assert p1.bytes_written == 0
+
+    # Future requested only after the request finished.
+    p2 = aiohttp.BytesPayload(b"")
+    async with client.post("/", data=p2) as resp:
+        assert resp.status == 200
+    assert p2.upload_complete.done()
 
 
-async def test_output_size_writer_released(aiohttp_client: AiohttpClient) -> None:
-    """Writer is dropped once body upload completes; output_size survives."""
+async def test_empty_body_shared_payload_not_mutated(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Bodyless requests never touch the shared empty-payload singleton.
 
+    With expect100 the writer task runs even for an empty body, so the
+    write path must skip progress tracking for the class-level payload.
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", expect100=True) as resp:
+        assert resp.status == 200
+
+    empty = aiohttp.ClientRequest._EMPTY_BODY
+    assert empty._upload_active is False
+    assert empty._upload_finished is False
+    assert empty._upload_aborted is False
+    assert empty._bytes_written == 0
+    assert empty._upload_future is None
+
+
+async def test_payload_upload_aborted(aiohttp_client: AiohttpClient) -> None:
+    """A failed upload completes upload_complete with the request's error."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async def failing_body() -> AsyncIterator[bytes]:
+        yield b"z" * 16
+        raise RuntimeError("body source failed")
+
+    p = aiohttp.AsyncIterablePayload(failing_body())
+    with pytest.raises(aiohttp.ClientError):
+        async with client.post("/", data=p):
+            assert False
+    assert p.upload_complete.done()
+    assert not p.upload_complete.cancelled()
+    # The request raised the failure, so the future's copy is consumed and
+    # will not log a never-retrieved warning at garbage collection.
+    assert not p.upload_complete._log_traceback
+    assert isinstance(p.upload_complete.exception(), aiohttp.ClientConnectionError)
+
+
+async def test_upload_error_after_completed_response(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A request can succeed while its upload fails; the error stays on the future."""
+
+    async def handler(request: web.Request) -> web.Response:
+        # Respond without ever reading the request body.
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    response_received = asyncio.Event()
+
+    async def failing_body() -> AsyncIterator[bytes]:
+        yield b"z" * 16
+        await response_received.wait()
+        raise RuntimeError("body source failed")
+
+    p = aiohttp.AsyncIterablePayload(failing_body())
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+        await resp.read()
+        response_received.set()
+        await asyncio.wait([p.upload_complete], timeout=5)
+
+    fut = p.upload_complete
+    assert fut.done()
+    # Depending on connection teardown timing the unfinished upload is
+    # either failed by its own body source or cancelled with the writer
+    # task; it must never report success.
+    if not fut.cancelled():
+        assert isinstance(fut.exception(), aiohttp.ClientConnectionError)
+
+
+async def test_payload_upload_aborted_before_write() -> None:
+    """A request failing before the body write starts reports the error."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Bound but not listening: connecting is refused, and the port
+        # cannot be taken by another test in the meantime.
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        p = aiohttp.BytesPayload(b"x" * 1024)
+        fut = p.upload_complete
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
+                await session.post(f"http://127.0.0.1:{port}/", data=p)
+        # The future holds the same error the request raised; the raise
+        # consumed the future's copy, so it will not log at collection.
+        assert not fut._log_traceback
+        assert fut.exception() is excinfo.value
+        assert p.upload_complete.exception() is excinfo.value
+
+
+async def test_payload_reused_after_success_reports_new_failure(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A pre-write failure on a reused payload replaces the stale success state."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete.done()
+    assert p.bytes_written == len(p._value)
+
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        # Bound but not listening: connecting is refused.
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientConnectorError) as excinfo:
+                await session.post(f"http://127.0.0.1:{port}/", data=p)
+
+    # The payload reports the new attempt's failure, not the stale success.
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
+@pytest.mark.parametrize(
+    ("url", "proxy", "expected"),
+    (
+        ("ftp://example.com/", None, aiohttp.NonHttpUrlClientError),
+        ("http://example.com/", "http://[::1", aiohttp.InvalidURL),
+    ),
+    ids=("bad-scheme", "bad-proxy"),
+)
+async def test_payload_upload_aborted_before_request_built(
+    url: str, proxy: str | None, expected: type[Exception]
+) -> None:
+    """A failure before the request is even built resolves upload_complete.
+
+    These raise between the payload being adopted and the request loop, so
+    nothing else can report the outcome to a caller awaiting the future.
+    """
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(expected) as excinfo:
+            await session.post(url, data=p, proxy=proxy)
+
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
+async def test_payload_upload_aborted_by_request_start_trace() -> None:
+    """A trace callback raising before the request runs resolves the future."""
+    error = RuntimeError("trace failed")
+
+    async def on_request_start(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> NoReturn:
+        raise error
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
+        with pytest.raises(RuntimeError) as excinfo:
+            await session.post("http://example.com/", data=p)
+
+    assert excinfo.value is error
+    assert p.upload_complete.exception() is error
+
+
+async def test_preflight_failure_disarms_timeout(mocker: MockerFixture) -> None:
+    """A preflight failure closes the timeout handle and cancels its timer."""
+    close_spy = mocker.spy(TimeoutHandle, "close")
+    start_spy = mocker.spy(TimeoutHandle, "start")
+
+    async def on_request_start(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> NoReturn:
+        raise RuntimeError("trace failed")
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+
+    async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
+        with pytest.raises(RuntimeError):
+            await session.post("http://example.com/", data=b"x")
+
+    # The armed loop timer is cancelled, not left running until expiry.
+    close_spy.assert_called_once()
+    timer = start_spy.spy_return
+    assert timer is not None
+    assert timer.cancelled()
+
+
+async def test_payload_reused_aborted_before_request_built(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Resetting a reused payload must not strand its future when preflight fails."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"x" * 1024)
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete.done()
+
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(aiohttp.NonHttpUrlClientError) as excinfo:
+            await session.post("ftp://example.com/", data=p)
+
+    # The stale success was dropped by the reset, so this must replace it.
+    assert p.upload_complete.exception() is excinfo.value
+    assert p.bytes_written == 0
+
+
+async def test_payload_reused_after_redirect(aiohttp_client: AiohttpClient) -> None:
+    """A body resent after a redirect restarts the progress tracking."""
+    received: list[int] = []
+
+    async def redirecting(request: web.Request) -> NoReturn:
+        raise web.HTTPTemporaryRedirect("/final")
+
+    async def final(request: web.Request) -> web.Response:
+        received.append(len(await request.read()))
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", redirecting)
+    app.router.add_post("/final", final)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 2048
+    p = aiohttp.BytesPayload(body)
+    first_upload = p.upload_complete
+    async with client.post("/", data=p) as resp:
+        assert resp.status == 200
+    assert received == [len(body)]
+    # The counter was reset for the second hop rather than accumulating.
+    assert p.bytes_written == len(body)
+    assert first_upload.done()
+    assert p.upload_complete.done()
+
+
+async def test_payload_reuse_two_requests(aiohttp_client: AiohttpClient) -> None:
+    """Sequential requests with the same payload each track their own upload."""
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 65536
+    p = aiohttp.BytesPayload(body)
+
+    async with client.post("/", data=p) as resp1:
+        assert resp1.status == 200
+    assert p.bytes_written == len(body)
+
+    async with client.post("/", data=p) as resp2:
+        assert resp2.status == 200
+    assert p.bytes_written == len(body)
+    assert p.upload_complete.done()
+
+
+async def test_payload_shared_by_overlapping_requests(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Overlapping requests sharing a payload track only one upload."""
+    release = asyncio.Event()
+    waiting = 0
+    received: list[int] = []
+
+    async def expect_handler(request: web.Request) -> None:
+        # Hold both uploads at the 100-continue wait, after progress
+        # tracking has started, to guarantee the uploads overlap.
+        nonlocal waiting
+        waiting += 1
+        if waiting == 2:
+            release.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        received.append(len(await request.read()))
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 1024
+    p = aiohttp.BytesPayload(body)
+    resp1, resp2 = await asyncio.gather(
+        client.post("/", data=p, expect100=True),
+        client.post("/", data=p, expect100=True),
+    )
+    assert resp1.status == 200
+    assert resp2.status == 200
+    resp1.release()
+    resp2.release()
+
+    assert received == [len(body), len(body)]
+    # The counter reflects exactly the tracked upload, not a mix of both.
+    assert p.bytes_written == len(body)
+    assert p.upload_complete.done()
+
+
+async def test_empty_payload_overlap_keeps_tracking_ownership(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A bodyless fast-path request must not steal another upload's tracking.
+
+    A zero-length payload can be owned by an expect100 request whose writer
+    is parked waiting for 100 Continue while a second bodyless request using
+    the same payload completes via the no-write path.
+    """
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/fast", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"")
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        # The slow request's writer owns the tracking, parked at 100-continue.
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+
+        # A fast bodyless request sharing the payload completes meanwhile.
+        async with client.post("/fast", data=p) as resp:
+            assert resp.status == 200
+
+        # It must not have resolved the parked upload's future.
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # Interrupting the parked upload still cancels its future.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
+async def test_empty_payload_reused_after_aborted_upload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A successful resend after an aborted attempt gets a fresh resolved future.
+
+    The no-write fast path must clear the aborted state left by a previous
+    attempt, otherwise upload_complete stays cancelled despite the success.
+    """
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/plain", handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"")
+    first = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    await asyncio.wait([first], timeout=5)
+    assert first.cancelled()  # the first attempt was aborted
+
+    # Reusing the payload on the no-write fast path succeeds and yields a
+    # fresh resolved future in place of the cancelled one.
+    async with client.post("/plain", data=p) as resp:
+        assert resp.status == 200
+    assert p.upload_complete is not first
+    assert p.upload_complete.done()
+    assert not p.upload_complete.cancelled()
+
+
+@pytest.mark.parametrize("exc_type", [OSError, RuntimeError])
+async def test_untracked_upload_failure_leaves_owner_state(
+    aiohttp_client: AiohttpClient, exc_type: type[Exception]
+) -> None:
+    """A failing untracked write must not settle the tracking owner's future."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> NoReturn:
+        await request.read()
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    app.router.add_post("/fail", handler)
+    client = await aiohttp_client(app)
+
+    async def failing_body() -> AsyncIterator[bytes]:
+        yield b"z" * 16
+        raise exc_type("body source failed")
+
+    p = aiohttp.AsyncIterablePayload(failing_body())
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        # The slow request's writer acquires the tracking before parking.
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+
+        # The second request runs untracked and its write fails.
+        with pytest.raises(aiohttp.ClientError):
+            async with client.post("/fail", data=p):
+                assert False
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the loser's error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
+async def test_untracked_preflight_failure_leaves_owner_state(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A preflight failure must not settle an overlapping request's future."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"z" * 16)
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+        assert p._upload_active
+
+        # The overlapping request fails before its request is even built.
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.NonHttpUrlClientError):
+                await session.post("ftp://example.com/", data=p)
+
+        assert p._upload_active
+        # The sharer's failure must not mark the owner's error as
+        # propagated, or a later unpropagated owner failure would have its
+        # never-retrieved log wrongly disarmed.
+        assert not p._upload_error_propagated
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the preflight error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
+async def test_untracked_request_failure_does_not_mark_owner(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A built request's failure must not mark an overlapping owner's payload."""
+    release = asyncio.Event()
+    parked = asyncio.Event()
+
+    async def expect_handler(request: web.Request) -> None:
+        parked.set()
+        await release.wait()
+        await request.writer.write(b"HTTP/1.1 100 Continue\r\n\r\n")
+
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    app = web.Application()
+    app.router.add_post("/", handler, expect_handler=expect_handler)
+    client = await aiohttp_client(app)
+
+    p = aiohttp.BytesPayload(b"z" * 16)
+    fut = p.upload_complete
+
+    async def slow_post() -> None:
+        async with client.post("/", data=p, expect100=True):
+            assert False
+
+    slow_task = asyncio.create_task(slow_post())
+    try:
+        waiter = asyncio.create_task(parked.wait())
+        await asyncio.wait({waiter, slow_task}, return_when=asyncio.FIRST_COMPLETED)
+        assert waiter.done(), "slow request finished before parking"
+        assert p._upload_active
+
+        # The overlapping request fails after being built: connecting to a
+        # bound but not listening port is refused.
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            s.bind(("127.0.0.1", 0))
+            port = s.getsockname()[1]
+            async with aiohttp.ClientSession() as session:
+                with pytest.raises(aiohttp.ClientConnectorError):
+                    await session.post(f"http://127.0.0.1:{port}/", data=p)
+
+        assert p._upload_active
+        assert not p._upload_error_propagated
+        assert not fut.done()
+    finally:
+        waiter.cancel()
+        slow_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await slow_task
+        release.set()
+
+    # The owner's outcome is its own cancellation, not the sharer's error.
+    await asyncio.wait([fut], timeout=5)
+    assert fut.cancelled()
+
+
+async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
         return web.Response()
@@ -6141,12 +6796,12 @@ async def test_output_size_writer_released(aiohttp_client: AiohttpClient) -> Non
 
     body = b"x" * 1024
     async with client.post("/", data=body) as resp:
-        await resp.read()
-        assert resp._stream_writer is None
-    assert resp.output_size >= len(body)
+        with pytest.warns(DeprecationWarning, match="output_size"):
+            size = resp.output_size
+    assert size >= len(body)
 
 
-async def test_upload_complete_no_body(aiohttp_client: AiohttpClient) -> None:
+async def test_upload_complete_deprecated(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response()
 
@@ -6155,22 +6810,53 @@ async def test_upload_complete_no_body(aiohttp_client: AiohttpClient) -> None:
     client = await aiohttp_client(app)
 
     async with client.get("/") as resp:
-        assert resp.upload_complete.done()
+        with pytest.warns(DeprecationWarning, match="upload_complete"):
+            fut = resp.upload_complete
+        assert fut.done()
 
 
-async def test_upload_complete_late_access(aiohttp_client: AiohttpClient) -> None:
-    """Accessing upload_complete after the upload finished returns a done future."""
+async def test_deprecated_progress_attrs_while_uploading(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """The deprecated attributes still track an upload that is still running."""
 
-    async def handler(request: web.Request) -> web.Response:
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        # Flush headers so the client has a response while it is still
+        # uploading, which is the only way to observe a live writer.
+        await response.write(b"x")
         await request.read()
-        return web.Response()
+        return response
 
     app = web.Application()
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    async with client.post("/", data=b"x" * 1024) as resp:
+    chunk_sent = asyncio.Event()
+    sampled = asyncio.Event()
+
+    async def gated_body() -> AsyncIterator[bytes]:
+        yield b"z" * 4096
+        chunk_sent.set()
+        await sampled.wait()
+        yield b"z" * 4096
+
+    async with client.post("/", data=gated_body()) as resp:
+        await chunk_sent.wait()
+        with pytest.warns(DeprecationWarning, match="output_size"):
+            mid = resp.output_size
+        assert mid >= 4096
+
+        with pytest.warns(DeprecationWarning, match="upload_complete"):
+            fut = resp.upload_complete
+        assert not fut.done()
+        with pytest.warns(DeprecationWarning, match="upload_complete"):
+            assert resp.upload_complete is fut
+
+        sampled.set()
+        await fut
+
+        with pytest.warns(DeprecationWarning, match="output_size"):
+            assert resp.output_size > mid
         await resp.read()
-        # Writer task is done; future is created lazily on this first access.
-        assert resp._upload_complete is None
-        assert resp.upload_complete.done()

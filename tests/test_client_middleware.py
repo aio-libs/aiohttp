@@ -15,6 +15,7 @@ from aiohttp import (
     ClientSession,
     ClientTimeout,
     TCPConnector,
+    payload,
     web,
 )
 from aiohttp.abc import ResolveResult
@@ -1337,3 +1338,48 @@ async def test_client_middleware_switch_types(
             assert resp.status == 200
             text = await resp.text()
             assert text == "now a string"
+
+
+async def test_middleware_short_circuit_settles_payload(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A middleware answering from cache settles the unsent payload.
+
+    When the handler is never awaited, no writer ever runs, so the success
+    path must resolve upload_complete instead of leaving it pending forever.
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    cached: list[ClientResponse] = []
+
+    async def cache_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        if cached:
+            return cached[0]
+        response = await handler(request)
+        cached.append(response)
+        return response
+
+    async with ClientSession(middlewares=(cache_middleware,)) as session:
+        p1 = payload.BytesPayload(b"x" * 64)
+        async with session.post(server.make_url("/"), data=p1) as resp:
+            assert resp.status == 200
+        assert p1.upload_complete.done()
+        assert p1.bytes_written == 64
+
+        # Served from cache: the request is never sent.
+        p2 = payload.BytesPayload(b"y" * 64)
+        resp2 = await session.post(server.make_url("/"), data=p2)
+        assert resp2.status == 200
+        assert p2.upload_complete.done()
+        # The body was never sent, so the upload is aborted, not resolved.
+        assert p2.upload_complete.cancelled()
+        assert p2.bytes_written == 0

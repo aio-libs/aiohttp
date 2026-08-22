@@ -1251,6 +1251,44 @@ async def test_expect_100_continue_header(
     resp.close()
 
 
+async def test_expect100_preamble_failure_reports_upload_error(
+    conn: mock.Mock,
+    protocol: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    """A failure before the body write completes upload_complete with the error.
+
+    The 100-continue preamble runs outside the body-write exception
+    handlers; its errors must still reach the payload's future instead of
+    reporting an indistinguishable cancellation.
+    """
+    loop = asyncio.get_running_loop()
+    # Park the writer task at the preamble's drain(), then fail the flush.
+    drain_fut: asyncio.Future[None] = loop.create_future()
+    protocol._paused = True
+    protocol._drain_helper.return_value = drain_fut
+
+    p = payload.BytesPayload(b"x" * 1024)
+    req = make_client_request(
+        "post", URL("http://python.org/"), data=p, expect100=True, loop=loop
+    )
+    resp = await req._send(conn)
+    error = OSError("flush failed")
+    drain_fut.set_exception(error)
+
+    assert req._writer is not None
+    with pytest.raises(OSError) as excinfo:
+        await req._writer
+    assert excinfo.value is error
+
+    fut = p.upload_complete
+    assert fut.done()
+    assert not fut.cancelled()
+    assert fut.exception() is error
+    req._terminate()
+    resp.close()
+
+
 async def test_data_stream(
     buf: bytearray, conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
