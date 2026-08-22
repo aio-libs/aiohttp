@@ -108,7 +108,7 @@ def test_resume_msg_queue_reading_stays_paused_for_full_tail(
     The tail is drained by set_parser()/finish_response(), so resuming before
     then would let the buffer grow past its ceiling one read at a time.
     """
-    handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
+    handler = RequestHandler(dummy_manager, loop=loop, read_bufsize=1024)
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
@@ -126,7 +126,7 @@ def test_resume_msg_queue_reading_with_room_left_in_tail(
     dummy_manager: Server[BaseRequest],
 ) -> None:
     """A tail under read_bufsize does not hold the transport paused."""
-    handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
+    handler = RequestHandler(dummy_manager, loop=loop, read_bufsize=1024)
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
@@ -148,7 +148,7 @@ def test_resume_msg_queue_reading_with_zero_read_bufsize(
     Guards the degenerate ``read_bufsize=0`` case: comparing sizes alone would
     match an empty tail and wedge the connection paused for good.
     """
-    handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=0)
+    handler = RequestHandler(dummy_manager, loop=loop, read_bufsize=0)
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
@@ -166,7 +166,7 @@ def test_set_parser_resumes_reading_paused_for_tail(
     dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
     """Handing a full tail to the upgraded protocol resumes reading."""
-    handler = RequestHandler(dummy_manager, loop=event_loop, read_bufsize=1024)
+    handler = RequestHandler(dummy_manager, loop=loop, read_bufsize=1024)
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
