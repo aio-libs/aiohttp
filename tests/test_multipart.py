@@ -453,7 +453,7 @@ class TestPartReader:
             secret,
         )
         h = CIMultiDict(
-                {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
+            {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
         )
         with Stream(b64 + rest) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -518,7 +518,7 @@ class TestPartReader:
         payload = b"z" * 300
         b64 = base64.b64encode(payload)
         h = CIMultiDict(
-                {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
+            {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
         )
         for size in (6, 7, 9, 13):
             with Stream(b64 + b"\r\n--:--") as stream:
