@@ -5,6 +5,7 @@ import pytest
 
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
+from aiohttp.web_request import BaseRequest
 from aiohttp.web_server import Server
 
 
