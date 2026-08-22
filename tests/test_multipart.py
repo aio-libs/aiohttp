@@ -479,20 +479,29 @@ class TestPartReader:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             decoded = b""
             chunks = []
+            carried = 0
             while not obj.at_eof():
                 chunks.append(await obj.read_chunk(64))
                 decoded += obj.decode(chunks[-1])
+                carried += bool(obj._b64_carry)
                 assert len(obj._prev_chunk or b"") <= 64
                 assert len(obj._b64_carry) < 64
         assert decoded == payload
         assert all(len(c) <= 64 for c in chunks[:-1])
-        assert len(chunks) > 100  # enough calls for drift to show
+        # The bound above is only meaningful if the carry is exercised, and
+        # over enough calls for a per-call drift to become visible.
+        assert len(chunks) > 100
+        assert carried > len(chunks) // 2
 
     async def test_read_chunk_base64_padding_run_does_not_amplify(self) -> None:
         # A part padded with a long run of insignificant bytes used to make a
-        # single call swallow the whole run. Now each call returns at most the
-        # size asked for, hands back something every time so callers looping
-        # on a truthy chunk make progress, and buffers nothing between calls.
+        # single call swallow the whole run. Such a run holds no whole quartet,
+        # so this covers the branch that hands the chunk straight back: it must
+        # still cap the chunk at the size asked for, and must hand back
+        # something every time so callers looping on a truthy chunk make
+        # progress. Nothing is carried here, so this says nothing about the
+        # deferral path -- that is bounded by
+        # test_read_chunk_base64_bounded_by_requested_size.
         h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         body = b"A" + b" " * (64 * 1024) + b"BBB\r\n--:--"
         with Stream(body) as stream:
@@ -501,12 +510,13 @@ class TestPartReader:
                 chunk = await obj.read_chunk(8192)
                 assert chunk
                 assert len(chunk) <= 8192
-                assert len(obj._prev_chunk or b"") <= 8192
 
-    async def test_read_chunk_base64_length_delimited_defers_via_stream(self) -> None:
-        # A length-delimited part has no lookahead, so the partial quartet is
-        # pushed back to the stream instead. Read in sizes that land
-        # mid-quartet to exercise that, and check nothing is lost or reordered.
+    async def test_read_chunk_base64_length_delimited_carries_quartet(self) -> None:
+        # A length-delimited part has no lookahead (_prev_chunk stays None), so
+        # this covers carrying a partial quartet on that path. The carry is
+        # subtracted from the next read, which the Content-Length accounting
+        # has to agree with, or the part overruns its declared length and the
+        # trailing CRLF check rejects it. Sizes are chosen to land mid-quartet.
         payload = b"z" * 300
         b64 = base64.b64encode(payload)
         h = HeadersDictProxy(
@@ -519,9 +529,14 @@ class TestPartReader:
                 obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
                 assert obj._prev_chunk is None
                 decoded = b""
+                carried = 0
                 while not obj.at_eof():
                     decoded += obj.decode(await obj.read_chunk(size))
+                    carried += bool(obj._b64_carry)
                 assert decoded == payload, size
+                # Guard against this quietly becoming a no-op: the point is
+                # that the carry is exercised, not merely that reading works.
+                assert carried > 10, (size, carried)
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
