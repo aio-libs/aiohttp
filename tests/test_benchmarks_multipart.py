@@ -9,7 +9,7 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp.hdrs import CONTENT_TRANSFER_ENCODING
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.multipart import BodyPartReader
 from aiohttp.streams import StreamReader
 
@@ -31,7 +31,7 @@ def _part(body: bytes, loop: asyncio.AbstractEventLoop) -> BodyPartReader:
     stream.feed_eof()
     return BodyPartReader(
         BOUNDARY,
-        HeadersDictProxy(BASE64_HEADERS),
+        CIMultiDict(BASE64_HEADERS),
         stream,
         client_max_size=10 * 1024**2,
     )

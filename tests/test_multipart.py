@@ -452,10 +452,8 @@ class TestPartReader:
             len(secret),
             secret,
         )
-        h = HeadersDictProxy(
-            CIMultiDict(
+        h = CIMultiDict(
                 {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
-            )
         )
         with Stream(b64 + rest) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -473,7 +471,7 @@ class TestPartReader:
         # of being pushed back, so nothing accumulates over a long part: the
         # lookahead would otherwise gain a couple of bytes on every call.
         payload = b"x" * 8192
-        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"})
         body = base64.encodebytes(payload).replace(b"\n", b"\r\n")
         with Stream(body + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -502,7 +500,7 @@ class TestPartReader:
         # progress. Nothing is carried here, so this says nothing about the
         # deferral path -- that is bounded by
         # test_read_chunk_base64_bounded_by_requested_size.
-        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"})
         body = b"A" + b" " * (64 * 1024) + b"BBB\r\n--:--"
         with Stream(body) as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
@@ -519,10 +517,8 @@ class TestPartReader:
         # trailing CRLF check rejects it. Sizes are chosen to land mid-quartet.
         payload = b"z" * 300
         b64 = base64.b64encode(payload)
-        h = HeadersDictProxy(
-            CIMultiDict(
+        h = CIMultiDict(
                 {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
-            )
         )
         for size in (6, 7, 9, 13):
             with Stream(b64 + b"\r\n--:--") as stream:
@@ -546,7 +542,7 @@ class TestPartReader:
         # size: capping it back would read more than it hands back on every
         # call, and the carry would climb without ever draining.
         payload = b"q" * 600
-        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        h = CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"})
         body = base64.encodebytes(payload).replace(b"\n", b"\r\n")
         with Stream(body + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
