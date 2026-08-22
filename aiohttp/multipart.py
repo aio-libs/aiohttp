@@ -311,6 +311,7 @@ class BodyPartReader:
             raise ValueError(f"invalid Content-Length: {length!r}")
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
+        self._b64_carry = b""
         self._unread: deque[bytes] = deque()
         self._prev_chunk: bytes | None = None
         self._content_eof = 0
@@ -365,10 +366,17 @@ class BodyPartReader:
         """
         if self._at_eof:
             return b""
+        carry = self._b64_carry
+        want = size - len(carry)
+        if carry:
+            self._b64_carry = b""
+            want = max(want, self._boundary_len)
         if self._length:
-            chunk = await self._read_chunk_from_length(size)
+            fresh = await self._read_chunk_from_length(want)
         else:
-            chunk = await self._read_chunk_from_stream(size)
+            fresh = await self._read_chunk_from_stream(want)
+        chunk = carry + fresh
+        self._read_bytes += len(fresh)
 
         # base64 decodes in quartets and every chunk is decoded on its own, so
         # a chunk should not end mid-quartet.
@@ -376,55 +384,40 @@ class BodyPartReader:
         if encoding and encoding.lower() == "base64":
             chunk = self._align_base64_chunk(chunk, size)
 
-        self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
         if self._at_eof and await self._content.readline() != b"\r\n":
             raise ValueError("Reader did not read all the data or it is malformed")
         return chunk
 
-    def _defer(self, data: bytes) -> None:
-        # Put bytes back at the head of the part's input.
-        if self._prev_chunk is None:
-            # Length-delimited parts do not use the lookahead;
-            # _read_chunk_from_length reads straight from the stream.
-            with warnings.catch_warnings():
-                warnings.filterwarnings("ignore", category=DeprecationWarning)
-                self._content.unread_data(data)
-        else:
-            # The lookahead sits in front of the stream, so the bytes have to
-            # go back there to stay in order.
-            self._prev_chunk = data + self._prev_chunk
-
     def _align_base64_chunk(self, chunk: bytes, size: int) -> bytes:
         at_end = self._at_eof or (
-            self._length is not None and self._read_bytes + len(chunk) >= self._length
+            self._length is not None and self._read_bytes >= self._length
         )
         if not at_end and len(chunk) > size:
-            # A partial quartet deferred by an earlier call sits in front of
-            # this one, which would otherwise push it over the cap.
-            self._defer(chunk[size:])
+            self._b64_carry = chunk[size:]
             chunk = chunk[:size]
 
         remainder = len(chunk.translate(None, _NON_BASE64_BYTES)) % 4
         if not remainder or at_end:
             return chunk
 
+        # Walk back over the trailing partial quartet and carry it into the
+        # next chunk.
         cut = len(chunk)
         left = remainder
         while left:
             cut -= 1
             if chunk[cut] in _BASE64_CHARS:
                 left -= 1
-        if cut:
-            self._defer(chunk[cut:])
-            return chunk[:cut]
+        if not cut:
+            # No whole quartet to hand back, and carrying the lot would make
+            # no progress: the caller asked for this many bytes, and a part
+            # that holds no quartet within them holds none to give.
+            return chunk
 
-        # There is no whole quartet to hand back. Deferring would make no
-        # progress and returning nothing would look like end of part, so hand
-        # the chunk back as it is: the caller asked for this many bytes, and a
-        # part that holds no quartet within them holds none to give.
-        return chunk
+        self._b64_carry = chunk[cut:] + self._b64_carry
+        return chunk[:cut]
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
         # Reads body part content chunk of the specified size.

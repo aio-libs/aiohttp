@@ -467,11 +467,11 @@ class TestPartReader:
             assert secret in await stream.read()
 
     async def test_read_chunk_base64_bounded_by_requested_size(self) -> None:
-        # Whole quartets are handed back and the trailing partial one deferred
-        # to the next read, so size acts as a cap rather than a starting point
-        # and a chunk never carries a run of insignificant bytes beyond it.
-        # Only the final chunk may exceed size, since the deferred remainder
-        # has nowhere left to go. Every chunk still decodes on its own.
+        # Whole quartets are handed back and the trailing partial quartet is
+        # carried into the next read, so size acts as a cap rather than a
+        # starting point. The carry is subtracted from the next read instead
+        # of being pushed back, so nothing accumulates over a long part: the
+        # lookahead would otherwise gain a couple of bytes on every call.
         payload = b"x" * 8192
         h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
         body = base64.encodebytes(payload).replace(b"\n", b"\r\n")
@@ -482,8 +482,11 @@ class TestPartReader:
             while not obj.at_eof():
                 chunks.append(await obj.read_chunk(64))
                 decoded += obj.decode(chunks[-1])
+                assert len(obj._prev_chunk or b"") <= 64
+                assert len(obj._b64_carry) < 64
         assert decoded == payload
         assert all(len(c) <= 64 for c in chunks[:-1])
+        assert len(chunks) > 100  # enough calls for drift to show
 
     async def test_read_chunk_base64_padding_run_does_not_amplify(self) -> None:
         # A part padded with a long run of insignificant bytes used to make a
