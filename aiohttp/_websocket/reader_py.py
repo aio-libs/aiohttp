@@ -37,7 +37,7 @@ READ_PAYLOAD = 4
 # Largest declared payload length the reader can represent: the compiled
 # reader stores it in a Py_ssize_t, which holds 2**31-1 on the 32-bit builds
 # (the win32 and armv7l wheels) and 2**63-1 everywhere else.
-# TODO: Remove when we drop 32 bit support.
+# TODO: Remove when we drop 32 bit support (and from reader_c.pxd).
 MAX_PAYLOAD_LEN = sys.maxsize
 
 WS_MSG_TYPE_BINARY = WSMsgType.BINARY
