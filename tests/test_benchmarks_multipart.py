@@ -3,11 +3,11 @@
 import asyncio
 import base64
 from typing import TYPE_CHECKING
-from unittest import mock
 
 import pytest
 from multidict import CIMultiDict
 
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.hdrs import CONTENT_TRANSFER_ENCODING
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.multipart import BodyPartReader
@@ -23,10 +23,18 @@ BOUNDARY = b"--:"
 BASE64_HEADERS: CIMultiDict[str] = CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"})
 
 
+class _NoFlowControlProtocol(BaseProtocol):
+    """The whole body is fed up front, so there is nothing to pause or resume."""
+
+    def pause_reading(self) -> None:
+        """Swallow pause."""
+
+    def resume_reading(self, resume_parser: bool = True) -> None:
+        """Swallow resume."""
+
+
 def _part(body: bytes, loop: asyncio.AbstractEventLoop) -> BodyPartReader:
-    stream = StreamReader(
-        mock.Mock(_reading_paused=False), DEFAULT_CHUNK_SIZE, loop=loop
-    )
+    stream = StreamReader(_NoFlowControlProtocol(loop), DEFAULT_CHUNK_SIZE, loop=loop)
     stream.feed_data(body)
     stream.feed_eof()
     return BodyPartReader(
