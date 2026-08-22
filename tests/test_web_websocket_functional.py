@@ -2,7 +2,9 @@
 
 import asyncio
 import contextlib
+import gc
 import json
+import socket
 import sys
 import weakref
 from typing import Literal, NoReturn
@@ -78,6 +80,100 @@ async def test_pipelined_request_after_failed_websocket_upgrade(
         await writer.wait_closed()
 
     assert b"426" in data
+
+
+async def test_stashed_frames_survive_connection_loss(
+    unused_port_socket: socket.socket,
+) -> None:
+    """Frames stashed by receive-queue backpressure outlive the connection.
+
+    A peer can pack far more complete frames into one read than the queue's
+    high-water mark allows, so the parser stops part-way and leaves the rest
+    in its tail. ``connection_lost()`` then drops the protocol's reference to
+    the parser, so only ``WebSocketResponse._parser`` keeps it alive; without
+    that the queue's weak link dies with the connection and every stashed
+    frame is silently lost.
+    """
+    sent = 8000
+    # (frames queued when the parser stalled, frames delivered in total)
+    received: asyncio.Future[tuple[int, int]] = (
+        asyncio.get_running_loop().create_future()
+    )
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        try:
+            queue = ws._reader
+            assert queue is not None
+
+            # Wait for the parser to stall with frames still stashed in its
+            # tail. The transport is paused from here, so the peer's FIN
+            # cannot be observed until reading resumes.
+            for _ in range(1000):  # pragma: no branch
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
+            assert queue._stalled_reader is not None, "parser never stalled"
+            stalled = len(queue._buffer)
+
+            # Tear the connection down for real: closing the transport is
+            # what drives connection_lost(), which drops the protocol's only
+            # reference to the parser, leaving ws._parser holding it.
+            protocol = request.protocol
+            transport = protocol.transport
+            assert transport is not None
+            transport.close()
+            for _ in range(1000):  # pragma: no branch
+                if protocol._payload_parser is None:
+                    break
+                await asyncio.sleep(0)
+            assert protocol._payload_parser is None, "connection_lost never ran"
+
+            count = 0
+            while (msg := await ws.receive()).type is WSMsgType.TEXT:
+                count += 1
+            # A clean drain ends with the queue's close, not an error.
+            assert msg.type is WSMsgType.CLOSED
+
+            received.set_result((stalled, count))
+        except Exception as exc:  # pragma: no cover
+            # Surface handler failures instead of an opaque timeout.
+            received.set_exception(exc)
+            raise
+        return ws
+
+    # A plain AppRunner, not the aiohttp_server fixture: TestServer forces
+    # handler_cancellation=True, which kills the handler on connection loss.
+    # Production defaults to False, and that is the case where the stash
+    # still has to be drainable.
+    app = web.Application()
+    app.router.add_route("GET", "/ws", handler)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    try:
+        await web.SockSite(runner, unused_port_socket).start()
+        port = unused_port_socket.getsockname()[1]
+
+        reader, writer = await asyncio.open_connection("127.0.0.1", port)
+        try:
+            writer.write(_RAW_UPGRADE)
+            await writer.drain()
+            await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+
+            # Written as one call, but whether it arrives as one read is the
+            # kernel's choice.
+            writer.write(b"\x81\x80\x00\x00\x00\x00" * sent)
+            await writer.drain()
+
+            stalled, count = await asyncio.wait_for(received, timeout=10)
+            assert stalled < count <= sent
+        finally:
+            writer.close()
+            with contextlib.suppress(ConnectionResetError):
+                await writer.wait_closed()
+    finally:
+        await runner.cleanup()
 
 
 async def test_partial_pipelined_request_after_failed_websocket_upgrade(
@@ -1928,3 +2024,85 @@ async def test_prepare_after_client_disconnect(aiohttp_client: AiohttpClient) ->
         aiohttp.ServerDisconnectedError, aiohttp.ClientConnectionResetError
     ):
         await request_task
+
+
+async def test_stalled_parser_outlives_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Frames the parser stopped short of are delivered after the peer vanishes.
+
+    Once the queue is over its high-water mark the parser stops mid-read and
+    parks the rest of the read on itself, reachable from the queue only through
+    a weak reference. Connection loss releases the protocol's reference to the
+    parser, so the response has to be the owner or those frames are collected
+    and the handler silently sees a short stream.
+    """
+    sent = 8000
+    received: asyncio.Future[int] = asyncio.get_running_loop().create_future()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        try:
+            protocol = request.protocol
+            transport = request.transport
+            assert transport is not None
+            # Empty masked client->server TEXT frames: six bytes on the wire,
+            # but each one is charged MSG_SIZE_OVERHEAD in the queue, so a
+            # single read crosses the high-water mark and the parser stalls
+            # part way through.
+            protocol.data_received(b"\x81\x80\x00\x00\x00\x00" * sent)
+            queue = ws._reader
+            assert queue is not None
+            assert queue._stalled_reader is not None, "parser never stalled"
+
+            # Simulate the peer vanishing: the socket is gone and the
+            # protocol drops its reference to the parser, as the event loop
+            # would do it. Detach the handler task first: TestServer forces
+            # handler_cancellation=True (production defaults to False), and
+            # the cancellation would land on this very task at its next yield.
+            protocol._task_handler = None
+            transport.abort()
+            protocol.connection_lost(None)
+            for _ in range(3):  # PyPy can need more than one pass
+                gc.collect()
+
+            count = 0
+            while (await ws.receive()).type is not WSMsgType.CLOSED:
+                count += 1
+            # Exhausting the queue releases the parser and its stash.
+            assert ws._parser is None
+            received.set_result(count)
+        except Exception as exc:  # pragma: no cover
+            # Surface handler failures instead of an opaque timeout.
+            received.set_exception(exc)
+            raise
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    await client.ws_connect("/")
+
+    assert await asyncio.wait_for(received, 10) == sent
+
+
+async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
+    """A normal close handshake releases the parser and the state it holds."""
+    released: asyncio.Future[bool] = asyncio.get_running_loop().create_future()
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        assert ws._parser is not None
+        await ws.close()
+        released.set_result(ws._parser is None)
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/")
+
+    await ws.receive()  # the server's CLOSE
+    assert await asyncio.wait_for(released, 5) is True

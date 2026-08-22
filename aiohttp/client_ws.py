@@ -6,7 +6,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Final, Generic, Literal, overload
 
-from ._websocket.reader import WebSocketDataQueue
+from ._websocket.reader import WebSocketDataQueue, WebSocketReader
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
 from .helpers import calculate_timeout_when, frozen_dataclass_decorator, set_result
@@ -78,6 +78,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
         self._writer = writer
         self._reader = reader
+        # Set by ClientSession._ws_connect; owns the parser so a stalled
+        # reader parked on the queue by weakref stays alive while this
+        # response can still be drained.
+        self._parser: WebSocketReader | None = None
         self._protocol = protocol
         self._closed = False
         self._closing = False
@@ -215,6 +219,8 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if self._closed:
             return
         self._set_closed()
+        # close() is never reached after this; release the parser here.
+        self._parser = None
         self._close_code = WSCloseCode.ABNORMAL_CLOSURE
         self._exception = exc
         self._response.close()
@@ -332,25 +338,8 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
         self._set_closed()
         try:
-            await self._writer.close(code, message)
-        except asyncio.CancelledError:
-            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-            self._response.close()
-            raise
-        except Exception as exc:
-            self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-            self._exception = exc
-            self._response.close()
-            return True
-
-        if self._close_code:
-            self._response.close()
-            return True
-
-        while True:
             try:
-                async with async_timeout.timeout(self._timeout.ws_close):
-                    msg = await self._reader.read()
+                await self._writer.close(code, message)
             except asyncio.CancelledError:
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 self._response.close()
@@ -361,10 +350,32 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 self._response.close()
                 return True
 
-            if msg.type is WSMsgType.CLOSE:
-                self._close_code = msg.data
+            if self._close_code:
                 self._response.close()
                 return True
+
+            while True:
+                try:
+                    async with async_timeout.timeout(self._timeout.ws_close):
+                        msg = await self._reader.read()
+                except asyncio.CancelledError:
+                    self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+                    self._response.close()
+                    raise
+                except Exception as exc:
+                    self._close_code = WSCloseCode.ABNORMAL_CLOSURE
+                    self._exception = exc
+                    self._response.close()
+                    return True
+
+                if msg.type is WSMsgType.CLOSE:
+                    self._close_code = msg.data
+                    self._response.close()
+                    return True
+        finally:
+            # Once closed the response can no longer be drained; release the
+            # parser and the stash it retains.
+            self._parser = None
 
     @overload
     async def receive(
@@ -420,7 +431,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 await self.close()
                 return WS_CLOSED_MESSAGE
             except ClientError:
-                # Likely ServerDisconnectedError when connection is lost
+                # Likely ServerDisconnectedError when connection is lost.
+                # close() is not called on this path, so release the parser
+                # and the stash it retains here.
+                self._parser = None
                 self._set_closed()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 return WS_CLOSED_MESSAGE

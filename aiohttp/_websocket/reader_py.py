@@ -2,12 +2,14 @@
 
 import asyncio
 import builtins
+import weakref
 from collections import deque
 from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
+from ..log import ws_logger
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
@@ -54,6 +56,15 @@ COMPRESSED_TRUE = 1
 
 TUPLE_NEW = tuple.__new__
 
+# Overhead added to each message to ensure that tiny messages can't use
+# unreasonable amounts of memory.
+MSG_SIZE_OVERHEAD: Final[int] = 128
+
+STALLED_READER_COLLECTED: Final[str] = (
+    "WebSocketReader was garbage collected while stalled; "
+    "callers of set_parser() must hold a strong reference"
+)
+
 cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
 
 
@@ -76,6 +87,7 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
+        self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
 
     def is_eof(self) -> bool:
         return self._eof
@@ -107,8 +119,10 @@ class WebSocketDataQueue:
         self._exception = None  # Break cyclic references
 
     def feed_data(self, data: "WSMessage") -> None:
+        # Unbox into the typed local before adding, so Cython keeps the sum in
+        # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
         size = data.size
-        self._size += size
+        self._size += size + MSG_SIZE_OVERHEAD
         self._put_buffer(data)
         self._release_waiter()
         if self._size > self._limit and not self._protocol._reading_paused:
@@ -129,8 +143,33 @@ class WebSocketDataQueue:
         if self._buffer:
             data = self._get_buffer()
             size = data.size
-            self._size -= size
-            if self._size < self._limit and self._protocol._reading_paused:
+            self._size -= size + MSG_SIZE_OVERHEAD
+            if self._stalled_reader is not None and self._size <= self._limit // 2:
+                # Resume parsing once the queue drains to the low-water mark.
+                # Each resume re-slices the parser's unparsed tail, so waiting
+                # for headroom makes a drain cost one copy per batch of
+                # messages instead of one per message.
+                if (reader := self._stalled_reader()) is not None:
+                    reader.feed_data(b"")
+                else:
+                    # The stash died with the reader. Deliver what was already
+                    # queued, then surface the contract violation on the next
+                    # read instead of hanging. Log as well, since a caller that
+                    # stops reading early never sees the deferred exception. A
+                    # real failure that was already recorded stays the reported
+                    # cause.
+                    self._stalled_reader = None
+                    ws_logger.warning(STALLED_READER_COLLECTED)
+                    if self._exception is None:
+                        self.set_exception(RuntimeError(STALLED_READER_COLLECTED))
+            # Resuming the transport while a stash remains would admit
+            # another socket read into the tail for every couple of messages
+            # drained, moving the memory bound from the queue into the tail.
+            if (
+                self._stalled_reader is None
+                and self._size < self._limit
+                and self._protocol._reading_paused
+            ):
                 self._protocol.resume_reading()
             return data
         if self._exception is not None:
@@ -149,6 +188,9 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
+        # Parked on the queue while parsing is stalled; created once so
+        # stalling does not allocate.
+        self._weak_self = weakref.ref(self)
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -343,6 +385,7 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
+        self.queue._stalled_reader = None
         if self._tail:
             data, self._tail = self._tail + data, b""
 
@@ -351,6 +394,14 @@ class WebSocketReader:
         data_cstr = data
 
         while True:
+            if start_pos < data_len and self.queue._size > self.queue._limit:
+                # Over the high-water mark with unparsed bytes left: stash the
+                # remainder and stall. Gating on unparsed bytes keeps a read
+                # that ended on a frame boundary from arming an empty stall,
+                # which would hold the transport paused with nothing to drain.
+                self.queue._stalled_reader = self._weak_self
+                break
+
             # read header
             if self._state == READ_HEADER:
                 if data_len - start_pos < 2:
