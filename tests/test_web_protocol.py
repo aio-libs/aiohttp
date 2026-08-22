@@ -101,7 +101,7 @@ def test_resume_msg_queue_reading_without_transport(
 
 def test_resume_msg_queue_reading_stays_paused_for_full_tail(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
 ) -> None:
     """Resume is refused while an in-flight upgrade holds read_bufsize of tail.
 
@@ -123,7 +123,7 @@ def test_resume_msg_queue_reading_stays_paused_for_full_tail(
 
 def test_resume_msg_queue_reading_with_room_left_in_tail(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
 ) -> None:
     """A tail under read_bufsize does not hold the transport paused."""
     handler = RequestHandler(dummy_manager, loop=loop, read_bufsize=1024)
@@ -141,7 +141,7 @@ def test_resume_msg_queue_reading_with_room_left_in_tail(
 
 def test_resume_msg_queue_reading_with_zero_read_bufsize(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
 ) -> None:
     """An empty tail resumes even when read_bufsize leaves it no room.
 
@@ -162,7 +162,7 @@ def test_resume_msg_queue_reading_with_zero_read_bufsize(
 
 def test_set_parser_resumes_reading_paused_for_tail(
     loop: asyncio.AbstractEventLoop,
-    dummy_manager: Server[BaseRequest],
+    dummy_manager: Server,
     dummy_reader: tuple[WebSocketReader, mock.Mock],
 ) -> None:
     """Handing a full tail to the upgraded protocol resumes reading."""
