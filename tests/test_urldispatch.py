@@ -542,6 +542,16 @@ async def test_static_not_match(router: web.UrlDispatcher) -> None:
     assert (None, set()) == ret
 
 
+async def test_static_match_non_ascii_prefix(router: web.UrlDispatcher) -> None:
+    router.add_static("/пре фикс", pathlib.Path(aiohttp.__file__).parent, name="name")
+    req = make_mocked_request(
+        "GET", "/%D0%BF%D1%80%D0%B5%20%D1%84%D0%B8%D0%BA%D1%81/file.txt"
+    )
+    match_info = await router.resolve(req)
+    assert {"filename": "file.txt"} == match_info
+    assert str(router["name"].url_for(filename="file.txt")) == req.rel_url.raw_path
+
+
 async def test_add_static_access_resources(router: web.UrlDispatcher) -> None:
     """Test accessing resource._routes externally.
 
@@ -815,6 +825,25 @@ async def test_dynamic_match_non_ascii(router: web.UrlDispatcher) -> None:
     )
     match_info = await router.resolve(req)
     assert {"var": "рус текст"} == match_info
+
+
+async def test_dynamic_match_non_ascii_fixed_part(router: web.UrlDispatcher) -> None:
+    handler = make_handler()
+    router.add_route("GET", "/пре фикс/{var}", handler)
+    req = make_mocked_request(
+        "GET", "/%D0%BF%D1%80%D0%B5%20%D1%84%D0%B8%D0%BA%D1%81/text"
+    )
+    match_info = await router.resolve(req)
+    assert {"var": "text"} == match_info
+
+
+async def test_dynamic_match_url_for(router: web.UrlDispatcher) -> None:
+    """Ensure the url built for a resource is routed back to it."""
+    handler = make_handler()
+    router.add_route("GET", "/hello world/{var}", handler, name="name")
+    req = make_mocked_request("GET", str(router["name"].url_for(var="text")))
+    match_info = await router.resolve(req)
+    assert {"var": "text"} == match_info
 
 
 async def test_dynamic_match_with_static_part(router: web.UrlDispatcher) -> None:
@@ -1366,6 +1395,7 @@ def test_dynamic_resource_canonical() -> None:
         r"/get/{num:^\d+}": "/get/{num}",
         r"/handler/{to:\d+}": r"/handler/{to}",
         r"/{one}/{two:.+}": r"/{one}/{two}",
+        "/hello world/{name}": "/hello world/{name}",
     }
     for pattern, canonical in canonicals.items():
         res = web.DynamicResource(path=pattern)
