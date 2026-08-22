@@ -465,9 +465,20 @@ class BodyPartReader:
             if self._length is None:
                 # These bytes have not been through the boundary search, and
                 # that search has already pushed the boundary back into the stream.
-                idx = block.find(b"\r\n" + self._boundary)
+                delimiter = b"\r\n" + self._boundary
+                idx = block.find(delimiter)
                 if idx >= 0:
                     scan = block[:idx]
+                else:
+                    # The delimiter may straddle the end of this read, in
+                    # which case find() cannot see it. Never consume a tail
+                    # that could be its start: doing so would hand framing
+                    # back as payload and leave the remainder unrecognisable
+                    # to every later scan.
+                    for n in range(min(len(block), len(delimiter) - 1), 0, -1):
+                        if delimiter.startswith(block[-n:]):
+                            scan = block[: len(block) - n]
+                            break
             taken, needed = _scan_base64_chars(scan, needed)
             extra += block[:taken]
             if taken < len(block):
