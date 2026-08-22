@@ -9,7 +9,7 @@ import pytest
 from multidict import CIMultiDict
 
 from aiohttp.hdrs import CONTENT_TRANSFER_ENCODING
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.multipart import BodyPartReader
 from aiohttp.streams import StreamReader
 
@@ -31,14 +31,14 @@ def _part(body: bytes, loop: asyncio.AbstractEventLoop) -> BodyPartReader:
     stream.feed_eof()
     return BodyPartReader(
         BOUNDARY,
-        HeadersDictProxy(BASE64_HEADERS),
+        CIMultiDict(BASE64_HEADERS),
         stream,
         client_max_size=10 * 1024**2,
     )
 
 
 def test_read_base64_part(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Read a line-wrapped base64 part to completion.
 
@@ -50,11 +50,11 @@ def test_read_base64_part(
 
     @benchmark
     def _run() -> None:
-        event_loop.run_until_complete(_part(body, event_loop).read())
+        event_loop.run_until_complete(_part(body, loop).read())
 
 
 def test_read_chunk_base64_realignment(
-    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+    loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Complete a base64 quartet across the longest run it will tolerate.
 
@@ -67,6 +67,6 @@ def test_read_chunk_base64_realignment(
 
     @benchmark
     def _run() -> None:
-        event_loop.run_until_complete(
-            _part(body, event_loop).read_chunk(BodyPartReader.chunk_size)
+        loop.run_until_complete(
+            _part(body, loop).read_chunk(BodyPartReader.chunk_size)
         )
