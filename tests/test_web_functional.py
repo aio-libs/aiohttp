@@ -1922,7 +1922,7 @@ async def test_upgrade_tail_is_byte_limited(
     max_tail = 0
     data_received = RequestHandler.data_received
 
-    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
+    def observe_data_received(self: RequestHandler, data: bytes) -> None:
         nonlocal max_tail
         data_received(self, data)
         if self._message_tail:
@@ -2000,7 +2000,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
     received: list[str] = []
     data_received = RequestHandler.data_received
 
-    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
+    def observe_data_received(self: RequestHandler, data: bytes) -> None:
         data_received(self, data)
         if self._msg_queue_paused:
             reading_paused.set()
