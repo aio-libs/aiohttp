@@ -63,6 +63,26 @@ __all__ = (
 )
 
 
+# The base64 alphabet plus the padding character.
+_BASE64_CHARS = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+)
+_NON_BASE64_BYTES = bytes(b for b in range(256) if b not in _BASE64_CHARS)
+
+
+def _scan_base64_chars(data: bytes, needed: int) -> tuple[int, int]:
+    # Walk data until `needed` base64 characters have been seen. Returns how
+    # many bytes that took and how many characters are still missing (0 when
+    # satisfied, in which case the last byte consumed is the one that
+    # completed the quartet).
+    for pos, byte in enumerate(data, 1):
+        if byte in _BASE64_CHARS:
+            needed -= 1
+            if not needed:
+                return pos, 0
+    return len(data), needed
+
+
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
 
@@ -363,30 +383,11 @@ class BodyPartReader:
         else:
             chunk = await self._read_chunk_from_stream(size)
 
-        # For the case of base64 data, we must read a fragment of size with a
-        # remainder of 0 by dividing by 4 for string without symbols \n or \r
+        # base64 decodes in quartets and every chunk is decoded on its own, so
+        # a chunk should not end mid-quartet.
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
         if encoding and encoding.lower() == "base64":
-            stripped_chunk = b"".join(chunk.split())
-            remainder = len(stripped_chunk) % 4
-
-            while remainder != 0 and not self.at_eof():
-                over_chunk_size = 4 - remainder
-                over_chunk = b""
-
-                if self._prev_chunk:
-                    over_chunk = self._prev_chunk[:over_chunk_size]
-                    self._prev_chunk = self._prev_chunk[len(over_chunk) :]
-
-                if len(over_chunk) != over_chunk_size:
-                    over_chunk += await self._content.read(4 - len(over_chunk))
-
-                if not over_chunk:
-                    self._at_eof = True
-
-                stripped_chunk += b"".join(over_chunk.split())
-                chunk += over_chunk
-                remainder = len(stripped_chunk) % 4
+            chunk = await self._align_base64_chunk(chunk, size)
 
         self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
@@ -394,6 +395,87 @@ class BodyPartReader:
         if self._at_eof and await self._content.readline() != b"\r\n":
             raise ValueError("Reader did not read all the data or it is malformed")
         return chunk
+
+    def _defer(self, data: bytes) -> None:
+        # Put bytes back at the head of the part's input.
+        if self._prev_chunk is None:
+            # Length-delimited parts do not use the lookahead;
+            # _read_chunk_from_length reads straight from the stream.
+            with warnings.catch_warnings():
+                warnings.filterwarnings("ignore", category=DeprecationWarning)
+                self._content.unread_data(data)
+        else:
+            # The lookahead sits in front of the stream, so the bytes have to
+            # go back there to stay in order.
+            self._prev_chunk = data + self._prev_chunk
+
+    async def _align_base64_chunk(self, chunk: bytes, size: int) -> bytes:
+        at_end = self._at_eof or (
+            self._length is not None and self._read_bytes + len(chunk) >= self._length
+        )
+        if not at_end and len(chunk) > size:
+            # A partial quartet deferred by an earlier call sits in front of
+            # this one, which would otherwise push it over the cap.
+            self._defer(chunk[size:])
+            chunk = chunk[:size]
+
+        remainder = len(chunk.translate(None, _NON_BASE64_BYTES)) % 4
+        if not remainder or at_end:
+            return chunk
+
+        cut = len(chunk)
+        left = remainder
+        while left:
+            cut -= 1
+            if chunk[cut] in _BASE64_CHARS:
+                left -= 1
+        if cut:
+            self._defer(chunk[cut:])
+            return chunk[:cut]
+
+        # There is no whole quartet to hand back, so deferring would make no
+        # progress and returning nothing would look like end of part. Spend
+        # whatever is left of the cap looking for the characters that complete
+        # one, and hand the chunk back as it is if they are out of reach: the
+        # caller asked for this many bytes, and a part that holds no quartet
+        # within them holds none to give.
+        needed = 4 - remainder
+        allowance = size - len(chunk)
+        extra = b""
+
+        if self._prev_chunk:
+            # The lookahead comes before the stream and has already been
+            # through the boundary search. Consume it in place; emptying it
+            # would make the next _read_chunk_from_stream return nothing.
+            taken, needed = _scan_base64_chars(self._prev_chunk[:allowance], needed)
+            extra = self._prev_chunk[:taken]
+            self._prev_chunk = self._prev_chunk[taken:]
+            allowance -= taken
+
+        if needed:
+            to_read = allowance
+            if self._length is not None:
+                # Never read past the declared Content-Length: beyond it lie
+                # the boundary and the parts that follow.
+                room = self._length - self._read_bytes - len(chunk) - len(extra)
+                to_read = min(to_read, max(room, 0))
+            block = await self._content.read(to_read) if to_read > 0 else b""
+
+            scan = block
+            if self._length is None:
+                # These bytes have not been through the boundary search, and
+                # that search has already pushed the boundary back into the stream.
+                idx = block.find(b"\r\n" + self._boundary)
+                if idx >= 0:
+                    scan = block[:idx]
+            taken, needed = _scan_base64_chars(scan, needed)
+            extra += block[:taken]
+            if taken < len(block):
+                # These came from the stream, so they go back to the stream.
+                with warnings.catch_warnings():
+                    warnings.filterwarnings("ignore", category=DeprecationWarning)
+                    self._content.unread_data(block[taken:])
+        return chunk + extra
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
         # Reads body part content chunk of the specified size.

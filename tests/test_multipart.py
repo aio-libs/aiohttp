@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import gzip
 import io
 import json
@@ -424,7 +425,7 @@ class TestPartReader:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = b""
             while not obj.at_eof():
-                chunk = await obj.read_chunk(size=6)
+                chunk = await obj.read_chunk(size=8)
                 result += obj.decode(chunk)
         assert b"Time to Relax!" == result
 
@@ -434,10 +435,70 @@ class TestPartReader:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = b""
             while not obj.at_eof():
-                chunk = await obj.read_chunk(size=6)
+                chunk = await obj.read_chunk(size=8)
                 async for decoded_chunk in obj.decode_iter(chunk):
                     result += decoded_chunk
         assert b"Time to Relax!" == result
+
+    async def test_read_chunk_base64_content_length_no_overread(self) -> None:
+        # A base64 part whose Content-Length is not a multiple of 4 must not
+        # let the base64 realignment loop read past the declared length into
+        # the boundary and the parts that follow (regression for a negative
+        # `_read_chunk_from_length` chunk_size / StreamReader.read(-1) bypass
+        # of client_max_size).
+        b64 = b"VGltZSB0byBSZWxheCE"  # 19 chars, 19 % 4 == 3 (unpadded)
+        secret = b"secret-from-next-part"
+        rest = b"\r\n--:\r\nContent-Length: %d\r\n\r\n%s\r\n--:--\r\n" % (
+            len(secret),
+            secret,
+        )
+        h = HeadersDictProxy(
+            CIMultiDict(
+                {"CONTENT-LENGTH": str(len(b64)), CONTENT_TRANSFER_ENCODING: "base64"}
+            )
+        )
+        with Stream(b64 + rest) as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            chunk = await obj.read_chunk(8192)
+            assert chunk == b64
+            assert obj.at_eof()
+            assert secret not in chunk
+            # The following part is left intact on the stream.
+            assert secret in await stream.read()
+
+    async def test_read_chunk_base64_bounded_by_requested_size(self) -> None:
+        # Whole quartets are handed back and the trailing partial one deferred
+        # to the next read, so size acts as a cap rather than a starting point
+        # and a chunk never carries a run of insignificant bytes beyond it.
+        # Only the final chunk may exceed size, since the deferred remainder
+        # has nowhere left to go. Every chunk still decodes on its own.
+        payload = b"x" * 8192
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        body = base64.encodebytes(payload).replace(b"\n", b"\r\n")
+        with Stream(body + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            decoded = b""
+            chunks = []
+            while not obj.at_eof():
+                chunks.append(await obj.read_chunk(64))
+                decoded += obj.decode(chunks[-1])
+        assert decoded == payload
+        assert all(len(c) <= 64 for c in chunks[:-1])
+
+    async def test_read_chunk_base64_padding_run_does_not_amplify(self) -> None:
+        # A part padded with a long run of insignificant bytes used to make a
+        # single call swallow the whole run. Now each call returns at most the
+        # size asked for, hands back something every time so callers looping
+        # on a truthy chunk make progress, and buffers nothing between calls.
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        body = b"A" + b" " * (64 * 1024) + b"BBB\r\n--:--"
+        with Stream(body) as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            while not obj.at_eof():
+                chunk = await obj.read_chunk(8192)
+                assert chunk
+                assert len(chunk) <= 8192
+                assert len(obj._prev_chunk or b"") <= 8192
 
     async def test_decode_with_content_encoding_deflate(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
