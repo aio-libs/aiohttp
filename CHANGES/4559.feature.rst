@@ -1,0 +1,1 @@
+Added an optional ``charset`` parameter to :class:`~aiohttp.web.FileResponse` so callers can set an explicit charset on the response content-type for text-like MIME types.

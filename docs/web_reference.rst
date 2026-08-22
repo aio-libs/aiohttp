@@ -941,7 +941,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
-.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None, charset=None)
    :canonical: aiohttp.web_fileresponse.FileResponse
 
    The response class used to send files, inherited from :class:`StreamResponse`.
@@ -965,6 +965,9 @@ and :ref:`aiohttp-web-signals` handlers::
    :param collections.abc.Mapping headers: HTTP headers that should be added to
                            response's ones. The ``Content-Type`` response header
                            will be overridden if provided.
+
+   :param str charset: Charset to append to the ``Content-Type`` header for
+                       text-like MIME types (e.g. ``text/plain``).
 
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
