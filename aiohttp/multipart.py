@@ -191,6 +191,23 @@ def parse_content_disposition(
     return disptype.lower(), params
 
 
+def _decode_continuations(sections: list[str], encoding: str) -> str | None:
+    """Percent-decode adjacent RFC 2231 extended sections as a single value.
+
+    The octets are joined before decoding so that a multibyte character
+    split across a section boundary is still decoded correctly.  Returns
+    ``None`` if the joined octets are not valid for ``encoding``.
+    """
+    try:
+        return unquote("".join(sections), encoding, "strict")
+    except (builtins.LookupError, UnicodeDecodeError):
+        # Both the charset name and the octets are attacker-controlled here;
+        # an unknown encoding raises the builtin LookupError (shadowed in this
+        # module by payload.LookupError) and undecodable bytes raise
+        # UnicodeDecodeError.
+        return None
+
+
 def content_disposition_filename(
     params: Mapping[str, str], name: str = "filename"
 ) -> str | None:
@@ -202,33 +219,52 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        parts = []
-        fnparams = sorted(
-            (key, value) for key, value in params.items() if key.startswith(name_suf)
-        )
-        for num, (key, value) in enumerate(fnparams):
+        fnparams: list[tuple[int, str, bool, str]] = []
+        for key, value in params.items():
+            if not key.startswith(name_suf):
+                continue
             _, tail = key.split("*", 1)
-            if tail.endswith("*"):
+            extended = tail.endswith("*")
+            if extended:
                 tail = tail[:-1]
-            if tail == str(num):
-                parts.append(value)
-            else:
+            if not tail.isdigit():
+                continue
+            # RFC 2231 Section 3 requires numeric, not lexicographic,
+            # ordering of the continuation sections ("*2" before "*10").
+            fnparams.append((int(tail), tail, extended, value))
+        fnparams.sort()
+        parts: list[str] = []
+        # Consecutive extended sections are decoded as one unit, because a
+        # single multibyte character may be split across a section boundary.
+        pending: list[str] = []
+        encoding = "utf-8"
+        for num, (_, tail, extended, value) in enumerate(fnparams):
+            if tail != str(num):  # Missing section or leading zero.
                 break
+            if extended:
+                # RFC 2231 Section 4.1: only extended ("*N*") sections are
+                # percent-encoded, and only the initial one may carry the
+                # charset'language' prefix.
+                if num == 0 and value.count("'") >= 2:
+                    encoding, _, value = value.split("'", 2)
+                    encoding = encoding or "utf-8"
+                pending.append(value)
+                continue
+            if pending:
+                decoded = _decode_continuations(pending, encoding)
+                if decoded is None:
+                    return None
+                parts.append(decoded)
+                pending.clear()
+            parts.append(value)
+        if pending:
+            decoded = _decode_continuations(pending, encoding)
+            if decoded is None:
+                return None
+            parts.append(decoded)
         if not parts:
             return None
-        value = "".join(parts)
-        if "'" in value:
-            encoding, _, value = value.split("'", 2)
-            encoding = encoding or "utf-8"
-            try:
-                return unquote(value, encoding, "strict").lstrip("\\/")
-            except (builtins.LookupError, UnicodeDecodeError):
-                # Both the charset name and the octets are attacker-controlled
-                # here; an unknown encoding raises the builtin LookupError
-                # (shadowed in this module by payload.LookupError) and
-                # undecodable bytes raise UnicodeDecodeError.
-                return None
-        return value.lstrip("\\/")
+        return "".join(parts).lstrip("\\/")
 
 
 class MultipartResponseWrapper:
