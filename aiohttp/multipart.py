@@ -382,7 +382,7 @@ class BodyPartReader:
         # a chunk should not end mid-quartet.
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
         if encoding and encoding.lower() == "base64":
-            chunk = self._align_base64_chunk(chunk, size)
+            chunk = self._align_base64_chunk(chunk, len(carry) + want)
 
         if self._read_bytes == self._length:
             self._at_eof = True

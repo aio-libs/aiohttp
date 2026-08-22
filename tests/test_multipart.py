@@ -538,6 +538,24 @@ class TestPartReader:
                 # that the carry is exercised, not merely that reading works.
                 assert carried > 10, (size, carried)
 
+    @pytest.mark.parametrize("size", (5, 6, 7, 8))
+    async def test_read_chunk_base64_small_size_carry_drains(self, size: int) -> None:
+        # _read_chunk_from_stream refuses to read fewer than boundary_len
+        # bytes, so for a size this small the carry cannot always be
+        # subtracted from the next read. The chunk then has to be allowed over
+        # size: capping it back would read more than it hands back on every
+        # call, and the carry would climb without ever draining.
+        payload = b"q" * 600
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TRANSFER_ENCODING: "base64"}))
+        body = base64.encodebytes(payload).replace(b"\n", b"\r\n")
+        with Stream(body + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            decoded = b""
+            while not obj.at_eof():
+                decoded += obj.decode(await obj.read_chunk(size))
+                assert len(obj._b64_carry) <= size + obj._boundary_len
+        assert decoded == payload
+
     async def test_decode_with_content_encoding_deflate(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
         data = b"\x0b\xc9\xccMU(\xc9W\x08J\xcdI\xacP\x04\x00"
