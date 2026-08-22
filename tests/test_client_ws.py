@@ -16,6 +16,7 @@ from aiohttp import (
     hdrs,
 )
 from aiohttp._websocket.writer import WebSocketWriter as RealWebSocketWriter
+from aiohttp.client_reqrep import HTTPResponse
 from aiohttp.http import WS_KEY
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
@@ -421,7 +422,7 @@ async def test_close_eofstream(ws_key: str, key_data: bytes) -> None:
 
 async def test_close_connection_lost(ws_key: str, key_data: bytes) -> None:
     """Test the websocket client handles the connection being closed out from under it."""
-    mresp = mock.Mock(spec_set=client.ClientResponse)
+    mresp = mock.Mock(spec_set=HTTPResponse)
     mresp.status = 101
     mresp.headers = {
         hdrs.UPGRADE: "websocket",

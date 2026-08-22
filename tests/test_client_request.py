@@ -20,9 +20,9 @@ from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
     ClientRequest,
     ClientRequestArgs,
-    ClientResponse,
     ClientTimeout,
     Fingerprint,
+    HTTPResponse as ClientResponse,
     _gen_default_accept_encoding,
 )
 from aiohttp.compression_utils import ZLibBackend

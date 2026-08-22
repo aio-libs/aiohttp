@@ -24,7 +24,12 @@ import aiohttp
 from aiohttp import abc, client, hdrs, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
-from aiohttp.client_reqrep import ClientRequest, ClientTimeout, ConnectionKey
+from aiohttp.client_reqrep import (
+    ClientRequest,
+    ClientTimeout,
+    ConnectionKey,
+    HTTPResponse,
+)
 from aiohttp.connector import BaseConnector, Connection, TCPConnector, UnixConnector
 from aiohttp.cookiejar import CookieJar
 from aiohttp.http import RawResponseMessage
@@ -646,7 +651,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
+    resp = mock.create_autospec(HTTPResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -711,7 +716,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
     ws_key: str,
     key_data: bytes,
 ) -> None:
-    resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True, instance=True)
+    resp = mock.create_autospec(HTTPResponse, spec_set=True, instance=True)
     resp.status = 101
     resp.headers = {
         hdrs.UPGRADE: "websocket",
@@ -1329,7 +1334,7 @@ async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None
         return session.make_url(path)
 
     # Standard
-    req: Callable[[], Awaitable[aiohttp.ClientResponse]]
+    req: Callable[[], Awaitable[HTTPResponse]]
     for req in (
         lambda: session.get("/?x=0"),
         lambda: session.get("/", params=dict(x=0)),

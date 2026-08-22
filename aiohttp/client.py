@@ -75,6 +75,7 @@ from .client_reqrep import (
     ClientResponse,
     ClientTimeout,
     Fingerprint,
+    HTTPResponse,
     RequestInfo,
     ResponseParams,
 )
@@ -304,7 +305,7 @@ class ClientSession:
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
         request_class: type[ClientRequest] = ClientRequest,
-        response_class: type[ClientResponse] = ClientResponse,
+        response_class: type[ClientResponse] = HTTPResponse,
         ws_response_class: type[ClientWebSocketResponse] = ClientWebSocketResponse,
         version: HttpVersion = http.HttpVersion11,
         cookie_jar: AbstractCookieJar | None = None,

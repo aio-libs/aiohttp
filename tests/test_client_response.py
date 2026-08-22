@@ -15,7 +15,9 @@ from yarl import URL
 import aiohttp
 from aiohttp import ClientSession, http
 from aiohttp.abc import AbstractStreamWriter
-from aiohttp.client_reqrep import ClientResponse
+
+# NOTE: it's less disruptive to create an alias here rather than renaming the class over the +1700 lines
+from aiohttp.client_reqrep import HTTPResponse as ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
