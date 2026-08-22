@@ -98,6 +98,7 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
+from .http2.adapter import get_version
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import (
@@ -235,22 +236,55 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
     try:
-        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+        async with connector.semaphore:
+            # at most just one
+            conn = await connector.connect(
+                req, traces=req._traces, timeout=req._timeout
+            )
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
 
     assert conn.protocol is not None
-    conn.protocol.set_response_params(**req._response_params)
+    assert conn.protocol.transport is not None
+
+    alpn_protocol = get_version(conn.protocol)
+
+    resp = None
+    started = False
+
+    if alpn_protocol == "h2":
+        # release immediately to allow reuse
+        connector._release(conn._key, conn.protocol, should_close=False)
+        # the protocol corresponding to the connection
+        # remains (i.e., the count per host is always 1 for h2)
+        # This is the number of TCP connections not the number of
+        # streams
+        connector._acquired.add(conn.protocol)
     try:
-        resp = await req._send(conn)
-        try:
-            await resp.start(conn)
-        except BaseException:
+        # backwards compatibility
+        if alpn_protocol == "h2":
+            stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
+            req.stream_id = stream.stream_id
+            # release again to clear the protocol from _acquired if required
+            connector._release(conn._key, conn.protocol, should_close=False)
+            resp = await req._send(conn)
+            resp.stream_id = stream.stream_id
+        else:
+            conn.protocol.set_response_params(**req._response_params)
+            resp = await req._send(conn)
+        await resp.start(conn)
+
+        if alpn_protocol == "h2":
+            # we still have to null the protocol since we didn't close the connection
+            conn._protocol = None
+
+        started = True
+    finally:
+        if resp is not None and not started:
             resp.close()
-            raise
-    except BaseException:
-        conn.close()
-        raise
+            conn.close()
+        if resp is None:
+            conn.close()
     return resp
 
 
