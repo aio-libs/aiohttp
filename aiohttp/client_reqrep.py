@@ -498,7 +498,7 @@ class ClientResponse(HeadersMixin):
 
             for param in params:
                 match = re.match(
-                    r"^\s*(\S+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))\s*$", param, re.M
+                    r"^\s*([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))\s*$", param, re.M
                 )
                 if match is None:  # Malformed param
                     continue
