@@ -184,6 +184,24 @@ def test_max_msg_queue_size_caps_emitted_messages(
     assert not upgraded
 
 
+def test_max_msg_queue_size_keeps_tail_to_itself(
+    request_cls: type[HttpRequestParser],
+    protocol: BaseProtocol,
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    """The remainder is buffered for the next feed, so it must not be returned.
+
+    Handing it back as well gives the caller a second copy of bytes the parser
+    is already holding, and both copies get parsed.
+    """
+    parser = _build_request_parser(request_cls, protocol, event_loop, 4)
+
+    messages, _upgraded, tail = parser.feed_data(_PIPELINED_GET * 10)
+
+    assert len(messages) == 4
+    assert tail == b""
+
+
 def test_max_msg_queue_size_resumes_after_consume(
     request_cls: type[HttpRequestParser],
     protocol: BaseProtocol,
@@ -643,6 +661,15 @@ def test_whitespace_before_header(parser: HttpRequestParser) -> None:
     text = b"GET / HTTP/1.1\r\nHost: a\r\n\tContent-Length: 1\r\n\r\nX"
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
+
+
+def test_whitespace_around_header_value(parser: HttpRequestParser) -> None:
+    text = b"GET / HTTP/1.1\r\nHost: a\r\ntest: \t value \t \r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+
+    assert msg.headers["test"] == "value"
+    assert msg.raw_headers == ((b"Host", b"a"), (b"test", b"value"))
 
 
 @pytest.fixture
@@ -1383,6 +1410,52 @@ async def test_compressed_with_tail(response: HttpResponseParser) -> None:
     assert result == b"ok"
 
 
+async def test_decompress_error_while_draining_pending_data(
+    response: HttpResponseParser,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Decompressor failure on the pending-data drain must not crash.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13203
+    where the C parser segfaulted on Python 3.12+ when the decompressor
+    raised while draining pending decompressed data, as brotlicffi 1.2
+    does on its empty-input drain call.
+    """
+
+    class _BrokenDecompressor:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self._calls = 0
+
+        def decompress_sync(self, data: bytes, max_length: int = 0) -> bytes:
+            self._calls += 1
+            if self._calls > 1:
+                raise ValueError("decoder is broken")
+            # Must be large enough to exceed the high water mark so the
+            # parser pauses with pending data still available.
+            return b"x" * (1024 * 1024)
+
+        @property
+        def data_available(self) -> bool:
+            return True
+
+    monkeypatch.setattr("aiohttp.http_parser.ZLibDecompressor", _BrokenDecompressor)
+
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: 100\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+    # First byte 0x78 keeps the zlib header sniff from swapping decompressors.
+    msgs, upgrade, tail = response.feed_data(headers + b"\x78\x9c" + b"a" * 8)
+    payload = msgs[0][-1]
+
+    # The next feed drains pending data first, which hits the broken decoder.
+    # The parser must not raise; the error is delivered via the payload.
+    response.feed_data(b"b" * 10)
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+
+
 async def test_two_content_length_responses_in_one_call(
     response: HttpResponseParser,
 ) -> None:
@@ -1507,6 +1580,79 @@ async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+async def test_content_length_eof_while_paused(response: HttpResponseParser) -> None:
+    """EOF right after a fully received content-length body must complete it.
+
+    Regression test for #13348:
+    feeding the final body bytes pauses the parser for flow control before
+    the message can complete; a server closing the connection in that state
+    raised ContentLengthError despite received == expected.
+    """
+    # Must be large enough to exceed the high water mark so the parser
+    # pauses with the message not yet complete.
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body)
+
+    msgs, upgrade, tail = response.feed_data(headers + body)
+    payload = msgs[0][-1]
+    # The server has sent everything and closed the connection.
+    response.feed_eof()
+
+    result = await payload.read()
+    assert result == body
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_compressed_content_length_eof_while_paused(
+    response: HttpResponseParser,
+) -> None:
+    """EOF with pending decompressed data on a complete content-length body.
+
+    Like test_content_length_eof_while_paused, but the decompressor still
+    holds pending data at EOF, so completion is deferred until the reader
+    drains it.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"B" * 5 * 1024 * 1024
+    compressed = zlib.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    response.feed_eof()
+
+    # Check that .feed_eof() hasn't decompressed entire payload into memory.
+    assert sum(len(b) for b in payload._buffer) <= (2 * 1024 * 1024)
+
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+    assert payload.is_eof()
+    assert payload.exception() is None
+
+
+async def test_content_length_eof_while_paused_incomplete(
+    response: HttpResponseParser,
+) -> None:
+    """EOF on a paused parser with a genuinely incomplete body still raises."""
+    body = b"x" * (1024 * 1024)
+    headers = b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % (len(body) + 1)
+
+    response.feed_data(headers + body)
+
+    with pytest.raises(
+        http_exceptions.ContentLengthError,
+        match=r"received 1048576 of 1048577 bytes",
+    ):
+        response.feed_eof()
 
 
 async def test_compressed_until_eof_high_water(
@@ -2754,6 +2900,41 @@ class TestParsePayload:
         ):
             p.feed_eof()
 
+    async def test_parse_length_payload_eof_completes_after_pause(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """feed_eof() completes a fully received length payload despite a pause.
+
+        Regression test for #13348:
+        The parser paused for flow control with pending decompressed data
+        when EOF arrived; the fully received body must complete instead of
+        raising ContentLengthError.
+        """
+        out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        original = b"x" * (1024 * 1024)
+        compressed = zlib.compress(original)
+
+        p = HttpPayloadParser(
+            out,
+            length=len(compressed),
+            compression="deflate",
+            headers_parser=HeadersParser(),
+        )
+        p.pause_reading()  # flow control kicked in before the final bytes
+        state, tail = p.feed_data(compressed)
+        assert state is PayloadState.PAYLOAD_HAS_PENDING_INPUT
+        assert not p.done
+
+        # All bytes were received, so EOF drains the pending data and
+        # completes the payload.
+        p.feed_eof()
+
+        assert p.done
+        assert out.is_eof()  # type: ignore[unreachable]
+        assert out.exception() is None
+        result = await out.read()
+        assert result == original
+
     async def test_parse_chunked_payload_size_error(
         self, protocol: BaseProtocol
     ) -> None:
@@ -3207,6 +3388,26 @@ class TestParsePayload:
         p.feed_data(payload)
         assert b"".join(parts) == b"".join(out._buffer)
         assert out.is_eof()
+
+    async def test_http_payload_gzip_empty_member_flood(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """A body of many empty members is rejected, not decoded.
+
+        Empty members decode to nothing, so must fail from the member limit.
+        """
+        payload = gzip.compress(b"") * 20000
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            length=len(payload),
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            p.feed_data(payload)
 
 
 class TestDeflateBuffer:
