@@ -666,7 +666,6 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             raise BadHttpMethod(method)
         method = method.upper()
 
-        # request target
         # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
         if _TARGET_FORBIDDEN_CTL_RE.search(path):
             raise InvalidURLError(
