@@ -195,7 +195,7 @@ Helpers
 
    Return ``True`` if the buffer is empty and EOF was reached.
 
-.. method:: StreamReader.read_nowait(n=None)
+.. method:: StreamReader.read_nowait(n=-1)
 
    Returns data from internal buffer if any, empty bytes object otherwise.
 
