@@ -206,16 +206,9 @@ async def loop_debug_mode() -> AsyncIterator[None]:
         loop.set_debug(False)
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def symlinks_supported() -> None:
-    # Skip tests that need to create symlinks when the host does not allow it.
-
-    # On Windows, os.symlink() needs SeCreateSymbolicLinkPrivilege, which is only
-    # held by an elevated process or when Developer Mode is enabled. CI runs with
-    # that privilege, so the symlink tests still execute there; without this check
-    # an unprivileged local checkout errors out with
-    # `OSError: [WinError 1314] A required privilege is not held by the client`
-    # instead of skipping.
+    """Skip tests if symlinks not support (e.g. Windows permission problem)."""
     with TemporaryDirectory() as tmp_dir:
         target = Path(tmp_dir) / "symlink-target"
         target.touch()
