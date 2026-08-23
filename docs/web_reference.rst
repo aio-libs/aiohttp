@@ -984,7 +984,6 @@ and :ref:`aiohttp-web-signals` handlers::
    To enable back-pressure from slow websocket clients treat methods
    :meth:`ping`, :meth:`pong`, :meth:`send_str`,
    :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
-   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
