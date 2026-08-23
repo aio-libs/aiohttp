@@ -89,6 +89,7 @@ _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 json_re = re.compile(r"^application/(?:[\w.+-]+?\+)?json")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+_LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
 
 
 def _gen_default_accept_encoding() -> str:
@@ -528,13 +529,12 @@ class ClientResponse(HeadersMixin):
             link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
-                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
-                if match is None:  # pragma: no cover
-                    # the check exists to suppress mypy error
+                match = _LINK_PARAM_RE.match(param.strip())
+                if match is None:  # Malformed param
                     continue
-                key, _, value, _ = match.groups()
+                key, _, value_quoted, value_unquoted = match.groups()
 
-                link.add(key, value)
+                link.add(key, value_unquoted if value_quoted is None else value_quoted)
 
             key = link.get("rel", url)
 
