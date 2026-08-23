@@ -81,6 +81,7 @@ if TYPE_CHECKING:
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+_LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
 
 
 @frozen_dataclass_decorator
@@ -497,9 +498,7 @@ class ClientResponse(HeadersMixin):
             link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
-                match = re.match(
-                    r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", param.strip(), re.M
-                )
+                match = _LINK_PARAM_RE.match(param.strip())
                 if match is None:  # Malformed param
                     continue
                 key, _, value_quoted, value_unquoted = match.groups()
