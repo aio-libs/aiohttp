@@ -1,0 +1,1 @@
+Fixed some edge case handling in multipart parts using base 64 encoding -- by :user:`Dreamsorcerer`.

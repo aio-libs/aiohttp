@@ -1,0 +1,6 @@
+Started publishing an additional pure-Python wheel alongside the existing
+per-platform binary wheels and the ``sdist`` -- by :user:`webknjaz`.
+
+This gives users on platforms without a working C compiler, or without a
+matching pre-built wheel, an installable fallback that does not require
+compilation.

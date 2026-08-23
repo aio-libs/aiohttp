@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiofastnet==0.22.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==1.1.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.7.1
     # via -r requirements/runtime-deps.in
@@ -18,7 +18,7 @@ backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_v
     # via -r requirements/runtime-deps.in
 brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-cffi==2.1.0
+cffi==2.1.1
     # via pycares
 exceptiongroup==1.3.1
     # via aiofastnet
@@ -28,13 +28,13 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==26.0.0
     # via -r requirements/base-ft.in
-idna==3.18
+idna==3.19
     # via yarl
 multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==26.2
+packaging==26.3
     # via gunicorn
 propcache==0.5.2
     # via
