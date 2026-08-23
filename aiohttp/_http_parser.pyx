@@ -554,8 +554,11 @@ cdef class HttpParser:
         self._messages.append((msg, payload))
 
     cdef _on_message_complete(self):
-        self._payload.feed_eof()
-        self._payload = None
+        # The payload is None when feed_eof() already completed a fully
+        # received content-length body.
+        if self._payload is not None:
+            self._payload.feed_eof()
+            self._payload = None
 
     cdef _on_chunk_header(self):
         self._payload.begin_http_chunk_receiving()
@@ -595,7 +598,8 @@ cdef class HttpParser:
             if self._cparser.flags & cparser.F_CHUNKED:
                 raise TransferEncodingError(
                     "Not enough data to satisfy transfer length header.")
-            elif self._cparser.flags & cparser.F_CONTENT_LENGTH:
+            elif (self._cparser.flags & cparser.F_CONTENT_LENGTH
+                  and self._cparser.content_length):
                 received = self._content_length_expected - self._cparser.content_length
                 raise ContentLengthError(
                     f"Not enough data to satisfy content length header "
@@ -604,6 +608,8 @@ cdef class HttpParser:
                 desc = cparser.llhttp_get_error_reason(self._cparser)
                 raise PayloadEncodingError(desc.decode('latin-1'))
             else:
+                # Reading until EOF, or a content-length body that was fully
+                # received but the parser paused.
                 self._eof_pending = True
                 while self._more_data_available:
                     if self._paused:

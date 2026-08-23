@@ -1,0 +1,4 @@
+Fixed requests pipelined behind a request whose upgrade the handler declined
+going unanswered once there were more of them than the per-connection queue
+holds. With the pure-Python parser the same requests were also served more
+than once -- by :user:`rodrigobnogueira`.

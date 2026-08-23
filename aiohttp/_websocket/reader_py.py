@@ -2,11 +2,12 @@
 
 import asyncio
 import builtins
+import sys
 from collections import deque
 from typing import Final
 
 from ..base_protocol import BaseProtocol
-from ..compression_utils import ZLibDecompressor
+from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
@@ -32,6 +33,12 @@ READ_HEADER = 1
 READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
+
+# Largest declared payload length the reader can represent: the compiled
+# reader stores it in a Py_ssize_t, which holds 2**31-1 on the 32-bit builds
+# (the win32 and armv7l wheels) and 2**63-1 everywhere else.
+# TODO: Remove when we drop 32 bit support (and from reader_c.pxd).
+MAX_PAYLOAD_LEN = sys.maxsize
 
 WS_MSG_TYPE_BINARY = WSMsgType.BINARY
 WS_MSG_TYPE_TEXT = WSMsgType.TEXT
@@ -158,6 +165,9 @@ class WebSocketReader:
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
         self._payload_fragments: list[bytes] = []
+        # Limit number of fragments, so a large number of tiny fragments
+        # doesn't exceed reasonable memory usage.
+        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -245,14 +255,20 @@ class WebSocketReader:
                 # but internally buffer more data such that the payload is
                 # >max_length, so we return one extra byte and if we're able
                 # to do that, then the message is too big.
-                payload_merged = self._decompressobj.decompress_sync(
-                    assembled_payload + WS_DEFLATE_TRAILING,
-                    (
-                        self._max_msg_size + 1
-                        if self._max_msg_size
-                        else self._max_msg_size
-                    ),
-                )
+                try:
+                    payload_merged = self._decompressobj.decompress_sync(
+                        assembled_payload + WS_DEFLATE_TRAILING,
+                        (
+                            self._max_msg_size + 1
+                            if self._max_msg_size
+                            else self._max_msg_size
+                        ),
+                    )
+                except TooManyMembersError as exc:
+                    raise WebSocketError(
+                        WSCloseCode.MESSAGE_TOO_BIG,
+                        "Compressed message has too many deflate members",
+                    ) from exc
                 if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
@@ -444,7 +460,16 @@ class WebSocketReader:
                 elif len_flag > 126:
                     if data_len - start_pos < 8:
                         break
-                    self._payload_bytes_to_read = UNPACK_LEN3(data, start_pos)[0]
+                    # The declared length is an unsigned 64-bit integer that
+                    # does not necessarily fit _payload_bytes_to_read.
+                    frame_len = UNPACK_LEN3(data, start_pos)[0]
+                    if frame_len > MAX_PAYLOAD_LEN:
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            f"Message size {int(frame_len) + len(self._partial)} "
+                            f"exceeds limit {self._max_msg_size or MAX_PAYLOAD_LEN}",
+                        )
+                    self._payload_bytes_to_read = frame_len
                     start_pos += 8
                 else:
                     self._payload_bytes_to_read = len_flag
@@ -457,11 +482,14 @@ class WebSocketReader:
                     OP_CODE_BINARY,
                     OP_CODE_CONTINUATION,
                 }:
-                    projected_size = self._payload_bytes_to_read + len(self._partial)
-                    if projected_size >= self._max_msg_size:
+                    # partial_len declared in reader_c.pxd to keep it in C.
+                    partial_len = len(self._partial)
+                    # payload_bytes_to_read is a signed Py_ssize_t C value,
+                    # use subtraction here to avoid an integer overflow.
+                    if self._payload_bytes_to_read >= self._max_msg_size - partial_len:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
-                            f"Message size {projected_size} "
+                            f"Message size {int(self._payload_bytes_to_read) + partial_len} "
                             f"exceeds limit {self._max_msg_size}",
                         )
 
@@ -493,6 +521,12 @@ class WebSocketReader:
                     # If we don't have a complete frame, we need to save the
                     # data for the next call to feed_data.
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if (
+                        self._max_fragments
+                        and len(self._payload_fragments) > self._max_fragments
+                        and not self.queue._protocol._reading_paused
+                    ):
+                        self.queue._protocol.pause_reading()
                     break
 
                 payload: bytes | bytearray
@@ -510,7 +544,7 @@ class WebSocketReader:
                 elif self._has_mask:
                     assert self._frame_mask is not None
                     payload_bytearray = data_cstr[f_start_pos:f_end_pos]  # type: ignore[assignment]
-                    if type(payload_bytearray) is not bytearray:  # pragma: no branch
+                    if type(payload_bytearray) is not bytearray:
                         # Cython will do the conversion for us
                         # but we need to do it for Python and we
                         # will always get here in Python
