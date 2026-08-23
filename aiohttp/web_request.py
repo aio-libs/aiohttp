@@ -411,6 +411,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         elem[name.lower()] = value
                         pos += len(match.group(0))
                         need_separator = True
+                    elif (semi := field_value.find(";", pos)) == -1:
+                        # No further pair to parse; a trailing empty or malformed
+                        # value ends this field-value.
+                        break
+                    elif not field_value[pos:semi].strip(" \t"):
+                        # Empty value
+                        pos = semi + 1
                 elif field_value[pos] == ",":  # next forwarded-element
                     need_separator = False
                     elem = {}
