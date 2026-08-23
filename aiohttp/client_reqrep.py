@@ -503,7 +503,7 @@ class ClientResponse(HeadersMixin):
                     continue
                 key, _, value_quoted, value_unquoted = match.groups()
 
-                link.add(key, value_quoted or value_unquoted)
+                link.add(key, value_unquoted if value_quoted is None else value_quoted)
 
             key = link.get("rel", url)
 
