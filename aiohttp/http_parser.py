@@ -86,8 +86,6 @@ TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
-# A control character makes the request-target unmatchable by the ABNF, so it's
-# an invalid request-line: https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
 _TARGET_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(r"[\x00-\x1f\x7f]")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
