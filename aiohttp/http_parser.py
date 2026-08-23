@@ -86,6 +86,7 @@ HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
+_TARGET_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(r"[\x00-\x1f\x7f]")
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
@@ -677,6 +678,12 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if not TOKENRE.fullmatch(method):
             raise BadHttpMethod(method)
         method = method.upper()
+
+        # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
+        if _TARGET_FORBIDDEN_CTL_RE.search(path):
+            raise InvalidURLError(
+                path.encode(errors="surrogateescape").decode("latin1")
+            )
 
         # version
         match = VERSRE.fullmatch(version)
