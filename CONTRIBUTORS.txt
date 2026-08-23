@@ -243,6 +243,7 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
+Lalith Kothuru
 Lars P. Søndergaard
 Lee LieWhite
 Liu Hua
