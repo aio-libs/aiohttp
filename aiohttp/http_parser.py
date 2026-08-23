@@ -86,6 +86,7 @@ TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
+_TARGET_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(r"[\x00-\x1f\x7f]")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
@@ -358,6 +359,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     # any preceding body is consumed before the next request
                     # line. Resumes via feed_data(b"") when the queue drains.
                     self._tail = data[start_pos:]
+                    # The remainder now lives in self._tail only. Don't return it.
+                    data = EMPTY
                     break
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
@@ -663,6 +666,12 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             raise BadHttpMethod(method)
         method = method.upper()
 
+        # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
+        if _TARGET_FORBIDDEN_CTL_RE.search(path):
+            raise InvalidURLError(
+                path.encode(errors="surrogateescape").decode("latin1")
+            )
+
         # version
         match = VERSRE.fullmatch(version)
         if match is None:
@@ -914,11 +923,20 @@ class HttpPayloadParser:
             self.done = True
             self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
-            received = self._length_expected - self._length
-            raise ContentLengthError(
-                f"Not enough data to satisfy content length header "
-                f"(received {received} of {self._length_expected} bytes)."
-            )
+            if self._length:
+                received = self._length_expected - self._length
+                raise ContentLengthError(
+                    f"Not enough data to satisfy content length header "
+                    f"(received {received} of {self._length_expected} bytes)."
+                )
+            # Body has already been received, but parser paused.
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return  # Will resume via feed_data(b"") later
+                self._more_data_available = self.payload.feed_data(b"")
+            self.payload.feed_eof()
+            self.done = True
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
                 "Not enough data to satisfy transfer length header."

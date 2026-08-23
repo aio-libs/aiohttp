@@ -216,7 +216,10 @@ class _WSConnectOptions(TypedDict, total=False):
 
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+# https://www.rfc-editor.org/info/rfc10008/#section-1-12
+IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE", "QUERY"}
+)
 
 _RetType_co = TypeVar(
     "_RetType_co",
@@ -730,10 +733,18 @@ class ClientSession:
                     ):
                         raise
                     except (ClientOSError, ServerDisconnectedError):
-                        if retry_persistent_connection:
-                            retry_persistent_connection = False
-                            continue
-                        raise
+                        if not retry_persistent_connection:
+                            raise
+                        retry_persistent_connection = False
+                        if data is not None:
+                            # Rebuilding from `data` would resend only the unread
+                            # remainder of a file object; reuse the payload, which
+                            # rewinds itself once the cancelled writer has settled.
+                            await req._close()
+                            if req._body.consumed:
+                                raise
+                            data = req._body
+                        continue
                     except ClientError:
                         raise
                     except OSError as exc:
