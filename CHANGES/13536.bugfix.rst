@@ -1,0 +1,7 @@
+Fixed the WebSocket reader accepting close code ``1006`` in a Close frame
+received from the peer -- by :user:`arshsmith1`.
+
+``1006`` (``ABNORMAL_CLOSURE``), like ``1005`` and ``1015``, is reserved by
+:rfc:`6455#section-7.4.1` and must not be sent as a status code on the wire;
+a Close frame carrying it is now rejected as a protocol error instead of being
+delivered as a valid close code.
