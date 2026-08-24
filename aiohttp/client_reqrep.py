@@ -908,9 +908,6 @@ class ClientRequestBase:
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-        # pop() removes only the first Host, so a caller passing duplicate
-        # Host headers would keep the extras and emit several Host lines on
-        # the wire. popall() drops every caller copy before extend() runs.
         self.headers[hdrs.HOST] = headers.popall(hdrs.HOST, (host,))[0]
         self.headers.extend(headers)
 
