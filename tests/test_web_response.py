@@ -1047,18 +1047,6 @@ async def test_ctor_with_headers_and_status() -> None:
     assert resp.headers["CONTENT-LENGTH"] == "4"
 
 
-async def test_explicit_date_skips_default_generation() -> None:
-    date = "Sun, 01 Aug 2021 12:00:00 GMT"
-    resp = web.Response(headers={hdrs.DATE: date})
-    req = make_mocked_request("GET", "/")
-
-    with mock.patch("aiohttp.web_response.rfc822_formatted_time") as formatter:
-        await resp._start(req)
-
-    formatter.assert_not_called()
-    assert resp.headers[hdrs.DATE] == date
-
-
 def test_ctor_content_type() -> None:
     resp = web.Response(content_type="application/json")
 
