@@ -7,7 +7,12 @@ import re
 import sys
 import traceback
 import warnings
+<<<<<<< HEAD
 from collections.abc import Callable, Iterable, Mapping
+=======
+from asyncio.base_events import BaseEventLoop
+from collections.abc import Callable, Iterable, Sequence
+>>>>>>> 394959ff2 (Avoid using loop-specific create_task() (#13530))
 from hashlib import md5, sha1, sha256
 from http.cookies import Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
@@ -1509,13 +1514,20 @@ class ClientRequest:
         task: asyncio.Task[None] | None
         if self._body or self._continue is not None or protocol.writing_paused:
             coro = self.write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to write
-                # bytes immediately to avoid having to schedule
+            if sys.version_info >= (3, 14):
+                # Try to write bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
-                task = self.loop.create_task(coro)
+                task = asyncio.create_task(coro)
             if task.done():
                 task = None
             else:
