@@ -1,0 +1,2 @@
+Avoided formatting an unused fallback ``Date`` header value when the response
+already has one -- by :user:`marcus-campbell`.
