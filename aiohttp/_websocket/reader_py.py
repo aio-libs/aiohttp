@@ -5,6 +5,7 @@ import builtins
 import sys
 import weakref
 from collections import deque
+from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
