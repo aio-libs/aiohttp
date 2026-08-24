@@ -82,6 +82,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _ws_protocol: str | None = None
     _writer: WebSocketWriter | None = None
     _reader: WebSocketDataQueue | None = None
+    _parser: WebSocketReader | None = None
     _closed: bool = False
     _closing: bool = False
     _conn_lost: int = 0
@@ -247,6 +248,8 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._closed:
             return
         self._set_closed()
+        # close() is never reached after this; release the parser here.
+        self._parser = None
         self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
         self._exception = exc
         if self._waiting and not self._closing and self._reader is not None:
@@ -391,14 +394,16 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._reader = WebSocketDataQueue(
             request._protocol, DEFAULT_CHUNK_SIZE, loop=loop
         )
-        parser = WebSocketReader(
+        # Owns the parser so a stalled reader parked on the queue by weakref
+        # stays alive while this response can still be drained.
+        self._parser = WebSocketReader(
             self._reader,
             self._max_msg_size,
             compress=bool(self._compress),
             decode_text=self._decode_text,
         )
         cb = None if self._heartbeat is None else self._on_data_received
-        request.protocol.set_parser(parser, data_received_cb=cb)
+        request.protocol.set_parser(self._parser, data_received_cb=cb)
         # disable HTTP keepalive for WebSocket
         request.protocol.keep_alive(False)
 
@@ -524,48 +529,53 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._set_closed()
 
         try:
-            await self._writer.close(code, message)
-            writer = self._payload_writer
-            assert writer is not None
-            if drain:
-                await writer.drain()
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            raise
-        except Exception as exc:
-            self._exception = exc
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            return True
+            try:
+                await self._writer.close(code, message)
+                writer = self._payload_writer
+                assert writer is not None
+                if drain:
+                    await writer.drain()
+            except (asyncio.CancelledError, asyncio.TimeoutError):
+                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+                raise
+            except Exception as exc:
+                self._exception = exc
+                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+                return True
 
-        reader = self._reader
-        assert reader is not None
-        # we need to break `receive()` cycle before we can call
-        # `reader.read()` as `close()` may be called from different task
-        if self._waiting:
-            assert self._loop is not None
-            assert self._close_wait is None
-            self._close_wait = self._loop.create_future()
-            reader.feed_data(WS_CLOSING_MESSAGE)
-            await self._close_wait
+            reader = self._reader
+            assert reader is not None
+            # we need to break `receive()` cycle before we can call
+            # `reader.read()` as `close()` may be called from different task
+            if self._waiting:
+                assert self._loop is not None
+                assert self._close_wait is None
+                self._close_wait = self._loop.create_future()
+                reader.feed_data(WS_CLOSING_MESSAGE)
+                await self._close_wait
 
-        if self._closing:
-            self._close_transport()
-            return True
+            if self._closing:
+                self._close_transport()
+                return True
 
-        try:
-            async with async_timeout.timeout(self._timeout):
-                while True:
-                    msg = await reader.read()
-                    if msg.type is WSMsgType.CLOSE:
-                        self._set_code_close_transport(msg.data)
-                        return True
-        except asyncio.CancelledError:
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            raise
-        except Exception as exc:
-            self._exception = exc
-            self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
-            return True
+            try:
+                async with async_timeout.timeout(self._timeout):
+                    while True:
+                        msg = await reader.read()
+                        if msg.type is WSMsgType.CLOSE:
+                            self._set_code_close_transport(msg.data)
+                            return True
+            except asyncio.CancelledError:
+                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+                raise
+            except Exception as exc:
+                self._exception = exc
+                self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
+                return True
+        finally:
+            # Once closed the response can no longer be drained; release the
+            # parser and the stash it retains.
+            self._parser = None
 
     def _set_closing(self, code: int) -> None:
         """Set the close code and mark the connection as closing."""
