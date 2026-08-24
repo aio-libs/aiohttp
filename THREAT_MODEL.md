@@ -582,6 +582,21 @@ client-side, the writer adds masks to outgoing frames.
   fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
   backpressure once exceeded, mirroring the HTTP chunk-splits limit in
   `StreamReader` (PR #11894).
+- **PR #13393** — queue accounting only counted payload bytes, so a flood
+  of empty/tiny frames could pin unbounded per-message object overhead in
+  `WebSocketDataQueue` before the `_limit` high-water mark fired. Each
+  queued message is now charged a 128-byte accounting overhead
+  (`MSG_SIZE_OVERHEAD`) and the reader stalls at a frame boundary once the
+  queue is over the mark: the unparsed remainder stays compressed in
+  `_tail`, the queue keeps only a weakref to the stalled reader, and
+  drains re-drive it at a `_limit // 2` low-water mark (each resume
+  re-slices the tail, so per-pop resumes would make draining a tiny-frame
+  burst quadratic CPU), and the transport stays paused until the stash is
+  exhausted (resuming earlier would admit a fresh socket read into `_tail`
+  per couple of drained messages, relocating the memory bound there).
+  Callers constructing a `WebSocketReader` for
+  `set_parser()` must hold a strong reference to it (both in-tree response
+  classes do, via `_parser`).
 
 ---
 
