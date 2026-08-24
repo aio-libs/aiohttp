@@ -8,7 +8,7 @@ import sys
 import traceback
 import warnings
 from asyncio.base_events import BaseEventLoop
-from collections.abc import Callable, Iterable, Mapping, Sequence#
+from collections.abc import Callable, Iterable, Mapping, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import Morsel, SimpleCookie
 from types import MappingProxyType, TracebackType
