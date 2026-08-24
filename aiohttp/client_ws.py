@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Generic, Literal, Optional, cast, overload
@@ -186,13 +187,17 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
         coro = self._writer.send_frame(b"", WSMsgType.PING)
-        if sys.version_info >= (3, 12):
-            # Optimization for Python 3.12, try to send the ping
-            # immediately to avoid having to schedule
+        if sys.version_info >= (3, 14):
+            # Try to send the ping immediately to avoid having to schedule
             # the task on the event loop.
+            if isinstance(loop, BaseEventLoop):
+                ping_task = asyncio.create_task(coro, eager_start=True)
+            else:
+                ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        elif sys.version_info >= (3, 12):
             ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
-            ping_task = loop.create_task(coro)
+            ping_task = asyncio.create_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task
