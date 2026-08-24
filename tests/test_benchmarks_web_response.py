@@ -47,7 +47,7 @@ def test_web_response_with_headers(benchmark: BenchmarkFixture) -> None:
 )
 def test_prepare_web_response_headers(
     benchmark: BenchmarkFixture,
-    event_loop: asyncio.AbstractEventLoop,
+    loop: asyncio.AbstractEventLoop,
     date_header: str | None,
 ) -> None:
     """Benchmark preparing 100 response headers with and without a Date header."""
@@ -70,7 +70,7 @@ def test_prepare_web_response_headers(
 
     @benchmark
     def _run() -> None:
-        event_loop.run_until_complete(prepare_responses())
+        loop.run_until_complete(prepare_responses())
 
 
 def test_web_response_with_bytes_body(
