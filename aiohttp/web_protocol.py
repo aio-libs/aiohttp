@@ -3,6 +3,7 @@ import asyncio.streams
 import sys
 import traceback
 import warnings
+from asyncio.base_events import BaseEventLoop
 from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
@@ -369,7 +370,12 @@ class RequestHandler(BaseProtocol):
         self._manager.connection_made(self, real_transport)
 
         loop = self._loop
-        if sys.version_info >= (3, 12):
+        if sys.version_info >= (3, 14):
+            if isinstance(loop, BaseEventLoop):
+                task = asyncio.create_task(self.start(), eager_start=True)
+            else:
+                task = asyncio.Task(self.start(), loop=loop, eager_start=True)
+        elif sys.version_info >= (3, 12):
             task = asyncio.Task(self.start(), loop=loop, eager_start=True)
         else:
             task = loop.create_task(self.start())
@@ -685,7 +691,12 @@ class RequestHandler(BaseProtocol):
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, request_handler)
-                if sys.version_info >= (3, 12):
+                if sys.version_info >= (3, 14):
+                    if isinstance(loop, BaseEventLoop):
+                        task = asyncio.create_task(coro, eager_start=True)
+                    else:
+                        task = asyncio.Task(coro, loop=loop, eager_start=True)
+                elif sys.version_info >= (3, 12):
                     task = asyncio.Task(coro, loop=loop, eager_start=True)
                 else:
                     task = loop.create_task(coro)

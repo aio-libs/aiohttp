@@ -3,6 +3,7 @@
 import asyncio
 import random
 import sys
+from asyncio.base_events import BaseEventLoop
 from functools import partial
 from typing import Final, Optional, Set
 
@@ -96,13 +97,20 @@ class WebSocketWriter:
             # Create a task to shield from cancellation
             # The lock is acquired inside the shielded task so the entire
             # operation (lock + compress + send) completes atomically.
-            # Use eager_start on Python 3.12+ to avoid scheduling overhead
-            loop = asyncio.get_running_loop()
+            # Use eager_start to avoid scheduling overhead
             coro = self._send_compressed_frame_async_locked(message, opcode, compress)
-            if sys.version_info >= (3, 12):
-                send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+            if sys.version_info >= (3, 14):
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    send_task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                send_task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
-                send_task = loop.create_task(coro)
+                send_task = asyncio.create_task(coro)
             # Keep a strong reference to prevent garbage collection
             self._background_tasks.add(send_task)
             send_task.add_done_callback(self._background_tasks.discard)
