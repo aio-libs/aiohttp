@@ -155,6 +155,7 @@ Gary Leung
 Gary Wilson Jr.
 Gene Hoffman
 Gennady Andreyev
+George Fifth
 Georges Dubus
 goingforstudying-ctrl
 Greg Holt
@@ -243,6 +244,7 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
+Lalith Kothuru
 Lars P. Søndergaard
 Lee LieWhite
 Liu Hua
@@ -260,6 +262,7 @@ Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
 Marco Paolini
+Marcus Campbell
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
@@ -446,6 +449,7 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Zuhef Ahmed
 Łukasz Setla
 Марк Коренберг
 Семён Марьясин

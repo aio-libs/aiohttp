@@ -206,6 +206,18 @@ async def loop_debug_mode() -> AsyncIterator[None]:
         loop.set_debug(False)
 
 
+@pytest.fixture(scope="session")
+def symlinks_supported() -> None:
+    """Skip tests if symlinks not support (e.g. Windows permission problem)."""
+    with TemporaryDirectory() as tmp_dir:
+        target = Path(tmp_dir) / "symlink-target"
+        target.touch()
+        try:
+            (Path(tmp_dir) / "symlink").symlink_to(target)
+        except OSError as exc:  # pragma: no cover
+            pytest.skip(f"requires privilege to create symlinks: {exc}")
+
+
 @pytest.fixture
 def unix_sockname(
     tmp_path: Path, tmp_path_factory: pytest.TempPathFactory
