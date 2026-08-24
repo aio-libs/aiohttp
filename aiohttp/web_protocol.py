@@ -403,11 +403,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         assert self._manager is not None
         self._manager.connection_made(self, real_transport)
 
-        loop = self._loop
-        if sys.version_info >= (3, 12):
-            task = asyncio.Task(self.start(), loop=loop, eager_start=True)
+        if sys.version_info >= (3, 14):
+            task = asyncio.create_task(self.start(), eager_start=True)
         else:
-            task = loop.create_task(self.start())
+            task = asyncio.create_task(self.start())
         self._task_handler = task
 
     def connection_lost(self, exc: BaseException | None) -> None:
@@ -726,10 +725,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, self._request_handler)
-                if sys.version_info >= (3, 12):
-                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+                if sys.version_info >= (3, 14):
+                    task = asyncio.create_task(coro, eager_start=True)
                 else:
-                    task = loop.create_task(coro)
+                    task = asyncio.create_task(coro)
                 try:
                     resp, reset = await task
                 except ConnectionError:

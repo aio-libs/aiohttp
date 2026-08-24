@@ -983,13 +983,12 @@ class ClientRequestBase:
         task: asyncio.Task[None] | None
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to write
-                # bytes immediately to avoid having to schedule
+            if sys.version_info >= (3, 14):
+                # Try to write bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                task = asyncio.create_task(coro, eager_start=True)
             else:
-                task = self.loop.create_task(coro)
+                task = asyncio.create_task(coro)
             if task.done():
                 task = None
             else:

@@ -1195,12 +1195,11 @@ class TCPConnector(BaseConnector):
         # all the waiters across all connections.
         #
         coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
-        loop = asyncio.get_running_loop()
-        if sys.version_info >= (3, 12):
-            # Optimization for Python 3.12, try to send immediately
-            resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        if sys.version_info >= (3, 14):
+            # Try to send immediately to avoid having to schedule the task.
+            resolved_host_task = asyncio.create_task(coro, eager_start=True)
         else:
-            resolved_host_task = loop.create_task(coro)
+            resolved_host_task = asyncio.create_task(coro)
 
         if not resolved_host_task.done():
             self._resolve_host_tasks.add(resolved_host_task)
