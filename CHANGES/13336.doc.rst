@@ -1,0 +1,2 @@
+Added ``interlock-cb``, an aiohttp client circuit breaker middleware, to the
+third-party libraries page -- by :user:`bagowix`.
