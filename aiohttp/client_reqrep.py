@@ -41,6 +41,7 @@ from .helpers import (
     HeadersDictProxy,
     HeadersMixin,
     TimerNoop,
+    create_eager_task,
     encode_basic_auth,
     frozen_dataclass_decorator,
     is_expected_content_type,
@@ -982,13 +983,10 @@ class ClientRequestBase:
 
         task: asyncio.Task[None] | None
         if self._should_write(protocol):
+            # Try to write bytes immediately to avoid having to schedule
+            # the task on the event loop.
             coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 14):
-                # Try to write bytes immediately to avoid having to schedule
-                # the task on the event loop.
-                task = asyncio.create_task(coro, eager_start=True)
-            else:
-                task = asyncio.create_task(coro)
+            task = create_eager_task(coro)
             if task.done():
                 task = None
             else:

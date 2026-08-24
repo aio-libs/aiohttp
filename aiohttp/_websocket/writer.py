@@ -2,14 +2,13 @@
 
 import asyncio
 import random
-import sys
 from functools import partial
 from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..client_exceptions import ClientConnectionResetError
 from ..compression_utils import ZLibBackend, ZLibCompressor
-from ..helpers import DEFAULT_CHUNK_SIZE
+from ..helpers import DEFAULT_CHUNK_SIZE, create_eager_task
 from .helpers import (
     MASK_LEN,
     MSG_SIZE,
@@ -96,12 +95,9 @@ class WebSocketWriter:
             # Create a task to shield from cancellation
             # The lock is acquired inside the shielded task so the entire
             # operation (lock + compress + send) completes atomically.
-            # Use eager_start to avoid scheduling overhead
+            # Started eagerly to avoid scheduling overhead
             coro = self._send_compressed_frame_async_locked(message, opcode, compress)
-            if sys.version_info >= (3, 14):
-                send_task = asyncio.create_task(coro, eager_start=True)
-            else:
-                send_task = asyncio.create_task(coro)
+            send_task = create_eager_task(coro)
             # Keep a strong reference to prevent garbage collection
             self._background_tasks.add(send_task)
             send_task.add_done_callback(self._background_tasks.discard)

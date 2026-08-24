@@ -16,6 +16,7 @@ from .client_exceptions import WSMessageTypeError
 from .helpers import (
     DEFAULT_CHUNK_SIZE,
     calculate_timeout_when,
+    create_eager_task,
     frozen_dataclass_decorator,
     set_exception,
     set_result,
@@ -208,13 +209,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._cancel_pong_response_cb()
         self._pong_response_cb = loop.call_at(when, self._pong_not_received)
 
+        # Try to send the ping immediately to avoid having to schedule
+        # the task on the event loop.
         coro = self._writer.send_frame(b"", WSMsgType.PING)
-        if sys.version_info >= (3, 14):
-            # Try to send the ping immediately to avoid having to schedule
-            # the task on the event loop.
-            ping_task = asyncio.create_task(coro, eager_start=True)
-        else:
-            ping_task = asyncio.create_task(coro)
+        ping_task = create_eager_task(coro)
 
         if not ping_task.done():
             self._ping_task = ping_task

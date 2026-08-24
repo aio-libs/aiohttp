@@ -16,7 +16,7 @@ import sys
 import time
 import warnings
 import weakref
-from collections.abc import Callable, Iterable, Iterator, Mapping
+from collections.abc import Callable, Coroutine, Iterable, Iterator, Mapping
 from contextlib import suppress
 from email.message import EmailMessage
 from email.parser import HeaderParser
@@ -850,6 +850,31 @@ class HeadersMixin:
         """The value of Content-Length HTTP header."""
         content_length = self._headers.get(hdrs.CONTENT_LENGTH)
         return None if content_length is None else int(content_length)
+
+
+if sys.version_info >= (3, 14):
+
+    def create_eager_task(coro: Coroutine[Any, Any, _T]) -> "asyncio.Task[_T]":
+        """Create a task on the running loop, stepping it immediately."""
+        return asyncio.create_task(coro, eager_start=True)
+
+elif sys.version_info >= (3, 12):
+
+    def create_eager_task(coro: Coroutine[Any, Any, _T]) -> "asyncio.Task[_T]":
+        """Create a task on the running loop, stepping it immediately.
+
+        ``loop.create_task()`` only grew ``eager_start`` in 3.14, so the task is
+        constructed directly. The loop must be the *running* one: eager-starting
+        a task bound to a loop running in another thread steps the coroutine in
+        the calling thread while hijacking that loop's current-task slot (#13346).
+        """
+        return asyncio.Task(coro, loop=asyncio.get_running_loop(), eager_start=True)
+
+else:
+
+    def create_eager_task(coro: Coroutine[Any, Any, _T]) -> "asyncio.Task[_T]":
+        """Create a task on the running loop (eager start needs 3.12+)."""
+        return asyncio.create_task(coro)
 
 
 def set_result(fut: "asyncio.Future[_T]", result: _T) -> None:

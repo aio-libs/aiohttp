@@ -45,6 +45,7 @@ from .helpers import (
     _SENTINEL,
     HIGH_LEVEL_SCHEMA_SET,
     ceil_timeout,
+    create_eager_task,
     is_canonical_ipv4_address,
     is_ip_address,
     sentinel,
@@ -1194,12 +1195,9 @@ class TCPConnector(BaseConnector):
         # the underlying lookup or else the cancel event will get broadcast to
         # all the waiters across all connections.
         #
+        # Try to resolve immediately to avoid having to schedule the task.
         coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
-        if sys.version_info >= (3, 14):
-            # Try to send immediately to avoid having to schedule the task.
-            resolved_host_task = asyncio.create_task(coro, eager_start=True)
-        else:
-            resolved_host_task = asyncio.create_task(coro)
+        resolved_host_task = create_eager_task(coro)
 
         if not resolved_host_task.done():
             self._resolve_host_tasks.add(resolved_host_task)

@@ -4,6 +4,7 @@ import gc
 import ipaddress
 import itertools
 import sys
+import threading
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -19,6 +20,7 @@ from yarl import URL
 from aiohttp import helpers, web
 from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
+    create_eager_task,
     is_expected_content_type,
     must_be_empty_body,
     parse_http_date,
@@ -1220,3 +1222,52 @@ def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
 
     assert should_remove_content_length("CONNECT", 300) is False
     assert must_be_empty_body("CONNECT", 300) is False
+
+
+# ------------------- create_eager_task -------------------------------
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 12), reason="eager task start requires Python 3.12+"
+)
+async def test_create_eager_task_steps_the_coroutine_immediately() -> None:
+    started = False
+
+    async def coro() -> None:
+        nonlocal started
+        started = True
+
+    task = create_eager_task(coro())
+    assert started is True
+    assert task.done() is True
+    await task
+
+
+async def test_create_eager_task_ignores_loops_in_other_threads() -> None:
+    """Eager start must not touch a loop running in another thread (#13346)."""
+    other_loop = asyncio.new_event_loop()
+    started = threading.Event()
+
+    def run() -> None:
+        other_loop.call_soon(started.set)
+        other_loop.run_forever()
+
+    thread = threading.Thread(target=run, daemon=True)
+    thread.start()
+    started.wait()
+
+    seen: list[object] = []
+
+    async def probe() -> None:
+        seen.append(asyncio.current_task(other_loop))
+
+    try:
+        task = create_eager_task(probe())
+        assert task.get_loop() is asyncio.get_running_loop()
+        await task
+        # The foreign loop's current-task slot was never hijacked.
+        assert seen == [None]
+    finally:
+        other_loop.call_soon_threadsafe(other_loop.stop)
+        thread.join()
+        other_loop.close()
