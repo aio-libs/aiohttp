@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Final, Generic, Literal, overload
@@ -188,7 +189,12 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if sys.version_info >= (3, 14):
             # Try to send the ping immediately to avoid having to schedule
             # the task on the event loop.
-            ping_task = asyncio.create_task(coro, eager_start=True)
+            if isinstance(loop, BaseEventLoop):
+                ping_task = asyncio.create_task(coro, eager_start=True)
+            else:
+                ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        elif sys.version_info >= (3, 12):
+            ping_task = asyncio.Task(coro, loop=loop, eager_start=True)
         else:
             ping_task = asyncio.create_task(coro)
 

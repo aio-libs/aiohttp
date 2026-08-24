@@ -3,6 +3,7 @@
 import asyncio
 import random
 import sys
+from asyncio.base_events import BaseEventLoop
 from functools import partial
 from typing import Final
 
@@ -99,7 +100,15 @@ class WebSocketWriter:
             # Use eager_start to avoid scheduling overhead
             coro = self._send_compressed_frame_async_locked(message, opcode, compress)
             if sys.version_info >= (3, 14):
-                send_task = asyncio.create_task(coro, eager_start=True)
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    send_task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    send_task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                send_task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
                 send_task = asyncio.create_task(coro)
             # Keep a strong reference to prevent garbage collection

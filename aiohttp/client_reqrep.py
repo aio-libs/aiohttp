@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
@@ -986,7 +987,15 @@ class ClientRequestBase:
             if sys.version_info >= (3, 14):
                 # Try to write bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.create_task(coro, eager_start=True)
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
                 task = asyncio.create_task(coro)
             if task.done():
