@@ -1,6 +1,8 @@
 import asyncio
+import base64
 import io
 import json
+import os
 import pathlib
 import socket
 import sys
@@ -26,13 +28,17 @@ from aiohttp import (
     multipart,
     web,
 )
+from aiohttp._websocket.writer import WebSocketWriter
 from aiohttp.abc import AbstractResolver, ResolveResult
+from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibCompressObjProtocol
 from aiohttp.hdrs import CONTENT_LENGTH, CONTENT_TYPE, TRANSFER_ENCODING
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
+from aiohttp.http import WSMsgType
 from aiohttp.streams import StreamReader
 from aiohttp.typedefs import Handler, Middleware
 from aiohttp.web_protocol import MAX_MSG_QUEUE_SIZE, RequestHandler
+from aiohttp.web_request import _FILE_SPOOL_MAX_SIZE
 
 try:
     import brotlicffi as brotli
@@ -1898,6 +1904,221 @@ async def test_http1_pipelined_behind_declined_upgrade_served_once(
     assert len(set(handled)) == len(handled)
 
 
+async def test_upgrade_tail_is_byte_limited(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Bytes buffered behind an in-flight upgrade must not grow unbounded.
+
+    A request the parser flagged as an upgrade has no payload, so everything
+    arriving while its handler runs is buffered whole until the handler either
+    prepares a websocket or answers normally. Only ``read_bufsize`` of it may be
+    held before reading is paused, regardless of how much is sent.
+    """
+    # Above the default so a ceiling that ignores read_bufsize fails the lower
+    # bound, and well below what is sent so no cap at all fails the upper one.
+    read_bufsize = 1024 * 1024
+    handler_started = asyncio.Event()
+    release_handler = asyncio.Event()
+    reading_paused = asyncio.Event()
+    max_tail = 0
+    data_received = RequestHandler.data_received
+
+    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
+        nonlocal max_tail
+        data_received(self, data)
+        if self._message_tail:
+            max_tail = max(max_tail, len(self._message_tail))
+            if self._msg_queue_paused:
+                reading_paused.set()
+
+    monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
+
+    async def upgrade_handler(request: web.Request) -> web.Response:
+        handler_started.set()
+        await release_handler.wait()
+        return web.Response(text="declined")
+
+    app = web.Application()
+    app.router.add_get("/upgrade", upgrade_handler)
+    server = await aiohttp_server(app, read_bufsize=read_bufsize)
+
+    chunk = b"A" * (64 * 1024)
+    chunks = (4 * 1024 * 1024) // len(chunk)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET /upgrade HTTP/1.1\r\nHost: localhost\r\n"
+            b"Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+        )
+        await writer.drain()
+        await asyncio.wait_for(handler_started.wait(), 1)
+
+        async def send_until_paused() -> None:
+            for _ in range(chunks):  # pragma: no branch
+                if reading_paused.is_set():
+                    break
+                writer.write(chunk)
+                await writer.drain()
+
+        sender = asyncio.create_task(send_until_paused())
+        try:
+            # Only elapses if nothing caps the buffer, in which case the
+            # assertions below report what was actually buffered.
+            with suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(reading_paused.wait(), 5)
+        finally:
+            sender.cancel()
+            with suppress(asyncio.CancelledError):
+                await sender
+    finally:
+        release_handler.set()
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert reading_paused.is_set(), f"reading never paused, buffered {max_tail} bytes"
+    # pause_reading() only takes effect after the read in flight, and asyncio
+    # reads at most DEFAULT_CHUNK_SIZE per call, so one extra chunk may land.
+    assert read_bufsize <= max_tail < read_bufsize + DEFAULT_CHUNK_SIZE
+
+
+async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
+    aiohttp_server: AiohttpServer,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A websocket paused while its tail filled up must keep reading.
+
+    A client may pipeline frames straight after the handshake request, filling
+    the tail buffer and pausing reading before the handler prepares. Once the
+    websocket owns the connection the tail is handed over, so reading has to
+    resume or whatever the client sent meanwhile is never read.
+    """
+    handshake_seen = asyncio.Event()
+    reading_paused = asyncio.Event()
+    release_handler = asyncio.Event()
+    last_received = asyncio.Event()
+    received: list[str] = []
+    data_received = RequestHandler.data_received
+
+    def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
+        data_received(self, data)
+        if self._msg_queue_paused:
+            reading_paused.set()
+
+    monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        handshake_seen.set()
+        await release_handler.wait()
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        async for msg in ws:  # pragma: no branch
+            assert isinstance(msg.data, str)
+            received.append(msg.data)
+            if msg.data == "last":
+                last_received.set()
+                break
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    read_bufsize = 64 * 1024
+    server = await aiohttp_server(app, read_bufsize=read_bufsize)
+
+    # Enough pipelined frames to fill the tail, so reading must pause.
+    frame_payload = "B" * (32 * 1024)
+    frames = (read_bufsize // len(frame_payload)) + 2
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET /ws HTTP/1.1\r\nHost: localhost\r\n"
+            b"Connection: Upgrade\r\nUpgrade: websocket\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n\r\n"
+        )
+        await writer.drain()
+        await asyncio.wait_for(handshake_seen.wait(), 1)
+
+        # Encode client frames off to the side, as tests/test_websocket_writer.py
+        # does, and put the bytes on the wire ourselves.
+        encoded = bytearray()
+        frame_transport = mock.create_autospec(
+            asyncio.Transport, spec_set=True, instance=True
+        )
+        # Defaults to a truthy Mock, which WebSocketWriter reads as closing.
+        frame_transport.is_closing.return_value = False
+        frame_transport.write.side_effect = encoded.extend
+        ws_writer = WebSocketWriter(
+            mock.create_autospec(BaseProtocol, spec_set=True, instance=True),
+            frame_transport,
+            use_mask=True,
+        )
+
+        for _ in range(frames):
+            await ws_writer.send_frame(frame_payload.encode(), WSMsgType.TEXT)
+        writer.write(encoded)
+        await writer.drain()
+        await asyncio.wait_for(reading_paused.wait(), 5)
+
+        # Sent while reading is paused, so this frame is only ever read if the
+        # handover to the websocket resumes the transport.
+        encoded.clear()
+        await ws_writer.send_frame(b"last", WSMsgType.TEXT)
+        writer.write(encoded)
+        await writer.drain()
+        release_handler.set()
+
+        await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 5)
+        await asyncio.wait_for(last_received.wait(), 5)
+    finally:
+        release_handler.set()
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert received == [frame_payload] * frames + ["last"]
+
+
+async def test_bad_pipelined_data_behind_declined_upgrade_answers_400(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Junk buffered behind an upgrade must not swallow the upgrade response.
+
+    The tail is only parsed once the handler answers, so a parse error there
+    has to be reported as a 400 like it would be from data_received(); letting
+    it escape loses the response that was about to be written.
+    """
+
+    async def upgrade_handler(request: web.Request) -> web.Response:
+        return web.Response(text="declined")
+
+    app = web.Application()
+    app.router.add_get("/upgrade", upgrade_handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET /upgrade HTTP/1.1\r\nHost: localhost\r\n"
+            b"Connection: Upgrade\r\nUpgrade: websocket\r\n\r\n"
+            b"\x00" * 64
+        )
+        await writer.drain()
+        response = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert b"declined" in response, response
+    # A 400 only follows if the parse error was reported instead of escaping,
+    # and "declined" only arrives if it did not abort this response first.
+    assert b" 400 " in response, response
+
+
 async def test_declined_websocket_upgrade_reads_body(
     aiohttp_server: AiohttpServer,
 ) -> None:
@@ -2142,6 +2363,165 @@ async def test_post_max_client_size_for_file(aiohttp_client: AiohttpClient) -> N
     assert 413 == resp.status
 
     resp.release()
+
+
+def _multipart_file_parts(count: int, body: bytes = b"") -> bytes:
+    """Raw multipart/form-data body of ``count`` file parts, boundary ``b``."""
+    return (
+        b"".join(
+            b'--b\r\nContent-Disposition: form-data; name="f%d"; '
+            b'filename="x"\r\n\r\n' % index + body + b"\r\n"
+            for index in range(count)
+        )
+        + b"--b--\r\n"
+    )
+
+
+async def test_post_max_client_size_counts_multipart_headers(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application(client_max_size=1)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    body = _multipart_file_parts(55)
+    assert len(body) > 1
+    async with client.post(
+        "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
+    ) as resp:
+        assert resp.status == 413
+
+
+@pytest.mark.parametrize(
+    "max_size",
+    (_FILE_SPOOL_MAX_SIZE, 2 * _FILE_SPOOL_MAX_SIZE),
+    ids=("spooled", "rolled-over"),
+)
+async def test_post_max_client_size_within_single_part(
+    aiohttp_client: AiohttpClient, max_size: int
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    app = web.Application(client_max_size=max_size)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # A sole oversized part is never followed by a boundary, so only the
+    # per-chunk check can reject it, and it must do so before buffering. The
+    # larger limit lets the part reach the disk first, so the spool is then
+    # closed off the event loop too.
+    data = FormData()
+    with io.BytesIO(b"x" * (3 * _FILE_SPOOL_MAX_SIZE)) as file_handle:
+        data.add_field("file", file_handle, filename="x.bin")
+        async with client.post("/", data=data) as resp:
+            assert resp.status == 413
+
+
+@pytest.mark.parametrize("filename", (b"", b'; filename="x"'), ids=("field", "file"))
+async def test_post_max_client_size_counts_undecoded_bytes(
+    aiohttp_client: AiohttpClient, filename: bytes
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        await request.post()
+        assert False
+
+    limit = 64 * 1024
+    app = web.Application(client_max_size=limit)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # base64 decodes to exactly the limit but arrives 4/3 larger. The limit is
+    # on the request body, so both kinds of part must reject it alike.
+    encoded = base64.b64encode(b"A" * limit)
+    assert len(encoded) > limit
+    body = (
+        b'--b\r\nContent-Disposition: form-data; name="f"' + filename + b"\r\n"
+        b"Content-Transfer-Encoding: base64\r\n\r\n" + encoded + b"\r\n--b--\r\n"
+    )
+    async with client.post(
+        "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
+    ) as resp:
+        assert resp.status == 413
+
+
+@pytest.mark.skipif(not os.path.isdir("/dev/fd"), reason="needs /dev/fd to count fds")
+@pytest.mark.parametrize(
+    ("parts", "part_body", "expected_fds"),
+    (
+        (55, b"payload", 0),
+        (1, b"x" * (_FILE_SPOOL_MAX_SIZE + 1), 1),
+    ),
+    ids=("many-small-parts", "one-oversized-part"),
+)
+async def test_post_file_fields_descriptor_cost(
+    aiohttp_client: AiohttpClient, parts: int, part_body: bytes, expected_fds: int
+) -> None:
+    """Only a part past the spool size may cost a descriptor."""
+
+    async def handler(request: web.Request) -> web.Response:
+        before = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        data = await request.post()
+        after = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        assert len(data) == parts
+        return web.Response(text=str(len(after - before)))
+
+    app = web.Application(client_max_size=8 * 1024**2)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    with io.BytesIO(_multipart_file_parts(parts, part_body)) as body:
+        async with client.post(
+            "/",
+            data=body,
+            headers={CONTENT_TYPE: "multipart/form-data; boundary=b"},
+        ) as resp:
+            assert resp.status == 200
+            assert await resp.text() == str(expected_fds)
+
+
+@pytest.mark.parametrize(
+    "size",
+    (
+        0,
+        1,
+        _FILE_SPOOL_MAX_SIZE - 1,
+        _FILE_SPOOL_MAX_SIZE,
+        _FILE_SPOOL_MAX_SIZE + 1,
+    ),
+)
+async def test_post_file_field_spool_rollover(
+    aiohttp_client: AiohttpClient, size: int
+) -> None:
+    """A part is byte-identical either side of the spool/temp-file boundary."""
+    payload = (b"0123456789abcdef" * (size // 16 + 1))[:size]
+
+    async def handler(request: web.Request) -> web.Response:
+        field = (await request.post())["file"]
+        assert isinstance(field, aiohttp.web_request.FileField)
+        assert isinstance(field.file, io.IOBase)
+        assert field.file.readable()
+        assert field.file.writable()
+        assert field.file.seekable()
+        content = await asyncio.to_thread(field.file.read)
+        assert len(content) == size
+        assert content == payload
+        return web.Response()
+
+    app = web.Application(client_max_size=8 * 1024**2)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    data = FormData()
+    with io.BytesIO(payload) as file_handle:
+        data.add_field("file", file_handle, filename="x.bin")
+        async with client.post("/", data=data) as resp:
+            assert resp.status == 200
 
 
 async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
@@ -2529,7 +2909,7 @@ async def test_bad_method_for_c_http_parser_not_hangs(
     aiohttp_client: AiohttpClient,
 ) -> None:
     app = web.Application()
-    timeout = aiohttp.ClientTimeout(sock_read=0.2)
+    timeout = aiohttp.ClientTimeout(sock_read=3)
     client = await aiohttp_client(app, timeout=timeout)
     resp = await client.request("GET1", "/")
     assert 400 == resp.status

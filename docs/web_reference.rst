@@ -970,7 +970,7 @@ and :ref:`aiohttp-web-signals` handlers::
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
                              protocols=(), compress=True, max_msg_size=4194304, \
-                             writer_limit=65536, decode_text=True)
+                             writer_limit=262144, decode_text=True)
    :canonical: aiohttp.web_ws.WebSocketResponse
 
    Class for handling server-side websockets, inherited from
@@ -984,7 +984,6 @@ and :ref:`aiohttp-web-signals` handlers::
    To enable back-pressure from slow websocket clients treat methods
    :meth:`ping`, :meth:`pong`, :meth:`send_str`,
    :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
-   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -1029,7 +1028,7 @@ and :ref:`aiohttp-web-signals` handlers::
                            ``request.transport.close()`` to avoid
                            leaking resources.
 
-   :param int writer_limit: maximum size of write buffer, 64 KB by default.
+   :param int writer_limit: maximum size of write buffer, 256 KiB by default.
                             Once the buffer is full, the websocket will pause
                             to drain the buffer.
 
