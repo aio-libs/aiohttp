@@ -910,7 +910,7 @@ class ClientRequestBase:
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-        self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
+        self.headers[hdrs.HOST] = headers.popall(hdrs.HOST, (host,))[0]
         self.headers.extend(headers)
 
     def _create_response(
