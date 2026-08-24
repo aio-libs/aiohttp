@@ -2,6 +2,8 @@ import asyncio
 import pickle
 import random
 import struct
+import sys
+import zlib
 from unittest import mock
 
 import pytest
@@ -634,6 +636,103 @@ def test_compressed_continuation_with_ping(
     assert out._buffer[1] == WSMessageBinary(data=message, size=len(message), extra="")
 
 
+def test_compressed_frame_after_control_frame(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # A control frame arriving before the first data frame must not
+    # latch the per-message compression state.
+    # https://github.com/aio-libs/aiohttp/issues/13274
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PONG, 0))
+    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
+
+    assert out._buffer[0] == WSMessagePong(data=b"", size=0, extra="")
+    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
+
+
+# A complete raw-deflate member: BFINAL set, empty fixed-Huffman block,
+# decoding to nothing.
+EMPTY_DEFLATE_MEMBER = b"\x03\x00"
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_multi_block_message(out: WebSocketDataQueue) -> None:
+    """Blocks that leave BFINAL unset stay a single member."""
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    compressobj = zlib.compressobj(wbits=-15)
+    payload = b"".join(
+        compressobj.compress(b"block %d " % i)
+        + compressobj.flush(ZLibBackend.Z_SYNC_FLUSH)
+        for i in range(50)
+    ).removesuffix(WS_DEFLATE_TRAILING)
+    expected = b"".join(b"block %d " % i for i in range(50))
+
+    # FIN | RSV1 (compressed) | BINARY
+    error, _ = reader.feed_data(
+        PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+    )
+
+    assert error is False
+    assert out._buffer[0] == WSMessageBinary(
+        data=expected, size=len(expected), extra=""
+    )
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_multi_member_message(out: WebSocketDataQueue) -> None:
+    """Concatenated BFINAL members decode.
+
+    A block following a BFINAL one starts a fresh deflate member, so this must
+    keep working well below the member limit.
+    """
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    payload = b""
+    for i in range(50):
+        compressobj = zlib.compressobj(wbits=-15)
+        payload += compressobj.compress(b"part %d " % i) + compressobj.flush()
+    expected = b"".join(b"part %d " % i for i in range(50))
+
+    error, _ = reader.feed_data(
+        PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+    )
+
+    assert error is False
+    assert out._buffer[0] == WSMessageBinary(
+        data=expected, size=len(expected), extra=""
+    )
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
+    """Past the member limit the message is rejected, not decoded.
+
+    The reader hands the whole assembled message to one synchronous
+    decompress_sync() call. Empty members produce no output for max_msg_size
+    to bound, so must be limited by member count.
+    """
+    max_msg_size = 262144
+    reader = WebSocketReader(out, max_msg_size, compress=True, decode_text=True)
+    payload = EMPTY_DEFLATE_MEMBER * (2 * max_msg_size // 256)
+
+    with pytest.raises(WebSocketError) as ctx:
+        reader._feed_data(
+            PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+        )
+
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+@pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
+def test_control_frame_with_rsv1(
+    parser: PatchableWebSocketReader, opcode: WSMsgType
+) -> None:
+    # Control frames never carry the per-message compressed bit.
+    # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b01000001, 0b00000001))
     parser.parse_frame(b"1")
@@ -730,6 +829,81 @@ def test_msg_too_large_text_after_non_fin_text(out: WebSocketDataQueue) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+def test_msg_too_large_declared_length_near_ssize_t_max(
+    out: WebSocketDataQueue,
+) -> None:
+    # Regression test: the header-time size check compares
+    # `payload_bytes_to_read + len(partial)` against max_msg_size. In the
+    # compiled Cython reader payload_bytes_to_read is a signed Py_ssize_t C
+    # value, and RFC 6455 allows a declared length up to 2**63-1, so a naive
+    # addition can wrap around to a negative number and bypass the limit
+    # entirely once anything is already buffered in `partial`.
+    max_msg_size = 4 * 1024 * 1024
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    # Buffer one byte in `partial` via a non-fin fragment.
+    first = build_frame(b"a", WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(first)
+
+    # Continuation header alone declares the largest length RFC 6455
+    # allows: 2**63-1.
+    header = PACK_LEN3(WSMsgType.CONTINUATION, 127, 2**63 - 1)
+    with pytest.raises(
+        WebSocketError,
+        match=rf"^Message size {2**63} exceeds limit {max_msg_size}$",
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+@pytest.mark.parametrize(
+    "declared",
+    (sys.maxsize + 1, 2**64 - 1),
+    ids=("ssize_t_max_plus_one", "uint64_max"),
+)
+@pytest.mark.parametrize(
+    "max_msg_size", (4 * 1024 * 1024, 0), ids=("bounded", "unbounded")
+)
+def test_msg_too_large_declared_length_above_ssize_t_max(
+    out: WebSocketDataQueue, max_msg_size: int, declared: int
+) -> None:
+    # RFC 6455 allows an unsigned 64-bit declared length, which does not fit
+    # the signed Py_ssize_t payload_bytes_to_read of the compiled reader:
+    # anything above sys.maxsize (2**31-1 on the 32-bit builds) has to be
+    # rejected before it is stored there, or storing it raises OverflowError
+    # and escapes as an abnormal closure instead of MESSAGE_TOO_BIG. Such a
+    # frame can never be buffered, so an unlimited max_msg_size is checked
+    # too.
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    header = PACK_LEN3(0x80 | WSMsgType.TEXT, 127, declared)
+    with pytest.raises(
+        WebSocketError,
+        match=rf"^Message size {declared} exceeds limit {max_msg_size or sys.maxsize}$",
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_msg_too_large_above_ssize_t_max_reports_buffered_fragments(
+    out: WebSocketDataQueue,
+) -> None:
+    # The reported size adds what is already buffered, so the message reads the
+    # same whether the declared length is caught by the Py_ssize_t range check
+    # or by the max_msg_size comparison below it.
+    max_msg_size = 4 * 1024 * 1024
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    parser._feed_data(build_frame(b"a", WSMsgType.TEXT, is_fin=False))
+
+    header = PACK_LEN3(WSMsgType.CONTINUATION, 127, 2**64 - 1)
+    with pytest.raises(
+        WebSocketError, match=rf"^Message size {2**64} exceeds limit {max_msg_size}$"
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
 @pytest.mark.parametrize(
     "opcode",
     (0x3, 0x4, 0x5, 0x6, 0x7, 0xB, 0xC, 0xD, 0xE, 0xF),
@@ -791,3 +965,47 @@ def test_flow_control_multi_byte_text(
         data=large_payload_text, size=large_payload_size, extra=""
     )
     assert protocol._reading_paused is True
+
+
+async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
+    protocol: BaseProtocol,
+) -> None:
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    payload_len = 32 * 1024
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    assert protocol._reading_paused is False
+
+    # Feed the payload two bytes per read so the pause is
+    # driven purely by the fragment count, not the total byte count.
+    paused_after = None
+    for i in range(payload_len // 2 - 1):  # pragma: no branch
+        parser.feed_data(b"xx")
+        if protocol._reading_paused:
+            paused_after = i + 1  # type: ignore[unreachable]
+            break
+
+    assert paused_after is not None
+    # Paused long before the frame could complete (16384 two-byte reads).
+    assert paused_after < payload_len // 2  # type: ignore[unreachable]
+
+
+async def test_incomplete_frame_not_paused_for_normal_reads(
+    protocol: BaseProtocol,
+) -> None:
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    # Normal traffic (a frame delivered in a handful of reasonably sized reads)
+    # must never trip the fragment-limit backpressure.
+    payload_len = 32 * 1024
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
+    for _ in range(payload_len // 4096):
+        parser.feed_data(b"x" * 4096)
+    assert protocol._reading_paused is False

@@ -14,6 +14,7 @@ from pytest_aiohttp import AiohttpClient, AiohttpServer
 import aiohttp
 from aiohttp import WSServerHandshakeError, hdrs, web
 from aiohttp.http import WSCloseCode, WSMsgType
+from aiohttp.web_protocol import MAX_MSG_QUEUE_SIZE
 
 
 async def test_websocket_can_prepare(aiohttp_client: AiohttpClient) -> None:
@@ -125,6 +126,160 @@ async def test_partial_pipelined_request_after_failed_websocket_upgrade(
     finally:
         writer.close()
         await writer.wait_closed()
+
+
+def _raw_get(path: str) -> bytes:
+    return f"GET {path} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode("ascii")
+
+
+_RAW_UPGRADE = (
+    b"GET /ws HTTP/1.1\r\n"
+    b"Host: localhost\r\n"
+    b"Upgrade: websocket\r\n"
+    b"Connection: Upgrade\r\n"
+    b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+    b"Sec-WebSocket-Version: 13\r\n"
+    b"\r\n"
+)
+
+
+def _masked_text_frame(payload: bytes) -> bytes:
+    """Build a client text frame; frames sent to a server must be masked."""
+    assert len(payload) < 126
+    mask = b"\x37\xfa\x21\x3d"
+    return (
+        b"\x81"
+        + bytes((0x80 | len(payload),))
+        + mask
+        + bytes(b ^ mask[i % 4] for i, b in enumerate(payload))
+    )
+
+
+async def test_websocket_frames_pipelined_behind_request_burst(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A websocket upgraded from within a request burst still reads frames.
+
+    The parser stops at the upgrade request and buffers everything after it,
+    which is websocket data once the handshake succeeds. Answering the requests
+    queued ahead of the upgrade must neither consume that buffer as HTTP nor
+    leave the transport paused by the pipeline queue after switching protocols.
+    """
+    # More than the queue holds, so reading pauses and the parser buffers.
+    pipelined_requests = MAX_MSG_QUEUE_SIZE + 8
+    handled: list[str] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        return web.Response()
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.send_str(await ws.receive_str())
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"".join(_raw_get(f"/r{i}") for i in range(pipelined_requests))
+            + _RAW_UPGRADE
+            + _masked_text_frame(b"frame-ok")
+        )
+        await writer.drain()
+
+        # Without the fix the frame is eaten by the http parser and the paused
+        # transport is never resumed, so nothing is echoed back.
+        await asyncio.wait_for(reader.readuntil(b"\x81\x08frame-ok"), timeout=10)
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert handled == [f"/r{i}" for i in range(pipelined_requests)]
+
+
+async def test_pipelined_request_after_declined_upgrade_behind_burst(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A declined upgrade replays its tail even when queued behind a request.
+
+    Only the upgrade request's own response settles whether the buffered bytes
+    are websocket data or pipelined HTTP, so an earlier request completing must
+    leave them alone and the declining response still has to replay them.
+    """
+    handled: list[str] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        return web.Response(text=f"{request.path[1:]}-ok")
+
+    async def ws_handler(request: web.Request) -> NoReturn:
+        raise web.HTTPUpgradeRequired()
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(_raw_get("/first") + _RAW_UPGRADE + _raw_get("/second"))
+        await writer.drain()
+
+        # Without the replay the trailing request stalls until keep-alive expires.
+        data = await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=10)
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert handled == ["/first", "/second"]
+    assert data.count(b"HTTP/1.1 200 OK") == 2, data
+    assert b"426" in data, data
+
+
+async def test_pipelined_request_after_two_declined_upgrades(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A second upgrade inside a replayed tail buffers its own remainder again.
+
+    Replaying a declined upgrade's tail can turn up another upgrade request,
+    which puts the parser back into upgraded mode. Losing that leaves the bytes
+    behind the second upgrade buffered with nothing left to replay them.
+    """
+    handled: list[str] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        return web.Response(text="second-ok")
+
+    async def ws_handler(request: web.Request) -> NoReturn:
+        raise web.HTTPUpgradeRequired()
+
+    app = web.Application()
+    app.router.add_get("/ws", ws_handler)
+    app.router.add_get("/{tail:.*}", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(_RAW_UPGRADE + _RAW_UPGRADE + _raw_get("/second"))
+        await writer.drain()
+
+        data = await asyncio.wait_for(reader.readuntil(b"second-ok"), timeout=10)
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert handled == ["/second"]
+    assert data.count(b"HTTP/1.1 426 ") == 2, data
 
 
 async def test_handshake_connection_header_substring_not_a_token(

@@ -1,0 +1,2 @@
+The CI/CD is now in sync with the rest of the projects in terms of where
+the ``cibuildwheel`` workflow lives -- by :user:`webknjaz`.

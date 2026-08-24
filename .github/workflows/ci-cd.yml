@@ -50,102 +50,7 @@ jobs:
         run: |
           echo "Pre-setup step"
 
-  lint:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-      pull-requests: read  # to read PR metadata (verify change fragments step)
-
-    name: Linter
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-      with:
-        submodules: true
-    - name: >-
-        Verify that `requirements/runtime-deps.in`
-        is in sync with `pyproject.toml`
-      run: |
-        set -eEuo pipefail
-        make sync-direct-runtime-deps
-        git diff --exit-code -- requirements/runtime-deps.in
-    - name: Setup Python
-      uses: actions/setup-python@v7.0.0
-      with:
-        python-version: 3.11
-    - name: Cache PyPI
-      uses: actions/cache@v6.1.0
-      with:
-        key: pip-lint-${{ hashFiles('requirements/*.txt') }}
-        path: ~/.cache/pip
-        restore-keys: |
-            pip-lint-
-    - name: Install dependencies
-      run: |
-        python -m pip install -U pip wheel setuptools build twine -r requirements/lint.in -c requirements/lint.txt
-    - name: Install self
-      run: |
-        python -m pip install . -c requirements/runtime-deps.txt
-      env:
-        AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run mypy
-      run: |
-        make mypy
-    - name: Run slotscheck
-      run: |
-        # Some extra requirements are needed to ensure all modules
-        # can be scanned by slotscheck.
-        pip install -r requirements/base.in -c requirements/base.txt
-        slotscheck -v -m aiohttp
-    - name: Verify CHANGES fragment references PR
-      if: github.event_name == 'pull_request'
-      env:
-        GH_TOKEN: ${{ github.token }}
-        PR_NUMBER: ${{ github.event.pull_request.number }}
-      run: |
-        set -euo pipefail
-        # Fetch the body fresh: github.event.pull_request.body is frozen at
-        # the webhook payload and stale on re-runs after a body edit.
-        PR_BODY=$(
-          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
-        )
-        added=$(
-          gh api --paginate \
-            "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
-            --jq '.[] | select(.status=="added") | .filename' \
-          | grep '^CHANGES/' || true
-        )
-        failed=0
-        for f in $added; do
-          num=$(basename "$f" | cut -d. -f1)
-          [[ "$num" =~ ^[0-9]+$ ]] || continue
-          if [[ "$num" == "$PR_NUMBER" ]]; then continue; fi
-          if grep -qE "(^|[^0-9])#${num}([^0-9]|$)" <<<"$PR_BODY"; then continue; fi
-          echo "::error file=$f::Change fragment ($num) must reference PR #$PR_NUMBER or an issue this PR fixes"
-          failed=1
-        done
-        exit $failed
-    - name: Install spell checker
-      run: |
-        pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
-    - name: Run docs spelling
-      run: |
-        # towncrier --yes  # uncomment me after publishing a release
-        make doc-spelling
-    - name: Build package
-      run: |
-        python -m build
-      env:
-        AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run twine checker
-      run: |
-        twine check --strict dist/*
-    - name: Making sure that CONTRIBUTORS.txt remains sorted
-      run: |
-        LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
-
-  gen_llhttp:
+  gen-llhttp:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
@@ -179,12 +84,185 @@ jobs:
         path: vendor/llhttp/build
         if-no-files-found: error
 
-  test:
+  build-pure-python-dists:
     permissions:
       contents: read # to fetch code (actions/checkout)
 
+    name: 📦 Build distribution packages
+    runs-on: ubuntu-latest
+    needs:
+    - gen-llhttp
+    outputs:
+      sdist-filename: >-
+        ${{ steps.dist-filename-detection.outputs.sdist-filename }}
+      wheel-filename: >-
+        ${{ steps.dist-filename-detection.outputs.wheel-filename }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: Setup Python
+      uses: actions/setup-python@v7.0.0
+    - name: Install build tooling and cython
+      run: >-
+        python -m
+        pip install -U build -r requirements/cython.in -c requirements/cython.txt
+    - name: Restore llhttp generated files
+      uses: actions/download-artifact@v8
+      with:
+        name: llhttp
+        path: vendor/llhttp/build/
+    - name: Cythonize
+      run: |
+        make cythonize
+    - name: Build sdists and pure-python wheel
+      run: |
+        python -m build
+      env:
+        AIOHTTP_NO_EXTENSIONS: 1
+    - name: Determine the sdist and wheel filenames
+      id: dist-filename-detection
+      run: |
+        echo "sdist-filename=$(basename dist/*.tar.gz)" >> "$GITHUB_OUTPUT"
+        echo "wheel-filename=$(basename dist/*.whl)" >> "$GITHUB_OUTPUT"
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v7
+      with:
+        name: dist-pure
+        path: dist
+
+  lint-from-git:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Lint / Git
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: Setup Python
+      uses: actions/setup-python@v7.0.0
+      with:
+        python-version: 3.11
+    - name: >-
+        Verify that `requirements/runtime-deps.in`
+        is in sync with `pyproject.toml`
+      run: |
+        set -eEuo pipefail
+        make sync-direct-runtime-deps
+        git diff --exit-code -- requirements/runtime-deps.in
+    - name: Install self
+      run: |  # needed so sphinxcontrib-spelling could allowlist some dep names
+        python -m pip install . -c requirements/runtime-deps.txt
+      env:
+        AIOHTTP_NO_EXTENSIONS: 1
+    - name: Install spell checker
+      run: |
+        pip install -r requirements/doc-spelling.in -c requirements/doc-spelling.txt
+    - name: Run docs spelling
+      run: |
+        # towncrier --yes  # uncomment me after publishing a release
+        make doc-spelling
+
+  lint-from-sdist:
+    permissions:
+      pull-requests: read  # to read PR metadata (verify change fragments step)
+
+    name: Lint / sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+    - build-pure-python-dists
+    steps:
+    - name: Retrieve the sdist and unpack it into the workspace
+      uses: re-actors/checkout-python-sdist@release/v3
+      with:
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: dist-pure
+    - name: Download the sdist artifact for the twine check
+      uses: actions/download-artifact@v8
+      with:
+        name: dist-pure
+        path: dist/
+    - name: Setup Python
+      uses: actions/setup-python@v7.0.0
+      with:
+        python-version: 3.11
+    - name: Cache PyPI
+      uses: actions/cache@v6.1.0
+      with:
+        key: pip-lint-${{ hashFiles('requirements/*.txt') }}
+        path: ~/.cache/pip
+        restore-keys: |
+            pip-lint-
+    - name: Install dependencies
+      run: |
+        python -m pip install -U pip twine -r requirements/lint.in -c requirements/lint.txt
+    - name: Self-install from sdist
+      run: |
+        python -m pip install "${SDIST_PATH}" -c requirements/runtime-deps.txt
+      env:
+        SDIST_PATH: >-
+          dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        AIOHTTP_NO_EXTENSIONS: 1
+    - name: Run mypy
+      run: |
+        make mypy
+    - name: Run slotscheck
+      run: |
+        # Some extra requirements are needed to ensure all modules
+        # can be scanned by slotscheck.
+        pip install -r requirements/base.in -c requirements/base.txt
+        slotscheck -v -m aiohttp
+    - name: Verify CHANGES fragment references PR
+      # Skipped on backport PRs: their fragments are numbered for the original
+      # PR/issue, so the check would never pass. The workflow itself stays
+      # identical across branches.
+      if: >-
+        github.event_name == 'pull_request'
+        && github.event.pull_request.base.ref == 'master'
+      env:
+        GH_TOKEN: ${{ github.token }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: |
+        set -euo pipefail
+        # Fetch the body fresh: github.event.pull_request.body is frozen at
+        # the webhook payload and stale on re-runs after a body edit.
+        PR_BODY=$(
+          gh api "repos/${{ github.repository }}/pulls/${PR_NUMBER}" --jq .body
+        )
+        added=$(
+          gh api --paginate \
+            "repos/${{ github.repository }}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | select(.status=="added") | .filename' \
+          | grep '^CHANGES/' || true
+        )
+        failed=0
+        for f in $added; do
+          num=$(basename "$f" | cut -d. -f1)
+          [[ "$num" =~ ^[0-9]+$ ]] || continue
+          if [[ "$num" == "$PR_NUMBER" ]]; then continue; fi
+          if grep -qE "(^|[^0-9])#${num}([^0-9]|$)" <<<"$PR_BODY"; then continue; fi
+          echo "::error file=$f::Change fragment ($num) must reference PR #$PR_NUMBER or an issue this PR fixes"
+          failed=1
+        done
+        exit $failed
+    - name: Run twine checker
+      run: |
+        twine check --strict dist/*
+    - name: Making sure that CONTRIBUTORS.txt remains sorted
+      run: |
+        LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
+
+  test:
     name: Test
-    needs: gen_llhttp
+    needs:
+    - build-pure-python-dists
     strategy:
       matrix:
         pyver: ['3.10', '3.11', '3.12', '3.13', '3.14']
@@ -210,16 +288,18 @@ jobs:
     continue-on-error: ${{ matrix.experimental }}
     timeout-minutes: 15
     steps:
-    - name: Checkout
-      uses: actions/checkout@v7
+    - name: Retrieve the sdist and unpack it into the workspace
+      uses: re-actors/checkout-python-sdist@release/v3
       with:
-        submodules: true
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: dist-pure
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v9.0.0
+      uses: astral-sh/setup-uv@v10.0.1
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -232,16 +312,6 @@ jobs:
     - name: Set PYTHON_GIL=0 for free-threading builds
       if: ${{ endsWith(matrix.pyver, 't') }}
       run: echo "PYTHON_GIL=0" >> $GITHUB_ENV
-    - name: Restore llhttp generated files
-      if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
@@ -252,7 +322,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
       run: >-
-        pytest --junitxml=junit.xml --numprocesses=auto --cov=aiohttp/ --cov=tests/ -m 'not dev_mode and not autobahn'
+        pytest --junitxml=junit.xml --numprocesses=auto --cov -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
       if: failure()
@@ -268,14 +338,8 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
         PYTHONDEVMODE: 1
-      run: pytest -m dev_mode --cov=aiohttp/ --cov=tests/ --cov-append
+      run: pytest -m dev_mode --cov --cov-append --cov-report=xml
       shell: bash
-    - name: Turn coverage into xml
-      env:
-        COLOR: 'yes'
-        PIP_USER: 1
-      run: |
-        python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v7
       with:
@@ -298,12 +362,10 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
 
   test-mobile:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-
     name: Test (${{ matrix.config.platform }}, ${{ matrix.pyver }}, ${{ matrix.config.os }})
     runs-on: ${{ matrix.config.os }}
-    needs: gen_llhttp
+    needs:
+    - build-pure-python-dists
     strategy:
       matrix:
         pyver: ["cp313", "cp314"]
@@ -315,31 +377,21 @@ jobs:
             platform: ios
             archs: arm64_iphonesimulator
     steps:
-    - name: Checkout
-      uses: actions/checkout@v7
+    - name: Download the source distribution
+      uses: actions/download-artifact@v8
       with:
-        submodules: true
+        name: dist-pure
+        path: dist/
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v9.0.0
+      uses: astral-sh/setup-uv@v10.0.1
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
         enable-cache: true
-    - name: Install build tooling and cython
-      run: |
-        uv pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
-    - name: Restore llhttp generated files
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
-      run: |
-        make cythonize
     - name: Free up disk space for Android emulator
       if: ${{ matrix.config.platform == 'android' }}
       uses: BRAINSia/free-disk-space@v2.1.3
@@ -362,7 +414,9 @@ jobs:
       # cibuildwheel normally uses grouping in its outputs for its build/test steps. But the loading time when
       # expanding large groups in GitHub Actions is very high. So by unsetting GITHUB_ACTIONS, cibuildwheel does
       # not know that it is running in a GitHub Action and thus does not use groups.
-      run: env -u GITHUB_ACTIONS cibuildwheel
+      # Additionally, passing a tarball means that cibuildwheel will use that
+      # tarball and not the current working directory as the source.
+      run: env -u GITHUB_ACTIONS cibuildwheel "${SDIST_PATH}"
       env:
         CIBW_BUILD: ${{ matrix.pyver }}-*
         CIBW_PLATFORM: ${{ matrix.config.platform }}
@@ -371,13 +425,13 @@ jobs:
         CIBW_TEST_SOURCES: setup.cfg README.rst tests
         # Currently only Android supports colored output. See https://github.com/python/cpython/issues/150932 for iOS.
         CIBW_TEST_COMMAND: python -m pytest ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
+        SDIST_PATH: >-
+          dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
 
   autobahn:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-
     name: Autobahn testsuite
-    needs: gen_llhttp
+    needs:
+    - build-pure-python-dists
     strategy:
       matrix:
         pyver: ['3.14']
@@ -387,16 +441,18 @@ jobs:
     runs-on: ${{ matrix.os }}-latest
     timeout-minutes: 15
     steps:
-    - name: Checkout
-      uses: actions/checkout@v7
+    - name: Retrieve the sdist and unpack it into the workspace
+      uses: re-actors/checkout-python-sdist@release/v3
       with:
-        submodules: true
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: dist-pure
     - name: Setup Python ${{ matrix.pyver }}
       id: python-install
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v9.0.0
+      uses: astral-sh/setup-uv@v10.0.1
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -405,17 +461,7 @@ jobs:
       env:
         DEPENDENCY_GROUP: test${{ endsWith(matrix.pyver, 't') && '-ft' || '' }}
       run: |
-        uv pip install -U pip wheel setuptools build twine -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
-    - name: Restore llhttp generated files
-      if: ${{ matrix.no-extensions == '' }}
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
-      if: ${{ matrix.no-extensions == '' }}
-      run: |
-        make cythonize
+        uv pip install -r requirements/${{ env.DEPENDENCY_GROUP }}.in -c requirements/${{ env.DEPENDENCY_GROUP }}.txt
     - name: Install self
       env:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
@@ -427,14 +473,9 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --cov=aiohttp/ --cov=tests/ --timeout=0 -m autobahn
+        pytest --junitxml=junit.xml --cov --cov-report=xml
+        --timeout=0 -m autobahn
       shell: bash
-    - name: Turn coverage into xml
-      env:
-        COLOR: 'yes'
-        PIP_USER: 1
-      run: |
-        python -m coverage xml
     - name: Upload coverage
       uses: codecov/codecov-action@v7
       with:
@@ -452,17 +493,26 @@ jobs:
   benchmark:
     name: Benchmark
     needs:
-    - gen_llhttp
+    - build-pure-python-dists
     - pre-setup  # transitive, for accessing settings
     if: >-
       needs.pre-setup.outputs.upstream-repository-id == github.repository_id
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
     - name: Checkout project
-      uses: actions/checkout@v7
+      uses: actions/checkout@v7  # despite sdist, codspeed needs Git
+    - name: Retrieve the sdist and unpack it into the workspace
+      uses: re-actors/checkout-python-sdist@release/v3
       with:
-        submodules: true
+        source-tarball-name: >-
+          ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+        workflow-artifact-name: dist-pure
+    - name: Download the source distribution
+      uses: actions/download-artifact@v8
+      with:
+        name: dist-pure
+        path: dist/
     - name: Setup Python 3.13.2
       id: python-install
       uses: actions/setup-python@v7.0.0
@@ -472,17 +522,13 @@ jobs:
         cache-dependency-path: requirements/*.txt
     - name: Install dependencies
       run: |
-        python -m pip install -U pip wheel setuptools build twine -r requirements/test.in -c requirements/test.txt
-    - name: Restore llhttp generated files
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
+        python -m pip install -r requirements/test.in -c requirements/test.txt
+    - name: Self-install from sdist
       run: |
-        make cythonize
-    - name: Install self
-      run: python -m pip install -e .
+        python -m pip install "${SDIST_PATH}" -c requirements/runtime-deps.txt
+      env:
+        SDIST_PATH: >-
+          dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
     - name: Load kernel TLS module
       if: runner.os == 'Linux'
       run: sudo modprobe tls
@@ -492,8 +538,27 @@ jobs:
         lsb_release -a
         uname -r
         openssl version -a
+    - name: Install libc6-dbg
+      # The CodSpeed runner installs this itself with a plain apt-get call
+      # that has no timeout, so a slow apt mirror hangs the job until
+      # timeout-minutes kills it. Installing it here with a bounded retry
+      # also lets the runner find it already present after restoring
+      # valgrind from its cache and skip apt entirely.
+      run: |
+        for attempt in 1 2 3; do
+          if timeout 300 sudo apt-get update \
+            && timeout 300 sudo DEBIAN_FRONTEND=noninteractive \
+              apt-get install -y libc6-dbg
+          then
+            exit 0
+          fi
+          echo "apt-get attempt ${attempt} failed, retrying"
+          sudo dpkg --configure -a || true
+          sleep 10
+        done
+        exit 1
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v4.19.1
+      uses: CodSpeedHQ/action@v5.0.3
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
@@ -504,7 +569,8 @@ jobs:
       contents: read # to fetch code (actions/checkout)
 
     name: Cython coverage
-    needs: gen_llhttp
+    needs:
+    - gen-llhttp
     strategy:
       matrix:
         os: [ubuntu, windows]
@@ -543,12 +609,11 @@ jobs:
         PIP_USER: 1
       run: >-
         pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
-        --cov-config=.coveragerc-cython.toml --cov=aiohttp/ --cov=tests/ --numprocesses=auto
+        --cov-config=.coveragerc-cython.toml --cov
+        --cov-report=xml:cython-coverage.xml
+        --numprocesses=auto
         -m 'not dev_mode and not autobahn'
       shell: bash
-    - name: Turn coverage into xml
-      run: |
-        python -m coverage xml -o cython-coverage.xml --rcfile=.coveragerc-cython.toml
     - name: Upload coverage
       uses: codecov/codecov-action@v7
       with:
@@ -562,7 +627,8 @@ jobs:
     if: always()
 
     needs:
-    - lint
+    - lint-from-sdist
+    - lint-from-git
     - test
     - test-mobile
     - autobahn
@@ -593,72 +659,45 @@ jobs:
         run: |
             echo "Predeploy step"
 
-  build-tarball:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-
-    name: Tarball
-    runs-on: ubuntu-latest
-    needs: pre-deploy
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-      with:
-        submodules: true
-    - name: Setup Python
-      uses: actions/setup-python@v7.0.0
-    - name: Install build tooling and cython
-      run: >-
-        python -m
-        pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
-    - name: Restore llhttp generated files
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
-      run: |
-        make cythonize
-    - name: Make sdist
-      run: |
-        python -m build --sdist
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v7
-      with:
-        name: dist-sdist
-        path: dist
-
   build-wheels:
-    permissions:
-      contents: read # to fetch code (actions/checkout)
-
-    name: Build wheels on ${{ matrix.os }} ${{ matrix.qemu }} ${{ matrix.musl }} ${{ matrix.platform }}
-    runs-on: ${{ matrix.os }}
-    needs: pre-deploy
+    name: >-  # ${{ '' } is a hack to nest jobs under the same sidebar category
+      📦 Build platform-specific wheels${{ '' }}
+    needs:
+    - build-pure-python-dists
+    - pre-deploy
+    uses: ./.github/workflows/reusable-cibuildwheel.yml
     strategy:
       matrix:
-        os: ["ubuntu-latest", "windows-latest", "windows-11-arm", "macos-latest", "ubuntu-24.04-arm"]
-        qemu: ['']
-        musl: [""]
-        platform: [""]
+        runner-vm-os:
+        - ubuntu-latest
+        - windows-latest
+        - windows-11-arm
+        - macos-latest
+        - ubuntu-24.04-arm
+        qemu:
+        - ''
+        musl:
+        - ''
+        platform:
+        - ''
         include:
-          # Split ubuntu/musl jobs for the sake of speed-up
-        - os: ubuntu-latest
+        # Split ubuntu/musl jobs for the sake of speed-up
+        - runner-vm-os: ubuntu-latest
           qemu: ppc64le
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: ppc64le
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           qemu: riscv64
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: riscv64
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           qemu: s390x
-          musl: ""
-        - os: ubuntu-latest
+          musl: ''
+        - runner-vm-os: ubuntu-latest
           qemu: s390x
           musl: musllinux
         # armv7l builds on aarch64 hosts. We still register QEMU so
@@ -666,96 +705,52 @@ jobs:
         # whether the host kernel has CONFIG_COMPAT enabled. Even with
         # emulation, aarch64-on-aarch64 hosting beats x86_64 by a wide
         # margin.
-        - os: ubuntu-24.04-arm
+        - runner-vm-os: ubuntu-24.04-arm
           qemu: armv7l
-          musl: ""
-        - os: ubuntu-24.04-arm
+          musl: ''
+        - runner-vm-os: ubuntu-24.04-arm
           qemu: armv7l
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           musl: musllinux
-        - os: ubuntu-24.04-arm
+        - runner-vm-os: ubuntu-24.04-arm
           musl: musllinux
-        - os: ubuntu-latest
+        - runner-vm-os: ubuntu-latest
           platform: android
-        - os: macos-14
+        - runner-vm-os: macos-14
           platform: ios
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-      with:
-        submodules: true
-    - name: Set up QEMU
-      if: ${{ matrix.qemu }}
-      uses: docker/setup-qemu-action@v4
-      with:
-        platforms: all
-        # This should be temporary
-        # xref https://github.com/docker/setup-qemu-action/issues/188
-        # xref https://github.com/tonistiigi/binfmt/issues/215
-        image: tonistiigi/binfmt:qemu-v8.1.5
-      id: qemu
-    - name: Prepare emulation
-      run: |
-        if [[ -n "${{ matrix.qemu }}" ]]; then
-          # Build emulated architectures only if QEMU is set,
-          # use default "auto" otherwise
-          echo "CIBW_ARCHS_LINUX=${{ matrix.qemu }}" >> $GITHUB_ENV
-          # Override pyproject.toml's `build[uv]`: the pypa odd-arch
-          # manylinux/musllinux containers do not ship `uv` preinstalled.
-          echo "CIBW_BUILD_FRONTEND=build" >> $GITHUB_ENV
-        fi
-      shell: bash
-    - name: Setup Python
-      uses: actions/setup-python@v7.0.0
-      with:
-        python-version: 3.x
-    - name: Install build tooling and cython
-      run: >-
-        python -m
-        pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
-    - name: Restore llhttp generated files
-      uses: actions/download-artifact@v8
-      with:
-        name: llhttp
-        path: vendor/llhttp/build/
-    - name: Cythonize
-      run: |
-        make cythonize
-    - name: Build wheels
-      uses: pypa/cibuildwheel@v4.1.1
-      with:
-        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
-        # available on the runner for Windows and macOS. Installing
-        # cibuildwheel with the `uv` extra bundles uv with it; the
-        # tested-arch manylinux/musllinux containers also ship uv
-        # preinstalled. The odd-arch containers do not, so the
-        # `Prepare emulation` step above sets `CIBW_BUILD_FRONTEND=build`
-        # for those QEMU matrix cells.
-        extras: uv
-      env:
-        CIBW_PLATFORM: ${{ matrix.platform || 'auto' }}
-        CIBW_SKIP: pp* ${{ matrix.musl == 'musllinux' && '*manylinux*' || '*musllinux*' }}
-        CIBW_ARCHS_MACOS: x86_64 arm64 universal2
-        CIBW_ARCHS_IOS: arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator
-        CIBW_ARCHS_ANDROID: arm64_v8a x86_64
-    - name: Upload wheels
-      uses: actions/upload-artifact@v7
-      with:
-        name: >-
-          dist-${{ matrix.os }}-${{ matrix.musl }}-${{
-            matrix.platform
-            && matrix.platform
-            || matrix.qemu
-            && matrix.qemu
-            || 'native'
-          }}
-        path: ./wheelhouse/*.whl
+    with:
+      check-name: >-
+        ${{ matrix.runner-vm-os }} ${{ matrix.qemu }}
+        ${{ matrix.musl }} ${{ matrix.platform }}
+      dists-artifact-name: dist-pure
+      environment-variables: |-
+        CIBW_ARCHS_ANDROID=arm64_v8a x86_64
+
+        CIBW_ARCHS_IOS=arm64_iphoneos arm64_iphonesimulator x86_64_iphonesimulator
+
+        ${{ matrix.qemu && format('CIBW_ARCHS_LINUX={0}', matrix.qemu) || '' }}
+
+        CIBW_ARCHS_MACOS=x86_64 arm64 universal2
+
+        ${{ matrix.qemu && 'CIBW_BUILD_FRONTEND=build' || '' }}
+
+        CIBW_PLATFORM=${{ matrix.platform != '' && matrix.platform || 'auto' }}
+
+        CIBW_SKIP=pp* *${{
+          matrix.musl == 'musllinux'
+          && 'many'
+          || 'musl'
+        }}linux*
+      qemu: ${{ matrix.qemu != '' }}
+      runner-vm-os: ${{ matrix.runner-vm-os }}
+      source-tarball-name: >-
+        ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
+      timeout-minutes: ${{ matrix.qemu != '' && 35 || 15 }}
 
   deploy:
     name: Deploy
     needs:
-    - build-tarball
     - build-wheels
     - pre-setup  # transitive, for accessing settings
     runs-on: ubuntu-latest

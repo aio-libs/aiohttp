@@ -8,6 +8,8 @@ cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
 
+cdef unsigned long long MAX_PAYLOAD_LEN
+
 cdef int OP_CODE_NOT_SET
 cdef int OP_CODE_CONTINUATION
 cdef int OP_CODE_TEXT
@@ -77,6 +79,7 @@ cdef class WebSocketReader:
     cdef bint _frame_fin
     cdef int _frame_opcode
     cdef list _payload_fragments
+    cdef Py_ssize_t _max_fragments
     cdef Py_ssize_t _frame_payload_len
 
     cdef bytes _tail
@@ -113,6 +116,8 @@ cdef class WebSocketReader:
         has_mask=bint,
         fin=bint,
         had_fragments=Py_ssize_t,
+        partial_len=Py_ssize_t,
+        frame_len="unsigned long long",
         payload_bytearray=bytearray,
     )
     cpdef void _feed_data(self, bytes data) except *
