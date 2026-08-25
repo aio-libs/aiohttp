@@ -1,10 +1,12 @@
 """codspeed benchmarks for the web responses."""
 
+import asyncio
 from typing import TYPE_CHECKING
 
 import pytest
 
 from aiohttp import web
+from aiohttp.test_utils import make_mocked_request
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -36,6 +38,39 @@ def test_web_response_with_headers(benchmark: BenchmarkFixture) -> None:
     def _run() -> None:
         for _ in range(response_count):
             web.Response(headers=headers)
+
+
+@pytest.mark.parametrize(
+    "date_header",
+    (None, "Sun, 01 Aug 2021 12:00:00 GMT"),
+    ids=("generated-date", "explicit-date"),
+)
+def test_prepare_web_response_headers(
+    benchmark: BenchmarkFixture,
+    loop: asyncio.AbstractEventLoop,
+    date_header: str | None,
+) -> None:
+    """Benchmark preparing 100 response headers with and without a Date header."""
+    response_count = 100
+    headers = {
+        "Content-Length": "0",
+        "Content-Type": "text/plain",
+        "Server": "aiohttp",
+    }
+    if date_header is not None:
+        headers["Date"] = date_header
+    request = make_mocked_request("GET", "/")
+
+    async def prepare_responses() -> None:
+        for _ in range(response_count):
+            response = web.Response(headers=headers)
+            response._req = request
+            response._payload_writer = request._payload_writer
+            await response._prepare_headers()
+
+    @benchmark
+    def _run() -> None:
+        loop.run_until_complete(prepare_responses())
 
 
 def test_web_response_with_bytes_body(
