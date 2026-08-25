@@ -6434,6 +6434,45 @@ async def test_payload_reused_after_redirect(aiohttp_client: AiohttpClient) -> N
     assert p.upload_complete.done()
 
 
+async def test_payload_redirect_while_writer_parked(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A redirect arriving before the body write starts hands tracking over.
+
+    The first hop's writer is parked at the 100-continue wait when the
+    server answers with a redirect; the resent body on the second hop must
+    be tracked, not clobbered by the first writer's late cancellation.
+    """
+    received: list[int] = []
+
+    async def redirect_expect_handler(request: web.Request) -> None:
+        raise web.HTTPTemporaryRedirect("/final")
+
+    async def redirecting(request: web.Request) -> NoReturn:
+        assert False, "handler must not run; the expect handler redirects"
+
+    async def final(request: web.Request) -> web.Response:
+        received.append(len(await request.read()))
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", redirecting, expect_handler=redirect_expect_handler)
+    app.router.add_post("/final", final)
+    client = await aiohttp_client(app)
+
+    body = b"x" * 2048
+    p = aiohttp.BytesPayload(body)
+    async with client.post("/", data=p, expect100=True) as resp:
+        assert resp.status == 200
+    assert received == [len(body)]
+
+    # The second hop owns the tracking: resolved future, full byte count.
+    assert p.upload_complete.done()
+    assert not p.upload_complete.cancelled()
+    assert p.upload_complete.result() is None
+    assert p.bytes_written == len(body)
+
+
 async def test_payload_reuse_two_requests(aiohttp_client: AiohttpClient) -> None:
     """Sequential requests with the same payload each track their own upload."""
 

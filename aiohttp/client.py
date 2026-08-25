@@ -876,6 +876,9 @@ class ClientSession:
                         url = parsed_redirect_url
                         params = {}
                         resp.release()
+                        # Wait for the previous hop's writer to finish to ensure
+                        # payload upload tracking is complete before we start again.
+                        await req._close()
                         continue
 
                     break
