@@ -1383,3 +1383,35 @@ async def test_middleware_short_circuit_settles_payload(
         # The body was never sent, so the upload is aborted, not resolved.
         assert p2.upload_complete.cancelled()
         assert p2.bytes_written == 0
+
+
+async def test_middleware_update_body_settles_replaced_payload(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Replacing the body via update_body aborts the replaced payload.
+
+    The caller may hold upload_complete of the payload passed as data;
+    once a middleware swaps it out, that body will never be sent.
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=await request.read())
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    async def replace_middleware(
+        request: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        await request.update_body(b"replacement")
+        return await handler(request)
+
+    async with ClientSession(middlewares=(replace_middleware,)) as session:
+        original = payload.BytesPayload(b"original")
+        fut = original.upload_complete
+        async with session.post(server.make_url("/"), data=original) as resp:
+            assert resp.status == 200
+            assert await resp.read() == b"replacement"
+        assert fut.cancelled()
+        assert original.bytes_written == 0

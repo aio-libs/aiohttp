@@ -1386,6 +1386,13 @@ class ClientRequest(ClientRequestBase):
         # Close existing payload if it exists and needs closing
         if self._body is not None:
             await self._body.close()
+            # Abort upload progress on the original body.
+            if (
+                self._body is not body
+                and self._body is not self._EMPTY_BODY
+                and not self._body._upload_active
+            ):
+                self._body._abort_upload()
         self._update_body(body)
 
     def _update_expect_continue(self, expect: bool = False) -> None:
