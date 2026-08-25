@@ -123,9 +123,6 @@ class WebSocketDataQueue:
     def feed_data(
         self, data: "WSMessage | WSMessageTextBytes", size: "cython_int"
     ) -> None:
-        # Unbox into the typed local before adding, so Cython keeps the sum in
-        # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
-        size = data.size
         self._size += size + MSG_SIZE_OVERHEAD
         self._put_buffer((data, size))
         self._release_waiter()

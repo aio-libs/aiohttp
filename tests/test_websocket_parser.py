@@ -1033,7 +1033,7 @@ async def test_incomplete_frame_not_paused_for_normal_reads(
 def _compressed_burst(payload: bytes, count: int) -> bytes:
     """`count` complete, independently deflated BINARY messages in one read."""
     return (
-        build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True)
+        build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, use_mask=True)
         * count
     )
 
@@ -1047,7 +1047,7 @@ async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None
     parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
 
     sent = 10000
-    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
 
     assert protocol._reading_paused is True
     assert len(out._buffer) < sent
@@ -1137,7 +1137,7 @@ async def test_drain_resumes_parsing_in_batches(protocol: BaseProtocol) -> None:
     parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
 
     sent = 8000
-    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
     stalled = len(out._buffer)
     assert stalled < sent
 
@@ -1164,7 +1164,7 @@ async def test_transport_stays_paused_while_stash_remains(
     parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
 
     sent = 8000
-    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
     assert protocol._reading_paused is True
 
     count = 0
@@ -1192,7 +1192,7 @@ async def test_read_ending_on_frame_boundary_does_not_stall(
 
     # 17 empty frames * MSG_SIZE_OVERHEAD crosses out._limit (2048); the whole
     # burst is complete frames, so parsing ends with an empty tail.
-    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * 17)
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * 17)
     assert out._size > out._limit
     assert protocol._reading_paused is True
     assert out._stalled_reader is None, "empty-tail read must not arm the stall"
@@ -1257,7 +1257,7 @@ async def test_set_exception_still_delivers_stashed_frames(
     parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
 
     sent = 8000
-    parser.feed_data(build_frame(b"", WSMsgType.TEXT, mask=True) * sent)
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
     stalled = len(out._buffer)
     assert stalled < sent
 
@@ -1279,7 +1279,7 @@ async def test_parse_error_abandons_the_stash(protocol: BaseProtocol) -> None:
     payload = b"\0" * (512 * 1024)
     # The reserved opcode sits behind the stash, so it is only reached on a
     # drain-driven resume.
-    parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, mask=True))
+    parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, use_mask=True))
     stalled = out._stalled_reader
     assert stalled is not None and stalled() is parser
 
@@ -1377,7 +1377,7 @@ async def test_burst_under_high_water_is_parsed_in_one_read(
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
 
-    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, mask=True) * 50)
+    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, use_mask=True) * 50)
 
     assert len(out._buffer) == 50
     assert protocol._reading_paused is False
