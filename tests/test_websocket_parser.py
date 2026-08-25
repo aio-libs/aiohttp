@@ -1279,7 +1279,9 @@ async def test_parse_error_abandons_the_stash(protocol: BaseProtocol) -> None:
     payload = b"\0" * (512 * 1024)
     # The reserved opcode sits behind the stash, so it is only reached on a
     # drain-driven resume.
-    parser.feed_data(_compressed_burst(payload, 3) + build_frame(b"", 0x3, use_mask=True))
+    parser.feed_data(
+        _compressed_burst(payload, 3) + build_frame(b"", 0x3, use_mask=True)
+    )
     stalled = out._stalled_reader
     assert stalled is not None and stalled() is parser
 
