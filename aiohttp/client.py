@@ -1244,14 +1244,14 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser = WebSocketReader(
+            ws_resp._parser = WebSocketReader(
                 reader,
                 max_msg_size,
                 compress=bool(compress),
                 decode_text=decode_text,
             )
             cb = None if heartbeat is None else ws_resp._on_data_received
-            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            conn_proto.set_parser(ws_resp._parser, reader, data_received_cb=cb)
             return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":

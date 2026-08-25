@@ -78,6 +78,7 @@ _LIST_ELEMENT_RE = re.compile(
     [ \t]*
     (?:
       "( (?:[^"\\]|\\.)* )"  # group 1: top-level quoted-string
+      [ \t]* (?:,|\Z)
       | (  # group 2: unquoted element
           (?:
             (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
@@ -85,8 +86,8 @@ _LIST_ELEMENT_RE = re.compile(
             | [^,]  # any non-comma character
           )+?
         )
+      (?:,|\Z)
     )
-    [ \t]* (?:,|\Z)
     """,
     re.VERBOSE,
 )

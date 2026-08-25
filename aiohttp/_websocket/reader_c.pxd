@@ -8,6 +8,8 @@ cdef unsigned int READ_PAYLOAD_LENGTH
 cdef unsigned int READ_PAYLOAD_MASK
 cdef unsigned int READ_PAYLOAD
 
+cdef unsigned long long MAX_PAYLOAD_LEN
+
 cdef int OP_CODE_NOT_SET
 cdef int OP_CODE_CONTINUATION
 cdef int OP_CODE_TEXT
@@ -42,11 +44,13 @@ cdef set MESSAGE_TYPES_WITH_CONTENT
 cdef tuple EMPTY_FRAME
 cdef tuple EMPTY_FRAME_ERROR
 
+cdef unsigned int MSG_SIZE_OVERHEAD
+
 cdef class WebSocketDataQueue:
 
-    cdef unsigned int _size
+    cdef readonly unsigned int _size
     cdef public object _protocol
-    cdef unsigned int _limit
+    cdef readonly unsigned int _limit
     cdef object _loop
     cdef bint _eof
     cdef object _waiter
@@ -54,6 +58,7 @@ cdef class WebSocketDataQueue:
     cdef public object _buffer
     cdef object _get_buffer
     cdef object _put_buffer
+    cdef readonly object _stalled_reader
 
     cdef void _release_waiter(self)
 
@@ -64,6 +69,11 @@ cdef class WebSocketDataQueue:
     cdef _read_from_buffer(self)
 
 cdef class WebSocketReader:
+
+    # cdef classes are not weak-referenceable without this; the queue parks a
+    # weakref here while parsing is stalled.
+    cdef object __weakref__
+    cdef object _weak_self
 
     cdef WebSocketDataQueue queue
     cdef unsigned int _max_msg_size
@@ -115,6 +125,7 @@ cdef class WebSocketReader:
         fin=bint,
         had_fragments=Py_ssize_t,
         partial_len=Py_ssize_t,
+        frame_len="unsigned long long",
         payload_bytearray=bytearray,
     )
     cpdef void _feed_data(self, bytes data) except *
