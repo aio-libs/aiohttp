@@ -1,8 +1,10 @@
 import asyncio
+import gc
 import pickle
 import random
 import struct
 import sys
+import weakref
 import zlib
 from unittest import mock
 
@@ -19,10 +21,13 @@ from aiohttp._websocket.helpers import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
+from aiohttp._websocket.reader_py import MSG_SIZE_OVERHEAD
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import HttpParser, WebSocketError, WSCloseCode, WSMessage, WSMsgType
 from aiohttp.http_websocket import WebSocketReader
+from aiohttp.streams import EofStream
 
 
 class PatchableWebSocketReader(WebSocketReader):
@@ -1022,4 +1027,358 @@ async def test_incomplete_frame_not_paused_for_normal_reads(
     # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
     for _ in range(payload_len // 4096):
         parser.feed_data(b"x" * 4096)
+    assert protocol._reading_paused is False
+
+
+def _compressed_burst(payload: bytes, count: int) -> bytes:
+    """`count` complete, independently deflated BINARY messages in one read."""
+    return (
+        build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, use_mask=True)
+        * count
+    )
+
+
+async def test_empty_messages_apply_backpressure(protocol: BaseProtocol) -> None:
+    # Zero-length messages are not free: each one is a queued object. They used
+    # to add nothing to the queue's byte counter, so a peer could stream empty
+    # frames forever without the transport ever being paused.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 10000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
+
+    assert protocol._reading_paused is True
+    assert len(out._buffer) < sent
+    # Overshoot is capped at the one message that crossed the mark.
+    assert out._size <= out._limit + MSG_SIZE_OVERHEAD
+
+
+async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> None:
+    # permessage-deflate reaches ~1000:1, so a single read can carry dozens of
+    # complete frames that each inflate to max_msg_size. pause_reading() only
+    # stops the transport from delivering more data; the parser has to stop
+    # too, or the whole read is inflated into the queue in one go.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    burst = _compressed_burst(payload, 32)
+    assert len(burst) < 2**16  # the whole burst is one plausible socket read
+
+    parser.feed_data(burst)
+
+    assert protocol._reading_paused is True
+    # Overshoot is capped at the one message that crossed the mark, not the
+    # 16 MiB the peer asked us to inflate.
+    assert len(out._buffer) == 1
+
+
+async def test_read_arriving_over_high_water_inflates_nothing(
+    protocol: BaseProtocol,
+) -> None:
+    # pause_reading() does not retract a read already in flight (the proactor
+    # transport completes its outstanding overlapped read, and a transport
+    # without flow control ignores the pause entirely). Such a read must not
+    # buy the peer one more inflated message before the parser stops again.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 2))
+    assert len(out._buffer) == 1
+
+    # Lands while the queue is still over the mark and nothing has drained.
+    parser.feed_data(_compressed_burst(payload, 2))
+    assert len(out._buffer) == 1
+
+    # All four are still delivered once the application catches up.
+    for _ in range(4):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+
+async def test_backpressure_does_not_drop_stashed_frames(
+    protocol: BaseProtocol,
+) -> None:
+    # The frames the parser stopped short of must still be delivered as the
+    # application drains the queue, with no further socket data to drive it.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 32))
+
+    for _ in range(32):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+    assert not out._buffer
+    # feed_data() adds MSG_SIZE_OVERHEAD and _read_from_buffer() subtracts it;
+    # _size is an unsigned int under Cython, so if those ever drift the
+    # subtraction wraps to ~4G rather than going negative. _size < _limit is
+    # then permanently false and the connection wedges silently: the transport
+    # is never resumed and the stalled parser is never driven again.
+    assert out._size == 0
+    assert protocol._reading_paused is False
+
+
+async def test_drain_resumes_parsing_in_batches(protocol: BaseProtocol) -> None:
+    # The parser is re-driven only at the low-water mark. Each resume
+    # re-slices the whole unparsed tail, so re-driving on every pop would
+    # make draining a burst of tiny messages quadratic in its size.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
+    stalled = len(out._buffer)
+    assert stalled < sent
+
+    # Above the low-water mark a pop must not re-drive the parser.
+    await asyncio.wait_for(out.read(), 5)
+    assert len(out._buffer) == stalled - 1
+
+    # The pop that reaches the low-water mark refills the queue in one batch.
+    low_water_msgs = (out._limit // 2) // MSG_SIZE_OVERHEAD
+    for _ in range(stalled - 1 - low_water_msgs):
+        await asyncio.wait_for(out.read(), 5)
+    assert len(out._buffer) > low_water_msgs
+    assert out._size > out._limit
+
+
+async def test_transport_stays_paused_while_stash_remains(
+    protocol: BaseProtocol,
+) -> None:
+    # Resuming the transport before the stash is exhausted would admit a
+    # fresh socket read into the tail for every couple of messages drained,
+    # moving the memory bound from the queue into the tail.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
+    assert protocol._reading_paused is True
+
+    count = 0
+    while out._stalled_reader is not None:
+        await asyncio.wait_for(out.read(), 5)
+        count += 1
+        if out._stalled_reader is not None:
+            assert protocol._reading_paused is True, f"resumed after {count} pops"
+    assert count < sent
+
+    # The pop that exhausted the stash resumed the transport.
+    assert protocol._reading_paused is False
+
+
+async def test_read_ending_on_frame_boundary_does_not_stall(
+    protocol: BaseProtocol,
+) -> None:
+    # A read that crosses the high-water mark but ends exactly on a frame
+    # boundary leaves nothing stashed, so the parser must not arm the stall;
+    # ordinary backpressure then resumes at the queue limit, not the low-water
+    # mark reserved for draining a stash.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 1024, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    # 17 empty frames * MSG_SIZE_OVERHEAD crosses out._limit (2048); the whole
+    # burst is complete frames, so parsing ends with an empty tail.
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * 17)
+    assert out._size > out._limit
+    assert protocol._reading_paused is True
+    assert out._stalled_reader is None, "empty-tail read must not arm the stall"
+
+    # Draining back under the limit resumes well above _limit // 2, so the
+    # low-water mark reserved for stashes is not in play.
+    await asyncio.wait_for(out.read(), 5)
+    await asyncio.wait_for(out.read(), 5)
+    assert out._limit // 2 < out._size < out._limit
+    assert protocol._reading_paused is False
+
+
+async def test_backpressure_stash_survives_eof(protocol: BaseProtocol) -> None:
+    # A peer that bursts and then disconnects must not lose the tail: at EOF
+    # there is no resume to ride on, so draining has to keep driving the parser.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 8))
+    parser.feed_eof()
+
+    for _ in range(8):
+        msg = await asyncio.wait_for(out.read(), 5)
+        assert msg.data == payload
+
+    with pytest.raises(EofStream):
+        await asyncio.wait_for(out.read(), 5)
+
+
+async def test_stalled_reader_reference_released_after_drain(
+    protocol: BaseProtocol,
+) -> None:
+    # The queue holds the reader back only while parsing is stalled. Keeping it
+    # any longer would leave reader <-> queue as a cycle outliving the
+    # connection, reclaimable only by the collector rather than by refcounting.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    parser.feed_data(_compressed_burst(payload, 4))
+    stalled = out._stalled_reader
+    assert stalled is not None and stalled() is parser
+
+    for _ in range(4):
+        await asyncio.wait_for(out.read(), 5)
+
+    assert out._stalled_reader is None
+
+
+async def test_set_exception_still_delivers_stashed_frames(
+    protocol: BaseProtocol,
+) -> None:
+    # set_exception() is also the transport-died hook (WebSocketResponse._cancel).
+    # _read_from_buffer() only raises once the buffer is empty, so complete
+    # frames the parser stopped short of must still be delivered first, exactly
+    # as they were before the parser learned to stall.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    sent = 8000
+    parser.feed_data(build_frame(b"", WSMsgType.TEXT, use_mask=True) * sent)
+    stalled = len(out._buffer)
+    assert stalled < sent
+
+    out.set_exception(ConnectionResetError())
+
+    for _ in range(sent):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(ConnectionResetError):
+        await out.read()
+
+
+async def test_parse_error_abandons_the_stash(protocol: BaseProtocol) -> None:
+    # A parse error poisons the reader, so re-driving it from a drain is a
+    # no-op and the error surfaces once the buffer is empty.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    payload = b"\0" * (512 * 1024)
+    # The reserved opcode sits behind the stash, so it is only reached on a
+    # drain-driven resume.
+    parser.feed_data(
+        _compressed_burst(payload, 3) + build_frame(b"", 0x3, use_mask=True)
+    )
+    stalled = out._stalled_reader
+    assert stalled is not None and stalled() is parser
+
+    for _ in range(3):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(WebSocketError):
+        await asyncio.wait_for(out.read(), 5)
+
+
+async def test_queue_does_not_keep_stalled_reader_alive(
+    protocol: BaseProtocol,
+) -> None:
+    # The one case feed_eof() cannot clean up: the connection dies while
+    # parsing is stalled, then the application drops the response without
+    # draining. The queue's link back must be weak or reader <-> queue
+    # survives as a cycle that only the collector can reclaim.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    parser.feed_eof()
+    # `parser` deliberately never appears in an assert: pytest's assertion
+    # rewriting keeps temporaries for the failure message, and a lingering
+    # reference to it would mask the very thing under test.
+    stalled = out._stalled_reader
+    assert stalled is not None
+
+    ref = weakref.ref(parser)
+    del parser, stalled
+    # `out` deliberately stays alive across the collection: a strong link back
+    # would keep the reader reachable from a live root, so this proves the link
+    # is weak rather than merely testing reclamation timing. Collect instead of
+    # disabling the gc -- PyPy has no refcounting to reclaim eagerly, and can
+    # need more than one pass to clear the weakref.
+    for _ in range(3):
+        gc.collect()
+
+    assert ref() is None, "queue kept the stalled reader alive"
+
+
+def _queue_with_collected_reader(
+    protocol: BaseProtocol, loop: asyncio.AbstractEventLoop, *, eof: bool
+) -> WebSocketDataQueue:
+    """A queue whose reader stalled on a burst and was then collected."""
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=True, decode_text=False)
+    parser.feed_data(_compressed_burst(b"\0" * (512 * 1024), 4))
+    if eof:
+        parser.feed_eof()
+    del parser
+    for _ in range(3):
+        gc.collect()
+    return out
+
+
+async def test_collected_stalled_reader_surfaces_contract_error(
+    protocol: BaseProtocol, caplog: pytest.LogCaptureFixture
+) -> None:
+    # Every strong reference to the reader was dropped while it was stalled,
+    # so the stash is gone. Whatever was already queued is still delivered,
+    # then the contract violation surfaces instead of a silent short stream.
+    # It is also logged, for callers that stop reading before the exception.
+    loop = asyncio.get_running_loop()
+    out = _queue_with_collected_reader(protocol, loop, eof=True)
+
+    for _ in range(len(out._buffer)):
+        await asyncio.wait_for(out.read(), 5)
+    assert "must hold a strong reference" in caplog.text
+    with pytest.raises(RuntimeError, match="must hold a strong reference"):
+        await out.read()
+
+
+async def test_collected_stalled_reader_preserves_existing_exception(
+    protocol: BaseProtocol,
+) -> None:
+    # set_exception() is also the transport-died hook; losing the reader on
+    # top of that must not replace the real cause with the contract error.
+    loop = asyncio.get_running_loop()
+    out = _queue_with_collected_reader(protocol, loop, eof=False)
+    out.set_exception(ConnectionResetError())
+
+    for _ in range(len(out._buffer)):
+        await asyncio.wait_for(out.read(), 5)
+    with pytest.raises(ConnectionResetError):
+        await out.read()
+
+
+async def test_burst_under_high_water_is_parsed_in_one_read(
+    protocol: BaseProtocol,
+) -> None:
+    # Ordinary pipelined traffic that fits under the mark must not be stalled
+    # or split across reads by the backpressure check.
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, 1024 * 1024, compress=False, decode_text=True)
+
+    parser.feed_data(build_frame(b"hello", WSMsgType.TEXT, use_mask=True) * 50)
+
+    assert len(out._buffer) == 50
     assert protocol._reading_paused is False
