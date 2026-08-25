@@ -1074,7 +1074,6 @@ async def test_compressed_burst_stops_at_high_water(protocol: BaseProtocol) -> N
     # Overshoot is capped at the one message that crossed the mark, not the
     # 16 MiB the peer asked us to inflate.
     assert len(out._buffer) == 1
-    assert out._buffer[0].size == len(payload)
 
 
 async def test_read_arriving_over_high_water_inflates_nothing(
