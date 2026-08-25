@@ -618,7 +618,7 @@ class ClientSession:
                 handle = None
             if isinstance(data, payload.Payload) and not data._upload_active:
                 data._abort_upload(e)
-                data._mark_upload_error_propagated()
+                data._mark_upload_error_propagated(e)
             raise
 
         timer = tm.timer()
@@ -931,7 +931,7 @@ class ClientSession:
                 body = data if isinstance(data, payload.Payload) else None
             if body is not None and not body._upload_active:
                 body._abort_upload(e)
-                body._mark_upload_error_propagated()
+                body._mark_upload_error_propagated(e)
 
             for trace in traces:
                 await trace.send_request_exception(

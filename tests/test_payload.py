@@ -1466,7 +1466,7 @@ async def test_upload_error_propagated_is_consumed() -> None:
     assert p._start_upload()
     err = RuntimeError("upload failed")
     p._abort_upload(err)
-    p._mark_upload_error_propagated()
+    p._mark_upload_error_propagated(err)
     fut = p.upload_complete
     assert not fut._log_traceback
     assert fut.exception() is err
@@ -1481,6 +1481,25 @@ async def test_upload_error_propagation_consumes_existing_future() -> None:
     p._abort_upload(err)
     armed = fut._log_traceback
     assert armed
-    p._mark_upload_error_propagated()
+    p._mark_upload_error_propagated(err)
     assert not fut._log_traceback
+    assert fut.exception() is err
+
+
+async def test_upload_error_propagation_requires_identity() -> None:
+    """Marking with a different exception must not consume the stored one.
+
+    A preamble failure can be superseded by an unrelated request error
+    (e.g. a timeout); the stored error is then the future's only holder
+    and its never-retrieved log must stay armed.
+    """
+    p = payload.BytesPayload(b"x")
+    fut = p.upload_complete
+    assert p._start_upload()
+    err = RuntimeError("preamble failed")
+    p._abort_upload(err)
+    p._mark_upload_error_propagated(RuntimeError("request timeout"))
+    assert not p._upload_error_propagated
+    armed = fut._log_traceback
+    assert armed
     assert fut.exception() is err

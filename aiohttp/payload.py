@@ -292,8 +292,16 @@ class Payload(ABC):
                 # the future is the only holder and the log must stay armed.
                 fut.exception()
 
-    def _mark_upload_error_propagated(self) -> None:
-        """Record that the request raised the upload failure to its caller."""
+    def _mark_upload_error_propagated(self, exc: BaseException) -> None:
+        """Record that the caller received the stored upload failure.
+
+        Only when the exception the request raised is the stored one is
+        the future's copy a duplicate; a different error (e.g. a preamble
+        failure superseded by a timeout) must keep the never-retrieved
+        log armed, or the stored error would vanish entirely.
+        """
+        if exc is not self._upload_abort_exc:
+            return
         self._upload_error_propagated = True
         fut = self._upload_future
         if fut is not None and fut.done() and not fut.cancelled():
