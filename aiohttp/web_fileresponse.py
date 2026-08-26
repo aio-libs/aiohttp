@@ -1,5 +1,6 @@
 import asyncio
 import io
+import math
 import os
 import pathlib
 import sys
@@ -13,13 +14,7 @@ from typing import TYPE_CHECKING, BinaryIO, Final, Optional
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import (
-    DEFAULT_CHUNK_SIZE,
-    ETAG_ANY,
-    ETag,
-    must_be_empty_body,
-    parse_http_date,
-)
+from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -313,19 +308,18 @@ class FileResponse(StreamResponse):
         start: int | None = None
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
-        # If-Range: only honor the Range when the validator still matches the
-        # current representation, otherwise serve the whole 200 (RFC 9110
-        # section 13.1.5). request.if_range parses the HTTP-date form; the
-        # entity-tag form is handled here with the strong comparison If-Range
-        # requires, so a stale ETag no longer yields a partial from a changed
-        # file.
-        if_range = request.headers.get(hdrs.IF_RANGE)
+        # https://www.rfc-editor.org/info/rfc9110/#name-if-range
+        if_range = request.if_range
         if if_range is None:
             range_applies = True
-        elif (if_range_date := parse_http_date(if_range)) is not None:
-            range_applies = file_mtime <= if_range_date.timestamp()
+        elif isinstance(if_range, ETag):
+            # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-12.1
+            range_applies = not if_range.is_weak and if_range.value == etag_value
         else:
-            range_applies = if_range.strip() == f'"{etag_value}"'
+            # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-10.2
+            # Last-Modified is emitted as math.ceil(mtime), so the strong
+            # comparison is against that same rounded value.
+            range_applies = math.ceil(file_mtime) == if_range.timestamp()
 
         if range_applies:
             # If-Range header check:
