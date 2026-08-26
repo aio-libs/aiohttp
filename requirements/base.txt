@@ -26,7 +26,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==26.0.0
+gunicorn==26.1.0
     # via -r requirements/base.in
 idna==3.19
     # via yarl
@@ -34,8 +34,6 @@ multidict==6.7.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-packaging==26.3
-    # via gunicorn
 propcache==0.5.2
     # via
     #   -r requirements/runtime-deps.in
