@@ -47,7 +47,7 @@ frozenlist==1.8.0
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
-gunicorn==26.0.0
+gunicorn==26.1.0
     # via -r requirements/base-ft.in
 idna==3.19
     # via yarl
@@ -59,9 +59,7 @@ multidict==6.7.1
     #   aiohttp
     #   yarl
 packaging==26.3
-    # via
-    #   gunicorn
-    #   pytest
+    # via pytest
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
 pluggy==1.6.0
