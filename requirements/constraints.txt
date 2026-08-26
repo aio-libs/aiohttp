@@ -93,11 +93,11 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==26.0.0
+gunicorn==26.1.0
     # via -r requirements/base.in
 identify==2.6.19
     # via pre-commit
-idna==3.18
+idna==3.19
     # via
     #   requests
     #   trustme
@@ -147,7 +147,6 @@ nodeenv==1.10.0
 packaging==26.3
     # via
     #   build
-    #   gunicorn
     #   pytest
     #   sphinx
     #   wheel
@@ -183,7 +182,7 @@ pydantic-core==2.46.4
     # via pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
-pygments==2.20.0
+pygments==2.21.0
     # via
     #   pytest
     #   rich
@@ -301,7 +300,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   python-on-whales
     #   typing-inspection
     #   virtualenv
-typing-inspection==0.4.3
+typing-inspection==0.4.4
     # via pydantic
 urllib3==2.7.0
     # via requests

@@ -2429,7 +2429,9 @@ async def test_post_max_client_size_counts_undecoded_bytes(
         assert resp.status == 413
 
 
-@pytest.mark.skipif(not os.path.isdir("/dev/fd"), reason="needs /dev/fd to count fds")
+@pytest.mark.skipif(
+    not os.path.isdir("/proc/self/fd"), reason="needs /proc/self/fd to identify fds"
+)
 @pytest.mark.parametrize(
     ("parts", "part_body", "expected_fds"),
     (
@@ -2443,10 +2445,22 @@ async def test_post_file_fields_descriptor_cost(
 ) -> None:
     """Only a part past the spool size may cost a descriptor."""
 
+    def deleted_file_fds() -> set[tuple[str, str]]:
+        """(fd, symlink target) pairs for open fds backed by deleted files."""
+        fds = set()
+        for name in os.listdir("/proc/self/fd"):
+            try:
+                target = os.readlink(f"/proc/self/fd/{name}")
+            except OSError:
+                continue  # closed between listdir and readlink
+            if target.endswith("(deleted)"):
+                fds.add((name, target))
+        return fds
+
     async def handler(request: web.Request) -> web.Response:
-        before = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        before = await asyncio.to_thread(deleted_file_fds)
         data = await request.post()
-        after = set(await asyncio.to_thread(os.listdir, "/dev/fd"))
+        after = await asyncio.to_thread(deleted_file_fds)
         assert len(data) == parts
         return web.Response(text=str(len(after - before)))
 
