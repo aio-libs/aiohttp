@@ -724,6 +724,21 @@ class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
     # _autoclose = False (inherited) - Has text file handle that needs explicit closing
 
+    @property
+    def size(self) -> int | None:
+        """Size of the payload in bytes, or None if it cannot be determined.
+
+        Unlike the binary IOBasePayload, a text stream is decoded and
+        re-encoded before it reaches the wire, so os.fstat().st_size is not
+        the number of bytes actually written. Universal-newline translation
+        (``\\r\\n`` -> ``\\n``) and any difference between the on-disk encoding
+        and the payload encoding change the byte count, so the on-disk size
+        must not be advertised as Content-Length. Report the size as unknown
+        (which selects chunked/close framing) rather than a value that
+        disagrees with the body.
+        """
+        return None
+
     def __init__(
         self,
         value: TextIO,
@@ -784,6 +799,10 @@ class TextIOPayload(IOBasePayload):
                 remaining_content_len or DEFAULT_CHUNK_SIZE,
             )
         )
+        # An empty read means EOF. Encoding "" is not always empty (utf-16/utf-32
+        # emit a BOM), so short-circuit to keep it a genuine end-of-stream marker.
+        if not chunk:
+            return size, b""
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def _read(self, remaining_content_len: int | None) -> bytes:
@@ -805,6 +824,10 @@ class TextIOPayload(IOBasePayload):
 
         """
         chunk = self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)
+        # See _read_and_available_len: never encode an empty EOF read, or a
+        # BOM-prefixed encoding would keep the write loop from terminating.
+        if not chunk:
+            return b""
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:

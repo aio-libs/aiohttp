@@ -1286,31 +1286,32 @@ def test_json_bytes_payload_content_type() -> None:
     assert jp_custom.content_type == "application/vnd.api+json"
 
 
-async def test_text_io_payload_size_matches_file_encoding(tmp_path: Path) -> None:
-    """Test TextIOPayload.size when file encoding matches payload encoding."""
-    # Create UTF-8 file
+async def test_text_io_payload_size_is_none(tmp_path: Path) -> None:
+    """A text stream is re-encoded on the way out, so its size is unknown."""
     utf8_file = tmp_path / "test_utf8.txt"
     content = "Hello 世界"
 
-    # Write file in executor
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, utf8_file.write_text, content, "utf-8")
 
-    # Open file in executor
     def open_file() -> TextIO:
         return open(utf8_file, encoding="utf-8")
 
     f = await loop.run_in_executor(None, open_file)
     try:
         tiop = payload.TextIOPayload(f)
-        # Size should match the actual UTF-8 encoded size
-        assert tiop.size == len(content.encode("utf-8"))
+        assert tiop.size is None
+
+        # The full encoded content is streamed regardless.
+        writer = BufferWriter()
+        await tiop.write(writer)
+        assert bytes(writer.buffer) == content.encode("utf-8")
     finally:
         await loop.run_in_executor(None, f.close)
 
 
 async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
-    """Test TextIOPayload.size reports correct size with utf-16."""
+    """Test TextIOPayload.size reports unknown size with utf-16."""
     # Create UTF-16 file
     utf16_file = tmp_path / "test_utf16.txt"
     content = "Hello World"
@@ -1319,11 +1320,6 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
     # Write file in executor
     await loop.run_in_executor(None, utf16_file.write_text, content, "utf-16")
 
-    # Get file size in executor
-    utf16_file_size = await loop.run_in_executor(
-        None, lambda: utf16_file.stat().st_size
-    )
-
     # Open file in executor
     def open_file() -> TextIO:
         return open(utf16_file, encoding="utf-16")
@@ -1331,15 +1327,67 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
     f = await loop.run_in_executor(None, open_file)
     try:
         tiop = payload.TextIOPayload(f, encoding="utf-16")
-        # Payload reports file size on disk (UTF-16)
-        assert tiop.size == utf16_file_size
+        # On-disk size is not the encoded body length, so it is not advertised.
+        assert tiop.size is None
 
         # Write to a buffer to see what actually gets sent
         writer = BufferWriter()
         await tiop.write(writer)
 
-        # Check that the actual written bytes match file size
-        assert len(writer.buffer) == utf16_file_size
+        # The re-encoded body round-trips to the original utf-16 bytes.
+        assert bytes(writer.buffer) == content.encode("utf-16")
+    finally:
+        await loop.run_in_executor(None, f.close)
+
+
+async def test_text_io_payload_crlf_not_short(tmp_path: Path) -> None:
+    """A file with CRLF endings must not advertise the untranslated size.
+
+    Text-mode reads translate ``\\r\\n`` -> ``\\n``, so the on-disk byte count
+    is larger than the body. Advertising it as Content-Length would leave the
+    connection short by the translated bytes (a keep-alive desync). size must
+    be None so chunked framing is used, and the whole body is written.
+    """
+    crlf_file = tmp_path / "crlf.txt"
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, crlf_file.write_bytes, b"a\r\nb\r\nc\r\n")
+
+    def open_file() -> TextIO:
+        return open(crlf_file)
+
+    f = await loop.run_in_executor(None, open_file)
+    try:
+        tiop = payload.TextIOPayload(f)
+        assert tiop.size is None
+        writer = BufferWriter()
+        await tiop.write(writer)
+        assert bytes(writer.buffer) == b"a\nb\nc\n"
+    finally:
+        await loop.run_in_executor(None, f.close)
+
+
+async def test_text_io_payload_reencode_not_truncated(tmp_path: Path) -> None:
+    """Re-encoding to a wider form must not be truncated to the on-disk size.
+
+    A latin-1 source byte (``é`` -> 0xe9) becomes two bytes in utf-8. When the
+    on-disk size was used as Content-Length the body was cut to that length,
+    splitting the multibyte character; size must be None so the full utf-8
+    body is sent.
+    """
+    latin1_file = tmp_path / "latin1.txt"
+    loop = asyncio.get_running_loop()
+    await loop.run_in_executor(None, latin1_file.write_bytes, "café".encode("latin-1"))
+
+    def open_file() -> TextIO:
+        return open(latin1_file, encoding="latin-1")
+
+    f = await loop.run_in_executor(None, open_file)
+    try:
+        tiop = payload.TextIOPayload(f)  # payload encoding defaults to utf-8
+        assert tiop.size is None
+        writer = BufferWriter()
+        await tiop.write(writer)
+        assert bytes(writer.buffer) == "café".encode("utf-8")
     finally:
         await loop.run_in_executor(None, f.close)
 
