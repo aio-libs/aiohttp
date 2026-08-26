@@ -1387,7 +1387,7 @@ async def test_text_io_payload_reencode_not_truncated(tmp_path: Path) -> None:
         assert tiop.size is None
         writer = BufferWriter()
         await tiop.write(writer)
-        assert bytes(writer.buffer) == "café".encode("utf-8")
+        assert bytes(writer.buffer) == "café".encode()
     finally:
         await loop.run_in_executor(None, f.close)
 
