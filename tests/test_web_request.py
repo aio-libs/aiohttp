@@ -1028,36 +1028,22 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
-async def test_multipart_formdata_field_unknown_charset(protocol: BaseProtocol) -> None:
+@pytest.mark.parametrize(
+    ("part_charset", "part_body"),
+    [
+        ("not-a-real-codec", b"hello"),
+        ("utf-8", b"\xff\xfe"),
+    ],
+)
+async def test_multipart_formdata_field_bad_charset(
+    protocol: BaseProtocol, part_charset: str, part_body: bytes
+) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     payload.feed_data(
         b"-----------------------------326931944431359\r\n"
         b'Content-Disposition: form-data; name="a"\r\n'
-        b"Content-Type: text/plain; charset=not-a-real-codec\r\n"
-        b"\r\n"
-        b"hello\r\n"
-        b"-----------------------------326931944431359--\r\n"
-    )
-    content_type = (
-        "multipart/form-data; boundary=---------------------------326931944431359"
-    )
-    payload.feed_eof()
-    req = make_mocked_request(
-        "POST", "/", headers={"CONTENT-TYPE": content_type}, payload=payload
-    )
-    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
-        await req.post()
-    assert err.value.status_code == 415
-
-
-async def test_multipart_formdata_field_undecodable(protocol: BaseProtocol) -> None:
-    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-    payload.feed_data(
-        b"-----------------------------326931944431359\r\n"
-        b'Content-Disposition: form-data; name="a"\r\n'
-        b"Content-Type: text/plain; charset=utf-8\r\n"
-        b"\r\n"
-        b"\xff\xfe\r\n"
+        b"Content-Type: text/plain; charset=" + part_charset.encode() + b"\r\n"
+        b"\r\n" + part_body + b"\r\n"
         b"-----------------------------326931944431359--\r\n"
     )
     content_type = (
