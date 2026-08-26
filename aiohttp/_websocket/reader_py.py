@@ -5,7 +5,6 @@ import builtins
 import sys
 import weakref
 from collections import deque
-from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
@@ -65,9 +64,9 @@ TUPLE_NEW = tuple.__new__
 
 # Overhead added to each message to ensure that tiny messages can't use
 # unreasonable amounts of memory.
-MSG_SIZE_OVERHEAD: Final[int] = 128
+MSG_SIZE_OVERHEAD = 128
 
-STALLED_READER_COLLECTED: Final[str] = (
+STALLED_READER_COLLECTED = (
     "WebSocketReader was garbage collected while stalled; "
     "callers of set_parser() must hold a strong reference"
 )
