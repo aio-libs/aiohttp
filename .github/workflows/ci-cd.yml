@@ -561,7 +561,7 @@ jobs:
         done
         exit 1
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v5.0.3
+      uses: CodSpeedHQ/action@v5.2.1
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
