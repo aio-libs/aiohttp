@@ -87,10 +87,10 @@ if not NO_EXTENSIONS:
 
     extensions.extend(
         mypycify(
-            [
-                "--config-file=tools/mypyc-reader.ini",
+            (
+                "--follow-imports=silent",
                 "aiohttp/_websocket/reader.py",
-            ],
+            ),
             opt_level="3",
         )
     )
