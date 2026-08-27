@@ -82,7 +82,8 @@ extensions = [
     ),
 ]
 
-if not NO_EXTENSIONS:
+# Mobile platforms have no wheels for mypy's compiled dependencies.
+if not NO_EXTENSIONS and sys.platform not in {"ios", "android"}:
     from mypyc.build import mypycify
 
     # setuptools injects its vendored packages into sys.path inside PEP 517

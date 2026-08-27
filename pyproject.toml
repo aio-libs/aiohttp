@@ -7,7 +7,8 @@ requires = [
     # their setuptools version.
     "setuptools >= 67.0",
     # Used for mypyc compilation.
-    "mypy >= 2.3 ; platform_python_implementation == 'CPython'",
+    # Mobile platforms have no wheels for mypy's compiled dependencies.
+    "mypy >= 2.3 ; platform_python_implementation == 'CPython' and sys_platform != 'ios' and sys_platform != 'android'",
 ]
 build-backend = "setuptools.build_meta"
 
