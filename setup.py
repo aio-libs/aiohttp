@@ -80,12 +80,20 @@ extensions = [
         ["aiohttp/_http_writer.c"],
         define_macros=cython_trace_macros,
     ),
-    Extension(
-        "aiohttp._websocket.reader_c",
-        ["aiohttp/_websocket/reader_c.c"],
-        define_macros=cython_trace_macros,
-    ),
 ]
+
+if not NO_EXTENSIONS:
+    from mypyc.build import mypycify
+
+    extensions.extend(
+        mypycify(
+            [
+                "--config-file=tools/mypyc-reader.ini",
+                "aiohttp/_websocket/reader.py",
+            ],
+            opt_level="3",
+        )
+    )
 
 
 class ParallelBuildExt(build_ext):

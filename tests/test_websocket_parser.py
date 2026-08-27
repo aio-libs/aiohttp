@@ -20,8 +20,7 @@ from aiohttp._websocket.helpers import (
     websocket_mask,
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
-from aiohttp._websocket.reader import WebSocketDataQueue
-from aiohttp._websocket.reader_py import MSG_SIZE_OVERHEAD
+from aiohttp._websocket.reader import MSG_SIZE_OVERHEAD, WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
