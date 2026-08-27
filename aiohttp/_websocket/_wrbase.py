@@ -1,5 +1,5 @@
 import asyncio
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 if TYPE_CHECKING:
     from .models import WSMessage
@@ -13,13 +13,15 @@ class _WeakrefBase:
 class _InterpretedReadMixin:
     """Hack for https://github.com/mypyc/mypyc/issues/1214"""
 
-    async def read(self: "WebSocketDataQueue") -> "WSMessage":
-        if not self._buffer and not self._eof:
-            assert not self._waiter
-            self._waiter = self._loop.create_future()
+    async def read(self) -> "WSMessage":
+        q = cast("WebSocketDataQueue", self)
+        if not q._buffer and not q._eof:
+            assert not q._waiter
+            waiter: "asyncio.Future[None]" = q._loop.create_future()
+            q._waiter = waiter
             try:
-                await self._waiter
+                await waiter
             except (asyncio.CancelledError, asyncio.TimeoutError):
-                self._waiter = None
+                q._waiter = None
                 raise
-        return self._read_from_buffer()
+        return q._read_from_buffer()
