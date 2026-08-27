@@ -85,15 +85,24 @@ extensions = [
 if not NO_EXTENSIONS:
     from mypyc.build import mypycify
 
-    extensions.extend(
-        mypycify(
-            (
-                "--follow-imports=silent",
-                "aiohttp/_websocket/reader.py",
-            ),
-            opt_level="3",
+    # setuptools injects its vendored packages into sys.path inside PEP 517
+    # build hooks; mypy would then find e.g. packaging under two module
+    # names and abort.  Keep the vendored directory out of mypy's search
+    # path; setuptools' already-imported vendored modules are unaffected.
+    _sys_path = sys.path
+    sys.path = [p for p in sys.path if not p.endswith("_vendor")]
+    try:
+        extensions.extend(
+            mypycify(
+                [
+                    "--follow-imports=silent",
+                    "aiohttp/_websocket/reader.py",
+                ],
+                opt_level="3",
+            )
         )
-    )
+    finally:
+        sys.path = _sys_path
 
 
 class ParallelBuildExt(build_ext):
