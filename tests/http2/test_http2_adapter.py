@@ -85,9 +85,13 @@ class TestWrite:
         asyncio.run(w.write(data))
 
         # Headers sent first
-        assert_send_headers_called(protocol, 123, "POST", req.url, headers, end_stream=False)
+        assert_send_headers_called(
+            protocol, 123, "POST", req.url, headers, end_stream=False
+        )
         # Data sent
-        protocol._connection.send_data.assert_called_once_with(123, data, end_stream=False)
+        protocol._connection.send_data.assert_called_once_with(
+            123, data, end_stream=False
+        )
         assert w.output_size == len(data)
         assert w._headers_sent is True
         assert w._headers is None
@@ -111,7 +115,9 @@ class TestWrite:
         asyncio.run(w.write(data))
 
         protocol._connection.send_headers.assert_not_called()
-        protocol._connection.send_data.assert_called_once_with(123, data, end_stream=False)
+        protocol._connection.send_data.assert_called_once_with(
+            123, data, end_stream=False
+        )
         assert w.output_size == len(data)
 
 
@@ -140,9 +146,13 @@ class TestWriteEof:
         asyncio.run(w.write_eof(chunk))
 
         # Headers sent without END_STREAM
-        assert_send_headers_called(protocol, 123, "POST", req.url, headers, end_stream=False)
+        assert_send_headers_called(
+            protocol, 123, "POST", req.url, headers, end_stream=False
+        )
         # Data with END_STREAM
-        protocol._connection.send_data.assert_called_once_with(123, chunk, end_stream=True)
+        protocol._connection.send_data.assert_called_once_with(
+            123, chunk, end_stream=True
+        )
         assert w.output_size == len(chunk)
         assert w._eof is True
 
@@ -154,7 +164,9 @@ class TestWriteEof:
         asyncio.run(w.write_eof(b""))
 
         # Headers with END_STREAM
-        assert_send_headers_called(protocol, 123, "POST", req.url, headers, end_stream=True)
+        assert_send_headers_called(
+            protocol, 123, "POST", req.url, headers, end_stream=True
+        )
         protocol._connection.send_data.assert_not_called()
         assert w.output_size == 0
         assert w._eof is True
@@ -167,7 +179,9 @@ class TestWriteEof:
         asyncio.run(w.write_eof(chunk))
 
         protocol._connection.send_headers.assert_not_called()
-        protocol._connection.send_data.assert_called_once_with(123, chunk, end_stream=True)
+        protocol._connection.send_data.assert_called_once_with(
+            123, chunk, end_stream=True
+        )
         assert w.output_size == len(chunk)
         assert w._eof is True
 
@@ -178,7 +192,9 @@ class TestWriteEof:
         asyncio.run(w.write_eof(b""))
 
         protocol._connection.send_headers.assert_not_called()
-        protocol._connection.send_data.assert_called_once_with(123, b"", end_stream=True)
+        protocol._connection.send_data.assert_called_once_with(
+            123, b"", end_stream=True
+        )
         assert w.output_size == 0
         assert w._eof is True
 
@@ -205,7 +221,9 @@ class TestSetEof:
 
         w.set_eof()
 
-        assert_send_headers_called(protocol, 123, "POST", req.url, headers, end_stream=True)
+        assert_send_headers_called(
+            protocol, 123, "POST", req.url, headers, end_stream=True
+        )
         assert w._eof is True
         assert w._headers is None
         assert w._headers_sent is True
