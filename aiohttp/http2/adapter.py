@@ -1,34 +1,40 @@
+"""HTTP/1.1 to HTTP/2 adapters."""
+
 import asyncio
 from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Tuple, Union
 
 from multidict import CIMultiDict
 
-from aiohttp.abc import AbstractStreamWriter
-from aiohttp.helpers import HeadersDictProxy
-from aiohttp.http_parser import RawResponseMessage
-from aiohttp.http_writer import HttpVersion
-from aiohttp.streams import StreamReader
+from ..abc import AbstractStreamWriter
+from ..base_protocol import BaseProtocol
+from ..helpers import HeadersDictProxy
+from ..http_parser import RawResponseMessage
+from ..http_writer import HttpVersion
 
 if TYPE_CHECKING:
-    from aiohttp.client_reqrep import ClientRequest
+    from ..client_reqrep import ClientRequest
 
 
-def get_version(protocol: Any) -> str:
+def get_version(protocol: BaseProtocol) -> str:
     """Helper to get the negotiated HTTP version from the protocol."""
-    # backwards compat
+    # backwards compatibility
     if not hasattr(protocol, "transport"):
         return "http/1.1"
-    ssl_object = protocol.transport.get_extra_info("ssl_object")
+    transport = protocol.transport
+    assert transport is not None
+    return _get_version(transport)
+
+
+def _get_version(transport: asyncio.BaseTransport) -> str:
+    ssl_object = transport.get_extra_info("ssl_object")
     alpn_protocol = ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
     return alpn_protocol
 
 
-def feed_response(
-    reader: StreamReader,
+def feed_headers(
     headers: Iterable[tuple[str, str]],
-    body: bytes,
-) -> Tuple[RawResponseMessage, StreamReader]:
-    """Call when the stream receives the complete response."""
+) -> RawResponseMessage:
+    """Convert raw headers to the standard RawResponseMessage format"""
     # Build a minimal RawResponseMessage (the fields that ClientResponse uses).
     raw_headers: List[Tuple[bytes, bytes]] = []
     code = 500
@@ -45,15 +51,11 @@ def feed_response(
         headers=HeadersDictProxy(CIMultiDict(headers)),
         raw_headers=tuple(raw_headers),
         should_close=False,
-        # n/a
-        compression=None,
-        upgrade=False,
-        chunked=False,
+        compression=None,  # XXX propagate the configuration
+        upgrade=False,  # not implemented
+        chunked=False,  # n/a
     )
-    # Feed the body into the StreamReader.
-    reader.feed_data(body)
-    reader.feed_eof()
-    return msg, reader
+    return msg
 
 
 class Http2StreamWriter(AbstractStreamWriter):

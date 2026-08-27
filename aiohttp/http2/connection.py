@@ -29,17 +29,19 @@ from typing import Callable, Dict, Iterable, List, Optional, Set
 from hpack import Decoder, Encoder
 from yarl import URL
 
-from aiohttp.base_protocol import BaseProtocol
-from aiohttp.client_exceptions import ClientConnectionError, SocketTimeoutError
-from aiohttp.helpers import (
+from ..base_protocol import BaseProtocol
+from ..client_exceptions import ClientConnectionError, SocketTimeoutError
+from ..helpers import (
     _EXC_SENTINEL,
     DEFAULT_CHUNK_SIZE,
     BaseTimerContext,
     set_exception as _set_exc,
     set_result,
 )
-from aiohttp.http2.adapter import feed_response
-from aiohttp.http2.settings import (
+from ..http_parser import RawResponseMessage
+from ..streams import StreamReader
+from .errors import ErrorCode
+from .settings import (
     DEFAULT_SETTINGS,
     FlagData,
     FlagHeaders,
@@ -48,9 +50,7 @@ from aiohttp.http2.settings import (
     FrameType,
     Setting,
 )
-from aiohttp.http2.stream import Stream, StreamState
-from aiohttp.http_parser import RawResponseMessage
-from aiohttp.streams import StreamReader
+from .stream import Stream, StreamState
 
 # ----------------------------------------------------------------------
 # Logging – plaintext wire‑format emission for debugging
@@ -77,10 +77,14 @@ class Http2Connection:
     """
 
     def __init__(
-        self, transport: asyncio.Transport, loop: asyncio.AbstractEventLoop
+        self,
+        transport: asyncio.Transport,
+        loop: asyncio.AbstractEventLoop,
+        protocol: Http2Protocol,
     ) -> None:
         self._transport = transport
         self._loop = loop
+        self._protocol = protocol
 
         # HPACK
         self.hpack_encoder: Encoder = Encoder()
@@ -204,7 +208,7 @@ class Http2Connection:
         stream = self.streams.get(stream_id)
         if stream is None:
             if stream_id > self._last_peer_stream_id:
-                self._send_rst_stream(stream_id, 1)  # PROTOCOL_ERROR
+                self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
             return
 
         pad_length = 0
@@ -237,7 +241,7 @@ class Http2Connection:
             headers = self.hpack_decoder.decode(payload)
         except Exception as exc:  # too general?
             logger.error(f"HPACK decode error: {exc}")
-            self._send_rst_stream(stream_id, 1)  # PROTOCOL_ERROR
+            self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
             return
 
         end_stream = bool(flags & FlagHeaders.END_STREAM)
@@ -418,7 +422,7 @@ class Http2Connection:
     def _create_stream_internal(self) -> Stream:
         sid = self.next_stream_id
         self.next_stream_id += 2  # next client stream
-        stream = Stream(sid, self, self._loop)
+        stream = Stream(sid, self, self._loop, self._protocol)
         self.streams[sid] = stream
         return stream
 
@@ -549,7 +553,7 @@ class Http2Connection:
         logger.debug("Connection preface and initial SETTINGS sent")
 
     def _protocol_error(self) -> None:
-        self._send_goaway(0, 1)  # PROTOCOL_ERROR
+        self._send_goaway(0, ErrorCode.PROTOCOL_ERROR)
         self._transport.close()
 
     # -------------------- Shutdown --------------------
@@ -612,20 +616,12 @@ class Http2Protocol(BaseProtocol):
             or (self._connection is not None and self._connection.should_close)
         )
 
-    @property
-    def read_timeout(self) -> Optional[float]:
-        return self._read_timeout
-
-    @read_timeout.setter
-    def read_timeout(self, read_timeout: Optional[float]) -> None:
-        self._read_timeout = read_timeout
-
     # ------------------------------------------------------------------
     # Connection lifecycle
     # ------------------------------------------------------------------
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         self.transport = transport  # type: ignore[assignment]
-        self._connection = Http2Connection(self.transport, self._loop)  # type: ignore[arg-type]
+        self._connection = Http2Connection(self.transport, self._loop, self)  # type: ignore[arg-type]
         self._connection.initiate_connection()
 
     def data_received(self, data: bytes) -> None:
@@ -684,7 +680,16 @@ class Http2Protocol(BaseProtocol):
 
         if self._connection is not None:
             self._connection.close()
-            # maybe set self._connection to null?
+        # we need to null transport here
+        # multiplexed connections all use the same
+        # transport unlike in HTTP/1.1
+        # this means that when connections
+        # are released en masse, `close` will be
+        # called multiple times
+        # `close` is not idempotent (i.e., multiple calls over the same protocol instance do
+        # not produce the same results and state) so multiple closes cause null pointer exceptions
+        # when we try to clean up an attribute of an object that's already nulled
+        self.transport = None
 
     def abort(self) -> None:
         self.close()
@@ -782,14 +787,4 @@ class Http2Protocol(BaseProtocol):
     ) -> tuple[RawResponseMessage, StreamReader]:
         if self._connection is None:
             raise ConnectionError("Connection is not active")
-
-        # this creates a new StreamReader after reading the whole
-        # content
-        # the future should be replaced with the headers and a StreamReader with the body
-        _, headers, body = await self._connection.streams[stream_id].response_future
-        return feed_response(
-            StreamReader(self, DEFAULT_CHUNK_SIZE, loop=self._loop),
-            # does hpack have the wrong type in HeaderTuple (bytes instead of str)?
-            headers,  # type: ignore[arg-type]
-            body,
-        )
+        return await self._connection.streams[stream_id].response_future

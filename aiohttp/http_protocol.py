@@ -2,6 +2,7 @@ import asyncio
 from typing import Any, Optional
 
 from .client_proto import ResponseHandler
+from .http2.adapter import _get_version
 from .http2.connection import Http2Protocol
 
 
@@ -23,10 +24,7 @@ class HttpDispatcherProtocol(asyncio.Protocol):
         self._transport = transport  # type: ignore[assignment]
 
         # Determine ALPN after TLS is established
-        ssl_object: Any = transport.get_extra_info("ssl_object")
-        alpn_protocol: str = (
-            ssl_object.selected_alpn_protocol() if ssl_object else "http/1.1"
-        )
+        alpn_protocol: str = _get_version(transport)
 
         if alpn_protocol == "h2":
             self._handler = Http2Protocol(self._loop)

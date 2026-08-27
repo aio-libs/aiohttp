@@ -5,7 +5,6 @@ Categories:
 - integration: against a real httpbin server (skipped, requires network)
 - unit / protocol: black‑box frame‑level RFC compliance
 - unit / misc: race conditions, deadlocks, edge cases
-- unit / interface: high‑level features (JSON, redirects, compression, etc.)
 """
 
 import asyncio
@@ -17,9 +16,11 @@ import pytest
 from hpack import Encoder
 
 import aiohttp
+from aiohttp import ClientConnectionError, SocketTimeoutError
 from aiohttp.connector import TCPConnector
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
-from aiohttp.http2.errors import ProtocolError
+from aiohttp.http2.errors import ErrorCode, ProtocolError
 from aiohttp.http2.settings import (
     FlagData,
     FlagHeaders,
@@ -28,7 +29,8 @@ from aiohttp.http2.settings import (
     FrameType,
     Setting,
 )
-from aiohttp.http2.stream import StreamState
+from aiohttp.http2.stream import Stream, StreamState
+from aiohttp.http_exceptions import ContentEncodingError
 
 
 # ----------------------------------------------------------------------
@@ -67,11 +69,14 @@ def event_loop() -> Generator[asyncio.AbstractEventLoop, None, None]:
 
 
 @pytest.fixture
-async def connection(mock_transport: MagicMock) -> Tuple[Http2Connection, MagicMock]:
+async def connection(
+    mock_transport: MagicMock, protocol: Tuple[Http2Protocol, MagicMock]
+) -> Tuple[Http2Connection, MagicMock]:
     """Set up Http2Connection with mock transport, send preface, and clear write log."""
+    h2_proto, _ = protocol
     event_loop = asyncio.get_running_loop()
 
-    conn = Http2Connection(mock_transport, event_loop)
+    conn = Http2Connection(mock_transport, event_loop, h2_proto)
     conn.initiate_connection()
     mock_transport.write.reset_mock()  # discard preface + initial SETTINGS
     return conn, mock_transport
@@ -359,7 +364,8 @@ class TestProtocolCompliance:
         # padded data: pad length 1, data 'x', zero padding byte
         frame = build_data_frame(stream.stream_id, b"x", pad=True)
         conn.data_received(frame)
-        assert stream.response_data == b"x"
+        # no headers yet so data is buffered
+        assert stream._pending_data == b"x"
 
     @pytest.mark.asyncio
     async def test_headers_frame_with_priority(
@@ -396,11 +402,11 @@ class TestProtocolCompliance:
     async def test_rst_stream_when_future_done(
         self, connection: Tuple[Http2Connection, MagicMock]
     ) -> None:
-        """RST_STREAM when response future already completed (else branch of line 256)."""
+        """RST_STREAM when response future already completed."""
         conn, _ = connection
         stream = await conn.create_stream()
         stream.state = StreamState.OPEN
-        stream.response_future.set_result((stream.stream_id, [], b""))
+        stream.response_future.set_result(([], b""))  # type: ignore[arg-type]
         frame = build_rst_stream(stream.stream_id, error_code=0)
         conn.data_received(frame)
         assert stream.state == StreamState.CLOSED
@@ -494,7 +500,7 @@ class TestProtocolCompliance:
         s1 = await conn.create_stream()
         s3 = await conn.create_stream()
         s1.state = s3.state = StreamState.OPEN
-        s1.response_future.set_result((s1.stream_id, [], b""))
+        s1.response_future.set_result(([], b""))  # type: ignore[arg-type]
         frame = build_goaway(last_stream_id=1, error_code=0)
         conn.data_received(frame)
         assert s1.stream_id in conn.streams
@@ -576,7 +582,7 @@ class TestProtocolCompliance:
         """connection_lost must handle streams whose futures are already done."""
         conn, _ = connection
         stream = await conn.create_stream()
-        stream.response_future.set_result((stream.stream_id, [], b""))
+        stream.response_future.set_result((stream.stream_id, [], b""))  # type: ignore[arg-type]
         conn.connection_lost(None)  # no exception
 
 
@@ -715,7 +721,7 @@ class TestStreamStateMachine:
         conn, _ = connection
         stream = await conn.create_stream()
         stream.state = StreamState.HALF_CLOSED_LOCAL
-        stream.receive_headers([(":status", "200")], end_stream=True)
+        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
         assert stream.state == StreamState.CLOSED
         assert stream.stream_id not in conn.streams
 
@@ -728,7 +734,7 @@ class TestStreamStateMachine:
         stream = await conn.create_stream()
         stream.state = StreamState.CLOSED
         with pytest.raises(ProtocolError):
-            stream.receive_headers([(":status", "200")], end_stream=True)
+            stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
 
     @pytest.mark.asyncio
     async def test_data_stream_before_headers(
@@ -741,10 +747,10 @@ class TestStreamStateMachine:
         # double end stream is invalid
         stream.receive_data(b"body", end_stream=False)
         assert not stream.response_future.done()
-        stream.receive_headers([(":status", "200")], end_stream=True)
+        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
         assert stream.response_future.done()
-        _, headers, body = stream.response_future.result()
-        assert body == b"body"
+        headers, body = stream.response_future.result()
+        assert await body.read() == b"body"
 
     @pytest.mark.asyncio
     async def test_future_already_done_data_end_stream(
@@ -755,9 +761,7 @@ class TestStreamStateMachine:
         stream = await conn.create_stream()
         stream.state = StreamState.OPEN
         stream.response_headers = [(":status", "200")]
-        stream.response_future.set_result(
-            (stream.stream_id, stream.response_headers, b"")
-        )
+        stream.response_future.set_result((stream.response_headers, b""))  # type: ignore[arg-type]
         stream.receive_data(b"more", end_stream=True)  # no exception
 
     @pytest.mark.asyncio
@@ -768,8 +772,8 @@ class TestStreamStateMachine:
         conn, _ = connection
         stream = await conn.create_stream()
         stream.state = StreamState.OPEN
-        stream.response_future.set_result((stream.stream_id, [], b""))
-        stream.receive_headers([(":status", "200")], end_stream=True)  # no exception
+        stream.response_future.set_result((stream.stream_id, [], b""))  # type: ignore[arg-type]
+        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
 
 
 # ----------------------------------------------------------------------
@@ -1138,11 +1142,12 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_initiate_connection_sends_preface_and_settings(
-        self, mock_transport: MagicMock
+        self, mock_transport: MagicMock, protocol: Tuple[Http2Protocol, MagicMock]
     ) -> None:
         """initiate_connection writes HTTP/2 preface and initial SETTINGS."""
+        h2_proto, _ = protocol
         loop = asyncio.get_running_loop()
-        conn = Http2Connection(mock_transport, loop)
+        conn = Http2Connection(mock_transport, loop, h2_proto)
         conn.initiate_connection()
         written = b"".join(call.args[0] for call in mock_transport.write.call_args_list)
         assert b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n" in written
@@ -1162,3 +1167,525 @@ class TestConnectionEdgeCases:
         await conn.send_data(stream.stream_id, b"x" * 10, end_stream=False)
         # After send, there is still window space, so event should be set
         assert conn._flow_control_updated.is_set()
+
+
+# ----------------------------------------------------------------------
+# Fixture: create a Stream with mocked connection and protocol
+# ----------------------------------------------------------------------
+@pytest.fixture
+def stream_setup() -> Generator[Any, None, None]:
+    """Create a Stream with mocked dependencies, return stream and mocks."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Mock connection
+    conn = MagicMock()
+    conn.remote_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
+    conn.local_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
+    conn._send_window_update = MagicMock()
+    conn._send_rst_stream = MagicMock()
+    conn._close_stream = MagicMock()
+
+    # Mock protocol
+    protocol = MagicMock()
+    protocol._auto_decompress = True
+
+    stream = Stream(stream_id=1, conn=conn, loop=loop, protocol=protocol)
+    stream.body_reader = MagicMock()
+    # Reset mocks after initialization (constructor may have used them)
+    conn._send_window_update.reset_mock()
+    conn._send_rst_stream.reset_mock()
+    conn._close_stream.reset_mock()
+
+    yield stream, conn, protocol, loop
+    loop.close()
+
+
+# ----------------------------------------------------------------------
+# Helper to create headers with optional content-encoding
+# ----------------------------------------------------------------------
+def make_headers(
+    encoding: Optional[str] = None, end_stream: bool = False
+) -> List[Tuple[str, str]]:
+    headers: List[Tuple[str, str]] = [(":status", "200")]
+    if encoding:
+        headers.append(("content-encoding", encoding))
+    return headers
+
+
+# ======================================================================
+# Tests for receive_headers
+# ======================================================================
+class TestReceiveHeaders:
+    async def test_no_end_stream_no_encoding_no_pending(
+        self, stream_setup: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers()
+
+        stream.receive_headers(headers, end_stream=False)
+
+        assert stream._headers_received is True
+        assert stream.response_headers == headers
+        assert stream.response is not None
+        assert stream.decompressor is None
+        assert stream._pending_data == b""
+        assert stream.response_future.done()
+        resp, reader = stream.response_future.result()
+        assert resp is stream.response
+        assert reader is stream.body_reader
+
+    async def test_no_end_stream_encoding_no_pending(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers(encoding="gzip")
+
+        # Patch DeflateBuffer to avoid real decompression
+        mock_deflate_cls = MagicMock()
+        mock_deflate = mock_deflate_cls.return_value
+        monkeypatch.setattr("aiohttp.http2.stream.DeflateBuffer", mock_deflate_cls)
+
+        stream.receive_headers(headers, end_stream=False)
+
+        assert stream.decompressor is mock_deflate
+        mock_deflate_cls.assert_called_once_with(
+            stream.body_reader, encoding="gzip", max_decompress_size=DEFAULT_CHUNK_SIZE
+        )
+        mock_deflate.feed_data.assert_not_called()
+        assert stream._pending_data == b""
+
+    async def test_no_end_stream_encoding_with_pending(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        pending = b"compressed-bytes"
+        stream._pending_data = bytearray(pending)
+        headers = make_headers(encoding="gzip")
+
+        mock_deflate_cls = MagicMock()
+        mock_deflate = mock_deflate_cls.return_value
+        monkeypatch.setattr("aiohttp.http2.stream.DeflateBuffer", mock_deflate_cls)
+
+        stream.receive_headers(headers, end_stream=False)
+
+        mock_deflate.feed_data.assert_called_once_with(pending)
+        assert stream._pending_data == b""
+
+    async def test_no_end_stream_no_encoding_with_pending(
+        self, stream_setup: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        pending = b"raw-bytes"
+        stream._pending_data = bytearray(pending)
+        headers = make_headers()
+
+        stream.receive_headers(headers, end_stream=False)
+
+        assert stream.decompressor is None
+        assert stream._pending_data == b""
+        stream.body_reader.feed_data.assert_called_once_with(pending)
+
+    async def test_no_end_stream_auto_decompress_false(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        protocol._auto_decompress = False
+        pending = b"raw-bytes"
+        stream._pending_data = bytearray(pending)
+        headers = make_headers()
+
+        stream.receive_headers(headers, end_stream=False)
+
+        assert stream.decompressor is None
+        assert stream._pending_data == b""
+        stream.body_reader.feed_data.assert_called_once_with(pending)
+
+    async def test_end_stream_no_encoding_open_state(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers()
+        stream.state = StreamState.OPEN
+
+        stream.receive_headers(headers, end_stream=True)
+
+        assert stream.state == StreamState.HALF_CLOSED_REMOTE
+        stream.body_reader.feed_eof.assert_called_once()
+
+    async def test_end_stream_encoding_open_state(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers(encoding="gzip")
+        stream.state = StreamState.OPEN
+
+        mock_deflate_cls = MagicMock()
+        mock_deflate = mock_deflate_cls.return_value
+        monkeypatch.setattr("aiohttp.http2.stream.DeflateBuffer", mock_deflate_cls)
+
+        stream.receive_headers(headers, end_stream=True)
+
+        mock_deflate.feed_eof.assert_called_once()
+        assert stream.state == StreamState.HALF_CLOSED_REMOTE
+
+    async def test_end_stream_half_closed_local_closes(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers()
+        stream.state = StreamState.HALF_CLOSED_LOCAL
+
+        stream.receive_headers(headers, end_stream=True)
+
+        assert stream.state == StreamState.CLOSED
+        conn._close_stream.assert_called_once_with(stream)
+
+    async def test_end_stream_unexpected_state_raises(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers()
+        stream.state = StreamState.IDLE  # invalid for END_STREAM handling
+
+        with pytest.raises(ProtocolError):
+            stream.receive_headers(headers, end_stream=True)
+
+    async def test_error_during_decompression_pending(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._pending_data = bytearray(b"bad-data")
+        headers = make_headers(encoding="gzip")
+        error = ContentEncodingError("bad encoding")
+
+        mock_deflate_cls = MagicMock()
+        mock_deflate = mock_deflate_cls.return_value
+        mock_deflate.feed_data.side_effect = error
+        monkeypatch.setattr("aiohttp.http2.stream.DeflateBuffer", mock_deflate_cls)
+
+        stream.receive_headers(headers, end_stream=False)
+
+        stream.body_reader.set_exception.assert_called_once_with(error)
+        conn._send_rst_stream.assert_called_once_with(
+            stream.stream_id, ErrorCode.INTERNAL_ERROR
+        )
+        assert stream._pending_data == b""
+
+    async def test_error_during_decompression_eof(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        headers = make_headers(encoding="gzip")
+        stream.state = StreamState.OPEN
+        error = ContentEncodingError("bad eof")
+
+        mock_deflate_cls = MagicMock()
+        mock_deflate = mock_deflate_cls.return_value
+        mock_deflate.feed_eof.side_effect = error
+        monkeypatch.setattr("aiohttp.http2.stream.DeflateBuffer", mock_deflate_cls)
+
+        stream.receive_headers(headers, end_stream=True)
+
+        stream.body_reader.set_exception.assert_called_once_with(error)
+        conn._send_rst_stream.assert_called_once_with(
+            stream.stream_id, ErrorCode.INTERNAL_ERROR
+        )
+
+
+# ======================================================================
+# Tests for receive_data
+# ======================================================================
+class TestReceiveData:
+    async def test_no_headers_received_buffers_data(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        data = b"early-data"
+        initial_window = stream.inbound_window
+
+        stream.receive_data(data, end_stream=False)
+
+        assert stream._pending_data == bytearray(data)
+        assert stream.inbound_window == initial_window - len(data)
+        stream.body_reader.feed_data.assert_not_called()
+
+    async def test_no_headers_received_end_stream_feeds_eof(
+        self, stream_setup: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        data = b"early-data"
+        stream.state = StreamState.OPEN
+
+        stream.receive_data(data, end_stream=True)
+
+        assert stream._pending_data == bytearray(data)
+        stream.body_reader.feed_eof.assert_called_once()
+        assert stream.state == StreamState.HALF_CLOSED_REMOTE
+
+    async def test_headers_received_no_decompressor(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._headers_received = True
+        data = b"plain-data"
+
+        stream.receive_data(data, end_stream=False)
+
+        stream.body_reader.feed_data.assert_called_once_with(data)
+        assert stream._pending_data == b""
+
+    async def test_headers_received_with_decompressor(
+        self, stream_setup: Any, monkeypatch: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._headers_received = True
+        data = b"compressed"
+        mock_deflate = MagicMock()
+        stream.decompressor = mock_deflate
+
+        stream.receive_data(data, end_stream=False)
+
+        mock_deflate.feed_data.assert_called_once_with(data)
+        stream.body_reader.feed_data.assert_not_called()
+
+    async def test_decompressor_error_resets_stream(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._headers_received = True
+        data = b"bad"
+        mock_deflate = MagicMock()
+        mock_deflate.feed_data.side_effect = ContentEncodingError("bad")
+        stream.decompressor = mock_deflate
+
+        stream.receive_data(data, end_stream=False)
+
+        stream.body_reader.set_exception.assert_called_once()
+        conn._send_rst_stream.assert_called_once_with(
+            stream.stream_id, ErrorCode.INTERNAL_ERROR
+        )
+
+    async def test_end_stream_with_decompressor(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._headers_received = True
+        stream.state = StreamState.OPEN
+        data = b"compressed"
+        mock_deflate = MagicMock()
+        stream.decompressor = mock_deflate
+
+        stream.receive_data(data, end_stream=True)
+
+        mock_deflate.feed_eof.assert_called_once()
+        assert stream.state == StreamState.HALF_CLOSED_REMOTE
+
+    async def test_end_stream_decompressor_error_resets_stream(
+        self, stream_setup: Any
+    ) -> None:
+        stream, conn, protocol, _ = stream_setup
+        stream._headers_received = True
+        stream.state = StreamState.OPEN
+        data = b"bad"
+        mock_deflate = MagicMock()
+        mock_deflate.feed_eof.side_effect = ContentEncodingError("bad eof")
+        stream.decompressor = mock_deflate
+
+        stream.receive_data(data, end_stream=True)
+
+
+class TestProtocolMethods:
+    @pytest.mark.asyncio
+    async def test_closed_property_before_connection_made(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """closed returns a future that is created lazily."""
+        proto, _ = protocol
+        # Before connection_made, closed should create a future
+        closed_fut = proto.closed
+        assert closed_fut is not None
+        assert isinstance(closed_fut, asyncio.Future)
+        assert not closed_fut.done()
+
+    @pytest.mark.asyncio
+    async def test_closed_property_after_clean_connection_lost(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """After connection_lost(None), closed future is resolved with None."""
+        proto, _ = protocol
+        # Access closed to create the future
+        closed_fut = proto.closed
+        assert closed_fut is not None
+        assert not closed_fut.done()
+        proto.connection_lost(None)
+        assert closed_fut.done()
+        assert closed_fut.result() is None
+
+    @pytest.mark.asyncio
+    async def test_closed_property_after_error_connection_lost(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """After connection_lost with an exception, closed future gets ClientConnectionError."""
+        proto, _ = protocol
+        closed_fut = proto.closed
+        assert closed_fut is not None
+        exc = ConnectionError("test error")
+        proto.connection_lost(exc)
+        assert closed_fut.done()
+        with pytest.raises(ClientConnectionError) as exc_info:
+            closed_fut.result()
+        assert "test error" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_closed_property_after_connection_lost_twice(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """Once connection_lost has been called, closed returns None."""
+        proto, _ = protocol
+        # First connection_lost
+        proto.connection_lost(None)
+        # Now _connection_lost_called is True, so closed should be None
+        assert proto.closed is None
+
+    @pytest.mark.asyncio
+    async def test_read_timeout_setter(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto.read_timeout = 5.0  # type: ignore[attr-defined]
+        assert proto.read_timeout == 5.0  # type: ignore[attr-defined]
+        proto.read_timeout = None  # type: ignore[attr-defined]
+        assert proto.read_timeout is None  # type: ignore[attr-defined]
+
+    @pytest.mark.asyncio
+    async def test_connection_lost_cleanup(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """connection_lost performs necessary cleanup."""
+        proto, _ = protocol
+        # Mock the connection's connection_lost
+        proto._connection = MagicMock()
+        conn = proto._connection  # save reference since we clean it up during close
+        # Access closed to create future
+        closed_fut = proto.closed
+        assert closed_fut is not None
+        proto.connection_lost(None)
+        # Check internal state
+        assert proto._connection_lost_called is True
+        assert proto._should_close is True
+        assert proto._connection is None
+        assert proto._reading_paused is False  # type: ignore[unreachable]
+        # closed future resolved
+        assert closed_fut.done()
+        assert closed_fut.result() is None
+        # Connection's connection_lost called
+        conn.connection_lost.assert_called_once_with(None)
+
+    @pytest.mark.asyncio
+    async def test_connection_lost_with_exception_cleanup(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        """connection_lost with exception sets error on future."""
+        proto, _ = protocol
+        proto._connection = MagicMock()
+        closed_fut = proto.closed
+        assert closed_fut is not None
+        exc = TimeoutError("timeout")
+        proto.connection_lost(exc)
+        assert proto._connection_lost_called is True
+        assert proto._should_close is True
+        assert proto._connection is None
+        # connection can be None so it should be (and is) reachable
+        assert closed_fut.done()  # type: ignore[unreachable]
+        with pytest.raises(ClientConnectionError) as exc_info:
+            closed_fut.result()
+        assert "timeout" in str(exc_info.value)
+
+    @pytest.mark.asyncio
+    async def test_force_close_sets_should_close(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        assert not proto._should_close
+        proto.force_close()
+        assert proto._should_close is True
+
+    @pytest.mark.asyncio
+    async def test_set_exception_causes_cleanup(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        # Set a read_timeout_handle to be dropped
+        handle = MagicMock()
+        proto._read_timeout_handle = handle
+        proto.set_exception(ConnectionError("boom"))
+        assert proto._should_close is True
+        handle.cancel.assert_called_once()
+        assert proto._read_timeout_handle is None
+
+    @pytest.mark.asyncio
+    async def test_resume_reading_reschedules_timeout(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        # Simulate paused state
+        proto._reading_paused = True
+        proto._read_timeout = 5.0
+        # Mock _reschedule_timeout
+        proto._reschedule_timeout = MagicMock()  # type: ignore[method-assign]
+        proto.resume_reading()
+        assert proto._reading_paused is False  # after super().resume_reading
+        proto._reschedule_timeout.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_start_timeout_with_read_timeout(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto._read_timeout = 3.0
+        # Mock loop.call_later
+        proto._loop = MagicMock()
+        proto._loop.call_later.return_value = MagicMock()
+        proto.start_timeout()
+        proto._loop.call_later.assert_called_once_with(3.0, proto._on_read_timeout)
+        assert proto._read_timeout_handle is not None
+
+    @pytest.mark.asyncio
+    async def test_start_timeout_without_read_timeout(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto._read_timeout = None
+        proto._read_timeout_handle = MagicMock()
+        proto.start_timeout()
+        assert proto._read_timeout_handle is None
+
+    @pytest.mark.asyncio
+    async def test_on_read_timeout_sets_exception(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto.set_exception = MagicMock()  # type: ignore[method-assign]
+        proto._on_read_timeout()
+        # Check that set_exception called with SocketTimeoutError
+        proto.set_exception.assert_called_once()
+        exc_arg = proto.set_exception.call_args[0][0]
+        assert isinstance(exc_arg, SocketTimeoutError)
+
+    @pytest.mark.asyncio
+    async def test_set_response_params_sets_timeout_and_decompress(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto.set_response_params(
+            read_timeout=7.5,
+            auto_decompress=False,
+            # other parameters are ignored
+            skip_payload=True,
+            read_until_eof=True,
+        )
+        assert proto._read_timeout == 7.5
+        assert proto._auto_decompress is False
+
+    @pytest.mark.asyncio
+    async def test_create_stream_when_no_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto._connection = None
+        with pytest.raises(ConnectionError):
+            await proto.create_stream()
+
+    @pytest.mark.asyncio
+    async def test_read_stream_when_no_connection(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        proto._connection = None
+        with pytest.raises(ConnectionError):
+            await proto.read_stream(1)

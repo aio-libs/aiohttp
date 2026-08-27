@@ -531,10 +531,11 @@ class ClientResponse(HeadersMixin):
                     protocol = self._protocol
                     # conditional branching to pass the stream id
                     # to the protocol
+                    assert protocol is not None
                     if get_version(protocol) == "h2":
-                        message, payload = await protocol.read_stream(self.stream_id)  # type: ignore[union-attr]
+                        message, payload = await protocol.read_stream(self.stream_id)  # type: ignore[attr-defined]
                     else:
-                        message, payload = await protocol.read()  # type: ignore[union-attr]
+                        message, payload = await protocol.read()
                 except HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
