@@ -47,7 +47,9 @@ WSMessagePong: Final = _WSMessagePong
 WSMessageText: Final = _WSMessageText
 WSMessageTextBytes: Final = _WSMessageTextBytes
 
-ALLOWED_CLOSE_CODES: Final = {int(i) for i in WSCloseCode}
+ALLOWED_CLOSE_CODES: Final = {int(i) for i in WSCloseCode} - {
+    int(WSCloseCode.ABNORMAL_CLOSURE)
+}
 
 # States for the reader, used to parse the WebSocket frame.
 READ_HEADER: Final = 1
