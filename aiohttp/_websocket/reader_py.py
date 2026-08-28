@@ -5,7 +5,6 @@ import builtins
 import sys
 import weakref
 from collections import deque
-from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
@@ -29,7 +28,7 @@ from .models import (
 
 # ABNORMAL_CLOSURE is used internally, should never be accepted from a client.
 # https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
-ALLOWED_CLOSE_CODES: Final = {int(i) for i in WSCloseCode} - {
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {
     int(WSCloseCode.ABNORMAL_CLOSURE)
 }
 
