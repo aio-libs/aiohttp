@@ -331,7 +331,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.4
+virtualenv==21.7.5
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
