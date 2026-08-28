@@ -24,13 +24,9 @@ from .models import (
     WSMsgType,
 )
 
-# WSCloseCode.ABNORMAL_CLOSURE (1006) is reported locally when a connection
-# drops without a Close frame; RFC 6455 7.4.1 reserves it (along with 1005 and
-# 1015) and forbids it on the wire, so a Close frame that carries it must be
-# rejected rather than accepted as a valid code.
-ALLOWED_CLOSE_CODES: set[int] = {int(i) for i in WSCloseCode} - {
-    int(WSCloseCode.ABNORMAL_CLOSURE)
-}
+# ABNORMAL_CLOSURE is used internally, should never be accepted from a client.
+# https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {int(WSCloseCode.ABNORMAL_CLOSURE)}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
