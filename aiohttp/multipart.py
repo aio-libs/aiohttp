@@ -204,7 +204,8 @@ def content_disposition_filename(
     else:
         parts = []
         fnparams = sorted(
-            (key, value) for key, value in params.items() if key.startswith(name_suf)
+            ((key, value) for key, value in params.items() if key.startswith(name_suf)),
+            key=lambda kv: int(kv[0].split("*", 1)[1].rstrip("*")),
         )
         for num, (key, value) in enumerate(fnparams):
             _, tail = key.split("*", 1)
