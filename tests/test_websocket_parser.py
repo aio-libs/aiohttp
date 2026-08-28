@@ -165,6 +165,16 @@ def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
     assert data == b""
 
 
+def test_feed_data_accepts_non_bytes_input(
+    out: WebSocketDataQueue, parser: WebSocketReader
+) -> None:
+    """Proactor event loops deliver bytearray; asyncio also allows memoryview."""
+    parser.feed_data(bytearray(build_frame(b"first", WSMsgType.TEXT)))
+    parser.feed_data(memoryview(build_frame(b"second", WSMsgType.TEXT)))
+    assert out._buffer[0].data == "first"
+    assert out._buffer[1].data == "second"
+
+
 def test_parse_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b00000001, 0b00000001))
     res = parser.parse_frame(b"1")
