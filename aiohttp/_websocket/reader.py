@@ -283,11 +283,7 @@ class WebSocketReader(_WeakrefBase):
         compressed: i64,
     ) -> None:
         msg: WSMessage
-        if (
-            opcode == OP_CODE_TEXT
-            or opcode == OP_CODE_BINARY
-            or opcode == OP_CODE_CONTINUATION
-        ):
+        if opcode in (OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION):
             # Validate continuation frames before processing
             if opcode == OP_CODE_CONTINUATION and self._opcode == OP_CODE_NOT_SET:
                 raise WebSocketError(
@@ -474,13 +470,13 @@ class WebSocketReader(_WeakrefBase):
                         "Received frame with non-zero reserved bits",
                     )
 
-                if not (
-                    opcode == OP_CODE_CONTINUATION
-                    or opcode == OP_CODE_TEXT
-                    or opcode == OP_CODE_BINARY
-                    or opcode == OP_CODE_CLOSE
-                    or opcode == OP_CODE_PING
-                    or opcode == OP_CODE_PONG
+                if opcode not in (
+                    OP_CODE_CONTINUATION,
+                    OP_CODE_TEXT,
+                    OP_CODE_BINARY,
+                    OP_CODE_CLOSE,
+                    OP_CODE_PING,
+                    OP_CODE_PONG,
                 ):
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
@@ -565,10 +561,10 @@ class WebSocketReader(_WeakrefBase):
                 # Reject oversized data frames before buffering any payload
                 # bytes. Control frames are capped at 125 bytes (checked in
                 # READ_HEADER) so only text/binary/continuation need this.
-                if self._max_msg_size != 0 and (
-                    self._frame_opcode == OP_CODE_TEXT
-                    or self._frame_opcode == OP_CODE_BINARY
-                    or self._frame_opcode == OP_CODE_CONTINUATION
+                if self._max_msg_size != 0 and self._frame_opcode in (
+                    OP_CODE_TEXT,
+                    OP_CODE_BINARY,
+                    OP_CODE_CONTINUATION,
                 ):
                     partial_len: i64 = len(self._partial)
                     # payload_bytes_to_read is an i64 C value, use
