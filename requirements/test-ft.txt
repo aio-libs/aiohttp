@@ -59,7 +59,7 @@ frozenlist==1.8.0
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
-gunicorn==26.1.0
+gunicorn==26.2.0
     # via -r requirements/base-ft.in
 idna==3.19
     # via

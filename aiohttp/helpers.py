@@ -68,33 +68,51 @@ __all__ = ("ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 COOKIE_MAX_LENGTH = 4096
 _QUOTED_PAIR_SUB = re.compile(r"\\(.)")
-_QUOTED_STRING = r'"(?:[^"\\]|\\.)*"'
-_ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
-# Matches one element in a comma-separated header list.
-# Group 1: content of a top-level quoted-string (quotes stripped).
-# Group 2: an unquoted element (may contain parameter quoted-strings / comments).
-_LIST_ELEMENT_RE = re.compile(
-    rf"""
+if sys.version_info >= (3, 11):
+    _QUOTED_STRING_CONTENT = r'(?:[^"\\]++|\\.)*+'
+    _ESCAPED_COMMENT = r"(?:[^()\\]++|\\.)*+"
+    _LIST_ELEMENT = rf"""
     [ \t]*
     (?:
-      "( (?:[^"\\]|\\.)* )"  # group 1: top-level quoted-string
+      "( {_QUOTED_STRING_CONTENT} )"  # group 1: top-level quoted-string
       [ \t]* (?:,|\Z)
       | (  # group 2: unquoted element
           (?:
-            (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted value
+            (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted value
+            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+            | [^,"(\\]++  # run of ordinary characters
+            | [^,]  # quote, paren or backslash the branches above rejected
+          )++
+        )
+      (?:,|\Z)
+    )
+    """
+else:
+    _QUOTED_STRING_CONTENT = r'(?:[^"\\]|\\.)*'
+    _ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
+    _LIST_ELEMENT = rf"""
+    [ \t]*
+    (?:
+      "( {_QUOTED_STRING_CONTENT} )"  # group 1: top-level quoted-string
+      [ \t]* (?:,|\Z)
+      | (  # group 2: unquoted element
+          (?:
+            (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted value
             | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
             | [^,]  # any non-comma character
           )+?
         )
       (?:,|\Z)
     )
-    """,
-    re.VERBOSE,
-)
+    """
+# Matches one element in a comma-separated header list.
+# Group 1: content of a top-level quoted-string (quotes stripped).
+# Group 2: an unquoted element (may contain parameter quoted-strings / comments).
+_LIST_ELEMENT_RE = re.compile(_LIST_ELEMENT, re.VERBOSE)
 # Finds parameter quoted-strings and comments inside an unquoted element for unescaping.
 _PROTECTED_RE = re.compile(
     rf"""
-    (?<=[^\s]=) {_QUOTED_STRING}  # parameter quoted-string
+    (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted-string
     | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
     """,
     re.VERBOSE,
