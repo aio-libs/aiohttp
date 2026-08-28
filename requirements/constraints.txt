@@ -109,7 +109,7 @@ idna==3.19
     #   requests
     #   trustme
     #   yarl
-imagesize==2.0.0
+imagesize==2.0.1
     # via sphinx
 iniconfig==2.3.0
     # via pytest

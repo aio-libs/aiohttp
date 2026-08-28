@@ -22,7 +22,7 @@ docutils==0.21.2
     #   sphinx
 idna==3.19
     # via requests
-imagesize==2.0.0
+imagesize==2.0.1
     # via sphinx
 jinja2==3.1.6
     # via
