@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
@@ -909,7 +910,7 @@ class ClientRequestBase:
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-        self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
+        self.headers[hdrs.HOST] = headers.popall(hdrs.HOST, (host,))[0]
         self.headers.extend(headers)
 
     def _create_response(
@@ -983,13 +984,20 @@ class ClientRequestBase:
         task: asyncio.Task[None] | None
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to write
-                # bytes immediately to avoid having to schedule
+            if sys.version_info >= (3, 14):
+                # Try to write bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
-                task = self.loop.create_task(coro)
+                task = asyncio.create_task(coro)
             if task.done():
                 task = None
             else:
