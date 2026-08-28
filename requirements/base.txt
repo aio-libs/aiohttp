@@ -26,7 +26,7 @@ frozenlist==1.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiosignal
-gunicorn==26.1.0
+gunicorn==26.2.0
     # via -r requirements/base.in
 idna==3.19
     # via yarl

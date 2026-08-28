@@ -100,7 +100,7 @@ frozenlist==1.8.0
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
-gunicorn==26.1.0
+gunicorn==26.2.0
     # via -r requirements/base.in
 identify==2.6.19
     # via pre-commit
