@@ -224,16 +224,17 @@ class WebSocketReader(_WeakrefBase):
         # stalling does not allocate.
         self._weak_self = weakref.ref(self)
         # mypyc's generated dealloc never calls PyObject_ClearWeakRefs
-        # (https://github.com/mypyc/mypyc/issues/1102): before the managed
-        # weakref safety net (Python 3.12) a refcount death with live
-        # weakrefs leaves them dangling and the next deref segfaults.  The
-        # self reference forces collection through the cycle collector,
-        # which clears weakrefs before deallocation.  Only on < 3.12: the
-        # cycle defers reclamation of the reader and its buffers to a full
-        # GC pass, which piles up under connection churn.
-        # TODO: Remove when mypyc issue resolved or Python 3.11 unsupported.
-        if sys.version_info < (3, 12):
-            self._gc_cycle = self
+        # (https://github.com/mypyc/mypyc/issues/1102), so a refcount death
+        # with live weakrefs leaves them dangling and the next deref
+        # crashes.  The self reference forces collection through the cycle
+        # collector, which clears weakrefs before deallocation.  This is
+        # NOT version-gated: crashes were observed on 3.11 (macOS), 3.12
+        # (Windows) and 3.14 (Windows), while the same 3.14 cleared refs on
+        # Linux -- interpreter forgiveness is platform/patch dependent and
+        # cannot be relied on anywhere.  Cost: the reader and its buffers
+        # are reclaimed by full GC passes, not refcounting.  Never break
+        # this cycle manually; remove when the mypyc issue is resolved.
+        self._gc_cycle = self
 
         self._exc: Exception | None = None
         self._partial = bytearray()
