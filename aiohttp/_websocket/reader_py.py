@@ -21,7 +21,11 @@ from .models import (
     WSMsgType,
 )
 
-ALLOWED_CLOSE_CODES: set[int] = {int(i) for i in WSCloseCode}
+# ABNORMAL_CLOSURE is used internally, should never be accepted from a client.
+# https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {
+    int(WSCloseCode.ABNORMAL_CLOSURE)
+}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
