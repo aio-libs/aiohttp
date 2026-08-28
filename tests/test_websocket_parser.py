@@ -326,6 +326,20 @@ def test_close_frame_invalid_code_above_range(
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
+@pytest.mark.parametrize("code", (1004, 1005, 1006, 1015))
+def test_close_frame_reserved_code(parser: PatchableWebSocketReader, code: int) -> None:
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+    # 1004, 1005, 1006 and 1015 are reserved and forbidden as a
+    # status code in a Close frame on the wire. 1006 is a WSCloseCode member
+    # (aiohttp uses it locally), so it must still be rejected on receipt.
+    data = build_close_frame(code=code)
+
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(data)
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_close_frame_unicode_err(parser: PatchableWebSocketReader) -> None:
     data = build_close_frame(code=1000, message=b"\xf4\x90\x80\x80")
 

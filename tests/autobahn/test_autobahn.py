@@ -111,7 +111,6 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "clients", "aiohttp")
     xfail = {
-        "7.9.5": "The close code should have been 1002 or empty",
         "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",
@@ -184,7 +183,6 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     xfail = {
-        "7.9.5": "The close code should have been 1002 or empty",
         "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",
