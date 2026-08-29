@@ -790,6 +790,12 @@ class ClientResponse(HeadersMixin):
         await self.wait_for_close()
 
 
+_contains_disallowed_target_pchar_re = re.compile("[\x00-\x1f\x7f]")
+"""Control characters are never valid in a request target; prevents
+request splitting via encoded URLs (cf. the CPython http.client
+CVE-2019-9740 fix and aiohttp GHSA-pwcp-vr8x-fp2x report)."""
+
+
 class ClientRequestBase:
     """An internal class for proxy requests."""
 
@@ -952,6 +958,12 @@ class ClientRequestBase:
         else:
             path = self.url.raw_path_qs
 
+
+        if _contains_disallowed_target_pchar_re.search(path):
+            raise ValueError(
+                "Request URL can't contain control characters. "
+                "Potential request splitting attack."
+            )
         protocol = conn.protocol
         assert protocol is not None
         writer = self._create_writer(protocol)
