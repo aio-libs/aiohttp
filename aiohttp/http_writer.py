@@ -205,10 +205,10 @@ class StreamWriter(AbstractStreamWriter):
             if self.length >= chunk_len:
                 self.length = self.length - chunk_len
             else:
-                if self._compress is None:
-                    # Bytes clipped at the declared length are discarded,
-                    # not sent: report only the accepted prefix.
-                    body_size = self.length
+                # Bytes clipped at the declared length are discarded, not
+                # sent: report only the accepted prefix (the compressed
+                # length when compressing, an unreachable case in practice).
+                body_size = self.length
                 chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:

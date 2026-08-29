@@ -1606,6 +1606,7 @@ async def test_on_body_write_counts_payload_bytes(
     msg.on_body_write = sizes.append
 
     await msg.write(b"a" * 4)
+    await msg.write(b"")
     await msg.write_eof(b"b" * 2)
 
     assert sizes == [4, 2]

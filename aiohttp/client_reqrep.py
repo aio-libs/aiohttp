@@ -324,8 +324,6 @@ class UploadTracker:
         Settles upload_complete unless the final attempt is still writing,
         in which case the attempt's own terminal event settles it.
         """
-        if self._final:
-            return
         self._final = True
         self._final_exc = exc
         if self._state is not _UploadState.ACTIVE:

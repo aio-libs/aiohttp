@@ -17,6 +17,7 @@ import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import suppress
+from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
 
@@ -6235,7 +6236,7 @@ async def test_upload_tracker_error_after_response(
         await response.write(b"x")
         with suppress(Exception):
             await request.read()
-        return response
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6265,7 +6266,7 @@ async def test_upload_tracker_upload_error_propagated_to_caller(
     async def handler(request: web.Request) -> web.Response:
         with suppress(Exception):
             await request.read()
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6308,7 +6309,7 @@ async def test_upload_tracker_request_cancelled(
 ) -> None:
     async def handler(request: web.Request) -> web.Response:
         await request.read()
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6387,9 +6388,9 @@ async def test_upload_tracker_middleware_resend(
         req: aiohttp.ClientRequest, handler_: aiohttp.ClientHandlerType
     ) -> aiohttp.ClientResponse:
         resp = await handler_(req)
-        if resp.status == 401:
-            resp.release()
-            resp = await handler_(req)
+        assert resp.status == 401
+        resp.release()
+        resp = await handler_(req)
         return resp
 
     tracker = aiohttp.UploadTracker()
@@ -6420,24 +6421,77 @@ async def test_upload_tracker_rebind_raises(aiohttp_client: AiohttpClient) -> No
         await client.get("/", upload_tracker=tracker)
 
 
-async def test_output_size_deprecated(aiohttp_client: AiohttpClient) -> None:
+async def test_upload_tracker_non_http_scheme(aiohttp_client: AiohttpClient) -> None:
+    """A request rejected before being built settles the tracker."""
+
     async def handler(request: web.Request) -> web.Response:
-        await request.read()
         return web.Response()
 
     app = web.Application()
-    app.router.add_post("/", handler)
+    app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    body = b"x" * 1024
-    async with client.post("/", data=body) as resp:
-        with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
-            size = resp.output_size
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises(aiohttp.NonHttpUrlClientError):
+        await client.session.get("ftp://example.com/", upload_tracker=tracker)
 
-    assert size >= len(body)
+    assert tracker.attempts == 0
+    assert tracker.upload_complete.cancelled()
 
 
-async def test_upload_complete_deprecated(aiohttp_client: AiohttpClient) -> None:
+async def test_upload_tracker_trace_start_failure(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A failing on_request_start trace disarms the timeout and settles the tracker."""
+
+    async def on_request_start(
+        session: aiohttp.ClientSession,
+        ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> None:
+        raise RuntimeError("trace boom")
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_request_start.append(on_request_start)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises(RuntimeError, match="trace boom"):
+        await client.get("/", upload_tracker=tracker)
+
+    assert tracker.attempts == 0
+    assert tracker.upload_complete.cancelled()
+
+
+async def test_upload_tracker_invalid_proxy(aiohttp_client: AiohttpClient) -> None:
+    """An invalid proxy URL settles the tracker before the request is built."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises(InvalidURL):
+        await client.get("/", proxy="http://[invalid", upload_tracker=tracker)
+
+    assert tracker.attempts == 0
+    assert tracker.upload_complete.cancelled()
+
+
+async def test_upload_complete_deprecated_late_access(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """First access after the upload finished returns an already-done future."""
+
     async def handler(request: web.Request) -> web.Response:
         await request.read()
         return web.Response()
@@ -6450,5 +6504,44 @@ async def test_upload_complete_deprecated(aiohttp_client: AiohttpClient) -> None
         await resp.read()
         with pytest.warns(DeprecationWarning, match="upload_complete is deprecated"):
             fut = resp.upload_complete
+        assert fut.done()
 
-    assert fut.done()
+
+async def test_deprecated_upload_attributes(aiohttp_client: AiohttpClient) -> None:
+    """The deprecated ClientResponse attributes still work in both writer states."""
+    body_unblocked = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        # Flush headers so the client sees the response mid-upload.
+        await response.write(b"x")
+        await request.read()
+        return response
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async def gated_body() -> AsyncIterator[bytes]:
+        yield b"x" * 512
+        await body_unblocked.wait()
+        yield b"y" * 512
+
+    async with client.post("/", data=gated_body()) as resp:
+        # The writer is still active on first access.
+        with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
+            assert resp.output_size >= 0
+        with pytest.warns(DeprecationWarning, match="upload_complete is deprecated"):
+            fut = resp.upload_complete
+        assert not fut.done()
+
+        body_unblocked.set()
+        await fut
+
+        # The writer has been released; the same future is returned.
+        with pytest.warns(DeprecationWarning, match="upload_complete is deprecated"):
+            assert resp.upload_complete is fut
+        with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
+            assert resp.output_size >= 1024
+        await resp.read()
