@@ -1,0 +1,2 @@
+Deprecated ``ClientResponse.output_size`` and ``ClientResponse.upload_complete``;
+use ``aiohttp.UploadTracker`` instead -- by :user:`Dreamsorcerer`.

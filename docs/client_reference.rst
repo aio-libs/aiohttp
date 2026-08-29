@@ -564,6 +564,12 @@ The client session supports the context manager protocol for self closing.
 
          .. versionadded:: 3.12
 
+      :param upload_tracker: An :class:`UploadTracker` instance observing
+                             this request's body upload.
+                             ``None`` by default (no tracking).
+
+         .. versionadded:: 3.14.4
+
       :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                               ``None`` by default,
                               it means that the session global value is used.
@@ -1565,30 +1571,6 @@ Response object
 
       .. versionadded:: 3.2
 
-   .. attribute:: output_size
-
-      Number of bytes sent for this request.
-
-      Pair with :attr:`upload_complete` to display upload progress::
-
-          async with session.post(url, data=mpwriter) as resp:
-              while not resp.upload_complete.done():
-                  print(f"uploaded {resp.output_size} bytes")
-                  await asyncio.sleep(0.5)
-              print(f"upload complete: {resp.output_size} bytes")
-
-      .. versionadded:: 3.14
-
-   .. attribute:: upload_complete
-
-      An :class:`asyncio.Future` set when the request body has been fully sent.
-
-      Use ``await resp.upload_complete`` to block until the upload finishes, or
-      ``resp.upload_complete.done()`` to poll from a progress-sampling loop
-      (see :attr:`output_size`).
-
-      .. versionadded:: 3.14
-
    .. attribute:: content_type
 
       Read-only property with *content* part of *Content-Type* header.
@@ -2366,6 +2348,58 @@ Utilities
    :rtype: str
 
    .. versionadded:: 3.14
+
+
+.. class:: UploadTracker()
+   :canonical: aiohttp.client_reqrep.UploadTracker
+
+   Tracks upload progress of a single client request.
+
+   Create a tracker inside a running event loop and pass it to a request
+   via the ``upload_tracker`` argument; read its attributes while the
+   request runs, e.g. from a progress-reporting task::
+
+       tracker = aiohttp.UploadTracker()
+
+       async def report_progress() -> None:
+           while not tracker.upload_complete.done():
+               print(f"uploaded {tracker.bytes_written} bytes")
+               await asyncio.sleep(0.5)
+
+       progress = asyncio.create_task(report_progress())
+       async with session.post(url, data=data, upload_tracker=tracker) as resp:
+           ...
+       await progress
+
+   A tracker observes exactly one request: passing it to a second request
+   raises :exc:`RuntimeError`. Two requests uploading the same payload
+   each get their own tracker.
+
+   .. attribute:: bytes_written
+
+      Body bytes of the current upload attempt handed to the connection,
+      before transport-level transformations such as compression or
+      chunked framing. Reset to ``0`` when a new attempt starts.
+
+   .. attribute:: attempts
+
+      Number of upload attempts started: ``1`` for a plain request,
+      incremented each time the request is resent, e.g. following a
+      redirect or a middleware retry. A redirect that drops the body
+      (such as a *303 See Other*) still counts a zero-byte attempt.
+
+   .. attribute:: upload_complete
+
+      An :class:`asyncio.Future` settled once no more of the body will
+      be sent: with ``None`` when the final attempt wrote the body fully
+      (even if the server responded first, the future settles when
+      writing finishes); with the upload error when the final attempt
+      failed (the request raises the same error unless the server
+      already responded successfully); or cancelled when the body was
+      never fully sent, e.g. the request failed before writing started
+      or a middleware answered without sending the request.
+
+   .. versionadded:: 3.14.4
 
 
 .. class:: DigestAuthMiddleware(login, password, *, preemptive=True)

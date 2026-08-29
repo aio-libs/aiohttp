@@ -204,6 +204,12 @@ class AbstractStreamWriter(ABC):
     buffer_size: int = 0
     output_size: int = 0
     length: int | None = 0
+    # Called with each accepted body chunk's byte count (before any
+    # transport-level transformation such as compression or chunked
+    # framing). Assigned by the client request machinery for upload
+    # progress tracking; write()/write_eof() implementations should
+    # invoke it for every body chunk they accept.
+    on_body_write: Callable[[int], None] | None = None
 
     @abstractmethod
     async def write(
