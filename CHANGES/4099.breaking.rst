@@ -1,0 +1,9 @@
+``ClientConnectorCertificateError.ssl`` now returns the value passed to the
+``ssl`` parameter, an :class:`ssl.SSLContext`, a :class:`bool` or a
+:class:`~aiohttp.Fingerprint`, matching
+:attr:`ClientConnectorError.ssl <aiohttp.ClientConnectorError.ssl>`. It
+previously returned ``ConnectionKey.is_ssl``, a plain :class:`bool`, so the
+same attribute meant different things depending on which of the two exceptions
+was caught. Code reading ``ssl`` on this exception as a boolean should use
+``is_ssl`` on the connection key instead
+-- by :user:`ArockiaRajamanickam`.
