@@ -1626,3 +1626,21 @@ async def test_on_body_write_clipped_chunk(
 
     assert buf == b"aa"
     assert sizes == [2]
+
+
+async def test_on_body_write_compressed_chunk(
+    buf: bytearray, protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
+    """With compression the pre-compression payload size is reported."""
+    sizes: list[int] = []
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.on_body_write = sizes.append
+    msg.enable_compression("deflate")
+
+    chunk = b"x" * 8192
+    await msg.write(chunk)
+    await msg.write_eof()
+
+    assert sizes == [len(chunk)]
+    # The wire carried the compressed form, smaller than what was reported.
+    assert 0 < len(buf) < len(chunk)

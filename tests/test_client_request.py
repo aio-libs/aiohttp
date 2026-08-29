@@ -2462,3 +2462,29 @@ async def test_upload_tracker_unretrieved_error_not_logged() -> None:
     # have consumed the log; the error stays retrievable.
     assert tracker.upload_complete._log_traceback is False
     assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+async def test_cancel_during_expect100_preamble_closes_connection(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A writer cancelled while waiting for 100-continue closes the connection.
+
+    The request headers are already on the wire at that point, so releasing
+    the connection for reuse would corrupt the next request on it.
+    """
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert conn.close.called

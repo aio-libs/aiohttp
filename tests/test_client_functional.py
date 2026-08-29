@@ -1872,6 +1872,32 @@ async def test_POST_DATA_DEFLATE(aiohttp_client: AiohttpClient) -> None:
     assert content == {"some": "data"}
 
 
+async def test_upload_tracker_compressed_body(aiohttp_client: AiohttpClient) -> None:
+    """bytes_written reports pre-compression payload bytes, not wire bytes."""
+    encodings: list[str | None] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        encodings.append(request.headers.get(hdrs.CONTENT_ENCODING))
+        # The server transparently inflates the body back to the original.
+        assert await request.read() == body
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    tracker = aiohttp.UploadTracker()
+    body = b"x" * 8192
+    async with client.post(
+        "/", data=body, compress="deflate", upload_tracker=tracker
+    ) as resp:
+        assert resp.status == 200
+
+    assert encodings == ["deflate"]
+    assert tracker.bytes_written == len(body)
+    assert tracker.upload_complete.result() is None
+
+
 async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
     content1 = fname.read_bytes()
 
