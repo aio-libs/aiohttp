@@ -316,6 +316,15 @@ def test_range_non_ascii() -> None:
         req.http_range
 
 
+def test_range_to_slice_uppercase_unit() -> None:
+    # Range unit names are case-insensitive (RFC 9110 §14.1.1).
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", "Bytes=0-499")])
+    )
+    assert isinstance(req.http_range, slice)
+    assert req.http_range.start == 0 and req.http_range.stop == 500
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive
