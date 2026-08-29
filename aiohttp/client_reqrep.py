@@ -1674,7 +1674,9 @@ class ClientRequest(ClientRequestBase):
             raise
         except BaseException as underlying_exc:
             # Failures escaping the inner handlers (100-continue preamble,
-            # write_eof) must still be reported to the tracker.
+            # write_eof) leave the body unsent: the connection can't be
+            # reused, and the tracker must still be notified.
+            conn.close()
             if tracker is not None:
                 tracker._attempt_failed(gen, underlying_exc)
             raise

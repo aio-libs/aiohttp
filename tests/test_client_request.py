@@ -2424,6 +2424,8 @@ async def test_preamble_failure_reported_to_upload_tracker(
     with pytest.raises(RuntimeError, match="preamble boom"):
         await req._write_bytes(writer, conn, None)
 
+    # The body was never sent on a connection with headers on the wire.
+    assert conn.close.called
     if tracker is not None:
         tracker._finalize()
         assert tracker.attempts == 1
