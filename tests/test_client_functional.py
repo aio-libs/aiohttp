@@ -6087,7 +6087,7 @@ async def test_upload_tracker_progress(aiohttp_client: AiohttpClient) -> None:
             samples.append(tracker.bytes_written)
             assert not tracker.upload_complete.done()
             sample_taken.set()
-        assert await tracker.upload_complete is None
+        await tracker.upload_complete
         await resp.read()
 
     # Each sample reflects exactly one more payload chunk, without framing.
@@ -6217,7 +6217,7 @@ async def test_upload_tracker_settles_after_early_response(
         # Response headers arrived while the body is still being written.
         assert not tracker.upload_complete.done()
         body_unblocked.set()
-        assert await tracker.upload_complete is None
+        await tracker.upload_complete
         assert tracker.bytes_written == 2 * len(chunk)
         await resp.read()
 
