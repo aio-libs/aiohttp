@@ -640,8 +640,12 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         start, end = None, None
         if rng is not None:
             try:
+                # Range unit names are case-insensitive (RFC 9110 sec. 14.1.1).
+                # re.ASCII is retained alongside re.IGNORECASE so that case
+                # folding stays ASCII-only: without it "byte\u017f=0-3" (LATIN
+                # SMALL LETTER LONG S) would also match.
                 pattern = r"^bytes=(\d*)-(\d*)$"
-                start, end = re.findall(pattern, rng, re.ASCII)[0]
+                start, end = re.findall(pattern, rng, re.ASCII | re.IGNORECASE)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptable format")
 

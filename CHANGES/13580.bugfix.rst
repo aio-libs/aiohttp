@@ -1,0 +1,5 @@
+Fixed :attr:`aiohttp.web.BaseRequest.http_range` rejecting ``Range`` headers whose
+range unit was not spelled in lowercase. Range unit names are case-insensitive per
+:rfc:`9110#section-14.1.1`, so ``Range: Bytes=0-3`` is valid and no longer causes
+:class:`aiohttp.web.FileResponse` to return ``416 Range Not Satisfiable``
+-- by :user:`LALITH0110`.

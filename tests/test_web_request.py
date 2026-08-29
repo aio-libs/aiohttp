@@ -316,6 +316,26 @@ def test_range_non_ascii() -> None:
         req.http_range
 
 
+@pytest.mark.parametrize("unit", ["bytes", "Bytes", "BYTES", "bYtEs"])
+def test_range_to_slice_unit_case_insensitive(unit: str) -> None:
+    # Range unit names are case-insensitive (RFC 9110 sec. 14.1.1).
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", f"{unit}=0-499")])
+    )
+    assert isinstance(req.http_range, slice)
+    assert req.http_range.start == 0 and req.http_range.stop == 500
+
+
+def test_range_unit_non_ascii_case_fold() -> None:
+    # ſ = LATIN SMALL LETTER LONG S, which case-folds to "s" under Unicode
+    # rules. Matching is ASCII-only, so this is not a valid spelling of "bytes".
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", "byteſ=0-499")])
+    )
+    with pytest.raises(ValueError, match="range not in acceptable format"):
+        req.http_range
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive
