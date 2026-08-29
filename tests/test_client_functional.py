@@ -6469,6 +6469,48 @@ async def test_upload_tracker_trace_start_failure(
     assert tracker.upload_complete.cancelled()
 
 
+@pytest.mark.parametrize(
+    "bad_kwargs",
+    [
+        {"data": b"x", "json": {"a": 1}},
+        {"json": {"a": object()}},
+        {"ssl": object()},
+    ],
+    ids=["data-and-json", "unserializable-json", "bad-ssl-type"],
+)
+async def test_upload_tracker_validation_failure(
+    aiohttp_client: AiohttpClient, bad_kwargs: dict[str, Any]
+) -> None:
+    """Argument validation failures settle the tracker instead of hanging it."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises((TypeError, ValueError)):
+        await client.post("/", upload_tracker=tracker, **bad_kwargs)
+
+    assert tracker.attempts == 0
+    assert tracker.upload_complete.cancelled()
+
+
+async def test_upload_tracker_closed_session() -> None:
+    """A request on a closed session settles the tracker."""
+    session = aiohttp.ClientSession()
+    await session.close()
+
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises(RuntimeError, match="Session is closed"):
+        await session.get("http://example.com/", upload_tracker=tracker)
+
+    assert tracker.attempts == 0
+    assert tracker.upload_complete.cancelled()
+
+
 async def test_upload_tracker_invalid_proxy(aiohttp_client: AiohttpClient) -> None:
     """An invalid proxy URL settles the tracker before the request is built."""
 

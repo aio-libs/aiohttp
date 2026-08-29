@@ -503,29 +503,8 @@ class ClientSession:
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
 
-        if self.closed:
-            raise RuntimeError("Session is closed")
-
-        method = method.upper()
-
-        if ssl is sentinel:
-            ssl = self._default_ssl
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                f"got {ssl!r} instead."
-            )
-
-        if data is not None and json is not None:
-            raise ValueError(
-                "data and json parameters can not be used at the same time"
-            )
-        elif json is not None:
-            if self._json_serialize_bytes is not None:
-                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
-            else:
-                data = payload.JsonPayload(json, dumps=self._json_serialize)
-
+        # Bound outside the settle-guaranteeing try block: a rebind error
+        # must not settle a tracker owned by another request.
         if upload_tracker is not None:
             upload_tracker._bind()
 
@@ -542,6 +521,31 @@ class ClientSession:
         handle: asyncio.TimerHandle | None = None
 
         try:
+            if self.closed:
+                raise RuntimeError("Session is closed")
+
+            method = method.upper()
+
+            if ssl is sentinel:
+                ssl = self._default_ssl
+            if not isinstance(ssl, SSL_ALLOWED_TYPES):
+                raise TypeError(
+                    "ssl should be SSLContext, Fingerprint, or bool, "
+                    f"got {ssl!r} instead."
+                )
+
+            if data is not None and json is not None:
+                raise ValueError(
+                    "data and json parameters can not be used at the same time"
+                )
+            elif json is not None:
+                if self._json_serialize_bytes is not None:
+                    data = payload.JsonBytesPayload(
+                        json, dumps=self._json_serialize_bytes
+                    )
+                else:
+                    data = payload.JsonPayload(json, dumps=self._json_serialize)
+
             redirects = 0
             history: list[ClientResponse] = []
             version = self._version
