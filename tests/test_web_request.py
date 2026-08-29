@@ -316,6 +316,20 @@ def test_range_non_ascii() -> None:
         req.http_range
 
 
+@pytest.mark.parametrize(
+    "header",
+    [
+        "Bytes=0-499",
+        "BYTES=0-499",
+        "bYtEs=500-999",
+    ],
+)
+def test_range_unit_case_insensitive(header: str) -> None:
+    # RFC 9110 §14.1.1: range unit names are case-insensitive
+    req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", header)]))
+    assert isinstance(req.http_range, slice)
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive
