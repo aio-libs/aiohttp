@@ -2341,7 +2341,7 @@ async def test_upload_tracker_stale_attempt_events_ignored() -> None:
     tracker._attempt_finished(stale)
     assert not tracker.upload_complete.done()
 
-    tracker._finalize(None)
+    tracker._finalize()
     # The final attempt is still writing; its own completion settles.
     assert not tracker.upload_complete.done()
     tracker._attempt_finished(gen)
@@ -2358,7 +2358,7 @@ async def test_upload_tracker_failed_attempt_superseded_by_resend() -> None:
 
     gen = tracker._attempt_started()
     tracker._attempt_finished(gen)
-    tracker._finalize(None)
+    tracker._finalize()
     assert tracker.upload_complete.result() is None
 
 
@@ -2371,7 +2371,7 @@ async def test_upload_tracker_cancelled_attempt_superseded_by_resend() -> None:
 
     gen = tracker._attempt_started()
     tracker._attempt_finished(gen)
-    tracker._finalize(None)
+    tracker._finalize()
     assert tracker.upload_complete.result() is None
 
 
@@ -2381,7 +2381,7 @@ async def test_upload_tracker_externally_cancelled_future() -> None:
     tracker.upload_complete.cancel()
     gen = tracker._attempt_started()
     tracker._attempt_finished(gen)
-    tracker._finalize(None)
+    tracker._finalize()
     assert tracker.upload_complete.cancelled()
 
 
@@ -2400,7 +2400,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
 
     await req._write_bytes(writer, conn, None)
 
-    tracker._finalize(None)
+    tracker._finalize()
     assert tracker.attempts == 1
     assert isinstance(tracker.upload_complete.exception(), aiohttp.ClientOSError)
 
@@ -2425,7 +2425,7 @@ async def test_preamble_failure_reported_to_upload_tracker(
         await req._write_bytes(writer, conn, None)
 
     if tracker is not None:
-        tracker._finalize(None)
+        tracker._finalize()
         assert tracker.attempts == 1
         assert isinstance(tracker.upload_complete.exception(), RuntimeError)
 
@@ -2449,3 +2449,16 @@ async def test_timeout_on_write_bytes_not_wrapped(
     assert conn.protocol.set_exception.called
     exc = conn.protocol.set_exception.call_args[0][0]
     assert type(exc) is asyncio.TimeoutError
+
+
+async def test_upload_tracker_unretrieved_error_not_logged() -> None:
+    """A settled upload error must not log 'Future exception was never retrieved'."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, RuntimeError("boom"))
+    tracker._finalize()
+
+    # The documented pattern only polls done(), so the settle itself must
+    # have consumed the log; the error stays retrievable.
+    assert tracker.upload_complete._log_traceback is False
+    assert isinstance(tracker.upload_complete.exception(), RuntimeError)

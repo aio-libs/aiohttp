@@ -616,12 +616,12 @@ class ClientSession:
                 await trace.send_request_start(
                     method, url.update_query(params), headers
                 )
-        except BaseException as e:
+        except BaseException:
             tm.close()
             if handle is not None:
                 handle.cancel()
             if upload_tracker is not None:
-                upload_tracker._finalize(e)
+                upload_tracker._finalize()
             raise
 
         timer = tm.timer()
@@ -909,7 +909,7 @@ class ClientSession:
                     method, url.update_query(params), headers, resp
                 )
             if upload_tracker is not None:
-                upload_tracker._finalize(None)
+                upload_tracker._finalize()
             return resp
 
         except BaseException as e:
@@ -920,7 +920,7 @@ class ClientSession:
                 handle = None
 
             if upload_tracker is not None:
-                upload_tracker._finalize(e)
+                upload_tracker._finalize()
 
             if req is not None and req._body is not None:
                 await req._body.close()

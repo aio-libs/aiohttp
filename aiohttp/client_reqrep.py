@@ -278,7 +278,6 @@ class UploadTracker:
         # Set once the request reaches a terminal point (returned or raised);
         # no further attempts can start after that.
         self._final = False
-        self._final_exc: BaseException | None = None
 
     def _bind(self) -> None:
         if self._bound:
@@ -318,14 +317,13 @@ class UploadTracker:
             if self._final:
                 self._settle()
 
-    def _finalize(self, exc: BaseException | None) -> None:
-        """Mark the request terminal; exc is what the request is raising.
+    def _finalize(self) -> None:
+        """Mark the request terminal: no further attempts will start.
 
         Settles upload_complete unless the final attempt is still writing,
         in which case the attempt's own terminal event settles it.
         """
         self._final = True
-        self._final_exc = exc
         if self._state is not _UploadState.ACTIVE:
             self._settle()
 
@@ -338,11 +336,11 @@ class UploadTracker:
         elif self._state is _UploadState.FAILED:
             assert self._exc is not None
             fut.set_exception(self._exc)
-            if self._exc is self._final_exc:
-                # The request raised this failure to its caller, so the
-                # future's copy is supplementary: consume it to avoid a
-                # duplicate never-retrieved log at garbage collection.
-                fut.exception()
+            # Consume the exception so a consumer that only polls done()
+            # (the documented pattern) cannot produce a "Future exception
+            # was never retrieved" traceback at garbage collection; it
+            # stays retrievable via await or .exception().
+            fut.exception()
         else:
             # PENDING (the body was never sent) or CANCELLED.
             fut.cancel()
