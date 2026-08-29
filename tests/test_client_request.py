@@ -2490,3 +2490,30 @@ async def test_cancel_during_expect100_preamble_closes_connection(
         await task
 
     assert conn.close.called
+
+
+async def test_conn_close_failure_still_settles_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """The attempt is recorded before conn.close(), which conceivably raises."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    conn.close.side_effect = RuntimeError("close boom")
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(RuntimeError, match="close boom"):
+        await task
+
+    tracker._finalize()
+    assert tracker.upload_complete.done()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)

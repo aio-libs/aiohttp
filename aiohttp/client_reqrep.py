@@ -1667,18 +1667,20 @@ class ClientRequest(ClientRequestBase):
                     tracker._attempt_finished(gen)
                 protocol.start_timeout()
         except asyncio.CancelledError:
-            # Body hasn't been fully sent, so the connection can't be reused.
-            conn.close()
+            # Record the attempt first: the tracker transitions cannot
+            # fail, while conn.close() conceivably can.
             if tracker is not None:
                 tracker._attempt_cancelled(gen)
+            # Body hasn't been fully sent, so the connection can't be reused.
+            conn.close()
             raise
         except BaseException as underlying_exc:
             # Failures escaping the inner handlers (100-continue preamble,
             # write_eof) leave the body unsent: the connection can't be
             # reused, and the tracker must still be notified.
-            conn.close()
             if tracker is not None:
                 tracker._attempt_failed(gen, underlying_exc)
+            conn.close()
             raise
 
     async def _close(self) -> None:
