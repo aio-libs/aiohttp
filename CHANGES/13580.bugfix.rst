@@ -1,0 +1,3 @@
+Accepted range unit names of any case (e.g. ``Range: Bytes=0-3``) when
+parsing the ``Range`` request header, per :rfc:`9110` section 14.1.1,
+which states that range unit names are case-insensitive -- by :user:`afonsojanu`.

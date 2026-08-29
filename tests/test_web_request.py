@@ -309,6 +309,15 @@ def test_range_to_slice_tail_stop() -> None:
     assert req.http_range.start == -500 and req.http_range.stop is None
 
 
+def test_range_to_slice_case_insensitive_unit() -> None:
+    # RFC 9110 sec 14.1.1: range unit names are case-insensitive.
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", "Bytes=0-499")])
+    )
+    assert isinstance(req.http_range, slice)
+    assert req.http_range.start == 0 and req.http_range.stop == 500
+
+
 def test_range_non_ascii() -> None:
     # ५ = DEVANAGARI DIGIT FIVE
     req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=4-५")]))
