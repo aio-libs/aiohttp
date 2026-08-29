@@ -6327,7 +6327,7 @@ async def test_upload_tracker_connect_error(aiohttp_client: AiohttpClient) -> No
         )
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_tracker_request_cancelled(
@@ -6357,7 +6357,7 @@ async def test_upload_tracker_request_cancelled(
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    with pytest.raises(asyncio.CancelledError):
+    with pytest.raises(aiohttp.UploadAbortedError):
         await tracker.upload_complete
     assert tracker.attempts == 1
 
@@ -6365,7 +6365,7 @@ async def test_upload_tracker_request_cancelled(
 async def test_upload_tracker_middleware_short_circuit(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """A middleware answering without sending the request cancels the future."""
+    """A middleware answering without sending the request aborts the upload."""
 
     async def handler(request: web.Request) -> web.Response:
         await request.read()
@@ -6391,7 +6391,7 @@ async def test_upload_tracker_middleware_short_circuit(
         assert resp is cached
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_tracker_middleware_resend(
@@ -6462,7 +6462,7 @@ async def test_upload_tracker_non_http_scheme(aiohttp_client: AiohttpClient) -> 
         await client.session.get("ftp://example.com/", upload_tracker=tracker)
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_tracker_trace_start_failure(
@@ -6492,7 +6492,7 @@ async def test_upload_tracker_trace_start_failure(
         await client.get("/", upload_tracker=tracker)
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 @pytest.mark.parametrize(
@@ -6521,7 +6521,7 @@ async def test_upload_tracker_validation_failure(
         await client.post("/", upload_tracker=tracker, **bad_kwargs)
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_tracker_closed_session() -> None:
@@ -6534,7 +6534,7 @@ async def test_upload_tracker_closed_session() -> None:
         await session.get("http://example.com/", upload_tracker=tracker)
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_tracker_invalid_proxy(aiohttp_client: AiohttpClient) -> None:
@@ -6552,7 +6552,7 @@ async def test_upload_tracker_invalid_proxy(aiohttp_client: AiohttpClient) -> No
         await client.get("/", proxy="http://[invalid", upload_tracker=tracker)
 
     assert tracker.attempts == 0
-    assert tracker.upload_complete.cancelled()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
 async def test_upload_complete_deprecated_late_access(

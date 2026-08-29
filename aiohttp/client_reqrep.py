@@ -33,6 +33,7 @@ from .client_exceptions import (
     ContentTypeError,
     InvalidURL,
     ServerFingerprintMismatch,
+    UploadAbortedError,
 )
 from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
@@ -333,17 +334,21 @@ class UploadTracker:
             return
         if self._state is _UploadState.FINISHED:
             fut.set_result(None)
-        elif self._state is _UploadState.FAILED:
+            return
+        if self._state is _UploadState.FAILED:
             assert self._exc is not None
             fut.set_exception(self._exc)
-            # Consume the exception so a consumer that only polls done()
-            # (the documented pattern) cannot produce a "Future exception
-            # was never retrieved" traceback at garbage collection; it
-            # stays retrievable via await or .exception().
-            fut.exception()
         else:
-            # PENDING (the body was never sent) or CANCELLED.
-            fut.cancel()
+            # PENDING (the body was never sent) or CANCELLED (the attempt
+            # was cut short). A real exception rather than fut.cancel():
+            # a CancelledError signal would be swallowed silently by
+            # e.g. asyncio.TaskGroup.
+            fut.set_exception(UploadAbortedError("The request body was not fully sent"))
+        # Consume the exception so a consumer that only polls done()
+        # (the documented pattern) cannot produce a "Future exception
+        # was never retrieved" traceback at garbage collection; it
+        # stays retrievable via await or .exception().
+        fut.exception()
 
 
 class ClientResponse(HeadersMixin):

@@ -2395,9 +2395,10 @@ Utilities
       (even if the server responded first, the future settles when
       writing finishes); with the upload error when the final attempt
       failed (the request raises the same error unless the server
-      already responded successfully); or cancelled when the body was
-      never fully sent, e.g. the request failed before writing started
-      or a middleware answered without sending the request.
+      already responded successfully); or with :exc:`UploadAbortedError`
+      when the body was never fully sent, e.g. the request failed before
+      writing started, was cancelled, or a middleware answered without
+      sending the request.
 
    .. versionadded:: 3.14.4
 
@@ -2762,6 +2763,16 @@ All exceptions are available as members of *aiohttp* module.
 
    Derived from :exc:`ClientError`
 
+.. class:: UploadAbortedError
+   :canonical: aiohttp.client_exceptions.UploadAbortedError
+
+   Set on :attr:`UploadTracker.upload_complete` when the request body
+   was never fully sent.
+
+   Derived from :exc:`ClientError`
+
+   .. versionadded:: 3.14.4
+
 .. exception:: InvalidURL
    :canonical: aiohttp.client_exceptions.InvalidURL
 
@@ -3043,6 +3054,8 @@ Hierarchy of exceptions
         * :exc:`SocketTimeoutError`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`UploadAbortedError`
 
   * :exc:`ClientResponseError`
 

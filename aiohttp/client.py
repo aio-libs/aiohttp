@@ -65,6 +65,7 @@ from .client_exceptions import (
     ServerTimeoutError,
     SocketTimeoutError,
     TooManyRedirects,
+    UploadAbortedError,
     WSMessageTypeError,
     WSServerHandshakeError,
 )
@@ -138,6 +139,7 @@ __all__ = (
     "ServerTimeoutError",
     "SocketTimeoutError",
     "TooManyRedirects",
+    "UploadAbortedError",
     "WSServerHandshakeError",
     # client_reqrep
     "ClientRequest",
