@@ -6451,7 +6451,7 @@ async def test_upload_tracker_non_http_scheme(aiohttp_client: AiohttpClient) -> 
     """A request rejected before being built settles the tracker."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -6481,7 +6481,7 @@ async def test_upload_tracker_trace_start_failure(
     trace_config.on_request_start.append(on_request_start)
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -6601,7 +6601,7 @@ async def test_upload_tracker_invalid_proxy(aiohttp_client: AiohttpClient) -> No
     """An invalid proxy URL settles the tracker before the request is built."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
