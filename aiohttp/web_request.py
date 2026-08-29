@@ -6,7 +6,6 @@ import string
 import sys
 import types
 from collections.abc import Iterator, Mapping, MutableMapping
-from re import Pattern
 from types import MappingProxyType
 from typing import (
     IO,
@@ -138,7 +137,7 @@ _QDTEXT: Final[str] = r"[{}]".format(
 _FORWARDED_PAIR: Final[str] = (
     rf'[ \t]*({_TOKEN})=({_TOKEN}|".*")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
 )
-_FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
+_FORWARDED_PAIR_RE: Final[re.Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
 ############################################################
 # HTTP Request
