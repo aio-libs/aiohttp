@@ -616,7 +616,6 @@ class ClientSession:
             tm.close()
             if handle is not None:
                 handle.cancel()
-                handle = None
             if upload_tracker is not None:
                 upload_tracker._finalize(e)
             raise
