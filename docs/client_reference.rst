@@ -2370,6 +2370,9 @@ Utilities
        async with session.post(url, data=data, upload_tracker=tracker) as resp:
            ...
        await progress
+       # Raises if the upload failed, even when the request itself
+       # succeeded because the server answered early.
+       await tracker.upload_complete
 
    A tracker observes exactly one request: passing it to a second request
    raises :exc:`RuntimeError`. Two requests uploading the same payload
@@ -2399,6 +2402,10 @@ Utilities
       when the body was never fully sent, e.g. the request failed before
       writing started, was cancelled, or a middleware answered without
       sending the request.
+
+      When the server answers before reading the whole body, the request
+      succeeds without raising; await the future (or check its
+      :meth:`~asyncio.Future.exception`) to observe such upload failures.
 
    .. versionadded:: 3.14.4
 
