@@ -521,6 +521,10 @@ class ClientSession:
             ceil_threshold=real_timeout.ceil_threshold,
         )
         handle: asyncio.TimerHandle | None = None
+        traces: list[Trace] = []
+        traces_started = 0
+        trace_url: URL | None = None
+        trace_headers: "CIMultiDict[str] | None" = None
 
         try:
             if self.closed:
@@ -614,16 +618,22 @@ class ClientSession:
                 for trace_config in self._trace_configs
             ]
 
+            trace_url = url.update_query(params)
+            trace_headers = headers
             for trace in traces:
-                await trace.send_request_start(
-                    method, url.update_query(params), headers
-                )
-        except BaseException:
+                await trace.send_request_start(method, trace_url, trace_headers)
+                traces_started += 1
+        except BaseException as e:
             tm.close()
             if handle is not None:
                 handle.cancel()
             if upload_tracker is not None:
                 upload_tracker._finalize()
+            # Traces that saw send_request_start must also see a terminal
+            # event; traces whose start never ran get neither.
+            for trace in traces[:traces_started]:
+                assert trace_url is not None and trace_headers is not None
+                await trace.send_request_exception(method, trace_url, trace_headers, e)
             raise
 
         timer = tm.timer()

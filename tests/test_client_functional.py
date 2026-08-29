@@ -6495,6 +6495,66 @@ async def test_upload_tracker_trace_start_failure(
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
+async def test_trace_start_failure_notifies_started_traces(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Traces whose on_request_start already ran get the terminal event."""
+    seen_exceptions: list[BaseException] = []
+
+    async def good_start(
+        session: aiohttp.ClientSession,
+        ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> None:
+        """Complete normally so this config expects a terminal event."""
+
+    async def good_exception(
+        session: aiohttp.ClientSession,
+        ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestExceptionParams,
+    ) -> None:
+        seen_exceptions.append(params.exception)
+
+    good = aiohttp.TraceConfig()
+    good.on_request_start.append(good_start)
+    good.on_request_exception.append(good_exception)
+
+    bad_exception_calls: list[BaseException] = []
+
+    async def bad_start(
+        session: aiohttp.ClientSession,
+        ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestStartParams,
+    ) -> None:
+        raise RuntimeError("trace boom")
+
+    async def bad_exception(
+        session: aiohttp.ClientSession,
+        ctx: SimpleNamespace,
+        params: aiohttp.TraceRequestExceptionParams,
+    ) -> None:
+        bad_exception_calls.append(params.exception)
+
+    bad = aiohttp.TraceConfig()
+    bad.on_request_start.append(bad_start)
+    bad.on_request_exception.append(bad_exception)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[good, bad])
+
+    with pytest.raises(RuntimeError, match="trace boom"):
+        await client.get("/")
+
+    assert len(seen_exceptions) == 1
+    assert isinstance(seen_exceptions[0], RuntimeError)
+    # The config whose start never completed gets no terminal event.
+    assert not bad_exception_calls
+
+
 @pytest.mark.parametrize(
     "bad_kwargs",
     [
