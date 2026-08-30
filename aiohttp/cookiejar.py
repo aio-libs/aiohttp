@@ -325,10 +325,9 @@ class CookieJar(AbstractCookieJar):
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
         hostname = response_url.raw_host
-
-        if not self._unsafe and is_ip_address(hostname):
-            # Don't accept cookies from IPs
-            return
+        # An IP address has no domain hierarchy, so cookies from such an origin
+        # are only ever stored host-only, whatever ``Domain`` attribute is sent.
+        host_is_ip = is_ip_address(hostname)
 
         if isinstance(cookies, Mapping):
             cookies = cookies.items()
@@ -345,6 +344,21 @@ class CookieJar(AbstractCookieJar):
             if domain and domain[-1] == ".":
                 domain = ""
                 del cookie["domain"]
+
+            if domain and hostname is not None:
+                # RFC 6265 section 5.1.3 only gives a ``Domain`` attribute
+                # meaning through suffix matching, which the same section
+                # forbids when the host is an IP address. So an IP origin
+                # can only ever name itself, and a DNS name may not claim an
+                # address as its parent domain -- ``a.1.2.3.4`` is a suffix
+                # match for ``1.2.3.4`` but is a different origin.
+                if host_is_ip:
+                    if domain.lstrip(".") != hostname:
+                        continue
+                    domain = ""
+                    del cookie["domain"]
+                elif is_ip_address(domain.lstrip(".")):
+                    continue
 
             if not domain and hostname is not None:
                 # Set the cookie's domain to the response hostname
@@ -438,8 +452,6 @@ class CookieJar(AbstractCookieJar):
             filtered[c.key] = mrsl_val
 
         if is_ip_address(hostname):
-            if not self._unsafe:
-                return filtered
             domains: Iterable[str] = (hostname,)
         else:
             # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
