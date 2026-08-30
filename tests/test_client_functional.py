@@ -6557,14 +6557,14 @@ async def test_trace_start_failure_notifies_started_traces(
         ctx: SimpleNamespace,
         params: aiohttp.TraceRequestExceptionParams,
     ) -> None:
-        bad_exception_calls.append(params.exception)
+        bad_exception_calls.append(params.exception)  # pragma: no cover
 
     bad = aiohttp.TraceConfig()
     bad.on_request_start.append(bad_start)
     bad.on_request_exception.append(bad_exception)
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
@@ -6594,7 +6594,7 @@ async def test_upload_tracker_validation_failure(
     """Argument validation failures settle the tracker instead of hanging it."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_post("/", handler)
@@ -6614,7 +6614,7 @@ async def test_upload_tracker_invalid_timeout_type(
     """A wrong-typed timeout argument still settles the tracker."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
