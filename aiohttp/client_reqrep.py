@@ -1135,7 +1135,10 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
-            self._mark_body_sent()
+            if (tracker := self._upload_tracker) is not None:
+                # The request went out without a body-writer task: record
+                # a trivially complete zero-byte attempt.
+                tracker._attempt_finished(tracker._attempt_started())
         self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
@@ -1147,11 +1150,6 @@ class ClientRequestBase:
     ) -> None:
         # Base class never has a body, this will never be run.
         assert False
-
-    def _mark_body_sent(self) -> None:
-        """Hook invoked when the request is sent without a body to write."""
-        if (tracker := self._upload_tracker) is not None:
-            tracker._attempt_finished(tracker._attempt_started())
 
 
 class ClientRequestArgs(TypedDict, total=False):
