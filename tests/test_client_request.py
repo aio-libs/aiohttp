@@ -2534,7 +2534,9 @@ async def test_upload_tracker_dispatched_resend_never_writing() -> None:
 
     tracker._attempt_started()  # Resend dispatched; never writes.
     assert tracker.bytes_written == 0
-    # Events from the superseded attempt are ignored.
+    # Events from the superseded attempt are ignored; a stale writing
+    # transition must not make _finalize() defer to a dead writer.
+    tracker._attempt_writing(gen)
     tracker._attempt_finished(gen)
     tracker._add_bytes(gen, 100)
     assert tracker.bytes_written == 0
