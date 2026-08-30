@@ -165,11 +165,6 @@ class StreamWriter(AbstractStreamWriter):
         else:
             self._write(headers_buf)
 
-    def _notify_body_write(self, size: int) -> None:
-        """Report accepted body bytes to the on_body_write callback."""
-        if (notify := self.on_body_write) is not None and size:
-            notify(size)
-
     async def write(
         self,
         chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
@@ -187,17 +182,20 @@ class StreamWriter(AbstractStreamWriter):
         if self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
 
-        body_size = chunk.nbytes if isinstance(chunk, memoryview) else len(chunk)
-
+        notify = self.on_body_write
         if isinstance(chunk, memoryview):
-            if chunk.nbytes != len(chunk):
+            body_size = chunk.nbytes
+            if body_size != len(chunk):
                 # just reshape it
                 chunk = chunk.cast("c")
+        else:
+            body_size = len(chunk)
 
         if self._compress is not None:
             chunk = await self._compress.compress(chunk)
             if not chunk:
-                self._notify_body_write(body_size)
+                if notify is not None and body_size:
+                    notify(body_size)
                 return
 
         if self.length is not None:
@@ -210,13 +208,15 @@ class StreamWriter(AbstractStreamWriter):
                 chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:
-                    self._notify_body_write(body_size)
+                    if notify is not None and body_size:
+                        notify(body_size)
                     return
 
         # Handle buffered headers for small payload optimization
         if self._headers_buf and not self._headers_written:
             self._send_headers_with_payload(chunk, False)
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
             if drain and self.buffer_size > LIMIT:
                 self.buffer_size = 0
                 await self.drain()
@@ -227,7 +227,8 @@ class StreamWriter(AbstractStreamWriter):
                 self._write_chunked_payload(chunk)
             else:
                 self._write(chunk)
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
 
             if drain and self.buffer_size > LIMIT:
                 self.buffer_size = 0
@@ -293,6 +294,7 @@ class StreamWriter(AbstractStreamWriter):
         if chunk and self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
 
+        notify = self.on_body_write
         body_size = len(chunk)
 
         # Handle body/compression
@@ -323,7 +325,8 @@ class StreamWriter(AbstractStreamWriter):
                 else:
                     # Coalesce headers with compressed data
                     self._writelines((headers_buf, *chunks))
-                self._notify_body_write(body_size)
+                if notify is not None and body_size:
+                    notify(body_size)
                 await self.drain()
                 self._eof = True
                 return
@@ -336,7 +339,8 @@ class StreamWriter(AbstractStreamWriter):
                 self._writelines(chunks)
             else:
                 self._write(chunks[0])
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
             await self.drain()
             self._eof = True
             return
@@ -345,7 +349,8 @@ class StreamWriter(AbstractStreamWriter):
         if self._headers_buf and not self._headers_written:
             # Use helper to send headers with payload
             self._send_headers_with_payload(chunk, True)
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
             await self.drain()
             self._eof = True
             return
@@ -359,14 +364,16 @@ class StreamWriter(AbstractStreamWriter):
                 )
             else:
                 self._write(b"0\r\n\r\n")
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
             await self.drain()
             self._eof = True
             return
 
         if chunk:
             self._write(chunk)
-            self._notify_body_write(body_size)
+            if notify is not None and body_size:
+                notify(body_size)
             await self.drain()
 
         self._eof = True
