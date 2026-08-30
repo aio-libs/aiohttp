@@ -2405,7 +2405,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
     assert isinstance(tracker.upload_complete.exception(), aiohttp.ClientOSError)
 
 
-@pytest.mark.parametrize("with_tracker", [True, False])
+@pytest.mark.parametrize("with_tracker", (True, False))
 async def test_preamble_failure_reported_to_upload_tracker(
     conn: mock.Mock, make_client_request: _RequestMaker, with_tracker: bool
 ) -> None:

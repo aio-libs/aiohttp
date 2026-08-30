@@ -340,14 +340,9 @@ class UploadTracker:
             fut.set_exception(self._exc)
         else:
             # PENDING (the body was never sent) or CANCELLED (the attempt
-            # was cut short). A real exception rather than fut.cancel():
-            # a CancelledError signal would be swallowed silently by
-            # e.g. asyncio.TaskGroup.
+            # was cut short).
             fut.set_exception(UploadAbortedError("The request body was not fully sent"))
-        # Consume the exception so a consumer that only polls done()
-        # (the documented pattern) cannot produce a "Future exception
-        # was never retrieved" traceback at garbage collection; it
-        # stays retrievable via await or .exception().
+        # Avoid 'exception was never retrieved' when doing a .done() poll.
         fut.exception()
 
 
