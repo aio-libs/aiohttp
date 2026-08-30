@@ -317,7 +317,7 @@ def test_range_non_ascii() -> None:
 
 
 def test_range_to_slice_uppercase_unit() -> None:
-    # Range unit names are case-insensitive (RFC 9110 §14.1.1).
+    # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
     req = make_mocked_request(
         "GET", "/", headers=CIMultiDict([("RANGE", "Bytes=0-499")])
     )

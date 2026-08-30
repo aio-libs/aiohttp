@@ -1,4 +1,1 @@
-Fixed ``BaseRequest.http_range`` rejecting valid case-insensitive range
-unit names (e.g. ``Range: Bytes=0-499``), which made ``FileResponse``
-return ``416 Requested Range Not Satisfiable`` for satisfiable ranges
--- by :user:`Manny7717`.
+Fixed ``BaseRequest.http_range`` not accepting case-insensitive range units -- by :user:`Manny7717`.
