@@ -6602,7 +6602,7 @@ async def test_upload_tracker_validation_failure(
 
     tracker = aiohttp.UploadTracker()
     with pytest.raises((TypeError, ValueError)):
-        await client.post("/", upload_tracker=tracker, **bad_kwargs)
+        await client.post("/", upload_tracker=tracker, **bad_kwargs)  # type: ignore[arg-type]
 
     assert tracker.attempts == 0
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
