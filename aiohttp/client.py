@@ -512,16 +512,7 @@ class ClientSession:
         if upload_tracker is not None:
             upload_tracker._bind()
 
-        real_timeout = (
-            self._timeout if timeout is sentinel or timeout is None else timeout
-        )
-        # timeout is cumulative for all request operations
-        # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop,
-            real_timeout.total,
-            ceil_threshold=real_timeout.ceil_threshold,
-        )
+        tm: TimeoutHandle | None = None
         handle: asyncio.TimerHandle | None = None
         traces: list[Trace] = []
         traces_started = 0
@@ -553,6 +544,17 @@ class ClientSession:
                     )
                 else:
                     data = payload.JsonPayload(json, dumps=self._json_serialize)
+
+            real_timeout = (
+                self._timeout if timeout is sentinel or timeout is None else timeout
+            )
+            # timeout is cumulative for all request operations
+            # (request, redirects, responses, data consuming)
+            tm = TimeoutHandle(
+                self._loop,
+                real_timeout.total,
+                ceil_threshold=real_timeout.ceil_threshold,
+            )
 
             redirects = 0
             history: list[ClientResponse] = []
@@ -626,7 +628,8 @@ class ClientSession:
                 await trace.send_request_start(method, trace_url, trace_headers)
                 traces_started += 1
         except BaseException as e:
-            tm.close()
+            if tm is not None:
+                tm.close()
             if handle is not None:
                 handle.cancel()
             if upload_tracker is not None:
@@ -638,6 +641,7 @@ class ClientSession:
                 await trace.send_request_exception(method, trace_url, trace_headers, e)
             raise
 
+        assert tm is not None
         timer = tm.timer()
         req: ClientRequest | None = None
         try:
