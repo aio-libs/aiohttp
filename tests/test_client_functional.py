@@ -6589,7 +6589,7 @@ async def test_trace_start_failure_notifies_started_traces(
     ids=("data-and-json", "unserializable-json", "bad-ssl-type"),
 )
 async def test_upload_tracker_validation_failure(
-    aiohttp_client: AiohttpClient, bad_kwargs: dict[str, Any]
+    aiohttp_client: AiohttpClient, bad_kwargs: dict[str, object]
 ) -> None:
     """Argument validation failures settle the tracker instead of hanging it."""
 
@@ -6622,7 +6622,7 @@ async def test_upload_tracker_invalid_timeout_type(
 
     tracker = aiohttp.UploadTracker()
     with pytest.raises(AttributeError):
-        await client.get("/", timeout=5, upload_tracker=tracker)
+        await client.get("/", timeout=5, upload_tracker=tracker)  # type: ignore[arg-type]
 
     assert tracker.attempts == 0
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
