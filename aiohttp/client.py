@@ -239,6 +239,8 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
+    if (tracker := req._upload_tracker) is not None:
+        req._upload_gen = tracker._attempt_started()
     try:
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
     except asyncio.TimeoutError as exc:

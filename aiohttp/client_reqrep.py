@@ -286,16 +286,25 @@ class UploadTracker:
         self._bound = True
 
     def _attempt_started(self) -> int:
-        """Begin a new upload attempt; returns its generation token."""
+        """A new upload attempt is dispatched; returns its generation token.
+
+        Called before connecting, so a resend failing early settles as
+        aborted instead of reporting the superseded attempt's outcome.
+        """
         self.attempts += 1
         self.bytes_written = 0
-        self._state = _UploadState.ACTIVE
+        self._state = _UploadState.PENDING
         self._exc = None
         return self.attempts
 
+    def _attempt_writing(self, gen: int) -> None:
+        """The attempt's body write has begun; settling now defers to it."""
+        if gen == self.attempts:
+            self._state = _UploadState.ACTIVE
+
     def _add_bytes(self, gen: int, size: int) -> None:
-        # A stale writer of a previous attempt (e.g. still being torn down
-        # while a redirect resends the body) must not corrupt the counter.
+        # A stale writer of a superseded attempt (e.g. still being torn
+        # down while a redirect resends the body) must not corrupt the counter.
         if gen == self.attempts:
             self.bytes_written += size
 
@@ -927,6 +936,7 @@ class ClientRequestBase:
     _writer_task: asyncio.Task[None] | None = None  # async task for streaming data
 
     _upload_tracker: UploadTracker | None = None
+    _upload_gen = 0
 
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
@@ -1131,9 +1141,9 @@ class ClientRequestBase:
             writer.set_eof()
             task = None
             if (tracker := self._upload_tracker) is not None:
-                # The request went out without a body-writer task: record
-                # a trivially complete zero-byte attempt.
-                tracker._attempt_finished(tracker._attempt_started())
+                # The request went out without a body-writer task: the
+                # dispatched attempt is trivially complete with zero bytes.
+                tracker._attempt_finished(self._upload_gen)
         self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
@@ -1614,9 +1624,10 @@ class ClientRequest(ClientRequestBase):
 
         """
         tracker = self._upload_tracker
-        gen = 0 if tracker is None else tracker._attempt_started()
+        gen = self._upload_gen
         if tracker is not None:
             writer.on_body_write = functools.partial(tracker._add_bytes, gen)
+            tracker._attempt_writing(gen)
         try:
             # 100 response
             if self._continue is not None:

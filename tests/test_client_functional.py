@@ -6214,6 +6214,30 @@ async def test_upload_tracker_redirect_drops_body(
     assert tracker.upload_complete.result() is None
 
 
+async def test_upload_tracker_redirect_to_unreachable_host(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A resend failing before its body write must not report success."""
+
+    async def redirect(request: web.Request) -> NoReturn:
+        await request.read()
+        raise web.HTTPTemporaryRedirect("http://127.0.0.1:1/")
+
+    app = web.Application()
+    app.router.add_post("/", redirect)
+    client = await aiohttp_client(app)
+
+    tracker = aiohttp.UploadTracker()
+    with pytest.raises(aiohttp.ClientConnectorError):
+        await client.post("/", data=b"r" * 2048, upload_tracker=tracker)
+
+    # The first hop's completed upload is history; the dispatched resend
+    # is the outcome.
+    assert tracker.attempts == 2
+    assert tracker.bytes_written == 0
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
 async def test_upload_tracker_settles_after_early_response(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -6326,7 +6350,7 @@ async def test_upload_tracker_connect_error(aiohttp_client: AiohttpClient) -> No
             "http://127.0.0.1:1/", data=b"x", upload_tracker=tracker
         )
 
-    assert tracker.attempts == 0
+    assert tracker.attempts == 1
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 

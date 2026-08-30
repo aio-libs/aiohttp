@@ -2331,6 +2331,7 @@ async def test_upload_tracker_stale_attempt_events_ignored() -> None:
     tracker = UploadTracker()
     stale = tracker._attempt_started()
     gen = tracker._attempt_started()
+    tracker._attempt_writing(gen)
 
     tracker._add_bytes(gen, 10)
     tracker._add_bytes(stale, 100)
@@ -2394,6 +2395,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
     await req.update_body(b"test data")
     tracker = UploadTracker()
     req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
 
     writer = WriterMock()
     writer.write.side_effect = OSError
@@ -2416,6 +2418,8 @@ async def test_preamble_failure_reported_to_upload_tracker(
     )
     tracker = UploadTracker() if with_tracker else None
     req._upload_tracker = tracker
+    if tracker is not None:
+        req._upload_gen = tracker._attempt_started()
 
     writer = WriterMock()
     writer.send_headers = mock.Mock()
@@ -2502,6 +2506,7 @@ async def test_conn_close_failure_still_settles_upload_tracker(
     )
     tracker = UploadTracker()
     req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
     conn.close.side_effect = RuntimeError("close boom")
 
     writer = WriterMock()
@@ -2516,4 +2521,24 @@ async def test_conn_close_failure_still_settles_upload_tracker(
 
     tracker._finalize()
     assert tracker.upload_complete.done()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
+async def test_upload_tracker_dispatched_resend_never_writing() -> None:
+    """A dispatched resend that never starts writing settles as aborted."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_writing(gen)
+    tracker._add_bytes(gen, 2048)
+    tracker._attempt_finished(gen)
+
+    tracker._attempt_started()  # Resend dispatched; never writes.
+    assert tracker.bytes_written == 0
+    # Events from the superseded attempt are ignored.
+    tracker._attempt_finished(gen)
+    tracker._add_bytes(gen, 100)
+    assert tracker.bytes_written == 0
+
+    tracker._finalize()
+    assert tracker.attempts == 2
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)

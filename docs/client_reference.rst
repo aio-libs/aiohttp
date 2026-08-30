@@ -2382,11 +2382,12 @@ Utilities
 
       Body bytes of the current upload attempt handed to the connection,
       before transport-level transformations such as compression or
-      chunked framing. Reset to ``0`` when a new attempt starts.
+      chunked framing. Reset to ``0`` when the request moves on to a new
+      attempt.
 
    .. attribute:: attempts
 
-      Number of upload attempts started: ``1`` for a plain request,
+      Number of upload attempts dispatched: ``1`` for a plain request,
       incremented each time the request is resent, e.g. following a
       redirect or a middleware retry. A redirect that drops the body
       (such as a *303 See Other*) still counts a zero-byte attempt.
