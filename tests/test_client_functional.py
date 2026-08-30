@@ -6557,12 +6557,12 @@ async def test_trace_start_failure_notifies_started_traces(
 
 @pytest.mark.parametrize(
     "bad_kwargs",
-    [
+    (
         {"data": b"x", "json": {"a": 1}},
         {"json": {"a": object()}},
         {"ssl": object()},
-    ],
-    ids=["data-and-json", "unserializable-json", "bad-ssl-type"],
+    ),
+    ids=("data-and-json", "unserializable-json", "bad-ssl-type"),
 )
 async def test_upload_tracker_validation_failure(
     aiohttp_client: AiohttpClient, bad_kwargs: dict[str, Any]
