@@ -361,8 +361,6 @@ async def test_serve_forever_without_site(make_runner: _RunnerMaker) -> None:
 
 async def test_serve_forever_with_cleanup(make_runner: _RunnerMaker) -> None:
     """serve_forever() exits promptly when runner.cleanup() is called."""
-    import aiohttp
-
     runner = make_runner()
     await runner.setup()
 
@@ -375,8 +373,6 @@ async def test_serve_forever_with_cleanup(make_runner: _RunnerMaker) -> None:
 
 async def test_serve_forever_with_cancel(make_runner: _RunnerMaker) -> None:
     """serve_forever() raises CancelledError when the calling task is cancelled."""
-    import aiohttp
-
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="127.0.0.1", port=0)
