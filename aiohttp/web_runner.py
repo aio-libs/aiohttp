@@ -307,12 +307,12 @@ class BaseRunner(ABC, Generic[_Request]):
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: Server[_Request] | None = None
+        self._server: asyncio.Server | None = None
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
     @property
-    def server(self) -> Server[_Request] | None:
+    def server(self) -> asyncio.Server | None:
         return self._server
 
     @property
@@ -500,13 +500,17 @@ class AppRunner(BaseRunner[Request]):
     async def serve_forever(self) -> None:
         """Serve forever until the runner is stopped.
 
-        This is a convenience method that calls serve_forever() on the
-        underlying asyncio.Server, matching the interface of
+        This is a convenience method that blocks until the runner is stopped
+        (via cleanup() or shutdown()), matching the interface of
         asyncio.Server.serve_forever().
         """
         if self._server is None:
             raise RuntimeError("Call runner.setup() before calling serve_forever()")
-        await self._server.serve_forever()
+        try:
+            while self._server is not None:
+                await asyncio.sleep(3600)
+        except asyncio.CancelledError:
+            pass
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
