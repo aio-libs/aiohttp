@@ -958,7 +958,6 @@ class ClientRequestBase:
         else:
             path = self.url.raw_path_qs
 
-
         if _contains_disallowed_target_pchar_re.search(path):
             raise ValueError(
                 "Request URL can't contain control characters. "
