@@ -1077,7 +1077,7 @@ async def test_consecutive_folded_frames_do_not_bleed(
     second = bytes(reversed(range(256))) * 24  # 6 KiB, distinct content
 
     for payload in (first, second):
-        frame = build_frame(payload, WSMsgType.BINARY, mask=True)
+        frame = build_frame(payload, WSMsgType.BINARY, use_mask=True)
         assert len(frame) // 2 > _fold_cap(max_msg_size)  # reads exceed the cap
         for i in range(0, len(frame), 2):
             parser.feed_data(frame[i : i + 2])
@@ -1099,8 +1099,8 @@ async def test_fragmented_message_survives_fold(protocol: BaseProtocol) -> None:
     first = bytes(range(256)) * 32  # 8 KiB
     second = bytes(reversed(range(256))) * 24  # 6 KiB
     frames = [
-        build_frame(first, WSMsgType.BINARY, is_fin=False, mask=True),
-        build_frame(second, WSMsgType.CONTINUATION, is_fin=True, mask=True),
+        build_frame(first, WSMsgType.BINARY, is_fin=False, use_mask=True),
+        build_frame(second, WSMsgType.CONTINUATION, is_fin=True, use_mask=True),
     ]
     for frame in frames:
         assert len(frame) // 2 > _fold_cap(max_msg_size)
@@ -1121,7 +1121,9 @@ async def test_compressed_frame_survives_fold(protocol: BaseProtocol) -> None:
     # Incompressible, so the deflated frame stays large enough to fold.
     rng = random.Random(0)
     payload = bytes(rng.getrandbits(8) for _ in range(8 * 1024))
-    frame = build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True)
+    frame = build_frame(
+        payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, use_mask=True
+    )
     assert len(frame) // 2 > _fold_cap(max_msg_size)
 
     for i in range(0, len(frame), 2):
