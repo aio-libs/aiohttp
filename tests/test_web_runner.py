@@ -300,6 +300,34 @@ async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
     await site.stop()
 
 
+async def test_serve_forever(make_runner: _RunnerMaker) -> None:
+    import aiohttp
+
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+
+    async def serve() -> None:
+        await runner.serve_forever()
+
+    serve_task = asyncio.create_task(serve())
+    # Give the server a moment to start
+    await asyncio.sleep(0.05)
+
+    # Verify the server is actually serving
+    async with aiohttp.ClientSession() as session:
+        async with session.get(site.name) as resp:
+            assert resp.status == 404  # Default aiohttp response for unknown route
+
+    serve_task.cancel()
+    try:
+        await serve_task
+    except asyncio.CancelledError:
+        pass
+    await runner.cleanup()
+
+
 def test_run_after_asyncio_run() -> None:
     called = False
 

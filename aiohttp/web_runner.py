@@ -497,5 +497,16 @@ class AppRunner(BaseRunner[Request]):
             pre_handler_error=pre_handler_error,
         )
 
+    async def serve_forever(self) -> None:
+        """Serve forever until the runner is stopped.
+
+        This is a convenience method that calls serve_forever() on the
+        underlying asyncio.Server, matching the interface of
+        asyncio.Server.serve_forever().
+        """
+        if self._server is None:
+            raise RuntimeError("Call runner.setup() before calling serve_forever()")
+        await self._server.serve_forever()
+
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
