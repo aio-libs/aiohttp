@@ -1030,10 +1030,10 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
 
 @pytest.mark.parametrize(
     ("part_charset", "part_body"),
-    [
+    (
         ("not-a-real-codec", b"hello"),
         ("utf-8", b"\xff\xfe"),
-    ],
+    ),
 )
 async def test_multipart_formdata_field_bad_charset(
     protocol: BaseProtocol, part_charset: str, part_body: bytes
