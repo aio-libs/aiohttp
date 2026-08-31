@@ -359,6 +359,36 @@ async def test_serve_forever_without_site(make_runner: _RunnerMaker) -> None:
         pass
 
 
+async def test_serve_forever_with_cleanup(make_runner: _RunnerMaker) -> None:
+    """serve_forever() exits promptly when runner.cleanup() is called."""
+    import aiohttp
+
+    runner = make_runner()
+    await runner.setup()
+
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+    await runner.cleanup()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
+
+
+async def test_serve_forever_with_cancel(make_runner: _RunnerMaker) -> None:
+    """serve_forever() raises CancelledError when the calling task is cancelled."""
+    import aiohttp
+
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+    serve_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
+    await runner.cleanup()
+
+
 def test_run_after_asyncio_run() -> None:
     called = False
 
