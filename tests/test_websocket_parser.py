@@ -21,7 +21,11 @@ from aiohttp._websocket.helpers import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
 from aiohttp._websocket.reader import WebSocketDataQueue
-from aiohttp._websocket.reader_py import MSG_SIZE_OVERHEAD
+from aiohttp._websocket.reader_py import (
+    MSG_SIZE_OVERHEAD,
+    WebSocketDataQueue as PyWebSocketDataQueue,
+    WebSocketReader as PyWebSocketReader,
+)
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
@@ -973,48 +977,174 @@ def test_flow_control_multi_byte_text(
     assert protocol._reading_paused is True
 
 
-async def test_incomplete_frame_pauses_when_fragment_limit_exceeded(
+async def test_incomplete_frame_retained_objects_stay_bounded(
     protocol: BaseProtocol,
 ) -> None:
+    """Reads fold into one buffer past the cap, bounding the object count.
+
+    Uses the pure-Python reader so the internals are reachable.
+    """
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
-    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
-    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+    out = PyWebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = PyWebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
-    assert protocol._reading_paused is False
 
-    # Feed the payload two bytes per read so the pause is
-    # driven purely by the fragment count, not the total byte count.
-    paused_after = None
-    for i in range(payload_len // 2 - 1):  # pragma: no branch
+    # Two bytes per read runs past the cap; the list folds and stays bounded.
+    for _ in range(payload_len // 2 - 1):
         parser.feed_data(b"xx")
-        if protocol._reading_paused:
-            paused_after = i + 1  # type: ignore[unreachable]
-            break
+        assert len(parser._payload_fragments) <= parser._max_fragments
 
-    assert paused_after is not None
-    # Paused long before the frame could complete (16384 two-byte reads).
-    assert paused_after < payload_len // 2  # type: ignore[unreachable]
+    parser.feed_data(b"xx")
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
+    assert len(parser._payload_fragments) == 0
+    assert len(parser._payload_buffer) == 0
 
 
-async def test_incomplete_frame_not_paused_for_normal_reads(
-    protocol: BaseProtocol,
+def _fold_cap(max_msg_size: int) -> int:
+    """The fragment count the reader folds at (single source of truth)."""
+    return PyWebSocketReader(
+        mock.Mock(), max_msg_size, compress=False, decode_text=False
+    )._max_fragments
+
+
+@pytest.mark.parametrize("mask", [False, True])
+async def test_frame_split_across_many_reads_is_delivered_intact(
+    protocol: BaseProtocol, mask: bool
 ) -> None:
+    """A frame arriving two bytes per read (past the fold cap) is delivered whole."""
     max_msg_size = 64 * 1024
     loop = asyncio.get_running_loop()
     out = WebSocketDataQueue(protocol, 2**16, loop=loop)
     parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
-    # Normal traffic (a frame delivered in a handful of reasonably sized reads)
-    # must never trip the fragment-limit backpressure.
+    payload = bytes(range(256)) * 32  # 8 KiB of varied, distinctive bytes
+    frame = build_frame(payload, WSMsgType.BINARY, mask=mask)
+
+    # Guard the reads stay past the fold cap even if the cap constants change.
+    assert len(frame) // 2 > _fold_cap(max_msg_size)
+    chunks = [frame[i : i + 2] for i in range(0, len(frame), 2)]
+    for chunk in chunks[:-1]:
+        parser.feed_data(chunk)
+        assert not out._buffer
+        assert protocol._reading_paused is False
+
+    parser.feed_data(chunks[-1])
+    msg = await out.read()
+    assert msg.data == payload
+
+
+async def test_consecutive_folded_frames_do_not_bleed(
+    protocol: BaseProtocol,
+) -> None:
+    """Two frames folded on one reader stay independent (buffer detached, not cleared)."""
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    first = bytes(range(256)) * 32  # 8 KiB
+    second = bytes(reversed(range(256))) * 24  # 6 KiB, distinct content
+
+    for payload in (first, second):
+        frame = build_frame(payload, WSMsgType.BINARY, mask=True)
+        assert len(frame) // 2 > _fold_cap(max_msg_size)  # reads exceed the cap
+        for i in range(0, len(frame), 2):
+            parser.feed_data(frame[i : i + 2])
+        # .clear() would deliver frame 1 empty; buffer reuse would corrupt frame 2.
+        msg = await out.read()
+        assert msg.data == payload
+
+
+async def test_fragmented_message_survives_fold(protocol: BaseProtocol) -> None:
+    """A multi-frame message whose frames each fold reassembles correctly.
+
+    A non-final folded frame hands a bytearray to ``self._partial += payload``.
+    """
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
+    first = bytes(range(256)) * 32  # 8 KiB
+    second = bytes(reversed(range(256))) * 24  # 6 KiB
+    frames = [
+        build_frame(first, WSMsgType.BINARY, is_fin=False, mask=True),
+        build_frame(second, WSMsgType.CONTINUATION, is_fin=True, mask=True),
+    ]
+    for frame in frames:
+        assert len(frame) // 2 > _fold_cap(max_msg_size)
+        for i in range(0, len(frame), 2):
+            parser.feed_data(frame[i : i + 2])
+
+    msg = await out.read()
+    assert msg.data == first + second
+
+
+async def test_compressed_frame_survives_fold(protocol: BaseProtocol) -> None:
+    """A PMCE frame folded past the cap still decompresses (folded bytearray path)."""
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = WebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = WebSocketReader(out, max_msg_size, compress=True, decode_text=False)
+
+    # Incompressible, so the deflated frame stays large enough to fold.
+    rng = random.Random(0)
+    payload = bytes(rng.getrandbits(8) for _ in range(8 * 1024))
+    frame = build_frame(payload, WSMsgType.BINARY, ZLibBackend=ZLibBackend, mask=True)
+    assert len(frame) // 2 > _fold_cap(max_msg_size)
+
+    for i in range(0, len(frame), 2):
+        parser.feed_data(frame[i : i + 2])
+    msg = await out.read()
+    assert msg.data == payload
+
+
+async def test_frame_split_under_cap_uses_list_without_folding(
+    protocol: BaseProtocol,
+) -> None:
+    """A frame under the cap stays in the list, never folds, never pauses."""
+    max_msg_size = 64 * 1024
+    loop = asyncio.get_running_loop()
+    out = PyWebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = PyWebSocketReader(out, max_msg_size, compress=False, decode_text=False)
+
     payload_len = 32 * 1024
     parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
-    # 32 KiB in 4 KiB reads -> 8 fragments, far below the cap.
-    for _ in range(payload_len // 4096):
+    reads = payload_len // 4096
+    assert reads < parser._max_fragments  # stays under the cap: no fold
+    for _ in range(reads):
         parser.feed_data(b"x" * 4096)
-    assert protocol._reading_paused is False
+        assert protocol._reading_paused is False
+        assert len(parser._payload_buffer) == 0  # never folded
+
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
+
+
+async def test_max_msg_size_zero_opts_out_of_the_fold(
+    protocol: BaseProtocol,
+) -> None:
+    """max_msg_size=0 disables every limit, including the fold."""
+    loop = asyncio.get_running_loop()
+    out = PyWebSocketDataQueue(protocol, 2**16, loop=loop)
+    parser = PyWebSocketReader(out, 0, compress=False, decode_text=False)
+    assert parser._max_fragments == 0
+
+    payload_len = 4096  # well past the 1024 floor
+    parser.feed_data(PACK_LEN2(0x80 | WSMsgType.BINARY, 126, payload_len))
+    for _ in range(payload_len - 1):
+        parser.feed_data(b"x")
+    # No fold: every read accumulates in the list, the buffer is untouched.
+    assert len(parser._payload_fragments) == payload_len - 1
+    assert len(parser._payload_buffer) == 0
+
+    parser.feed_data(b"x")
+    msg = await out.read()
+    assert msg.data == b"x" * payload_len
 
 
 def _compressed_burst(payload: bytes, count: int) -> bytes:
