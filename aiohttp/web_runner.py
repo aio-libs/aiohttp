@@ -296,7 +296,7 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC, Generic[_Request]):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
+    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout", "_main_server")
 
     def __init__(
         self,
@@ -307,12 +307,13 @@ class BaseRunner(ABC, Generic[_Request]):
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
-        self._server: asyncio.Server | None = None
+        self._server: Server[_Request] | None = None
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
+        self._main_server: asyncio.Server | None = None
 
     @property
-    def server(self) -> asyncio.Server | None:
+    def server(self) -> Server[_Request] | None:
         return self._server
 
     @property
@@ -387,6 +388,8 @@ class BaseRunner(ABC, Generic[_Request]):
         if site in self._sites:
             raise RuntimeError(f"Site {site} is already registered in runner {self}")
         self._sites.append(site)
+        if self._main_server is None and site._server is not None:
+            self._main_server = site._server
 
     def _check_site(self, site: BaseSite) -> None:
         if site not in self._sites:
@@ -506,11 +509,12 @@ class AppRunner(BaseRunner[Request]):
         """
         if self._server is None:
             raise RuntimeError("Call runner.setup() before calling serve_forever()")
-        try:
-            while self._server is not None:
+        if self._main_server is not None:
+            await self._main_server.wait_closed()
+        else:
+            # No site has started yet; wait indefinitely until cancelled.
+            while True:
                 await asyncio.sleep(3600)
-        except asyncio.CancelledError:
-            pass
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
