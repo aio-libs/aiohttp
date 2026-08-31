@@ -1972,7 +1972,8 @@ async def test_upgrade_tail_is_byte_limited(
                 await sender
     finally:
         release_handler.set()
-        writer.close()
+        # Abort so the server doesn't get stuck waiting for the client to read.
+        writer.transport.abort()
         with suppress(ConnectionResetError, BrokenPipeError):
             await writer.wait_closed()
 
