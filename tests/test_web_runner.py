@@ -328,6 +328,37 @@ async def test_serve_forever(make_runner: _RunnerMaker) -> None:
     await runner.cleanup()
 
 
+async def test_serve_forever_without_site(make_runner: _RunnerMaker) -> None:
+    """serve_forever() should wait for the first site to start before returning."""
+    import aiohttp
+
+    runner = make_runner()
+    await runner.setup()
+
+    async def serve() -> None:
+        await runner.serve_forever()
+
+    serve_task = asyncio.create_task(serve())
+
+    # Start a site — this should cause serve_forever() to exit the wait
+    # and move into wait_closed().
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+
+    # Verify server is actually serving.
+    await asyncio.sleep(0.05)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(site.name) as resp:
+            assert resp.status == 404
+
+    # Cleanup unblocks serve_forever() via wait_closed().
+    await runner.cleanup()
+    try:
+        await serve_task
+    except asyncio.CancelledError:
+        pass
+
+
 def test_run_after_asyncio_run() -> None:
     called = False
 

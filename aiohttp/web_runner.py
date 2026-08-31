@@ -303,6 +303,7 @@ class BaseRunner(ABC, Generic[_Request]):
         "_sites",
         "_shutdown_timeout",
         "_main_server",
+        "_site_started",
     )
 
     def __init__(
@@ -318,6 +319,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
         self._main_server: asyncio.Server | None = None
+        self._site_started = asyncio.Event()
 
     @property
     def server(self) -> Server[_Request] | None:
@@ -351,6 +353,8 @@ class BaseRunner(ABC, Generic[_Request]):
                 pass
 
         self._server = await self._make_server()
+        # Reset so a fresh serve_forever() call on a reused runner waits for the next site.
+        self._site_started.clear()
 
     @abstractmethod
     async def shutdown(self) -> None:
@@ -363,6 +367,9 @@ class BaseRunner(ABC, Generic[_Request]):
         # still present on failure
         for site in list(self._sites):
             await site.stop()
+
+        # Unblock serve_forever() if it is waiting for a site to start.
+        self._site_started.set()
 
         if self._server:  # If setup succeeded
             # Yield to event loop to ensure incoming requests prior to stopping the sites
@@ -397,6 +404,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._sites.append(site)
         if self._main_server is None and site._server is not None:
             self._main_server = site._server
+        self._site_started.set()
 
     def _check_site(self, site: BaseSite) -> None:
         if site not in self._sites:
@@ -520,8 +528,10 @@ class AppRunner(BaseRunner[Request]):
             await self._main_server.wait_closed()
         else:
             # No site has started yet; wait indefinitely until cancelled.
-            while True:
-                await asyncio.sleep(3600)
+            # Use an event so that _reg_site() waking a new site can interrupt us.
+            await self._site_started.wait()
+            if self._main_server is not None:
+                await self._main_server.wait_closed()
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
