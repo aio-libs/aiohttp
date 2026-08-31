@@ -2282,7 +2282,7 @@ def test_c_parser_error_snippet_at_buffer_end_request(
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Python parser lacks error pos output")
 def test_c_parser_error_message_bounded_for_crlf_free_input(
     event_loop: asyncio.AbstractEventLoop,
-    server: Server[Request],
+    server: Server,
 ) -> None:
     """Garbage with no CRLF must not be echoed back whole."""
     protocol = RequestHandler(server, loop=event_loop)
