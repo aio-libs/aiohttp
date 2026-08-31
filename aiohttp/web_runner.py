@@ -304,6 +304,7 @@ class BaseRunner(ABC, Generic[_Request]):
         "_shutdown_timeout",
         "_main_server",
         "_site_started",
+        "_stopped",
     )
 
     def __init__(
@@ -320,6 +321,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._shutdown_timeout = shutdown_timeout
         self._main_server: asyncio.Server | None = None
         self._site_started = asyncio.Event()
+        self._stopped = asyncio.Event()
 
     @property
     def server(self) -> Server[_Request] | None:
@@ -355,6 +357,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._server = await self._make_server()
         # Reset so a fresh serve_forever() call on a reused runner waits for the next site.
         self._site_started.clear()
+        self._stopped.clear()
 
     @abstractmethod
     async def shutdown(self) -> None:
@@ -370,6 +373,8 @@ class BaseRunner(ABC, Generic[_Request]):
 
         # Unblock serve_forever() if it is waiting for a site to start.
         self._site_started.set()
+        # Also set _stopped so serve_forever() raises CancelledError promptly.
+        self._stopped.set()
 
         if self._server:  # If setup succeeded
             # Yield to event loop to ensure incoming requests prior to stopping the sites
@@ -524,14 +529,37 @@ class AppRunner(BaseRunner[Request]):
         """
         if self._server is None:
             raise RuntimeError("Call runner.setup() before calling serve_forever()")
-        if self._main_server is not None:
-            await self._main_server.wait_closed()
-        else:
-            # No site has started yet; wait indefinitely until cancelled.
-            # Use an event so that _reg_site() waking a new site can interrupt us.
-            await self._site_started.wait()
-            if self._main_server is not None:
-                await self._main_server.wait_closed()
+        while True:
+            if self._main_server is None:
+                # Wait for either the first site to start OR cleanup to be called.
+                # _stopped being set means cleanup() ran first — raise CancelledError.
+                _, pending = await asyncio.wait(
+                    {
+                        asyncio.create_task(self._site_started.wait()),
+                        asyncio.shield(self._stopped.wait()),
+                    },
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                for f in pending:
+                    f.cancel()
+                if self._stopped.is_set():
+                    raise asyncio.CancelledError
+                # _site_started was set; a site registered. _main_server is now set.
+                continue
+            # Server is running; wait for it to close or for cleanup to be called.
+            _, pending = await asyncio.wait(
+                {
+                    self._main_server.wait_closed(),
+                    asyncio.shield(self._stopped.wait()),
+                },
+                return_when=asyncio.FIRST_COMPLETED,
+            )
+            for f in pending:
+                f.cancel()
+            if self._stopped.is_set():
+                raise asyncio.CancelledError
+            # Server closed normally (cleanup() was called, server shutdown completed).
+            # Loop to wait for the next site on a reused runner.
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
