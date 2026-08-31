@@ -374,7 +374,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: if_range
 
-      Read-only property that returns the validator specified in the
+      Read-only property that returns the value specified in the
       *If-Range* header.
 
       Returns :class:`datetime.datetime` for the HTTP-date form, an
@@ -386,8 +386,7 @@ and :ref:`aiohttp-web-signals` handlers.
       .. versionchanged:: 4.0
 
          The entity-tag form is now parsed and returned as an
-         :class:`~aiohttp.ETag`; previously only the HTTP-date form was
-         recognised.
+         :class:`~aiohttp.ETag`.
 
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
