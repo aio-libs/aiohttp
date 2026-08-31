@@ -18,7 +18,7 @@ attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
-blockbuster==1.5.26
+blockbuster==1.5.27
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
@@ -40,7 +40,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.18
+idna==3.19
     # via
     #   trustme
     #   yarl
@@ -84,7 +84,7 @@ pydantic==2.13.4
     # via python-on-whales
 pydantic-core==2.46.4
     # via pydantic
-pygments==2.20.0
+pygments==2.21.0
     # via
     #   pytest
     #   rich
