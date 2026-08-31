@@ -296,7 +296,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC, Generic[_Request]):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout", "_main_server")
+    __slots__ = (
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_sites",
+        "_shutdown_timeout",
+        "_main_server",
+    )
 
     def __init__(
         self,
