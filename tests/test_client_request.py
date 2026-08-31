@@ -2325,7 +2325,9 @@ async def test_empty_body_isolation_after_update(
     assert ClientRequest._EMPTY_BODY.size == 0
 
 
-async def test_request_target_with_crlf_raises(loop: Any, conn: Any) -> None:
+async def test_request_target_with_crlf_raises(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
     """CR/LF in an encoded request target must raise, not hit the wire (GHSA-pwcp-vr8x-fp2x)."""
     url = URL.build(
         scheme="http",
@@ -2333,6 +2335,6 @@ async def test_request_target_with_crlf_raises(loop: Any, conn: Any) -> None:
         path="/legit\r\nX-Injected: 1\r\nGET /admin",
         encoded=True,
     )
-    req = ClientRequest("GET", url, loop=loop)
+    req = make_client_request("get", url)
     with pytest.raises(ValueError, match="request splitting"):
-        await req.send(conn)
+        await req._send(conn)
