@@ -2287,7 +2287,7 @@ def test_c_parser_error_message_bounded_for_crlf_free_input(
     """Garbage with no CRLF must not be echoed back whole."""
     protocol = RequestHandler(server, loop=loop)
     parser = HttpRequestParserC(
-        protocol, event_loop, 2**16, max_line_size=8190, max_field_size=8190
+        protocol, loop, 2**16, max_line_size=8190, max_field_size=8190
     )
     protocol._parser = parser
     with pytest.raises(http_exceptions.BadHttpMethod) as exc_info:
