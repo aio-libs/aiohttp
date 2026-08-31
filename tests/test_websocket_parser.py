@@ -1022,7 +1022,7 @@ async def test_frame_split_across_many_reads_is_delivered_intact(
     parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=False)
 
     payload = bytes(range(256)) * 32  # 8 KiB of varied, distinctive bytes
-    frame = build_frame(payload, WSMsgType.BINARY, mask=mask)
+    frame = build_frame(payload, WSMsgType.BINARY, use_mask=mask)
 
     # Guard the reads stay past the fold cap even if the cap constants change.
     assert len(frame) // 2 > _fold_cap(max_msg_size)
