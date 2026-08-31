@@ -549,7 +549,7 @@ class AppRunner(BaseRunner[Request]):
             # Server is running; wait for it to close or for cleanup to be called.
             _, pending = await asyncio.wait(
                 {
-                    self._main_server.wait_closed(),
+                    asyncio.create_task(self._main_server.wait_closed()),
                     asyncio.shield(self._stopped.wait()),
                 },
                 return_when=asyncio.FIRST_COMPLETED,
