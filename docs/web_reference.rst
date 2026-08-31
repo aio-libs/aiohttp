@@ -941,7 +941,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
-.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None, text_charset=None)
    :canonical: aiohttp.web_fileresponse.FileResponse
 
    The response class used to send files, inherited from :class:`StreamResponse`.
@@ -965,6 +965,19 @@ and :ref:`aiohttp-web-signals` handlers::
    :param collections.abc.Mapping headers: HTTP headers that should be added to
                            response's ones. The ``Content-Type`` response header
                            will be overridden if provided.
+
+   :param str text_charset: charset to advertise for text files,
+                            e.g. ``"utf-8"``. When the ``Content-Type``
+                            header is guessed from the file extension and
+                            the guessed type is ``text/*``, a ``charset``
+                            parameter with this value is appended to it
+                            (e.g. ``text/plain; charset=utf-8``). Other
+                            media types never take the charset, and an
+                            explicit ``Content-Type`` supplied via *headers*
+                            is never modified. By default (``None``) no
+                            charset is added.
+
+                            .. versionadded:: 3.15
 
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
@@ -1895,6 +1908,7 @@ Application and Router
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
+                          text_charset=None, \
                           show_index=False, \
                           break_symlink_sandbox=False, \
                           append_version=False)
@@ -1938,6 +1952,14 @@ Application and Router
                              Increasing *chunk_size* parameter to,
                              say, 1Mb may increase file downloading
                              speed but consumes more memory.
+
+      :param str text_charset: charset appended to the guessed
+                               ``Content-Type`` of ``text/*`` files,
+                               e.g. ``"utf-8"``; passed to
+                               :class:`~aiohttp.web.FileResponse`. By
+                               default (``None``) no charset is added.
+
+                               .. versionadded:: 3.15
 
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will

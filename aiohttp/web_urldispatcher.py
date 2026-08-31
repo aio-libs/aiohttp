@@ -508,6 +508,7 @@ class StaticResource(PrefixResource):
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
+        text_charset: str | None = None,
         show_index: bool = False,
         break_symlink_sandbox: bool = False,
         append_version: bool = False,
@@ -522,6 +523,7 @@ class StaticResource(PrefixResource):
         self._directory = directory
         self._show_index = show_index
         self._chunk_size = chunk_size
+        self._text_charset = text_charset
         self._break_symlink_sandbox = break_symlink_sandbox
         self._expect_handler = expect_handler
         self._append_version = append_version
@@ -667,7 +669,9 @@ class StaticResource(PrefixResource):
             raise HTTPForbidden() from error
 
         # Return the file response, which handles all other checks.
-        return FileResponse(file_path, chunk_size=self._chunk_size)
+        return FileResponse(
+            file_path, chunk_size=self._chunk_size, text_charset=self._text_charset
+        )
 
     def _directory_as_html(self, dir_path: Path) -> str:
         """returns directory's index as html."""
@@ -1136,6 +1140,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         name: str | None = None,
         expect_handler: _ExpectHandler | None = None,
         chunk_size: int = DEFAULT_CHUNK_SIZE,
+        text_charset: str | None = None,
         show_index: bool = False,
         break_symlink_sandbox: bool = False,
         append_version: bool = False,
@@ -1155,6 +1160,7 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
             name=name,
             expect_handler=expect_handler,
             chunk_size=chunk_size,
+            text_charset=text_charset,
             show_index=show_index,
             break_symlink_sandbox=break_symlink_sandbox,
             append_version=append_version,
