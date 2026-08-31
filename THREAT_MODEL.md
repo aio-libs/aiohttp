@@ -548,7 +548,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
-| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) `WebSocketReader.__init__` caps the total fragment count at `max(1024, max_msg_size // 256)` and pauses reading for backpressure once exceeded. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
+| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) The reader collects a frame's reads in a list and joins them once when the frame completes; if a frame arrives in more than `max(1024, max_msg_size // 256)` reads, the pending reads are folded into a single `bytearray`. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
 | 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
 | 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Documented design decision: keep the RFC 7692 default (context takeover). **Document the memory tradeoff in user-facing WebSocket docs.** **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
 | 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
@@ -575,13 +575,6 @@ client-side, the writer adds masks to outgoing frames.
   RFC 6455 §5.2 requires failing such frames). Fixed by passing
   `compress=bool(compress)` in `client.py:_ws_connect` and removing the
   `compress` / `decode_text` defaults on `WebSocketReader.__init__`.
-- **PR #13350** (follow-up to CVE-2026-54274) — the per-frame
-  `max_msg_size` byte cap still let a size-legal frame dribbled in tiny
-  transport reads pin ~28x its on-wire size in per-read `bytes` objects
-  (`_payload_fragments`). `WebSocketReader` now caps the retained
-  fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
-  backpressure once exceeded, mirroring the HTTP chunk-splits limit in
-  `StreamReader` (PR #11894).
 - **PR #13393** — queue accounting only counted payload bytes, so a flood
   of empty/tiny frames could pin unbounded per-message object overhead in
   `WebSocketDataQueue` before the `_limit` high-water mark fired. Each
@@ -597,6 +590,13 @@ client-side, the writer adds masks to outgoing frames.
   Callers constructing a `WebSocketReader` for
   `set_parser()` must hold a strong reference to it (both in-tree response
   classes do, via `_parser`).
+- **PR #13488** — the per-frame
+  `max_msg_size` byte cap still let a size-legal frame dribbled in tiny
+  transport reads pin ~28x its on-wire size in per-read `bytes` objects
+  (`_payload_fragments`). The reader now collects reads in a list and joins
+  them once when the frame completes; if a frame arrives in more than
+  `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
+  a single `bytearray` and cleared.
 
 ---
 
