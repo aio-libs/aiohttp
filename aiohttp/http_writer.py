@@ -208,8 +208,6 @@ class StreamWriter(AbstractStreamWriter):
                 chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:
-                    if notify is not None and body_size:
-                        notify(body_size)
                     return
 
         # Handle buffered headers for small payload optimization
