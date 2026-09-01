@@ -2223,7 +2223,7 @@ async def test_websocket_prepared_with_unread_body_does_not_stall(
         # Sent after the handshake, so it is only read if the hold was released.
         ws_writer = WebSocketWriter(
             mock.Mock(_paused=False),
-            cast(asyncio.Transport, writer.transport),
+            writer.transport,
             use_mask=True,
         )
         await ws_writer.send_frame(b"hi", WSMsgType.TEXT)
