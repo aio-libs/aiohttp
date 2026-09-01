@@ -6,19 +6,15 @@ from unittest.mock import MagicMock
 import pytest
 from hpack import Encoder
 
-from aiohttp.http2.connection import Http2Protocol, Http2Connection
+from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.settings import (
-    FrameType,
-    FlagSettings,
-    FlagHeaders,
     FlagData,
+    FlagHeaders,
     FlagPing,
+    FlagSettings,
+    FrameType,
     Setting,
 )
-
-import asyncio
-from typing import Any, Generator
-from unittest.mock import MagicMock
 
 
 # ----------------------------------------------------------------------
@@ -31,6 +27,7 @@ def url_mock(path: str = "/") -> Any:
         (),
         {"scheme": "https", "host": "example.com", "path": path, "query": None},
     )
+
 
 # ----------------------------------------------------------------------
 # Frame construction helpers

@@ -1,8 +1,8 @@
 import asyncio
+
 import pytest
 
 from aiohttp.http2.synchro import HostProbeSynchronizer
-
 
 SLEEP_TIME = 0.0001
 
@@ -13,7 +13,9 @@ def sync() -> HostProbeSynchronizer:
 
 
 @pytest.mark.asyncio
-async def test_first_acquire_immediate_and_second_blocks(sync: HostProbeSynchronizer) -> None:
+async def test_first_acquire_immediate_and_second_blocks(
+    sync: HostProbeSynchronizer,
+) -> None:
     key = "host"
     acquired_first = asyncio.Event()
     release_now = asyncio.Event()
@@ -135,6 +137,7 @@ async def test_reacquire_after_release(sync: HostProbeSynchronizer) -> None:
     await sync.acquire(key)
     assert not sync.is_locked(key)
 
+
 @pytest.mark.asyncio
 async def test_is_locked_reflects_state(sync: HostProbeSynchronizer) -> None:
     key = "host"
@@ -168,7 +171,9 @@ async def test_different_keys_are_independent(sync: HostProbeSynchronizer) -> No
 
 
 @pytest.mark.asyncio
-async def test_release_without_acquire_does_not_raise(sync: HostProbeSynchronizer) -> None:
+async def test_release_without_acquire_does_not_raise(
+    sync: HostProbeSynchronizer,
+) -> None:
     key = "never_acquired"
     # Should not raise.
     sync.release(key)

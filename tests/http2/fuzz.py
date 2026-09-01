@@ -5,18 +5,19 @@ from dataclasses import dataclass, field
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 from http2.utils import (
-    frame_header,
-    build_settings_frame,
-    build_headers_frame,
     build_data_frame,
-    build_rst_stream,
     build_goaway,
-    build_window_update,
+    build_headers_frame,
     build_ping,
+    build_rst_stream,
+    build_settings_frame,
+    build_window_update,
+    frame_header,
 )
+
 from aiohttp.http2.connection import Http2Connection
 from aiohttp.http2.errors import ErrorCode, ProtocolError
-from aiohttp.http2.settings import FrameType, Setting, DEFAULT_SETTINGS
+from aiohttp.http2.settings import DEFAULT_SETTINGS, FrameType, Setting
 from aiohttp.http2.stream import StreamState
 
 
@@ -316,7 +317,9 @@ class Http2ServerFuzzer:
         self._apply_sent_frame_to_state(ftype, stream_id, frame)
         return frame
 
-    def _apply_sent_frame_to_state(self, ftype: int, stream_id: int, frame: bytes) -> None:
+    def _apply_sent_frame_to_state(
+        self, ftype: int, stream_id: int, frame: bytes
+    ) -> None:
         """Update server state after sending a frame."""
         if ftype == FrameType.HEADERS:
             stream = self.state.get_stream(stream_id)
