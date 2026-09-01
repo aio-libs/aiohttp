@@ -65,7 +65,7 @@ click==8.5.0
     # via
     #   pip-tools
     #   towncrier
-coverage==7.15.4
+coverage==7.16.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
