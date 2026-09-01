@@ -1,0 +1,3 @@
+Added :meth:`BaseRunner.serve_forever() <aiohttp.web.BaseRunner.serve_forever>` to
+``BaseRunner`` which blocks until :meth:`cleanup() <aiohttp.web.BaseRunner.cleanup>` is
+called, matching the interface of :func:`asyncio.Server.serve_forever()`.

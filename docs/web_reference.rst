@@ -2804,6 +2804,17 @@ application on specific TCP or Unix socket, e.g.::
 
       Stop handling all registered sites and cleanup used resources.
 
+   .. method:: serve_forever()
+      :async:
+
+      Serve until :meth:`cleanup` is called.
+
+      Convenience method that blocks until the runner is stopped.
+      Raises :exc:`asyncio.CancelledError` when :meth:`cleanup`
+      is called.
+
+      .. versionadded:: 3.11
+
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
    :canonical: aiohttp.web_runner.AppRunner

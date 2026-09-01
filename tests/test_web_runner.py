@@ -8,6 +8,7 @@ from unittest import mock
 
 import pytest
 
+import aiohttp
 from aiohttp import web, web_runner as web_runner_module
 from aiohttp.abc import AbstractAccessLogger
 from aiohttp.test_utils import REUSE_ADDRESS
@@ -301,17 +302,12 @@ async def test_tcpsite_ephemeral_port(make_runner: _RunnerMaker) -> None:
 
 
 async def test_serve_forever(make_runner: _RunnerMaker) -> None:
-    import aiohttp
-
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="127.0.0.1", port=0)
     await site.start()
 
-    async def serve() -> None:
-        await runner.serve_forever()
-
-    serve_task = asyncio.create_task(serve())
+    serve_task = asyncio.create_task(runner.serve_forever())
     # Give the server a moment to start
     await asyncio.sleep(0.05)
 
@@ -320,28 +316,20 @@ async def test_serve_forever(make_runner: _RunnerMaker) -> None:
         async with session.get(site.name) as resp:
             assert resp.status == 404  # Default aiohttp response for unknown route
 
-    serve_task.cancel()
-    try:
-        await serve_task
-    except asyncio.CancelledError:
-        pass
     await runner.cleanup()
+    # cleanup() causes serve_forever() to raise CancelledError
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
 
 
 async def test_serve_forever_without_site(make_runner: _RunnerMaker) -> None:
     """serve_forever() should wait for the first site to start before returning."""
-    import aiohttp
-
     runner = make_runner()
     await runner.setup()
 
-    async def serve() -> None:
-        await runner.serve_forever()
+    serve_task = asyncio.create_task(runner.serve_forever())
 
-    serve_task = asyncio.create_task(serve())
-
-    # Start a site — this should cause serve_forever() to exit the wait
-    # and move into wait_closed().
+    # Start a site — this should unblock the wait in serve_forever().
     site = web.TCPSite(runner, host="127.0.0.1", port=0)
     await site.start()
 
@@ -351,12 +339,10 @@ async def test_serve_forever_without_site(make_runner: _RunnerMaker) -> None:
         async with session.get(site.name) as resp:
             assert resp.status == 404
 
-    # Cleanup unblocks serve_forever() via wait_closed().
+    # Cleanup unblocks serve_forever() and causes it to raise CancelledError.
     await runner.cleanup()
-    try:
+    with pytest.raises(asyncio.CancelledError):
         await serve_task
-    except asyncio.CancelledError:
-        pass
 
 
 async def test_serve_forever_with_cleanup(make_runner: _RunnerMaker) -> None:
@@ -413,14 +399,11 @@ def test_run_after_asyncio_run() -> None:
 async def test_serve_forever_resumes_after_server_close(
     make_runner: _RunnerMaker,
 ) -> None:
-    """serve_forever() should not busy-loop when the main server closes.
+    """serve_forever() should not busy-loop when a site's server closes.
 
-    After a site's asyncio.Server closes, serve_forever() must re-evaluate
-    remaining sites rather than spinning, and a reused runner should be able
-    to serve a new site without leftover stale _main_server state.
+    After a site's asyncio.Server closes, serve_forever() must continue
+    running and a reused runner should be able to serve a new site.
     """
-    import aiohttp
-
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="127.0.0.1", port=0)
@@ -429,7 +412,8 @@ async def test_serve_forever_resumes_after_server_close(
     serve_task = asyncio.create_task(runner.serve_forever())
     await asyncio.sleep(0.05)
 
-    # Close the running server and verify serve_forever() does not busy-loop.
+    # Close the running server and verify serve_forever() does not raise
+    # or complete.
     site._server.close()  # type: ignore[union-attr]
     await site._server.wait_closed()  # type: ignore[union-attr]
 
@@ -453,7 +437,7 @@ async def test_serve_forever_resumes_after_server_close(
 
 
 async def test_runner_reuse_after_cleanup(make_runner: _RunnerMaker) -> None:
-    """A runner should be reusable after cleanup — _main_server / _sites reset."""
+    """A runner should be reusable after cleanup — _sites reset."""
     runner = make_runner()
     await runner.setup()
     site = web.TCPSite(runner, host="127.0.0.1", port=0)
@@ -467,7 +451,6 @@ async def test_runner_reuse_after_cleanup(make_runner: _RunnerMaker) -> None:
 
     # Verify internal state is reset for reuse.
     assert runner._sites == []
-    assert runner._main_server is None
     assert runner._server is None
 
     # Reuse the runner.

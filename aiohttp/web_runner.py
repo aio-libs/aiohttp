@@ -185,7 +185,6 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
-        self._runner._update_main_server()
         if self._server.sockets:
             self._bound_port = self._server.sockets[0].getsockname()[1]
         else:
@@ -226,7 +225,6 @@ class UnixSite(BaseSite):
             ssl=self._ssl_context,
             backlog=self._backlog,
         )
-        self._runner._update_main_server()
 
 
 class NamedPipeSite(BaseSite):
@@ -256,7 +254,6 @@ class NamedPipeSite(BaseSite):
             server, self._path
         )
         self._server = _server[0]
-        self._runner._update_main_server()
 
 
 class SockSite(BaseSite):
@@ -296,7 +293,6 @@ class SockSite(BaseSite):
         self._server = await create_server(
             loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
-        self._runner._update_main_server()
 
 
 class BaseRunner(ABC, Generic[_Request]):
@@ -306,7 +302,6 @@ class BaseRunner(ABC, Generic[_Request]):
         "_server",
         "_sites",
         "_shutdown_timeout",
-        "_main_server",
         "_site_started",
         "_stopped",
     )
@@ -323,7 +318,6 @@ class BaseRunner(ABC, Generic[_Request]):
         self._server: Server[_Request] | None = None
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
-        self._main_server: asyncio.Server | None = None
         self._site_started = asyncio.Event()
         self._stopped = asyncio.Event()
 
@@ -360,8 +354,6 @@ class BaseRunner(ABC, Generic[_Request]):
 
         self._server = await self._make_server()
         # Reset so a fresh serve_forever() call on a reused runner waits for the next site.
-        self._sites = []
-        self._main_server = None
         self._site_started.clear()
         self._stopped.clear()
 
@@ -379,7 +371,8 @@ class BaseRunner(ABC, Generic[_Request]):
 
         # Unblock serve_forever() if it is waiting for a site to start.
         self._site_started.set()
-        # Also set _stopped so serve_forever() raises CancelledError promptly.
+        # Signal that the runner has been stopped; serve_forever() will
+        # raise CancelledError to indicate the runner is no longer serving.
         self._stopped.set()
 
         if self._server:  # If setup succeeded
@@ -392,7 +385,6 @@ class BaseRunner(ABC, Generic[_Request]):
         await self._cleanup_server()
 
         self._server = None
-        self._main_server = None
         self._sites = []
         if self._handle_signals:
             loop = asyncio.get_running_loop()
@@ -402,6 +394,31 @@ class BaseRunner(ABC, Generic[_Request]):
             except NotImplementedError:
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+    async def serve_forever(self) -> None:
+        """Serve forever until the runner is stopped.
+
+        This is a convenience method that blocks until ``cleanup()`` is called,
+        matching the interface of ``asyncio.Server.serve_forever()``.
+
+        Raise :exc:`RuntimeError` if called before :meth:`setup`.
+        """
+        if self._server is None:
+            raise RuntimeError("Call runner.setup() before calling serve_forever()")
+
+        # Wait until a site starts serving or until cleanup is called.
+        await self._site_started.wait()
+
+        # If cleanup was called while waiting for a site, _stopped is set
+        # and the runner is shutting down.
+        if self._stopped.is_set():
+            raise asyncio.CancelledError
+
+        # Block until cleanup() sets _stopped, which signals that the runner
+        # is shutting down.  We raise CancelledError so callers can handle
+        # the cancellation naturally.
+        await self._stopped.wait()
+        raise asyncio.CancelledError
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:
@@ -415,7 +432,6 @@ class BaseRunner(ABC, Generic[_Request]):
         if site in self._sites:
             raise RuntimeError(f"Site {site} is already registered in runner {self}")
         self._sites.append(site)
-        self._update_main_server()
         self._site_started.set()
 
     def _check_site(self, site: BaseSite) -> None:
@@ -426,19 +442,6 @@ class BaseRunner(ABC, Generic[_Request]):
         if site not in self._sites:
             raise RuntimeError(f"Site {site} is not registered in runner {self}")
         self._sites.remove(site)
-        if self._main_server is site._server:
-            self._main_server = None
-
-    def _update_main_server(self) -> None:
-        """Pick a live server from the registered sites, if any."""
-        if self._main_server is not None and self._main_server.start_serving:
-            # Already serving (start_serving is True until the server closes).
-            return
-        self._main_server = None
-        for site in self._sites:
-            if site._server is not None and site._server.start_serving:
-                self._main_server = site._server
-                break
 
 
 class ServerRunner(BaseRunner[BaseRequest]):
@@ -539,55 +542,6 @@ class AppRunner(BaseRunner[Request]):
             client_max_size=self.app._client_max_size,
             pre_handler_error=pre_handler_error,
         )
-
-    async def serve_forever(self) -> None:
-        """Serve forever until the runner is stopped.
-
-        This is a convenience method that blocks until the runner is stopped
-        (via cleanup() or shutdown()), matching the interface of
-        asyncio.Server.serve_forever().
-        """
-        if self._server is None:
-            raise RuntimeError("Call runner.setup() before calling serve_forever()")
-        while True:
-            if self._main_server is None and not self._stopped.is_set():
-                # Wait for a site to start OR cleanup to be called.
-                _, pending = await asyncio.wait(
-                    {
-                        asyncio.create_task(self._site_started.wait()),
-                        asyncio.shield(self._stopped.wait()),
-                    },
-                    return_when=asyncio.FIRST_COMPLETED,
-                )
-                for f in pending:
-                    f.cancel()
-                if self._stopped.is_set():
-                    raise asyncio.CancelledError
-                # _site_started was set, but _main_server may still be None
-                # if the site was registered before its asyncio.Server was created.
-                # Loop back and try again — _main_server will be set once the
-                # site's server is available.
-                continue
-            if self._main_server is None and self._stopped.is_set():
-                raise asyncio.CancelledError
-            # Server is running; wait for it to close or for cleanup to be called.
-            _, pending = await asyncio.wait(
-                {
-                    asyncio.create_task(self._main_server.wait_closed()),
-                    asyncio.shield(self._stopped.wait()),
-                },
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            for f in pending:
-                f.cancel()
-            if self._stopped.is_set():
-                raise asyncio.CancelledError
-            # Server closed. Re-select a live server from remaining sites,
-            # or wait for a new site on a reused runner.
-            self._main_server = None
-            self._update_main_server()
-            # Loop back; if _main_server is None, wait for _site_started.
-            # If _main_server was set, wait_closed() again.
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
