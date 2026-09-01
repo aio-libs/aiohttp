@@ -2009,3 +2009,64 @@ async def test_multipart_writer_consumed_follows_body_part_reader() -> None:
 
         assert part.consumed is True
         assert writer.consumed is True
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="No wbits parameter")
+async def test_multipart_writer_as_bytes_applies_content_encoding() -> None:
+    """as_bytes() must apply Content-Encoding compression, matching write()."""
+    import zlib
+
+    content = b"Hello, world!"
+    compressed = zlib.compress(content)
+
+    mp = aiohttp.MultipartWriter("mixed", boundary="XBOUND")
+    part = aiohttp.payload.StringPayload(content)
+    part.headers["Content-Encoding"] = "deflate"
+    mp.append_payload(part)
+
+    result = await mp.as_bytes()
+
+    # The result should contain the compressed content, not the raw content
+    assert compressed in result
+    assert content not in result
+
+    # Verify we can decompress it back
+    # Find the payload between headers and closing boundary
+    header_end = result.find(b"\r\n\r\n") + 4
+    boundary_marker = b"\r\n--XBOUND"
+    payload_end = result.find(boundary_marker, header_end)
+    payload_data = result[header_end:payload_end]
+    assert zlib.decompress(payload_data) == content
+
+
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="No wbits parameter")
+async def test_multipart_writer_as_bytes_applies_content_transfer_encoding() -> None:
+    """as_bytes() must apply Content-Transfer-Encoding (base64), matching write()."""
+    import base64
+
+    content = b"Hello, world!"
+    encoded = base64.b64encode(content)
+
+    mp = aiohttp.MultipartWriter("mixed", boundary="XBOUND")
+    part = aiohttp.payload.StringPayload(content)
+    part.headers["Content-Transfer-Encoding"] = "base64"
+    mp.append_payload(part)
+
+    result = await mp.as_bytes()
+
+    # The result should contain the base64-encoded content
+    assert encoded in result
+    # Raw content should not appear
+    assert content not in result
+
+
+async def test_multipart_writer_as_bytes_no_encoding_matches_write() -> None:
+    """as_bytes() without encoding should match the raw content (no regression)."""
+    content = b"Hello, world!"
+
+    mp = aiohttp.MultipartWriter("mixed", boundary="XBOUND")
+    part = aiohttp.payload.StringPayload(content)
+    mp.append_payload(part)
+
+    result = await mp.as_bytes()
+    assert content in result

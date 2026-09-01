@@ -1148,20 +1148,34 @@ class MultipartWriter(Payload):
         """Return bytes representation of the multipart data.
 
         This method is async-safe and calls as_bytes on underlying payloads.
+        Applies Content-Encoding and Content-Transfer-Encoding when the part
+        headers declare them, matching the behaviour of :meth:`write`.
         """
         parts: list[bytes] = []
 
         # Process each part
-        for part, _e, _te in self._parts:
+        for part, ce_encoding, te_encoding in self._parts:
             # Add boundary
             parts.append(b"--" + self._boundary + b"\r\n")
 
             # Add headers
             parts.append(part._binary_headers)
 
-            # Add payload content using as_bytes for async safety
-            part_bytes = await part.as_bytes(encoding, errors)
-            parts.append(part_bytes)
+            if ce_encoding or te_encoding:
+                # Apply the same encoding/compression as write()
+                buf = _BufferStreamWriter()
+                mpw = MultipartPayloadWriter(buf)
+                if ce_encoding:
+                    mpw.enable_compression(ce_encoding)
+                if te_encoding:
+                    mpw.enable_encoding(te_encoding)
+                await part.write(mpw)  # type: ignore[arg-type]
+                await mpw.write_eof()
+                parts.append(bytes(buf.data))
+            else:
+                # Add payload content using as_bytes for async safety
+                part_bytes = await part.as_bytes(encoding, errors)
+                parts.append(part_bytes)
 
             # Add trailing CRLF
             parts.append(b"\r\n")
@@ -1224,6 +1238,33 @@ class MultipartWriter(Payload):
                     internal_logger.error(
                         "Failed to close multipart part %d: %s", idx, exc, exc_info=True
                     )
+
+
+class _BufferStreamWriter(AbstractStreamWriter):
+    """Minimal in-memory stream writer for use with MultipartPayloadWriter in as_bytes()."""
+
+    def __init__(self) -> None:
+        self.data = bytearray()
+
+    async def write(
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+    ) -> None:
+        self.data.extend(chunk)
+
+    async def write_eof(self, chunk: bytes = b"") -> None:
+        if chunk:
+            self.data.extend(chunk)
+
+    async def drain(self) -> None:
+        pass
+
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int | None = None
+    ) -> None:
+        pass
+
+    def enable_chunking(self) -> None:
+        pass
 
 
 class MultipartPayloadWriter:
