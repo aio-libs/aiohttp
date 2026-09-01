@@ -71,7 +71,7 @@ class Stream:
         stream_id: int,
         conn: "Http2Connection",
         loop: asyncio.AbstractEventLoop,
-        protocol: Http2Protocol,  # passed from the connection
+        protocol: "Http2Protocol",
     ) -> None:
         self.stream_id = stream_id
         self.state = StreamState.IDLE
@@ -91,13 +91,16 @@ class Stream:
         self.decompressor: Optional[DeflateBuffer] = None
         # NOTE if headers never come and the server sends a enough data to
         # make us run out of memory the process might be OOM killed
-        # the specification
         self._pending_data: bytearray = bytearray()
         self._headers_received = False
         self._auto_decompress = protocol._auto_decompress
 
-        # Create the StreamReader immediately; it will be fed as data arrives.
-        self.body_reader = StreamReader(protocol, DEFAULT_CHUNK_SIZE, loop=loop)
+        self.body_reader = StreamReader(
+            protocol,
+            # low_water == window size so pause is never called
+            conn.local_settings[Setting.INITIAL_WINDOW_SIZE],
+            loop=loop,
+        )
 
         self.closed_event: asyncio.Event = asyncio.Event()
 
@@ -116,19 +119,32 @@ class Stream:
     # ------------------------------------------------------------------
     # Data and header reception
     # ------------------------------------------------------------------
+    def maybe_reset_window(self) -> None:
+        """
+        Reset stream-level window.
+
+        Currently, this is done naively.
+        """
+        # Fine-grained, stream-level flow-control ensures
+        # all streams get a fair share of the bandwidth.
+        # It requires synchronizing the `Stream`, the protocol, and the payload.
+        # Given we are using the HTTP/1.1 payload which resumes the read at a protocol level
+        # we can't have this kind of control without introducing a breaking change.
+        # Thus, flow-control is not enforced here.
+        # Unless the user has different consumers for the streams
+        # (e.g., is acting as a proxy for multiple hosts)
+        # this doesn't hurt throughput.
+        if self.inbound_window < self._inbound_window_initial // 2:
+            increment = self._inbound_window_initial - self.inbound_window
+            self.inbound_window = self._inbound_window_initial
+            self.conn._send_window_update(self.stream_id, increment)
+
     def receive_data(self, data: bytes, end_stream: bool) -> None:
         """Process incoming DATA frame payload."""
         self.inbound_window -= len(data)
 
         # --- stream-level flow control refill ---
-        # TODO: Integrate with body_reader backpressure. Currently this always
-        # sends WINDOW_UPDATE when the window is low, regardless of whether the
-        # application has consumed the decompressed data. A full solution would
-        # check if body_reader is above its high-water mark and delay the update.
-        if self.inbound_window < self._inbound_window_initial // 2:
-            increment = self._inbound_window_initial - self.inbound_window
-            self.inbound_window = self._inbound_window_initial
-            self.conn._send_window_update(self.stream_id, increment)
+        self.maybe_reset_window()
 
         if not self._headers_received:
             # Buffer until we know the content-encoding.

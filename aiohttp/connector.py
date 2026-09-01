@@ -53,6 +53,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http2.synchro import HostProbeSynchronizer
 from .http_protocol import HttpDispatcherProtocol
 from .log import client_logger
 from .resolver import DefaultResolver
@@ -408,7 +409,7 @@ class BaseConnector:
         # avoids duplicate connections to the
         # same host
         # (HTTP/2 doesn't need connection pooling to send multiple requests)
-        self.semaphore = asyncio.Semaphore(1)
+        self.semaphore = HostProbeSynchronizer()
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:

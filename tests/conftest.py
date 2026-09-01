@@ -38,6 +38,7 @@ from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientRespon
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
+from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.test_utils import REUSE_ADDRESS
 
 
@@ -526,3 +527,42 @@ def slow_executor() -> Iterator[ThreadPoolExecutor]:
     executor = SlowExecutor(max_workers=10)
     yield executor
     executor.shutdown(wait=True)
+
+
+# ----------------------------------------------------------------------
+# HTTP/2 Fixtures
+# ----------------------------------------------------------------------
+@pytest.fixture
+def mock_transport() -> mock.MagicMock:
+    """Return a mock asyncio.Transport that records writes."""
+    t = mock.MagicMock(spec=asyncio.Transport)
+    t.is_closing.return_value = False
+    t.write = mock.MagicMock()
+    t.close = mock.MagicMock()
+    return t
+
+
+@pytest.fixture
+async def protocol(
+    mock_transport: mock.MagicMock,
+) -> tuple[Http2Protocol, mock.MagicMock]:
+    """Create Http2Protocol and simulate connection_made."""
+    event_loop = asyncio.get_running_loop()
+    proto = Http2Protocol(event_loop)
+    proto.connection_made(mock_transport)
+    mock_transport.write.reset_mock()
+    return proto, mock_transport
+
+
+@pytest.fixture
+async def connection(
+    mock_transport: mock.MagicMock, protocol: tuple[Http2Protocol, mock.MagicMock]
+) -> tuple[Http2Connection, mock.MagicMock]:
+    """Set up Http2Connection with mock transport, send preface, and clear write log."""
+    h2_proto, _ = protocol
+    event_loop = asyncio.get_running_loop()
+
+    conn = Http2Connection(mock_transport, event_loop, h2_proto)
+    conn.initiate_connection()
+    mock_transport.write.reset_mock()  # discard preface + initial SETTINGS
+    return conn, mock_transport

@@ -235,14 +235,20 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
+    key = req.connection_key
     try:
-        async with connector.semaphore:
-            # at most just one
-            conn = await connector.connect(
-                req, traces=req._traces, timeout=req._timeout
-            )
+        # only the first connection to a host blocks
+        # the rest of the connection requests are done
+        # concurrently
+        await connector.semaphore.acquire(key)
+
+        conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+
+        connector.semaphore.release(key)
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+    finally:
+        connector.semaphore.release(key)
 
     assert conn.protocol is not None
     assert conn.protocol.transport is not None

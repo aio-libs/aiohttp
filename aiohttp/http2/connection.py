@@ -24,7 +24,7 @@ Usage:
 import asyncio
 import logging
 import struct
-from typing import Callable, Dict, Iterable, List, Optional, Set
+from typing import Dict, Iterable, List, Optional, Set
 
 from hpack import Decoder, Encoder
 from yarl import URL
@@ -80,7 +80,7 @@ class Http2Connection:
         self,
         transport: asyncio.Transport,
         loop: asyncio.AbstractEventLoop,
-        protocol: Http2Protocol,
+        protocol: "Http2Protocol",
     ) -> None:
         self._transport = transport
         self._loop = loop
@@ -159,7 +159,22 @@ class Http2Connection:
                     length,
                 )
 
-            self._dispatch_frame(frame_type_val, flags, stream_id, payload)
+            try:
+                self._dispatch_frame(frame_type_val, flags, stream_id, payload)
+            except Exception as exc:
+                # we really don't want to swallow this exception
+                import traceback
+
+                logger.error("\n".join(traceback.format_exception(exc)))
+                logger.error(
+                    "Critical error when dispatching frame: exception=%s. (frame_type=%s, flags=%d, stream_id=%d, payload=%s)",
+                    str(exc),
+                    FrameType(frame_type_val),
+                    flags,
+                    stream_id,
+                    payload,
+                )
+                self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
 
     def eof_received(self) -> bool:
         logger.debug("EOF received from server")
@@ -214,19 +229,19 @@ class Http2Connection:
         pad_length = 0
         pos = 0
         if flags & FlagData.PADDED:
+            # use fuzzy tests to
+            # verify if it's an error
             pad_length = payload[0]
             pos = 1
+            # XXX padding might be too long
+            # send protocol error
 
-        # padding might be too long
+        # pad_length >= len(payload)
         data = payload[pos : len(payload) - pad_length]
         end_stream = bool(flags & FlagData.END_STREAM)
 
         # Update session flow control
         self.session_inbound_window -= len(data)
-        # hardcoded values
-        if self.session_inbound_window < 32768:
-            self._send_window_update(0, 65535 - self.session_inbound_window)
-            self.session_inbound_window = 65535
 
         stream.receive_data(data, end_stream)
 
@@ -290,7 +305,12 @@ class Http2Connection:
         # Parse key‑value pairs
         for i in range(0, len(payload), 6):
             identifier, value = struct.unpack("!H I", payload[i : i + 6])
-            if identifier < 0 or identifier > 9:
+            # the attribute is defined
+            # accessing __members__ avoids a costly try-catch (ValueError)
+            if (
+                identifier not in Setting.__members__.values()
+            ):  # ignore: type[attr-defined]
+                # ignoring as per the RFC
                 logger.warning("Unknown setting identifier %d", identifier)
                 continue
             setting = Setting(identifier)
@@ -337,7 +357,7 @@ class Http2Connection:
             "GOAWAY received: last_stream=%d, error=%d, extra=%s",
             last_stream_id,
             error_code,
-            extra.decode(),
+            extra.decode(errors="replace"),
         )
         # Cancel streams with higher IDs
         for sid, stream in list(self.streams.items()):
@@ -374,7 +394,7 @@ class Http2Connection:
         length = len(payload) & 0x00FFFFFF  # 24 bits -> 3 bytes
         header = struct.pack("!I", length)[
             1:
-        ] + struct.pack(  # drop the first (most‑significant) byte → 3 bytes
+        ] + struct.pack(  # drop the first (most‑significant) byte -> 3 bytes
             "!B B I", frame_type, flags, stream_id
         )
 
@@ -505,6 +525,7 @@ class Http2Connection:
             (":method", method),
             (":path", path_and_query),
             (":scheme", url.scheme),
+            # XXX add port
             (":authority", url.host),
         ]
 
@@ -552,6 +573,20 @@ class Http2Connection:
 
         logger.debug("Connection preface and initial SETTINGS sent")
 
+    def maybe_reset_window(self) -> None:
+        window_size = self.local_settings[Setting.INITIAL_WINDOW_SIZE]
+        # XXX add semaphore
+        # HTTP/2 is multiplexed so we might send updates from
+        # multiple connections and reset the window multiple times
+        # and if we reset the window with a 0, the server resets the connection
+        # creating a hard-to-catch bug
+        # send less updates
+        updated = window_size - self.session_inbound_window
+        half_size = window_size // 2
+        if self.session_inbound_window < half_size:
+            self._send_window_update(0, updated)
+            self.session_inbound_window = window_size
+
     def _protocol_error(self) -> None:
         self._send_goaway(0, ErrorCode.PROTOCOL_ERROR)
         self._transport.close()
@@ -581,10 +616,6 @@ class Http2Protocol(BaseProtocol):
 
         self._should_close = False
         self._upgraded = False
-
-        self._payload = None
-        self._payload_parser = None
-        self._data_received_cb: Optional[Callable[[], None]] = None
 
         self._read_timeout: Optional[float] = None
         self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
@@ -729,18 +760,22 @@ class Http2Protocol(BaseProtocol):
     # ------------------------------------------------------------------
     # Backpressure
     # ------------------------------------------------------------------
-    # XXX this doesn't interact with the connection at all at the present
-    # thus, it doesn't actually pause the TCP connection
-    # notice that we must pause streams individually in HTTP/2
     def pause_reading(self) -> None:
-        super().pause_reading()
-        self._drop_timeout()
+        # no-op
+        # this should never be called in HTTP/2
+        # because flow-control management is built-in
+        # the size of the window ensures the server never sends too much data
+        pass
 
     def resume_reading(self, resume_parser: bool = True) -> None:
-        was_paused = self._reading_paused
+        # even this might be unnecessary because
+        # just updating the window size is enough
         super().resume_reading(resume_parser)
-        if was_paused:
-            self._reschedule_timeout()
+
+        self._reschedule_timeout()
+
+        assert self._connection
+        self._connection.maybe_reset_window()
 
     # ------------------------------------------------------------------
     # Error injection
@@ -768,6 +803,8 @@ class Http2Protocol(BaseProtocol):
         max_headers: int = 128,
     ) -> None:
         # read_bufsize should be respected
+        # however, the read_buffsize is controlled by the settings
+        # and the settings are negotiated with the server
         del skip_payload, read_until_eof, read_bufsize, timeout_ceil_threshold  # compat
         del max_line_size, max_field_size, max_headers  # HTTP/1.1
 
