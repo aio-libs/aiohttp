@@ -9,7 +9,7 @@ import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
-from typing import NoReturn, cast
+from typing import NoReturn
 from unittest import mock
 
 import pytest
