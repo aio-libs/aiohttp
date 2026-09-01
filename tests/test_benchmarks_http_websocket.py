@@ -22,14 +22,27 @@ else:
 # would engage read backpressure and silently stop the parser mid-benchmark.
 READ_QUEUE_LIMIT = 2**24
 MASK = b"\x9a\x3c\x71\xe5"
+TEXT_MESSAGE_FRAME = (
+    b'\x81~\x01!{"id":1,"src":"shellyplugus-c049ef8c30e4","dst":"aios-1453812500'
+    b'8","result":{"name":null,"id":"shellyplugus-c049ef8c30e4","mac":"C049EF8C30E'
+    b'4","slot":1,"model":"SNPL-00116US","gen":2,"fw_id":"20231219-133953/1.1.0-g3'
+    b'4b5d4f","ver":"1.1.0","app":"PlugUS","auth_en":false,"auth_domain":null}}'
+)
 
 
-def _make_reader(event_loop: asyncio.AbstractEventLoop) -> WebSocketReader:
+def _make_queue(event_loop: asyncio.AbstractEventLoop) -> WebSocketDataQueue:
     protocol = BaseProtocol(event_loop)
     # A WebSocket connection is always upgraded; without this, backpressure
     # would hit ``assert self._parser is not None`` in pause_reading().
     protocol._upgraded = True
-    queue = WebSocketDataQueue(protocol, READ_QUEUE_LIMIT, loop=event_loop)
+    return WebSocketDataQueue(protocol, READ_QUEUE_LIMIT, loop=event_loop)
+
+
+def _make_reader(
+    event_loop: asyncio.AbstractEventLoop, queue: WebSocketDataQueue | None = None
+) -> WebSocketReader:
+    if queue is None:
+        queue = _make_queue(event_loop)
     return WebSocketReader(
         queue, max_msg_size=DEFAULT_CHUNK_SIZE, compress=True, decode_text=True
     )
@@ -71,12 +84,7 @@ def test_read_one_hundred_websocket_text_messages(
     event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
     """Benchmark reading 100 WebSocket text messages."""
-    raw_message = (
-        b'\x81~\x01!{"id":1,"src":"shellyplugus-c049ef8c30e4","dst":"aios-1453812500'
-        b'8","result":{"name":null,"id":"shellyplugus-c049ef8c30e4","mac":"C049EF8C30E'
-        b'4","slot":1,"model":"SNPL-00116US","gen":2,"fw_id":"20231219-133953/1.1.0-g3'
-        b'4b5d4f","ver":"1.1.0","app":"PlugUS","auth_en":false,"auth_domain":null}}'
-    )
+    raw_message = TEXT_MESSAGE_FRAME
 
     @benchmark
     def _run() -> None:
@@ -109,6 +117,25 @@ def test_read_one_hundred_masked_large_binary_websocket_messages(
         feed_data = _make_reader(event_loop).feed_data
         for _ in range(100):
             feed_data(raw_message)
+
+
+def test_read_and_drain_one_hundred_websocket_text_messages(
+    event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
+) -> None:
+    """Feed 100 text messages and drain them through WebSocketDataQueue.read()."""
+
+    async def _feed_and_drain() -> None:
+        queue = _make_queue(event_loop)
+        feed_data = _make_reader(event_loop, queue).feed_data
+        read = queue.read
+        for _ in range(100):
+            feed_data(TEXT_MESSAGE_FRAME)
+        for _ in range(100):
+            await read()
+
+    @benchmark
+    def _run() -> None:
+        event_loop.run_until_complete(_feed_and_drain())
 
 
 class MockTransport(asyncio.Transport):
