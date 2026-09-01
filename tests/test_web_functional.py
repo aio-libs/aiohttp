@@ -2123,16 +2123,7 @@ async def test_bad_pipelined_data_behind_declined_upgrade_answers_400(
 async def test_pipelined_requests_after_deferred_upgrade_are_served(
     aiohttp_server: AiohttpServer,
 ) -> None:
-    """A deferred upgrade must not strand the requests pipelined behind it.
-
-    An upgrade request carrying a body only counts as an upgrade once that body
-    is read, which for a handler that ignores it happens in the lingering-close
-    drain -- after the response is already finished. The tail seated at that
-    point has no request left to carry it back through the parser, so without
-    replaying it there too the pipelined requests are never dispatched and the
-    connection sits idle until the keep-alive timeout.
-    """
-    pipelined_requests = 5
+    pipelined_requests = MAX_MSG_QUEUE_SIZE + 8
     body = b"b" * 8192
     handled: list[str] = []
 
@@ -2167,16 +2158,20 @@ async def test_pipelined_requests_after_deferred_upgrade_are_served(
         )
         await writer.drain()
 
-        await asyncio.wait_for(reader.readuntil(b"declined"), 5)
         # Only ever dispatched if the drained body's tail was replayed.
+        first = await asyncio.wait_for(reader.readuntil(b"declined"), 5)
         last = f"ok:/r{pipelined_requests - 1}".encode()
-        await asyncio.wait_for(reader.readuntil(last), 5)
+        responses = first + await asyncio.wait_for(reader.readuntil(last), 10)
     finally:
         writer.close()
         with suppress(ConnectionResetError, BrokenPipeError):
             await writer.wait_closed()
 
-    assert handled == ["/up"] + [f"/r{i}" for i in range(pipelined_requests)]
+    expected = ["/up"] + [f"/r{i}" for i in range(pipelined_requests)]
+    assert handled == expected
+    # One response per request, so a duplicate dispatch cannot hide behind a
+    # readuntil() that already found what it wanted.
+    assert responses.count(b"HTTP/1.1 ") == len(expected), responses[:200]
 
 
 async def test_websocket_prepared_with_unread_body_does_not_stall(
