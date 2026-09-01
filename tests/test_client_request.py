@@ -313,6 +313,17 @@ async def test_host_header_explicit_host_with_port(
     assert req.headers["HOST"] == "example.com:99"
 
 
+async def test_host_header_duplicate_dropped(
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request(
+        "get",
+        URL("http://python.org/"),
+        headers=CIMultiDict([("host", "example.com"), ("host", "evil.example")]),
+    )
+    assert req.headers.getall("HOST") == ["example.com"]
+
+
 async def test_host_header_ipv4(make_client_request: _RequestMaker) -> None:
     req = make_client_request("get", URL("http://127.0.0.2"))
     assert req.headers["HOST"] == "127.0.0.2"

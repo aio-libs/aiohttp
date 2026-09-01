@@ -2,12 +2,14 @@
 
 import asyncio
 import builtins
+import sys
+import weakref
 from collections import deque
-from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
+from ..log import ws_logger
 from ..streams import EofStream
 from .helpers import UNPACK_CLOSE_CODE, UNPACK_LEN3, websocket_mask
 from .models import (
@@ -24,7 +26,11 @@ from .models import (
     WSMsgType,
 )
 
-ALLOWED_CLOSE_CODES: Final[set[int]] = {int(i) for i in WSCloseCode}
+# ABNORMAL_CLOSURE is used internally, should never be accepted from a client.
+# https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {
+    int(WSCloseCode.ABNORMAL_CLOSURE)
+}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
@@ -32,6 +38,12 @@ READ_HEADER = 1
 READ_PAYLOAD_LENGTH = 2
 READ_PAYLOAD_MASK = 3
 READ_PAYLOAD = 4
+
+# Largest declared payload length the reader can represent: the compiled
+# reader stores it in a Py_ssize_t, which holds 2**31-1 on the 32-bit builds
+# (the win32 and armv7l wheels) and 2**63-1 everywhere else.
+# TODO: Remove when we drop 32 bit support (and from reader_c.pxd).
+MAX_PAYLOAD_LEN = sys.maxsize
 
 WS_MSG_TYPE_BINARY = WSMsgType.BINARY
 WS_MSG_TYPE_TEXT = WSMsgType.TEXT
@@ -53,6 +65,15 @@ COMPRESSED_FALSE = 0
 COMPRESSED_TRUE = 1
 
 TUPLE_NEW = tuple.__new__
+
+# Overhead added to each message to ensure that tiny messages can't use
+# unreasonable amounts of memory.
+MSG_SIZE_OVERHEAD = 128
+
+STALLED_READER_COLLECTED = (
+    "WebSocketReader was garbage collected while stalled; "
+    "callers of set_parser() must hold a strong reference"
+)
 
 cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd
 
@@ -76,6 +97,7 @@ class WebSocketDataQueue:
         self._buffer: deque[WSMessage] = deque()
         self._get_buffer = self._buffer.popleft
         self._put_buffer = self._buffer.append
+        self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
 
     def is_eof(self) -> bool:
         return self._eof
@@ -107,8 +129,10 @@ class WebSocketDataQueue:
         self._exception = None  # Break cyclic references
 
     def feed_data(self, data: "WSMessage") -> None:
+        # Unbox into the typed local before adding, so Cython keeps the sum in
+        # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
         size = data.size
-        self._size += size
+        self._size += size + MSG_SIZE_OVERHEAD
         self._put_buffer(data)
         self._release_waiter()
         if self._size > self._limit and not self._protocol._reading_paused:
@@ -129,8 +153,33 @@ class WebSocketDataQueue:
         if self._buffer:
             data = self._get_buffer()
             size = data.size
-            self._size -= size
-            if self._size < self._limit and self._protocol._reading_paused:
+            self._size -= size + MSG_SIZE_OVERHEAD
+            if self._stalled_reader is not None and self._size <= self._limit // 2:
+                # Resume parsing once the queue drains to the low-water mark.
+                # Each resume re-slices the parser's unparsed tail, so waiting
+                # for headroom makes a drain cost one copy per batch of
+                # messages instead of one per message.
+                if (reader := self._stalled_reader()) is not None:
+                    reader.feed_data(b"")
+                else:
+                    # The stash died with the reader. Deliver what was already
+                    # queued, then surface the contract violation on the next
+                    # read instead of hanging. Log as well, since a caller that
+                    # stops reading early never sees the deferred exception. A
+                    # real failure that was already recorded stays the reported
+                    # cause.
+                    self._stalled_reader = None
+                    ws_logger.warning(STALLED_READER_COLLECTED)
+                    if self._exception is None:
+                        self.set_exception(RuntimeError(STALLED_READER_COLLECTED))
+            # Resuming the transport while a stash remains would admit
+            # another socket read into the tail for every couple of messages
+            # drained, moving the memory bound from the queue into the tail.
+            if (
+                self._stalled_reader is None
+                and self._size < self._limit
+                and self._protocol._reading_paused
+            ):
                 self._protocol.resume_reading()
             return data
         if self._exception is not None:
@@ -149,6 +198,9 @@ class WebSocketReader:
         self.queue = queue
         self._max_msg_size = max_msg_size
         self._decode_text = decode_text
+        # Parked on the queue while parsing is stalled; created once so
+        # stalling does not allocate.
+        self._weak_self = weakref.ref(self)
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -157,10 +209,12 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
+        # Reads of an in-flight frame, joined once when it completes.
         self._payload_fragments: list[bytes] = []
-        # Limit number of fragments, so a large number of tiny fragments
-        # doesn't exceed reasonable memory usage.
+        # Fold reads into _payload_buffer past this count to bound the object
+        # count (bytes are bounded by max_msg_size).
         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
+        self._payload_buffer = bytearray()
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -343,14 +397,23 @@ class WebSocketReader:
 
     def _feed_data(self, data: bytes) -> None:
         """Return the next frame from the socket."""
+        self.queue._stalled_reader = None
         if self._tail:
             data, self._tail = self._tail + data, b""
 
-        start_pos: int = 0
+        start_pos = 0
         data_len = len(data)
         data_cstr = data
 
         while True:
+            if start_pos < data_len and self.queue._size > self.queue._limit:
+                # Over the high-water mark with unparsed bytes left: stash the
+                # remainder and stall. Gating on unparsed bytes keeps a read
+                # that ended on a frame boundary from arming an empty stall,
+                # which would hold the transport paused with nothing to drain.
+                self.queue._stalled_reader = self._weak_self
+                break
+
             # read header
             if self._state == READ_HEADER:
                 if data_len - start_pos < 2:
@@ -453,7 +516,16 @@ class WebSocketReader:
                 elif len_flag > 126:
                     if data_len - start_pos < 8:
                         break
-                    self._payload_bytes_to_read = UNPACK_LEN3(data, start_pos)[0]
+                    # The declared length is an unsigned 64-bit integer that
+                    # does not necessarily fit _payload_bytes_to_read.
+                    frame_len = UNPACK_LEN3(data, start_pos)[0]
+                    if frame_len > MAX_PAYLOAD_LEN:
+                        raise WebSocketError(
+                            WSCloseCode.MESSAGE_TOO_BIG,
+                            f"Message size {int(frame_len) + len(self._partial)} "
+                            f"exceeds limit {self._max_msg_size or MAX_PAYLOAD_LEN}",
+                        )
+                    self._payload_bytes_to_read = frame_len
                     start_pos += 8
                 else:
                     self._payload_bytes_to_read = len_flag
@@ -468,7 +540,7 @@ class WebSocketReader:
                 }:
                     # partial_len declared in reader_c.pxd to keep it in C.
                     partial_len = len(self._partial)
-                    # payload_bytes_to_read is a signed 64-bit C value,
+                    # payload_bytes_to_read is a signed Py_ssize_t C value,
                     # use subtraction here to avoid an integer overflow.
                     if self._payload_bytes_to_read >= self._max_msg_size - partial_len:
                         raise WebSocketError(
@@ -502,22 +574,29 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._payload_bytes_to_read != 0:
-                    # If we don't have a complete frame, we need to save the
-                    # data for the next call to feed_data.
-                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if f_start_pos < f_end_pos:  # skip a header-only read
+                        self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if (
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
-                        and not self.queue._protocol._reading_paused
                     ):
-                        self.queue._protocol.pause_reading()
+                        # Fold to bound the object count. Not a pause: nothing
+                        # resumes reading until the frame is queued.
+                        self._payload_buffer += b"".join(self._payload_fragments)
+                        self._payload_fragments.clear()
                     break
 
                 payload: bytes | bytearray
                 if had_fragments:
-                    # We have to join the payload fragments get the payload
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
-                    if self._has_mask:
+                    if self._payload_buffer:  # folded prefix
+                        self._payload_buffer += b"".join(self._payload_fragments)
+                        if self._has_mask:
+                            assert self._frame_mask is not None
+                            websocket_mask(self._frame_mask, self._payload_buffer)
+                        payload = self._payload_buffer
+                        self._payload_buffer = bytearray()  # detach; payload aliases it
+                    elif self._has_mask:
                         assert self._frame_mask is not None
                         payload_bytearray = bytearray(b"".join(self._payload_fragments))
                         websocket_mask(self._frame_mask, payload_bytearray)
