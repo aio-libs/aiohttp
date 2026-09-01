@@ -41,6 +41,7 @@ from .client_reqrep import (
     ClientRequest,
     ClientRequestBase,
     Fingerprint,
+    _extract_ssl_object,
 )
 from .helpers import (
     _SENTINEL,
@@ -1652,6 +1653,7 @@ class TCPConnector(BaseConnector):
                             status=resp.status,
                             message=message,
                             headers=resp.headers,
+                            ssl_object=_extract_ssl_object(transport),
                         )
                 except BaseException:
                     # It shouldn't be closed in `finally` because it's fed to
