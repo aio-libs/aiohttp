@@ -692,10 +692,13 @@ cdef class HttpParser:
                 else:
                     error_pos = cparser.llhttp_get_error_pos(self._cparser)
                     error_off = error_pos - base
+
+                    # Bounded window either side of the error position of 50 bytes.
                     before = data[:error_off]
-                    after = data[error_off:].split(b"\r\n", 1)[0]
-                    before = before.rsplit(b"\r\n", 1)[-1]
+                    before = before.rsplit(b"\r\n", 1)[-1][-50:]
+                    after = data[error_off:].split(b"\r\n", 1)[0][:50]
                     data = before + after
+
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
                 self._payload = None
