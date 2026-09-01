@@ -408,3 +408,95 @@ def test_run_after_asyncio_run() -> None:
 
     web.run_app(app)
     assert called, "run_app() should work after asyncio.run()."
+
+
+async def test_serve_forever_resumes_after_server_close(
+    make_runner: _RunnerMaker,
+) -> None:
+    """serve_forever() should not busy-loop when the main server closes.
+
+    After a site's asyncio.Server closes, serve_forever() must re-evaluate
+    remaining sites rather than spinning, and a reused runner should be able
+    to serve a new site without leftover stale _main_server state.
+    """
+    import aiohttp
+
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+
+    # Close the running server and verify serve_forever() does not busy-loop.
+    site._server.close()  # type: ignore[union-attr]
+    await site._server.wait_closed()  # type: ignore[union-attr]
+
+    # Give serve_forever() time to detect the close — if it busy-loops it
+    # would spin here indefinitely or raise spuriously.
+    await asyncio.sleep(0.1)
+    assert not serve_task.done(), "serve_forever() should still be running"
+
+    # Now serve again on a new site with the same runner (reuse).
+    new_site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await new_site.start()
+
+    await asyncio.sleep(0.05)
+    async with aiohttp.ClientSession() as session:
+        async with session.get(new_site.name) as resp:
+            assert resp.status == 404
+
+    await runner.cleanup()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
+
+
+async def test_runner_reuse_after_cleanup(make_runner: _RunnerMaker) -> None:
+    """A runner should be reusable after cleanup — _main_server / _sites reset."""
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+    await runner.cleanup()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
+
+    # Verify internal state is reset for reuse.
+    assert runner._sites == []
+    assert runner._main_server is None
+    assert runner._server is None
+
+    # Reuse the runner.
+    await runner.setup()
+    site2 = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site2.start()
+
+    serve_task2 = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+    assert not serve_task2.done(), "serve_forever() should be running on reused runner"
+    await runner.cleanup()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task2
+
+
+async def test_serve_forever_without_setup(make_runner: _RunnerMaker) -> None:
+    """serve_forever() raises RuntimeError if setup() was not called."""
+    runner = make_runner()
+    with pytest.raises(RuntimeError, match="Call runner.setup"):
+        await runner.serve_forever()
+
+
+async def test_serve_forever_cleanup_during_wait(make_runner: _RunnerMaker) -> None:
+    """serve_forever() exits promptly when cleanup() is called while waiting for a site."""
+    runner = make_runner()
+    await runner.setup()
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0.05)
+    # Cleanup while serve_forever is waiting for _site_started / _stopped.
+    await runner.cleanup()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task

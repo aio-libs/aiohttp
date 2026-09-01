@@ -185,6 +185,7 @@ class TCPSite(BaseSite):
             reuse_address=self._reuse_address,
             reuse_port=self._reuse_port,
         )
+        self._runner._update_main_server()
         if self._server.sockets:
             self._bound_port = self._server.sockets[0].getsockname()[1]
         else:
@@ -225,6 +226,7 @@ class UnixSite(BaseSite):
             ssl=self._ssl_context,
             backlog=self._backlog,
         )
+        self._runner._update_main_server()
 
 
 class NamedPipeSite(BaseSite):
@@ -254,6 +256,7 @@ class NamedPipeSite(BaseSite):
             server, self._path
         )
         self._server = _server[0]
+        self._runner._update_main_server()
 
 
 class SockSite(BaseSite):
@@ -293,6 +296,7 @@ class SockSite(BaseSite):
         self._server = await create_server(
             loop, server, sock=self._sock, ssl=self._ssl_context, backlog=self._backlog
         )
+        self._runner._update_main_server()
 
 
 class BaseRunner(ABC, Generic[_Request]):
@@ -356,6 +360,8 @@ class BaseRunner(ABC, Generic[_Request]):
 
         self._server = await self._make_server()
         # Reset so a fresh serve_forever() call on a reused runner waits for the next site.
+        self._sites = []
+        self._main_server = None
         self._site_started.clear()
         self._stopped.clear()
 
@@ -386,6 +392,8 @@ class BaseRunner(ABC, Generic[_Request]):
         await self._cleanup_server()
 
         self._server = None
+        self._main_server = None
+        self._sites = []
         if self._handle_signals:
             loop = asyncio.get_running_loop()
             try:
@@ -407,8 +415,7 @@ class BaseRunner(ABC, Generic[_Request]):
         if site in self._sites:
             raise RuntimeError(f"Site {site} is already registered in runner {self}")
         self._sites.append(site)
-        if self._main_server is None and site._server is not None:
-            self._main_server = site._server
+        self._update_main_server()
         self._site_started.set()
 
     def _check_site(self, site: BaseSite) -> None:
@@ -419,6 +426,19 @@ class BaseRunner(ABC, Generic[_Request]):
         if site not in self._sites:
             raise RuntimeError(f"Site {site} is not registered in runner {self}")
         self._sites.remove(site)
+        if self._main_server is site._server:
+            self._main_server = None
+
+    def _update_main_server(self) -> None:
+        """Pick a live server from the registered sites, if any."""
+        if self._main_server is not None and self._main_server.start_serving:
+            # Already serving (start_serving is True until the server closes).
+            return
+        self._main_server = None
+        for site in self._sites:
+            if site._server is not None and site._server.start_serving:
+                self._main_server = site._server
+                break
 
 
 class ServerRunner(BaseRunner[BaseRequest]):
@@ -530,9 +550,8 @@ class AppRunner(BaseRunner[Request]):
         if self._server is None:
             raise RuntimeError("Call runner.setup() before calling serve_forever()")
         while True:
-            if self._main_server is None:
-                # Wait for either the first site to start OR cleanup to be called.
-                # _stopped being set means cleanup() ran first — raise CancelledError.
+            if self._main_server is None and not self._stopped.is_set():
+                # Wait for a site to start OR cleanup to be called.
                 _, pending = await asyncio.wait(
                     {
                         asyncio.create_task(self._site_started.wait()),
@@ -544,8 +563,13 @@ class AppRunner(BaseRunner[Request]):
                     f.cancel()
                 if self._stopped.is_set():
                     raise asyncio.CancelledError
-                # _site_started was set; a site registered. _main_server is now set.
+                # _site_started was set, but _main_server may still be None
+                # if the site was registered before its asyncio.Server was created.
+                # Loop back and try again — _main_server will be set once the
+                # site's server is available.
                 continue
+            if self._main_server is None and self._stopped.is_set():
+                raise asyncio.CancelledError
             # Server is running; wait for it to close or for cleanup to be called.
             _, pending = await asyncio.wait(
                 {
@@ -558,8 +582,12 @@ class AppRunner(BaseRunner[Request]):
                 f.cancel()
             if self._stopped.is_set():
                 raise asyncio.CancelledError
-            # Server closed normally (cleanup() was called, server shutdown completed).
-            # Loop to wait for the next site on a reused runner.
+            # Server closed. Re-select a live server from remaining sites,
+            # or wait for a new site on a reused runner.
+            self._main_server = None
+            self._update_main_server()
+            # Loop back; if _main_server is None, wait for _site_started.
+            # If _main_server was set, wait_closed() again.
 
     async def _cleanup_server(self) -> None:
         await self._app.cleanup()
