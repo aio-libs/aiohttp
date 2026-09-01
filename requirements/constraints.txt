@@ -65,11 +65,11 @@ click==8.5.0
     # via
     #   pip-tools
     #   towncrier
-coverage==7.15.4
+coverage==7.16.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
-cryptography==50.0.0
+cryptography==50.0.1
     # via trustme
 cython==3.3.0
     # via -r requirements/cython.in
@@ -187,9 +187,9 @@ pycares==5.0.1
     # via aiodns
 pycparser==3.0
     # via cffi
-pydantic==2.13.4
+pydantic==2.13.5
     # via python-on-whales
-pydantic-core==2.46.4
+pydantic-core==2.46.5
     # via pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
@@ -235,7 +235,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.5.3
+python-discovery==1.6.0
     # via virtualenv
 python-on-whales==0.81.0
     # via
@@ -331,7 +331,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.5
+virtualenv==21.7.7
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
