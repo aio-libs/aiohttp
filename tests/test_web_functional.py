@@ -2120,6 +2120,118 @@ async def test_bad_pipelined_data_behind_declined_upgrade_answers_400(
     assert b" 400 " in response, response
 
 
+async def test_pipelined_requests_after_deferred_upgrade_are_served(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    pipelined_requests = MAX_MSG_QUEUE_SIZE + 8
+    body = b"b" * 8192
+    handled: list[str] = []
+
+    async def upgrade_handler(request: web.Request) -> web.Response:
+        # Deliberately never reads request.content, so the upgrade stays pending.
+        handled.append(request.path)
+        return web.Response(text="declined")
+
+    async def plain_handler(request: web.Request) -> web.Response:
+        handled.append(request.path)
+        return web.Response(text=f"ok:{request.path}")
+
+    app = web.Application()
+    app.router.add_post("/up", upgrade_handler)
+    app.router.add_get("/{tail:.*}", plain_handler)
+    # Small enough that the unread body pauses the parser mid-message.
+    server = await aiohttp_server(app, read_bufsize=1024, lingering_time=10.0)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"POST /up HTTP/1.1\r\nHost: localhost\r\n"
+            b"Connection: Upgrade\r\nUpgrade: websocket\r\n"
+            b"Content-Length: "
+            + str(len(body)).encode()
+            + b"\r\n\r\n"
+            + body
+            + b"".join(
+                f"GET /r{i} HTTP/1.1\r\nHost: localhost\r\n\r\n".encode()
+                for i in range(pipelined_requests)
+            )
+        )
+        await writer.drain()
+
+        # Only ever dispatched if the drained body's tail was replayed.
+        first = await asyncio.wait_for(reader.readuntil(b"declined"), 5)
+        last = f"ok:/r{pipelined_requests - 1}".encode()
+        responses = first + await asyncio.wait_for(reader.readuntil(last), 10)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    expected = ["/up"] + [f"/r{i}" for i in range(pipelined_requests)]
+    assert handled == expected
+    # One response per request, so a duplicate dispatch cannot hide behind a
+    # readuntil() that already found what it wanted.
+    assert responses.count(b"HTTP/1.1 ") == len(expected), responses[:200]
+
+
+async def test_websocket_prepared_with_unread_body_does_not_stall(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Upgrading with the request body unread must leave the socket readable.
+
+    The body's stream pauses reading when nobody drains it, and with the parser
+    stopped mid-message that hold is never lifted by the stream itself. Handing
+    the connection to the websocket has to release it, or the transport stays
+    paused and the websocket never receives a frame -- with keep-alive disabled
+    for the upgrade, nothing would ever reap the connection either.
+    """
+    body = b"b" * 8192
+    echoed: list[str] = []
+
+    async def ws_handler(request: web.Request) -> web.WebSocketResponse:
+        # Deliberately never reads request.content.
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        async for msg in ws:  # pragma: no branch
+            assert isinstance(msg.data, str)
+            echoed.append(msg.data)
+            await ws.send_str(f"echo:{msg.data}")
+            break
+        return ws
+
+    app = web.Application()
+    app.router.add_post("/ws", ws_handler)
+    server = await aiohttp_server(app, read_bufsize=1024)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"POST /ws HTTP/1.1\r\nHost: localhost\r\n"
+            b"Connection: Upgrade\r\nUpgrade: websocket\r\n"
+            b"Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n"
+            b"Sec-WebSocket-Version: 13\r\n"
+            b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+        )
+        await writer.drain()
+        await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), 5)
+
+        # Sent after the handshake, so it is only read if the hold was released.
+        ws_writer = WebSocketWriter(
+            mock.Mock(_paused=False),
+            writer.transport,
+            use_mask=True,
+        )
+        await ws_writer.send_frame(b"hi", WSMsgType.TEXT)
+        await writer.drain()
+        await asyncio.wait_for(reader.readuntil(b"echo:hi"), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert echoed == ["hi"]
+
+
 async def test_declined_websocket_upgrade_reads_body(
     aiohttp_server: AiohttpServer,
 ) -> None:
