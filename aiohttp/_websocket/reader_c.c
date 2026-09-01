@@ -1665,9 +1665,9 @@ struct __pyx_obj_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read;
 
 /* "aiohttp/_websocket/reader_c.pxd":49
  * cdef unsigned int MSG_SIZE_OVERHEAD
- * 
+ *
  * cdef class WebSocketDataQueue:             # <<<<<<<<<<<<<<
- * 
+ *
  *     cdef readonly unsigned int _size
 */
 struct __pyx_obj_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue {
@@ -1689,9 +1689,9 @@ struct __pyx_obj_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue {
 
 /* "aiohttp/_websocket/reader_c.pxd":71
  *     cdef _read_from_buffer(self)
- * 
+ *
  * cdef class WebSocketReader:             # <<<<<<<<<<<<<<
- * 
+ *
  *     # cdef classes are not weak-referenceable without this; the queue parks a
 */
 struct __pyx_obj_7aiohttp_10_websocket_8reader_c_WebSocketReader {
@@ -1724,7 +1724,7 @@ struct __pyx_obj_7aiohttp_10_websocket_8reader_c_WebSocketReader {
 
 /* "aiohttp/_websocket/reader_py.py":141
  *             self._protocol.pause_reading()
- * 
+ *
  *     async def read(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if not self._buffer and not self._eof:
  *             assert not self._waiter
@@ -1740,11 +1740,11 @@ struct __pyx_obj_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read {
 
 
 /* "aiohttp/_websocket/reader_py.py":81
- * 
- * 
+ *
+ *
  * class WebSocketDataQueue:             # <<<<<<<<<<<<<<
  *     """WebSocketDataQueue resumes and pauses an underlying stream.
- * 
+ *
 */
 
 struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue {
@@ -1756,8 +1756,8 @@ static struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueu
 
 
 /* "aiohttp/_websocket/reader_py.py":190
- * 
- * 
+ *
+ *
  * class WebSocketReader:             # <<<<<<<<<<<<<<
  *     def __init__(
  *         self,
@@ -3270,14 +3270,14 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_10__
 static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_12__setstate_cython__(struct __pyx_obj_7aiohttp_10_websocket_8reader_c_WebSocketReader *__pyx_v_self, PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c___pyx_unpickle_WebSocketDataQueue(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
 static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_2__pyx_unpickle_WebSocketReader(CYTHON_UNUSED PyObject *__pyx_self, PyObject *__pyx_v___pyx_type, long __pyx_v___pyx_checksum, PyObject *__pyx_v___pyx_state); /* proto */
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
     PyObject *a, PyObject *k
 #endif
 ); /*proto*/
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -3299,14 +3299,14 @@ static int __pyx_tp_init_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyOb
 #if !CYTHON_VECTORCALL_TPNEW
 #define __pyx_tp_init_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1__init__
 #endif
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
     PyObject *a, PyObject *k
 #endif
 ); /*proto*/
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -3328,14 +3328,14 @@ static int __pyx_tp_init_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyObjec
 #if !CYTHON_VECTORCALL_TPNEW
 #define __pyx_tp_init_7aiohttp_10_websocket_8reader_c_WebSocketReader __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_1__init__
 #endif
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
     PyObject *a, PyObject *k
 #endif
 ); /*proto*/
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -3765,21 +3765,21 @@ return 0;
 
 /* "aiohttp/_websocket/reader_py.py":87
  *     """
- * 
+ *
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
  *     ) -> None:
 */
 
 /* Python wrapper */
-static int __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1__init__(PyObject *__pyx_v_self, 
+static int __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1__init__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL_TPNEW
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static int __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1__init__(PyObject *__pyx_v_self, 
+static int __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1__init__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL_TPNEW
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4028,7 +4028,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue___init_
  *         self._get_buffer = self._buffer.popleft
  *         self._put_buffer = self._buffer.append             # <<<<<<<<<<<<<<
  *         self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
- * 
+ *
 */
   __pyx_t_1 = __Pyx_PyObject_GetAttrStr(__pyx_v_self->_buffer, __pyx_mstate_global->__pyx_n_u_append); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 99, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_1);
@@ -4042,7 +4042,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue___init_
  *         self._get_buffer = self._buffer.popleft
  *         self._put_buffer = self._buffer.append
  *         self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None             # <<<<<<<<<<<<<<
- * 
+ *
  *     def is_eof(self) -> bool:
 */
   __Pyx_INCREF(Py_None);
@@ -4053,7 +4053,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue___init_
 
   /* "aiohttp/_websocket/reader_py.py":87
  *     """
- * 
+ *
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self, protocol: BaseProtocol, limit: int, *, loop: asyncio.AbstractEventLoop
  *     ) -> None:
@@ -4076,14 +4076,14 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue___init_
 
 /* "aiohttp/_websocket/reader_py.py":102
  *         self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
- * 
+ *
  *     def is_eof(self) -> bool:             # <<<<<<<<<<<<<<
  *         return self._eof
- * 
+ *
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4091,7 +4091,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof = {"is_eof", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_3is_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4134,10 +4134,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_2
   __Pyx_RefNannySetupContext("is_eof", 0);
 
   /* "aiohttp/_websocket/reader_py.py":103
- * 
+ *
  *     def is_eof(self) -> bool:
  *         return self._eof             # <<<<<<<<<<<<<<
- * 
+ *
  *     def exception(self) -> type[BaseException] | BaseException | None:
 */
   __pyx_t_1 = __Pyx_PyBool_FromLong(__pyx_v_self->_eof); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 103, __pyx_L1_error)
@@ -4155,10 +4155,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_2
 
   /* "aiohttp/_websocket/reader_py.py":102
  *         self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
- * 
+ *
  *     def is_eof(self) -> bool:             # <<<<<<<<<<<<<<
  *         return self._eof
- * 
+ *
 */
 
   /* function exit code */
@@ -4174,14 +4174,14 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_2
 
 /* "aiohttp/_websocket/reader_py.py":105
  *         return self._eof
- * 
+ *
  *     def exception(self) -> type[BaseException] | BaseException | None:             # <<<<<<<<<<<<<<
  *         return self._exception
- * 
+ *
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4189,7 +4189,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception = {"exception", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5exception(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4228,10 +4228,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_4
   __Pyx_RefNannySetupContext("exception", 0);
 
   /* "aiohttp/_websocket/reader_py.py":106
- * 
+ *
  *     def exception(self) -> type[BaseException] | BaseException | None:
  *         return self._exception             # <<<<<<<<<<<<<<
- * 
+ *
  *     def set_exception(
 */
   {
@@ -4247,10 +4247,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_4
 
   /* "aiohttp/_websocket/reader_py.py":105
  *         return self._eof
- * 
+ *
  *     def exception(self) -> type[BaseException] | BaseException | None:             # <<<<<<<<<<<<<<
  *         return self._exception
- * 
+ *
 */
 
   /* function exit code */
@@ -4262,14 +4262,14 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_4
 
 /* "aiohttp/_websocket/reader_py.py":108
  *         return self._exception
- * 
+ *
  *     def set_exception(             # <<<<<<<<<<<<<<
  *         self,
  *         exc: type[BaseException] | BaseException,
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4277,7 +4277,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception = {"set_exception", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7set_exception(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4425,7 +4425,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_6
  *         if (waiter := self._waiter) is not None:
  *             self._waiter = None             # <<<<<<<<<<<<<<
  *             set_exception(waiter, exc, exc_cause)
- * 
+ *
 */
     __Pyx_INCREF(Py_None);
     __Pyx_GIVEREF(Py_None);
@@ -4437,7 +4437,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_6
  *         if (waiter := self._waiter) is not None:
  *             self._waiter = None
  *             set_exception(waiter, exc, exc_cause)             # <<<<<<<<<<<<<<
- * 
+ *
  *     def _release_waiter(self) -> None:
 */
     __pyx_t_3 = NULL;
@@ -4476,7 +4476,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_6
 
   /* "aiohttp/_websocket/reader_py.py":108
  *         return self._exception
- * 
+ *
  *     def set_exception(             # <<<<<<<<<<<<<<
  *         self,
  *         exc: type[BaseException] | BaseException,
@@ -4500,7 +4500,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_6
 
 /* "aiohttp/_websocket/reader_py.py":119
  *             set_exception(waiter, exc, exc_cause)
- * 
+ *
  *     def _release_waiter(self) -> None:             # <<<<<<<<<<<<<<
  *         if (waiter := self._waiter) is None:
  *             return
@@ -4520,7 +4520,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
   __Pyx_RefNannySetupContext("_release_waiter", 0);
 
   /* "aiohttp/_websocket/reader_py.py":120
- * 
+ *
  *     def _release_waiter(self) -> None:
  *         if (waiter := self._waiter) is None:             # <<<<<<<<<<<<<<
  *             return
@@ -4547,7 +4547,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
     goto __pyx_L0;
 
     /* "aiohttp/_websocket/reader_py.py":120
- * 
+ *
  *     def _release_waiter(self) -> None:
  *         if (waiter := self._waiter) is None:             # <<<<<<<<<<<<<<
  *             return
@@ -4573,7 +4573,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
  *         self._waiter = None
  *         if not waiter.done():             # <<<<<<<<<<<<<<
  *             waiter.set_result(None)
- * 
+ *
 */
   __pyx_t_3 = __pyx_v_waiter;
   __Pyx_INCREF(__pyx_t_3);
@@ -4597,7 +4597,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
  *         self._waiter = None
  *         if not waiter.done():
  *             waiter.set_result(None)             # <<<<<<<<<<<<<<
- * 
+ *
  *     def feed_eof(self) -> None:
 */
     __pyx_t_3 = __pyx_v_waiter;
@@ -4617,13 +4617,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
  *         self._waiter = None
  *         if not waiter.done():             # <<<<<<<<<<<<<<
  *             waiter.set_result(None)
- * 
+ *
 */
   }
 
   /* "aiohttp/_websocket/reader_py.py":119
  *             set_exception(waiter, exc, exc_cause)
- * 
+ *
  *     def _release_waiter(self) -> None:             # <<<<<<<<<<<<<<
  *         if (waiter := self._waiter) is None:
  *             return
@@ -4643,14 +4643,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__releas
 
 /* "aiohttp/_websocket/reader_py.py":126
  *             waiter.set_result(None)
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self._eof = True
  *         self._release_waiter()
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4658,7 +4658,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof = {"feed_eof", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_9feed_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4700,7 +4700,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_8
   __Pyx_RefNannySetupContext("feed_eof", 0);
 
   /* "aiohttp/_websocket/reader_py.py":127
- * 
+ *
  *     def feed_eof(self) -> None:
  *         self._eof = True             # <<<<<<<<<<<<<<
  *         self._release_waiter()
@@ -4713,7 +4713,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_8
  *         self._eof = True
  *         self._release_waiter()             # <<<<<<<<<<<<<<
  *         self._exception = None  # Break cyclic references
- * 
+ *
 */
   ((struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue *)__pyx_v_self->__pyx_vtab)->_release_waiter(__pyx_v_self); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 128, __pyx_L1_error)
 
@@ -4721,7 +4721,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_8
  *         self._eof = True
  *         self._release_waiter()
  *         self._exception = None  # Break cyclic references             # <<<<<<<<<<<<<<
- * 
+ *
  *     def feed_data(self, data: "WSMessage") -> None:
 */
   __Pyx_INCREF(Py_None);
@@ -4732,7 +4732,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_8
 
   /* "aiohttp/_websocket/reader_py.py":126
  *             waiter.set_result(None)
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self._eof = True
  *         self._release_waiter()
@@ -4752,13 +4752,13 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_8
 
 /* "aiohttp/_websocket/reader_py.py":131
  *         self._exception = None  # Break cyclic references
- * 
+ *
  *     def feed_data(self, data: "WSMessage") -> None:             # <<<<<<<<<<<<<<
  *         # Unbox into the typed local before adding, so Cython keeps the sum in
  *         # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
 */
 
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4802,7 +4802,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
       if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data)) {
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
-        __pyx_t_4 = __pyx_t_1; 
+        __pyx_t_4 = __pyx_t_1;
         __pyx_t_5 = 1;
         #if CYTHON_UNPACK_METHODS
         if (unlikely(PyMethod_Check(__pyx_t_4))) {
@@ -4873,7 +4873,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
 */
   __pyx_t_2 = NULL;
   __Pyx_INCREF(__pyx_v_self->_put_buffer);
-  __pyx_t_4 = __pyx_v_self->_put_buffer; 
+  __pyx_t_4 = __pyx_v_self->_put_buffer;
   __pyx_t_5 = 1;
   #if CYTHON_UNPACK_METHODS
   if (likely(PyMethod_Check(__pyx_t_4))) {
@@ -4910,7 +4910,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
  *         self._release_waiter()
  *         if self._size > self._limit and not self._protocol._reading_paused:             # <<<<<<<<<<<<<<
  *             self._protocol.pause_reading()
- * 
+ *
 */
   __pyx_t_8 = (__pyx_v_self->_size > __pyx_v_self->_limit);
 
@@ -4940,7 +4940,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
  *         self._release_waiter()
  *         if self._size > self._limit and not self._protocol._reading_paused:
  *             self._protocol.pause_reading()             # <<<<<<<<<<<<<<
- * 
+ *
  *     async def read(self) -> WSMessage:
 */
     __pyx_t_4 = __pyx_v_self->_protocol;
@@ -4960,13 +4960,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
  *         self._release_waiter()
  *         if self._size > self._limit and not self._protocol._reading_paused:             # <<<<<<<<<<<<<<
  *             self._protocol.pause_reading()
- * 
+ *
 */
   }
 
   /* "aiohttp/_websocket/reader_py.py":131
  *         self._exception = None  # Break cyclic references
- * 
+ *
  *     def feed_data(self, data: "WSMessage") -> None:             # <<<<<<<<<<<<<<
  *         # Unbox into the typed local before adding, so Cython keeps the sum in
  *         # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
@@ -4987,7 +4987,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_feed_da
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -4995,7 +4995,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data = {"feed_data", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_11feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -5107,14 +5107,14 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 
 /* "aiohttp/_websocket/reader_py.py":141
  *             self._protocol.pause_reading()
- * 
+ *
  *     async def read(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if not self._buffer and not self._eof:
  *             assert not self._waiter
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -5122,7 +5122,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read = {"read", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_13read(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -5229,7 +5229,7 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
   }
 
   /* "aiohttp/_websocket/reader_py.py":142
- * 
+ *
  *     async def read(self) -> WSMessage:
  *         if not self._buffer and not self._eof:             # <<<<<<<<<<<<<<
  *             assert not self._waiter
@@ -5421,13 +5421,13 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
  *                 self._waiter = None
  *                 raise             # <<<<<<<<<<<<<<
  *         return self._read_from_buffer()
- * 
+ *
 */
         __Pyx_GIVEREF(__pyx_t_11);
         __Pyx_GIVEREF(__pyx_t_5);
         __Pyx_XGIVEREF(__pyx_t_4);
         __Pyx_ErrRestoreWithState(__pyx_t_11, __pyx_t_5, __pyx_t_4);
-        __pyx_t_11 = 0;  __pyx_t_5 = 0;  __pyx_t_4 = 0; 
+        __pyx_t_11 = 0;  __pyx_t_5 = 0;  __pyx_t_4 = 0;
         __PYX_ERR(0, 149, __pyx_L9_except_error)
       }
       goto __pyx_L9_except_error;
@@ -5449,7 +5449,7 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
     }
 
     /* "aiohttp/_websocket/reader_py.py":142
- * 
+ *
  *     async def read(self) -> WSMessage:
  *         if not self._buffer and not self._eof:             # <<<<<<<<<<<<<<
  *             assert not self._waiter
@@ -5461,7 +5461,7 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
  *                 self._waiter = None
  *                 raise
  *         return self._read_from_buffer()             # <<<<<<<<<<<<<<
- * 
+ *
  *     def _read_from_buffer(self) -> WSMessage:
 */
   __pyx_t_4 = ((struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue *)__pyx_cur_scope->__pyx_v_self->__pyx_vtab)->_read_from_buffer(__pyx_cur_scope->__pyx_v_self); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 150, __pyx_L1_error)
@@ -5480,7 +5480,7 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 
   /* "aiohttp/_websocket/reader_py.py":141
  *             self._protocol.pause_reading()
- * 
+ *
  *     async def read(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if not self._buffer and not self._eof:
  *             assert not self._waiter
@@ -5511,7 +5511,7 @@ static PyObject *__pyx_gb_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 
 /* "aiohttp/_websocket/reader_py.py":152
  *         return self._read_from_buffer()
- * 
+ *
  *     def _read_from_buffer(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if self._buffer:
  *             data = self._get_buffer()
@@ -5538,7 +5538,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
   __Pyx_RefNannySetupContext("_read_from_buffer", 0);
 
   /* "aiohttp/_websocket/reader_py.py":153
- * 
+ *
  *     def _read_from_buffer(self) -> WSMessage:
  *         if self._buffer:             # <<<<<<<<<<<<<<
  *             data = self._get_buffer()
@@ -5557,7 +5557,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
 */
     __pyx_t_3 = NULL;
     __Pyx_INCREF(__pyx_v_self->_get_buffer);
-    __pyx_t_4 = __pyx_v_self->_get_buffer; 
+    __pyx_t_4 = __pyx_v_self->_get_buffer;
     __pyx_t_5 = 1;
     #if CYTHON_UNPACK_METHODS
     if (likely(PyMethod_Check(__pyx_t_4))) {
@@ -5637,7 +5637,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
 */
       __pyx_t_4 = NULL;
       __Pyx_INCREF(__pyx_v_self->_stalled_reader);
-      __pyx_t_3 = __pyx_v_self->_stalled_reader; 
+      __pyx_t_3 = __pyx_v_self->_stalled_reader;
       __pyx_t_5 = 1;
       #if CYTHON_UNPACK_METHODS
       if (likely(PyMethod_Check(__pyx_t_3))) {
@@ -5917,7 +5917,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
     goto __pyx_L0;
 
     /* "aiohttp/_websocket/reader_py.py":153
- * 
+ *
  *     def _read_from_buffer(self) -> WSMessage:
  *         if self._buffer:             # <<<<<<<<<<<<<<
  *             data = self._get_buffer()
@@ -5941,7 +5941,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
  *         if self._exception is not None:
  *             raise self._exception             # <<<<<<<<<<<<<<
  *         raise EofStream
- * 
+ *
 */
     __Pyx_Raise(__pyx_v_self->_exception, 0, 0, 0);
     __PYX_ERR(0, 186, __pyx_L1_error)
@@ -5959,8 +5959,8 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
  *         if self._exception is not None:
  *             raise self._exception
  *         raise EofStream             # <<<<<<<<<<<<<<
- * 
- * 
+ *
+ *
 */
   __Pyx_GetModuleGlobalName(__pyx_t_2, __pyx_mstate_global->__pyx_n_u_EofStream); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 187, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_2);
@@ -5970,7 +5970,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
 
   /* "aiohttp/_websocket/reader_py.py":152
  *         return self._read_from_buffer()
- * 
+ *
  *     def _read_from_buffer(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if self._buffer:
  *             data = self._get_buffer()
@@ -5996,7 +5996,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue__r
 
 /* "aiohttp/_websocket/reader_c.pxd":51
  * cdef class WebSocketDataQueue:
- * 
+ *
  *     cdef readonly unsigned int _size             # <<<<<<<<<<<<<<
  *     cdef public object _protocol
  *     cdef readonly unsigned int _limit
@@ -6077,7 +6077,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_5
 }
 
 /* "aiohttp/_websocket/reader_c.pxd":52
- * 
+ *
  *     cdef readonly unsigned int _size
  *     cdef public object _protocol             # <<<<<<<<<<<<<<
  *     cdef readonly unsigned int _limit
@@ -6492,7 +6492,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_7_buffe
  *     cdef object _get_buffer
  *     cdef object _put_buffer
  *     cdef readonly object _stalled_reader             # <<<<<<<<<<<<<<
- * 
+ *
  *     cdef void _release_waiter(self)
 */
 
@@ -6562,7 +6562,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -6570,7 +6570,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__ = {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_16__reduce_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -6994,7 +6994,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7002,7 +7002,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__ = {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_18__setstate_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7127,7 +7127,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 }
 
 /* "aiohttp/_websocket/reader_py.py":191
- * 
+ *
  * class WebSocketReader:
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self,
@@ -7135,14 +7135,14 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_18WebSocketDataQueue_1
 */
 
 /* Python wrapper */
-static int __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_1__init__(PyObject *__pyx_v_self, 
+static int __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_1__init__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL_TPNEW
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
 PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
-static int __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_1__init__(PyObject *__pyx_v_self, 
+static int __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_1__init__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL_TPNEW
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7311,7 +7311,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         # Parked on the queue while parsing is stalled; created once so
  *         # stalling does not allocate.
  *         self._weak_self = weakref.ref(self)             # <<<<<<<<<<<<<<
- * 
+ *
  *         self._exc: Exception | None = None
 */
   __pyx_t_3 = NULL;
@@ -7348,7 +7348,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
 
   /* "aiohttp/_websocket/reader_py.py":205
  *         self._weak_self = weakref.ref(self)
- * 
+ *
  *         self._exc: Exception | None = None             # <<<<<<<<<<<<<<
  *         self._partial = bytearray()
  *         self._state = READ_HEADER
@@ -7360,11 +7360,11 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
   __pyx_v_self->_exc = ((PyObject*)Py_None);
 
   /* "aiohttp/_websocket/reader_py.py":206
- * 
+ *
  *         self._exc: Exception | None = None
  *         self._partial = bytearray()             # <<<<<<<<<<<<<<
  *         self._state = READ_HEADER
- * 
+ *
 */
   __pyx_t_5 = NULL;
   __pyx_t_6 = 1;
@@ -7385,14 +7385,14 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         self._exc: Exception | None = None
  *         self._partial = bytearray()
  *         self._state = READ_HEADER             # <<<<<<<<<<<<<<
- * 
+ *
  *         self._opcode: int = OP_CODE_NOT_SET
 */
   __pyx_v_self->_state = __pyx_v_7aiohttp_10_websocket_8reader_c_READ_HEADER;
 
   /* "aiohttp/_websocket/reader_py.py":209
  *         self._state = READ_HEADER
- * 
+ *
  *         self._opcode: int = OP_CODE_NOT_SET             # <<<<<<<<<<<<<<
  *         self._frame_fin = False
  *         self._frame_opcode: int = OP_CODE_NOT_SET
@@ -7400,7 +7400,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
   __pyx_v_self->_opcode = __pyx_v_7aiohttp_10_websocket_8reader_c_OP_CODE_NOT_SET;
 
   /* "aiohttp/_websocket/reader_py.py":210
- * 
+ *
  *         self._opcode: int = OP_CODE_NOT_SET
  *         self._frame_fin = False             # <<<<<<<<<<<<<<
  *         self._frame_opcode: int = OP_CODE_NOT_SET
@@ -7437,7 +7437,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         # doesn't exceed reasonable memory usage.
  *         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0             # <<<<<<<<<<<<<<
  *         self._frame_payload_len = 0
- * 
+ *
 */
   {
     Py_ssize_t __pyx_temp = __Pyx_PyLong_IsNonZero(__pyx_v_max_msg_size);
@@ -7480,14 +7480,14 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         # doesn't exceed reasonable memory usage.
  *         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
  *         self._frame_payload_len = 0             # <<<<<<<<<<<<<<
- * 
+ *
  *         self._tail: bytes = b""
 */
   __pyx_v_self->_frame_payload_len = 0;
 
   /* "aiohttp/_websocket/reader_py.py":218
  *         self._frame_payload_len = 0
- * 
+ *
  *         self._tail: bytes = b""             # <<<<<<<<<<<<<<
  *         self._has_mask = False
  *         self._frame_mask: bytes | None = None
@@ -7499,7 +7499,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
   __pyx_v_self->_tail = __pyx_mstate_global->__pyx_kp_b__3;
 
   /* "aiohttp/_websocket/reader_py.py":219
- * 
+ *
  *         self._tail: bytes = b""
  *         self._has_mask = False             # <<<<<<<<<<<<<<
  *         self._frame_mask: bytes | None = None
@@ -7552,7 +7552,7 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         self._compressed: int = COMPRESSED_NOT_SET
  *         self._decompressobj: ZLibDecompressor | None = None             # <<<<<<<<<<<<<<
  *         self._compress = compress
- * 
+ *
 */
   __Pyx_INCREF(Py_None);
   __Pyx_GIVEREF(Py_None);
@@ -7564,13 +7564,13 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
  *         self._compressed: int = COMPRESSED_NOT_SET
  *         self._decompressobj: ZLibDecompressor | None = None
  *         self._compress = compress             # <<<<<<<<<<<<<<
- * 
+ *
  *     def feed_eof(self) -> None:
 */
   __pyx_v_self->_compress = __pyx_v_compress;
 
   /* "aiohttp/_websocket/reader_py.py":191
- * 
+ *
  * class WebSocketReader:
  *     def __init__(             # <<<<<<<<<<<<<<
  *         self,
@@ -7595,14 +7595,14 @@ static int __pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader___init__(s
 
 /* "aiohttp/_websocket/reader_py.py":227
  *         self._compress = compress
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self.queue.feed_eof()
- * 
+ *
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7610,7 +7610,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof = {"feed_eof", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_3feed_eof(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7655,10 +7655,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_2fee
   __Pyx_RefNannySetupContext("feed_eof", 0);
 
   /* "aiohttp/_websocket/reader_py.py":228
- * 
+ *
  *     def feed_eof(self) -> None:
  *         self.queue.feed_eof()             # <<<<<<<<<<<<<<
- * 
+ *
  *     # data can be bytearray on Windows because proactor event loop uses bytearray
 */
   __pyx_t_2 = ((PyObject *)__pyx_v_self->queue);
@@ -7675,10 +7675,10 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_2fee
 
   /* "aiohttp/_websocket/reader_py.py":227
  *         self._compress = compress
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self.queue.feed_eof()
- * 
+ *
 */
 
   /* function exit code */
@@ -7703,7 +7703,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_2fee
  *             data = bytes(data)
 */
 
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -7761,7 +7761,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
       if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data)) {
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
-        __pyx_t_4 = __pyx_t_1; 
+        __pyx_t_4 = __pyx_t_1;
         __pyx_t_5 = 1;
         #if CYTHON_UNPACK_METHODS
         if (unlikely(PyMethod_Check(__pyx_t_4))) {
@@ -7813,7 +7813,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
  *     def feed_data(self, data: bytes | bytearray | memoryview) -> tuple[bool, bytes]:
  *         if type(data) is not bytes:             # <<<<<<<<<<<<<<
  *             data = bytes(data)
- * 
+ *
 */
   __pyx_t_6 = (((PyObject *)Py_TYPE(__pyx_v_data)) != ((PyObject *)(&PyBytes_Type)));
   if (__pyx_t_6) {
@@ -7823,7 +7823,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
  *     def feed_data(self, data: bytes | bytearray | memoryview) -> tuple[bool, bytes]:
  *         if type(data) is not bytes:
  *             data = bytes(data)             # <<<<<<<<<<<<<<
- * 
+ *
  *         if self._exc is not None:
 */
     __pyx_t_2 = NULL;
@@ -7843,26 +7843,26 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
  *     def feed_data(self, data: bytes | bytearray | memoryview) -> tuple[bool, bytes]:
  *         if type(data) is not bytes:             # <<<<<<<<<<<<<<
  *             data = bytes(data)
- * 
+ *
 */
   }
 
   /* "aiohttp/_websocket/reader_py.py":237
  *             data = bytes(data)
- * 
+ *
  *         if self._exc is not None:             # <<<<<<<<<<<<<<
  *             return True, data
- * 
+ *
 */
   __pyx_t_6 = (__pyx_v_self->_exc != ((PyObject*)Py_None));
   if (__pyx_t_6) {
 
 
     /* "aiohttp/_websocket/reader_py.py":238
- * 
+ *
  *         if self._exc is not None:
  *             return True, data             # <<<<<<<<<<<<<<
- * 
+ *
  *         try:
 */
     __pyx_t_1 = PyTuple_New(2); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 238, __pyx_L1_error)
@@ -7886,16 +7886,16 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
 
     /* "aiohttp/_websocket/reader_py.py":237
  *             data = bytes(data)
- * 
+ *
  *         if self._exc is not None:             # <<<<<<<<<<<<<<
  *             return True, data
- * 
+ *
 */
   }
 
   /* "aiohttp/_websocket/reader_py.py":240
  *             return True, data
- * 
+ *
  *         try:             # <<<<<<<<<<<<<<
  *             self._feed_data(data)
  *         except Exception as exc:
@@ -7910,7 +7910,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
     /*try:*/ {
 
       /* "aiohttp/_websocket/reader_py.py":241
- * 
+ *
  *         try:
  *             self._feed_data(data)             # <<<<<<<<<<<<<<
  *         except Exception as exc:
@@ -7924,7 +7924,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
 
       /* "aiohttp/_websocket/reader_py.py":240
  *             return True, data
- * 
+ *
  *         try:             # <<<<<<<<<<<<<<
  *             self._feed_data(data)
  *         except Exception as exc:
@@ -7976,7 +7976,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
  *             self._exc = exc
  *             set_exception(self.queue, exc)             # <<<<<<<<<<<<<<
  *             return EMPTY_FRAME_ERROR
- * 
+ *
 */
         __pyx_t_11 = NULL;
         __Pyx_GetModuleGlobalName(__pyx_t_12, __pyx_mstate_global->__pyx_n_u_set_exception); if (unlikely(!__pyx_t_12)) __PYX_ERR(0, 244, __pyx_L16_error)
@@ -8007,7 +8007,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
  *             self._exc = exc
  *             set_exception(self.queue, exc)
  *             return EMPTY_FRAME_ERROR             # <<<<<<<<<<<<<<
- * 
+ *
  *         return EMPTY_FRAME
 */
         {
@@ -8079,7 +8079,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
 
     /* "aiohttp/_websocket/reader_py.py":240
  *             return True, data
- * 
+ *
  *         try:             # <<<<<<<<<<<<<<
  *             self._feed_data(data)
  *         except Exception as exc:
@@ -8101,9 +8101,9 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
 
   /* "aiohttp/_websocket/reader_py.py":247
  *             return EMPTY_FRAME_ERROR
- * 
+ *
  *         return EMPTY_FRAME             # <<<<<<<<<<<<<<
- * 
+ *
  *     def _handle_frame(
 */
   {
@@ -8144,7 +8144,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader_feed_
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8152,7 +8152,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data = {"feed_data", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_5feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8262,13 +8262,13 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_4fee
 
 /* "aiohttp/_websocket/reader_py.py":249
  *         return EMPTY_FRAME
- * 
+ *
  *     def _handle_frame(             # <<<<<<<<<<<<<<
  *         self,
  *         fin: bool,
 */
 
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -8338,7 +8338,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame)) {
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
-        __pyx_t_4 = __pyx_t_1; 
+        __pyx_t_4 = __pyx_t_1;
         __pyx_t_5 = __Pyx_PyBool_FromLong(__pyx_v_fin); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 249, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_5);
         __pyx_t_6 = __Pyx_PyLong_From_int(__pyx_v_opcode); if (unlikely(!__pyx_t_6)) __PYX_ERR(0, 249, __pyx_L1_error)
@@ -8512,7 +8512,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     }
 
     /* "aiohttp/_websocket/reader_py.py":266
- * 
+ *
  *             # load text/binary
  *             if not fin:             # <<<<<<<<<<<<<<
  *                 # got partial frame payload
@@ -8558,7 +8558,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                     self._opcode = opcode
  *                 self._partial += payload             # <<<<<<<<<<<<<<
  *                 return
- * 
+ *
 */
       __pyx_t_1 = PyNumber_InPlaceAdd(__pyx_v_self->_partial, __pyx_v_payload); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 270, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
@@ -8573,7 +8573,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                     self._opcode = opcode
  *                 self._partial += payload
  *                 return             # <<<<<<<<<<<<<<
- * 
+ *
  *             has_partial = bool(self._partial)
 */
       {
@@ -8581,7 +8581,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       goto __pyx_L0;
 
       /* "aiohttp/_websocket/reader_py.py":266
- * 
+ *
  *             # load text/binary
  *             if not fin:             # <<<<<<<<<<<<<<
  *                 # got partial frame payload
@@ -8591,7 +8591,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
     /* "aiohttp/_websocket/reader_py.py":273
  *                 return
- * 
+ *
  *             has_partial = bool(self._partial)             # <<<<<<<<<<<<<<
  *             if opcode == OP_CODE_CONTINUATION:
  *                 opcode = self._opcode
@@ -8608,7 +8608,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
 
     /* "aiohttp/_websocket/reader_py.py":274
- * 
+ *
  *             has_partial = bool(self._partial)
  *             if opcode == OP_CODE_CONTINUATION:             # <<<<<<<<<<<<<<
  *                 opcode = self._opcode
@@ -8640,7 +8640,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       __pyx_v_self->_opcode = __pyx_v_7aiohttp_10_websocket_8reader_c_OP_CODE_NOT_SET;
 
       /* "aiohttp/_websocket/reader_py.py":274
- * 
+ *
  *             has_partial = bool(self._partial)
  *             if opcode == OP_CODE_CONTINUATION:             # <<<<<<<<<<<<<<
  *                 opcode = self._opcode
@@ -8687,7 +8687,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                     "The opcode in non-fin frame is expected "
  *                     f"to be zero, got {opcode!r}",             # <<<<<<<<<<<<<<
  *                 )
- * 
+ *
 */
       __pyx_t_2 = __Pyx_PyUnicode_From_int(__pyx_v_opcode, 0, ' ', 'd'); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 283, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_2);
@@ -8739,7 +8739,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     __pyx_L12:;
 
     /* "aiohttp/_websocket/reader_py.py":287
- * 
+ *
  *             assembled_payload: bytes | bytearray
  *             if has_partial:             # <<<<<<<<<<<<<<
  *                 assembled_payload = self._partial + payload
@@ -8779,7 +8779,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       __Pyx_DECREF(__pyx_t_1); __pyx_t_1 = 0;
 
       /* "aiohttp/_websocket/reader_py.py":287
- * 
+ *
  *             assembled_payload: bytes | bytearray
  *             if has_partial:             # <<<<<<<<<<<<<<
  *                 assembled_payload = self._partial + payload
@@ -8792,7 +8792,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                 self._partial.clear()
  *             else:
  *                 assembled_payload = payload             # <<<<<<<<<<<<<<
- * 
+ *
  *             # Decompress process must to be done after all packets
 */
     /*else*/ {
@@ -9298,7 +9298,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                 payload_merged = assembled_payload
  *             else:
  *                 payload_merged = bytes(assembled_payload)             # <<<<<<<<<<<<<<
- * 
+ *
  *             size = len(payload_merged)
 */
     /*else*/ {
@@ -9318,7 +9318,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
     /* "aiohttp/_websocket/reader_py.py":327
  *                 payload_merged = bytes(assembled_payload)
- * 
+ *
  *             size = len(payload_merged)             # <<<<<<<<<<<<<<
  *             if opcode == OP_CODE_TEXT:
  *                 if self._decode_text:
@@ -9331,7 +9331,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     __pyx_v_size = __pyx_t_24;
 
     /* "aiohttp/_websocket/reader_py.py":328
- * 
+ *
  *             size = len(payload_merged)
  *             if opcode == OP_CODE_TEXT:             # <<<<<<<<<<<<<<
  *                 if self._decode_text:
@@ -9439,7 +9439,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                         raise WebSocketError(
  *                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"             # <<<<<<<<<<<<<<
  *                         ) from exc
- * 
+ *
 */
               __Pyx_GetModuleGlobalName(__pyx_t_4, __pyx_mstate_global->__pyx_n_u_WSCloseCode); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 334, __pyx_L49_error)
               __Pyx_GOTREF(__pyx_t_4);
@@ -9472,7 +9472,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                         raise WebSocketError(
  *                             WSCloseCode.INVALID_TEXT, "Invalid UTF-8 text message"
  *                         ) from exc             # <<<<<<<<<<<<<<
- * 
+ *
  *                     # XXX: The Text and Binary messages here can be a performance
 */
               __Pyx_Raise(__pyx_t_2, 0, 0, __pyx_v_exc);
@@ -9551,7 +9551,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 */
         __pyx_t_6 = NULL;
         __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW);
-        __pyx_t_1 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW; 
+        __pyx_t_1 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW;
         __pyx_t_2 = PyLong_FromSsize_t(__pyx_v_size); if (unlikely(!__pyx_t_2)) __PYX_ERR(0, 341, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_2);
         __pyx_t_5 = PyTuple_New(4); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 341, __pyx_L1_error)
@@ -9612,7 +9612,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       /*else*/ {
         __pyx_t_1 = NULL;
         __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW);
-        __pyx_t_5 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW; 
+        __pyx_t_5 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW;
 
         /* "aiohttp/_websocket/reader_py.py":345
  *                     # Return raw bytes for TEXT messages when decode_text=False
@@ -9664,7 +9664,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
       __pyx_L37:;
 
       /* "aiohttp/_websocket/reader_py.py":328
- * 
+ *
  *             size = len(payload_merged)
  *             if opcode == OP_CODE_TEXT:             # <<<<<<<<<<<<<<
  *                 if self._decode_text:
@@ -9683,14 +9683,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     /*else*/ {
       __pyx_t_5 = NULL;
       __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW);
-      __pyx_t_2 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW; 
+      __pyx_t_2 = __pyx_v_7aiohttp_10_websocket_8reader_c_TUPLE_NEW;
 
       /* "aiohttp/_websocket/reader_py.py":349
  *             else:
  *                 msg = TUPLE_NEW(
  *                     WSMessageBinary, (payload_merged, size, "", WS_MSG_TYPE_BINARY)             # <<<<<<<<<<<<<<
  *                 )
- * 
+ *
 */
       __pyx_t_1 = PyLong_FromSsize_t(__pyx_v_size); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 349, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_1);
@@ -9736,7 +9736,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
     /* "aiohttp/_websocket/reader_py.py":352
  *                 )
- * 
+ *
  *             self.queue.feed_data(msg)             # <<<<<<<<<<<<<<
  *         elif opcode == OP_CODE_CLOSE:
  *             payload_len = len(payload)
@@ -9754,7 +9754,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
   }
 
   /* "aiohttp/_websocket/reader_py.py":353
- * 
+ *
  *             self.queue.feed_data(msg)
  *         elif opcode == OP_CODE_CLOSE:             # <<<<<<<<<<<<<<
  *             payload_len = len(payload)
@@ -9796,7 +9796,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 */
       __pyx_t_2 = NULL;
       __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_CLOSE_CODE);
-      __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_CLOSE_CODE; 
+      __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_CLOSE_CODE;
       __pyx_t_5 = __Pyx_PyObject_GetSlice(__pyx_v_payload, 0, 2, NULL, NULL, &__pyx_mstate_global->__pyx_slice[0], 0, 1, 1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 356, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_5);
       __pyx_t_8 = 1;
@@ -10157,7 +10157,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 */
       __pyx_t_3 = NULL;
       __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose);
-      __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose; 
+      __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose;
 
       /* "aiohttp/_websocket/reader_py.py":372
  *                     ) from exc
@@ -10322,13 +10322,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *                 )
  *             else:
  *                 msg = WSMessageClose(data=0, size=payload_len, extra="")             # <<<<<<<<<<<<<<
- * 
+ *
  *             self.queue.feed_data(msg)
 */
     /*else*/ {
       __pyx_t_2 = NULL;
       __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose);
-      __pyx_t_7 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose; 
+      __pyx_t_7 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessageClose;
       __pyx_t_3 = PyLong_FromSsize_t(__pyx_v_payload_len); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 380, __pyx_L1_error)
       __Pyx_GOTREF(__pyx_t_3);
       __pyx_t_8 = 1;
@@ -10372,7 +10372,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
     /* "aiohttp/_websocket/reader_py.py":382
  *                 msg = WSMessageClose(data=0, size=payload_len, extra="")
- * 
+ *
  *             self.queue.feed_data(msg)             # <<<<<<<<<<<<<<
  *         elif opcode == OP_CODE_PING:
  *             self.queue.feed_data(
@@ -10380,7 +10380,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     ((struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue *)__pyx_v_self->queue->__pyx_vtab)->feed_data(__pyx_v_self->queue, __pyx_v_msg, 0); if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 382, __pyx_L1_error)
 
     /* "aiohttp/_websocket/reader_py.py":353
- * 
+ *
  *             self.queue.feed_data(msg)
  *         elif opcode == OP_CODE_CLOSE:             # <<<<<<<<<<<<<<
  *             payload_len = len(payload)
@@ -10390,7 +10390,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
   }
 
   /* "aiohttp/_websocket/reader_py.py":383
- * 
+ *
  *             self.queue.feed_data(msg)
  *         elif opcode == OP_CODE_PING:             # <<<<<<<<<<<<<<
  *             self.queue.feed_data(
@@ -10410,7 +10410,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 */
     __pyx_t_7 = NULL;
     __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePing);
-    __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePing; 
+    __pyx_t_6 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePing;
     __pyx_t_2 = NULL;
     __pyx_t_8 = 1;
     {
@@ -10471,7 +10471,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
     __Pyx_DECREF(__pyx_t_5); __pyx_t_5 = 0;
 
     /* "aiohttp/_websocket/reader_py.py":383
- * 
+ *
  *             self.queue.feed_data(msg)
  *         elif opcode == OP_CODE_PING:             # <<<<<<<<<<<<<<
  *             self.queue.feed_data(
@@ -10501,7 +10501,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 */
     __pyx_t_6 = NULL;
     __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePong);
-    __pyx_t_15 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePong; 
+    __pyx_t_15 = __pyx_v_7aiohttp_10_websocket_8reader_c_WSMessagePong;
     __pyx_t_3 = NULL;
     __pyx_t_8 = 1;
     {
@@ -10588,7 +10588,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
  *             raise WebSocketError(
  *                 WSCloseCode.PROTOCOL_ERROR, f"Unexpected opcode={opcode!r}"             # <<<<<<<<<<<<<<
  *             )
- * 
+ *
 */
     __Pyx_GetModuleGlobalName(__pyx_t_3, __pyx_mstate_global->__pyx_n_u_WSCloseCode); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 393, __pyx_L1_error)
     __Pyx_GOTREF(__pyx_t_3);
@@ -10630,7 +10630,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 
   /* "aiohttp/_websocket/reader_py.py":249
  *         return EMPTY_FRAME
- * 
+ *
  *     def _handle_frame(             # <<<<<<<<<<<<<<
  *         self,
  *         fin: bool,
@@ -10665,7 +10665,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__handle_fr
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -10673,7 +10673,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame = {"_handle_frame", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_7_handle_frame(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -10811,13 +10811,13 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_6_ha
 
 /* "aiohttp/_websocket/reader_py.py":396
  *             )
- * 
+ *
  *     def _feed_data(self, data: bytes) -> None:             # <<<<<<<<<<<<<<
  *         """Return the next frame from the socket."""
  *         self.queue._stalled_reader = None
 */
 
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -10892,7 +10892,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       if (!__Pyx_IsSameCFunction(__pyx_t_1, (void(*)(void)) __pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data)) {
         __pyx_t_3 = NULL;
         __Pyx_INCREF(__pyx_t_1);
-        __pyx_t_4 = __pyx_t_1; 
+        __pyx_t_4 = __pyx_t_1;
         __pyx_t_5 = 1;
         #if CYTHON_UNPACK_METHODS
         if (unlikely(PyMethod_Check(__pyx_t_4))) {
@@ -10950,7 +10950,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *         self.queue._stalled_reader = None
  *         if self._tail:             # <<<<<<<<<<<<<<
  *             data, self._tail = self._tail + data, b""
- * 
+ *
 */
   if (__pyx_v_self->_tail == Py_None) __pyx_t_6 = 0;
   else
@@ -10967,7 +10967,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *         self.queue._stalled_reader = None
  *         if self._tail:
  *             data, self._tail = self._tail + data, b""             # <<<<<<<<<<<<<<
- * 
+ *
  *         start_pos = 0
 */
     __pyx_t_1 = PyNumber_Add(__pyx_v_self->_tail, __pyx_v_data); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 400, __pyx_L1_error)
@@ -10987,13 +10987,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *         self.queue._stalled_reader = None
  *         if self._tail:             # <<<<<<<<<<<<<<
  *             data, self._tail = self._tail + data, b""
- * 
+ *
 */
   }
 
   /* "aiohttp/_websocket/reader_py.py":402
  *             data, self._tail = self._tail + data, b""
- * 
+ *
  *         start_pos = 0             # <<<<<<<<<<<<<<
  *         data_len = len(data)
  *         data_cstr = data
@@ -11001,11 +11001,11 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
   __pyx_v_start_pos = 0;
 
   /* "aiohttp/_websocket/reader_py.py":403
- * 
+ *
  *         start_pos = 0
  *         data_len = len(data)             # <<<<<<<<<<<<<<
  *         data_cstr = data
- * 
+ *
 */
   __pyx_t_7 = __Pyx_PyBytes_GET_SIZE(__pyx_v_data); if (unlikely(__pyx_t_7 == ((Py_ssize_t)-1))) __PYX_ERR(0, 403, __pyx_L1_error)
   __pyx_v_data_len = __pyx_t_7;
@@ -11014,7 +11014,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *         start_pos = 0
  *         data_len = len(data)
  *         data_cstr = data             # <<<<<<<<<<<<<<
- * 
+ *
  *         while True:
 */
   __pyx_t_8 = __Pyx_PyBytes_AsUString(__pyx_v_data); if (unlikely((!__pyx_t_8) && PyErr_Occurred())) __PYX_ERR(0, 404, __pyx_L1_error)
@@ -11022,7 +11022,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
   /* "aiohttp/_websocket/reader_py.py":406
  *         data_cstr = data
- * 
+ *
  *         while True:             # <<<<<<<<<<<<<<
  *             if start_pos < data_len and self.queue._size > self.queue._limit:
  *                 # Over the high-water mark with unparsed bytes left: stash the
@@ -11030,7 +11030,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
   while (1) {
 
     /* "aiohttp/_websocket/reader_py.py":407
- * 
+ *
  *         while True:
  *             if start_pos < data_len and self.queue._size > self.queue._limit:             # <<<<<<<<<<<<<<
  *                 # Over the high-water mark with unparsed bytes left: stash the
@@ -11060,7 +11060,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 # which would hold the transport paused with nothing to drain.
  *                 self.queue._stalled_reader = self._weak_self             # <<<<<<<<<<<<<<
  *                 break
- * 
+ *
 */
       __pyx_t_2 = __pyx_v_self->_weak_self;
       __Pyx_INCREF(__pyx_t_2);
@@ -11074,13 +11074,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 # which would hold the transport paused with nothing to drain.
  *                 self.queue._stalled_reader = self._weak_self
  *                 break             # <<<<<<<<<<<<<<
- * 
+ *
  *             # read header
 */
       goto __pyx_L5_break;
 
       /* "aiohttp/_websocket/reader_py.py":407
- * 
+ *
  *         while True:
  *             if start_pos < data_len and self.queue._size > self.queue._limit:             # <<<<<<<<<<<<<<
  *                 # Over the high-water mark with unparsed bytes left: stash the
@@ -11089,7 +11089,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
     }
 
     /* "aiohttp/_websocket/reader_py.py":416
- * 
+ *
  *             # read header
  *             if self._state == READ_HEADER:             # <<<<<<<<<<<<<<
  *                 if data_len - start_pos < 2:
@@ -11144,7 +11144,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 first_byte = data_cstr[start_pos]
  *                 second_byte = data_cstr[start_pos + 1]             # <<<<<<<<<<<<<<
  *                 start_pos += 2
- * 
+ *
 */
       __pyx_v_second_byte = (__pyx_v_data_cstr[(__pyx_v_start_pos + 1)]);
 
@@ -11152,14 +11152,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 first_byte = data_cstr[start_pos]
  *                 second_byte = data_cstr[start_pos + 1]
  *                 start_pos += 2             # <<<<<<<<<<<<<<
- * 
+ *
  *                 fin = (first_byte >> 7) & 1
 */
       __pyx_v_start_pos = (__pyx_v_start_pos + 2);
 
       /* "aiohttp/_websocket/reader_py.py":423
  *                 start_pos += 2
- * 
+ *
  *                 fin = (first_byte >> 7) & 1             # <<<<<<<<<<<<<<
  *                 rsv1 = (first_byte >> 6) & 1
  *                 rsv2 = (first_byte >> 5) & 1
@@ -11167,7 +11167,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       __pyx_v_fin = ((__pyx_v_first_byte >> 7) & 1);
 
       /* "aiohttp/_websocket/reader_py.py":424
- * 
+ *
  *                 fin = (first_byte >> 7) & 1
  *                 rsv1 = (first_byte >> 6) & 1             # <<<<<<<<<<<<<<
  *                 rsv2 = (first_byte >> 5) & 1
@@ -11189,7 +11189,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 rsv2 = (first_byte >> 5) & 1
  *                 rsv3 = (first_byte >> 4) & 1             # <<<<<<<<<<<<<<
  *                 opcode = first_byte & 0xF
- * 
+ *
 */
       __pyx_v_rsv3 = ((__pyx_v_first_byte >> 4) & 1);
 
@@ -11197,7 +11197,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 rsv2 = (first_byte >> 5) & 1
  *                 rsv3 = (first_byte >> 4) & 1
  *                 opcode = first_byte & 0xF             # <<<<<<<<<<<<<<
- * 
+ *
  *                 # frame-fin = %x0 ; more frames of this message follow
 */
       __pyx_v_opcode = (__pyx_v_first_byte & 0xF);
@@ -11307,7 +11307,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":445
  *                     )
- * 
+ *
  *                 if opcode not in {             # <<<<<<<<<<<<<<
  *                     OP_CODE_CONTINUATION,
  *                     OP_CODE_TEXT,
@@ -11316,7 +11316,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       __pyx_t_11 = __pyx_v_opcode;
 
       /* "aiohttp/_websocket/reader_py.py":446
- * 
+ *
  *                 if opcode not in {
  *                     OP_CODE_CONTINUATION,             # <<<<<<<<<<<<<<
  *                     OP_CODE_TEXT,
@@ -11335,7 +11335,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":445
  *                     )
- * 
+ *
  *                 if opcode not in {             # <<<<<<<<<<<<<<
  *                     OP_CODE_CONTINUATION,
  *                     OP_CODE_TEXT,
@@ -11371,7 +11371,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":445
  *                     )
- * 
+ *
  *                 if opcode not in {             # <<<<<<<<<<<<<<
  *                     OP_CODE_CONTINUATION,
  *                     OP_CODE_TEXT,
@@ -11407,7 +11407,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":445
  *                     )
- * 
+ *
  *                 if opcode not in {             # <<<<<<<<<<<<<<
  *                     OP_CODE_CONTINUATION,
  *                     OP_CODE_TEXT,
@@ -11453,7 +11453,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                         WSCloseCode.PROTOCOL_ERROR,
  *                         f"Unexpected opcode={opcode!r}",             # <<<<<<<<<<<<<<
  *                     )
- * 
+ *
 */
         __pyx_t_1 = __Pyx_PyUnicode_From_long(__pyx_v_opcode, 0, ' ', 'd'); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 455, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_1);
@@ -11488,7 +11488,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
         /* "aiohttp/_websocket/reader_py.py":445
  *                     )
- * 
+ *
  *                 if opcode not in {             # <<<<<<<<<<<<<<
  *                     OP_CODE_CONTINUATION,
  *                     OP_CODE_TEXT,
@@ -11497,7 +11497,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":458
  *                     )
- * 
+ *
  *                 if opcode > 0x7 and fin == 0:             # <<<<<<<<<<<<<<
  *                     raise WebSocketError(
  *                         WSCloseCode.PROTOCOL_ERROR,
@@ -11522,7 +11522,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
 
         /* "aiohttp/_websocket/reader_py.py":459
- * 
+ *
  *                 if opcode > 0x7 and fin == 0:
  *                     raise WebSocketError(             # <<<<<<<<<<<<<<
  *                         WSCloseCode.PROTOCOL_ERROR,
@@ -11571,7 +11571,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
         /* "aiohttp/_websocket/reader_py.py":458
  *                     )
- * 
+ *
  *                 if opcode > 0x7 and fin == 0:             # <<<<<<<<<<<<<<
  *                     raise WebSocketError(
  *                         WSCloseCode.PROTOCOL_ERROR,
@@ -11580,18 +11580,18 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":464
  *                     )
- * 
+ *
  *                 has_mask = (second_byte >> 7) & 1             # <<<<<<<<<<<<<<
  *                 length = second_byte & 0x7F
- * 
+ *
 */
       __pyx_v_has_mask = ((__pyx_v_second_byte >> 7) & 1);
 
       /* "aiohttp/_websocket/reader_py.py":465
- * 
+ *
  *                 has_mask = (second_byte >> 7) & 1
  *                 length = second_byte & 0x7F             # <<<<<<<<<<<<<<
- * 
+ *
  *                 # Control frames MUST have a payload
 */
       __pyx_v_length = (__pyx_v_second_byte & 0x7F);
@@ -11896,7 +11896,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                             "Received frame with non-zero reserved bits",
  *                         )
  *                     self._frame_fin = bool(fin)             # <<<<<<<<<<<<<<
- * 
+ *
  *                 self._frame_opcode = opcode
 */
         __pyx_t_9 = __pyx_v_fin;
@@ -11908,7 +11908,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":499
  *                     self._frame_fin = bool(fin)
- * 
+ *
  *                 self._frame_opcode = opcode             # <<<<<<<<<<<<<<
  *                 self._has_mask = bool(has_mask)
  *                 self._payload_len_flag = length
@@ -11916,7 +11916,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       __pyx_v_self->_frame_opcode = __pyx_v_opcode;
 
       /* "aiohttp/_websocket/reader_py.py":500
- * 
+ *
  *                 self._frame_opcode = opcode
  *                 self._has_mask = bool(has_mask)             # <<<<<<<<<<<<<<
  *                 self._payload_len_flag = length
@@ -11932,7 +11932,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._has_mask = bool(has_mask)
  *                 self._payload_len_flag = length             # <<<<<<<<<<<<<<
  *                 self._state = READ_PAYLOAD_LENGTH
- * 
+ *
 */
       __pyx_v_self->_payload_len_flag = __pyx_v_length;
 
@@ -11940,13 +11940,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._has_mask = bool(has_mask)
  *                 self._payload_len_flag = length
  *                 self._state = READ_PAYLOAD_LENGTH             # <<<<<<<<<<<<<<
- * 
+ *
  *             # read payload length
 */
       __pyx_v_self->_state = __pyx_v_7aiohttp_10_websocket_8reader_c_READ_PAYLOAD_LENGTH;
 
       /* "aiohttp/_websocket/reader_py.py":416
- * 
+ *
  *             # read header
  *             if self._state == READ_HEADER:             # <<<<<<<<<<<<<<
  *                 if data_len - start_pos < 2:
@@ -11955,7 +11955,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
     }
 
     /* "aiohttp/_websocket/reader_py.py":505
- * 
+ *
  *             # read payload length
  *             if self._state == READ_PAYLOAD_LENGTH:             # <<<<<<<<<<<<<<
  *                 len_flag = self._payload_len_flag
@@ -12116,7 +12116,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 */
         __pyx_t_10 = NULL;
         __Pyx_INCREF(__pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_LEN3);
-        __pyx_t_12 = __pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_LEN3; 
+        __pyx_t_12 = __pyx_v_7aiohttp_10_websocket_8reader_c_UNPACK_LEN3;
         __pyx_t_3 = PyLong_FromSsize_t(__pyx_v_start_pos); if (unlikely(!__pyx_t_3)) __PYX_ERR(0, 519, __pyx_L1_error)
         __Pyx_GOTREF(__pyx_t_3);
         __pyx_t_5 = 1;
@@ -12325,7 +12325,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                     start_pos += 8
  *                 else:
  *                     self._payload_bytes_to_read = len_flag             # <<<<<<<<<<<<<<
- * 
+ *
  *                 # Reject oversized data frames before buffering any payload
 */
       /*else*/ {
@@ -12500,7 +12500,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                             f"Message size {int(self._payload_bytes_to_read) + partial_len} "
  *                             f"exceeds limit {self._max_msg_size}",             # <<<<<<<<<<<<<<
  *                         )
- * 
+ *
 */
           __pyx_t_10 = __Pyx_PyUnicode_From_unsigned_int(__pyx_v_self->_max_msg_size, 0, ' ', 'd'); if (unlikely(!__pyx_t_10)) __PYX_ERR(0, 547, __pyx_L1_error)
           __Pyx_GOTREF(__pyx_t_10);
@@ -12575,9 +12575,9 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":550
  *                         )
- * 
+ *
  *                 self._state = READ_PAYLOAD_MASK if self._has_mask else READ_PAYLOAD             # <<<<<<<<<<<<<<
- * 
+ *
  *             # read payload mask
 */
       if (__pyx_v_self->_has_mask) {
@@ -12590,7 +12590,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       __pyx_v_self->_state = __pyx_t_14;
 
       /* "aiohttp/_websocket/reader_py.py":505
- * 
+ *
  *             # read payload length
  *             if self._state == READ_PAYLOAD_LENGTH:             # <<<<<<<<<<<<<<
  *                 len_flag = self._payload_len_flag
@@ -12599,7 +12599,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
     }
 
     /* "aiohttp/_websocket/reader_py.py":553
- * 
+ *
  *             # read payload mask
  *             if self._state == READ_PAYLOAD_MASK:             # <<<<<<<<<<<<<<
  *                 if data_len - start_pos < 4:
@@ -12660,7 +12660,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._frame_mask = data_cstr[start_pos : start_pos + 4]
  *                 start_pos += 4             # <<<<<<<<<<<<<<
  *                 self._state = READ_PAYLOAD
- * 
+ *
 */
       __pyx_v_start_pos = (__pyx_v_start_pos + 4);
 
@@ -12668,13 +12668,13 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._frame_mask = data_cstr[start_pos : start_pos + 4]
  *                 start_pos += 4
  *                 self._state = READ_PAYLOAD             # <<<<<<<<<<<<<<
- * 
+ *
  *             if self._state == READ_PAYLOAD:
 */
       __pyx_v_self->_state = __pyx_v_7aiohttp_10_websocket_8reader_c_READ_PAYLOAD;
 
       /* "aiohttp/_websocket/reader_py.py":553
- * 
+ *
  *             # read payload mask
  *             if self._state == READ_PAYLOAD_MASK:             # <<<<<<<<<<<<<<
  *                 if data_len - start_pos < 4:
@@ -12684,7 +12684,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
     /* "aiohttp/_websocket/reader_py.py":560
  *                 self._state = READ_PAYLOAD
- * 
+ *
  *             if self._state == READ_PAYLOAD:             # <<<<<<<<<<<<<<
  *                 chunk_len = data_len - start_pos
  *                 if self._payload_bytes_to_read >= chunk_len:
@@ -12695,7 +12695,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
 
       /* "aiohttp/_websocket/reader_py.py":561
- * 
+ *
  *             if self._state == READ_PAYLOAD:
  *                 chunk_len = data_len - start_pos             # <<<<<<<<<<<<<<
  *                 if self._payload_bytes_to_read >= chunk_len:
@@ -12748,7 +12748,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 else:
  *                     f_end_pos = start_pos + self._payload_bytes_to_read             # <<<<<<<<<<<<<<
  *                     self._payload_bytes_to_read = 0
- * 
+ *
 */
       /*else*/ {
         __pyx_v_f_end_pos = (__pyx_v_start_pos + __pyx_v_self->_payload_bytes_to_read);
@@ -12757,7 +12757,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 else:
  *                     f_end_pos = start_pos + self._payload_bytes_to_read
  *                     self._payload_bytes_to_read = 0             # <<<<<<<<<<<<<<
- * 
+ *
  *                 had_fragments = self._frame_payload_len
 */
         __pyx_v_self->_payload_bytes_to_read = 0;
@@ -12766,7 +12766,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":569
  *                     self._payload_bytes_to_read = 0
- * 
+ *
  *                 had_fragments = self._frame_payload_len             # <<<<<<<<<<<<<<
  *                 self._frame_payload_len += f_end_pos - start_pos
  *                 f_start_pos = start_pos
@@ -12776,7 +12776,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       __pyx_v_had_fragments = __pyx_t_7;
 
       /* "aiohttp/_websocket/reader_py.py":570
- * 
+ *
  *                 had_fragments = self._frame_payload_len
  *                 self._frame_payload_len += f_end_pos - start_pos             # <<<<<<<<<<<<<<
  *                 f_start_pos = start_pos
@@ -12789,7 +12789,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._frame_payload_len += f_end_pos - start_pos
  *                 f_start_pos = start_pos             # <<<<<<<<<<<<<<
  *                 start_pos = f_end_pos
- * 
+ *
 */
       __pyx_v_f_start_pos = __pyx_v_start_pos;
 
@@ -12797,14 +12797,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 self._frame_payload_len += f_end_pos - start_pos
  *                 f_start_pos = start_pos
  *                 start_pos = f_end_pos             # <<<<<<<<<<<<<<
- * 
+ *
  *                 if self._payload_bytes_to_read != 0:
 */
       __pyx_v_start_pos = __pyx_v_f_end_pos;
 
       /* "aiohttp/_websocket/reader_py.py":574
  *                 start_pos = f_end_pos
- * 
+ *
  *                 if self._payload_bytes_to_read != 0:             # <<<<<<<<<<<<<<
  *                     # If we don't have a complete frame, we need to save the
  *                     # data for the next call to feed_data.
@@ -12910,7 +12910,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                     ):
  *                         self.queue._protocol.pause_reading()             # <<<<<<<<<<<<<<
  *                     break
- * 
+ *
 */
           __pyx_t_1 = __pyx_v_self->queue->_protocol;
           __Pyx_INCREF(__pyx_t_1);
@@ -12937,14 +12937,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                     ):
  *                         self.queue._protocol.pause_reading()
  *                     break             # <<<<<<<<<<<<<<
- * 
+ *
  *                 payload: bytes | bytearray
 */
         goto __pyx_L5_break;
 
         /* "aiohttp/_websocket/reader_py.py":574
  *                 start_pos = f_end_pos
- * 
+ *
  *                 if self._payload_bytes_to_read != 0:             # <<<<<<<<<<<<<<
  *                     # If we don't have a complete frame, we need to save the
  *                     # data for the next call to feed_data.
@@ -12952,7 +12952,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
       }
 
       /* "aiohttp/_websocket/reader_py.py":587
- * 
+ *
  *                 payload: bytes | bytearray
  *                 if had_fragments:             # <<<<<<<<<<<<<<
  *                     # We have to join the payload fragments get the payload
@@ -13104,7 +13104,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
         __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
         /* "aiohttp/_websocket/reader_py.py":587
- * 
+ *
  *                 payload: bytes | bytearray
  *                 if had_fragments:             # <<<<<<<<<<<<<<
  *                     # We have to join the payload fragments get the payload
@@ -13229,7 +13229,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                     payload = payload_bytearray
  *                 else:
  *                     payload = data_cstr[f_start_pos:f_end_pos]             # <<<<<<<<<<<<<<
- * 
+ *
  *                 self._handle_frame(
 */
       /*else*/ {
@@ -13242,7 +13242,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
       /* "aiohttp/_websocket/reader_py.py":611
  *                     payload = data_cstr[f_start_pos:f_end_pos]
- * 
+ *
  *                 self._handle_frame(             # <<<<<<<<<<<<<<
  *                     self._frame_fin, self._frame_opcode, payload, self._compressed
  *                 )
@@ -13254,7 +13254,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 )
  *                 self._frame_payload_len = 0             # <<<<<<<<<<<<<<
  *                 self._state = READ_HEADER
- * 
+ *
 */
       __pyx_v_self->_frame_payload_len = 0;
 
@@ -13262,14 +13262,14 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
  *                 )
  *                 self._frame_payload_len = 0
  *                 self._state = READ_HEADER             # <<<<<<<<<<<<<<
- * 
+ *
  *         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
 */
       __pyx_v_self->_state = __pyx_v_7aiohttp_10_websocket_8reader_c_READ_HEADER;
 
       /* "aiohttp/_websocket/reader_py.py":560
  *                 self._state = READ_PAYLOAD
- * 
+ *
  *             if self._state == READ_PAYLOAD:             # <<<<<<<<<<<<<<
  *                 chunk_len = data_len - start_pos
  *                 if self._payload_bytes_to_read >= chunk_len:
@@ -13279,7 +13279,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
   __pyx_L5_break:;
 
   /* "aiohttp/_websocket/reader_py.py":618
- * 
+ *
  *         # XXX: Cython needs slices to be bounded, so we can't omit the slice end here.
  *         self._tail = data_cstr[start_pos:data_len] if start_pos < data_len else b""             # <<<<<<<<<<<<<<
 */
@@ -13303,7 +13303,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 
   /* "aiohttp/_websocket/reader_py.py":396
  *             )
- * 
+ *
  *     def _feed_data(self, data: bytes) -> None:             # <<<<<<<<<<<<<<
  *         """Return the next frame from the socket."""
  *         self.queue._stalled_reader = None
@@ -13348,7 +13348,7 @@ static void __pyx_f_7aiohttp_10_websocket_8reader_c_15WebSocketReader__feed_data
 }
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -13357,7 +13357,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 ); /*proto*/
 PyDoc_STRVAR(__pyx_doc_7aiohttp_10_websocket_8reader_c_15WebSocketReader_8_feed_data, "Return the next frame from the socket.");
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data = {"_feed_data", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data, __Pyx_METH_FASTCALL|METH_KEYWORDS, __pyx_doc_7aiohttp_10_websocket_8reader_c_15WebSocketReader_8_feed_data};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_9_feed_data(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -13483,7 +13483,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_8_fe
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -13491,7 +13491,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__ = {"__reduce_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_11__reduce_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -13985,7 +13985,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_10__
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -13993,7 +13993,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__ = {"__setstate_cython__", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__(PyObject *__pyx_v_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_15WebSocketReader_13__setstate_cython__(PyObject *__pyx_v_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -14126,7 +14126,7 @@ static PyObject *__pyx_pf_7aiohttp_10_websocket_8reader_c_15WebSocketReader_12__
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue(PyObject *__pyx_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -14134,7 +14134,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue = {"__pyx_unpickle_WebSocketDataQueue", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_1__pyx_unpickle_WebSocketDataQueue(PyObject *__pyx_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -14491,7 +14491,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c___pyx_unpickle_WebSocke
 */
 
 /* Python wrapper */
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader(PyObject *__pyx_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -14499,7 +14499,7 @@ PyObject *__pyx_args, PyObject *__pyx_kwds
 #endif
 ); /*proto*/
 static PyMethodDef __pyx_mdef_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader = {"__pyx_unpickle_WebSocketReader", (PyCFunction)(void(*)(void))(__Pyx_PyCFunction_FastCallWithKeywords)__pyx_pw_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader, __Pyx_METH_FASTCALL|METH_KEYWORDS, 0};
-static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader(PyObject *__pyx_self, 
+static PyObject *__pyx_pw_7aiohttp_10_websocket_8reader_c_3__pyx_unpickle_WebSocketReader(PyObject *__pyx_self,
 #if CYTHON_VECTORCALL
 PyObject *const *__pyx_args, Py_ssize_t __pyx_nargs, PyObject *__pyx_kwds
 #else
@@ -14906,7 +14906,7 @@ static PyObject *__pyx_f_7aiohttp_10_websocket_8reader_c___pyx_unpickle_WebSocke
 /* #### Code section: module_exttypes ### */
 static struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue __pyx_vtable_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue;
 
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     CYTHON_UNUSED PyObject *const *args, CYTHON_UNUSED Py_ssize_t nargs, CYTHON_UNUSED PyObject *kwnames
 #else
@@ -14926,7 +14926,7 @@ static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_We
   return o;
 }
 
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -14936,7 +14936,7 @@ static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSock
   PyObject *o;
   o = __Pyx_AllocateExtensionType(t, 0);
   if (unlikely(!o)) return 0;
-  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(o, 
+  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketDataQueue(o,
 #if CYTHON_VECTORCALL_TPNEW
     args, nargs, kwnames
 #else
@@ -15231,7 +15231,7 @@ static PyTypeObject __pyx_type_7aiohttp_10_websocket_8reader_c_WebSocketDataQueu
 #endif
 static struct __pyx_vtabstruct_7aiohttp_10_websocket_8reader_c_WebSocketReader __pyx_vtable_7aiohttp_10_websocket_8reader_c_WebSocketReader;
 
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     CYTHON_UNUSED PyObject *const *args, CYTHON_UNUSED Py_ssize_t nargs, CYTHON_UNUSED PyObject *kwnames
 #else
@@ -15251,7 +15251,7 @@ static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_We
   return o;
 }
 
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSocketReader(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -15261,7 +15261,7 @@ static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c_WebSock
   PyObject *o;
   o = __Pyx_AllocateExtensionType(t, 0);
   if (unlikely(!o)) return 0;
-  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(o, 
+  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c_WebSocketReader(o,
 #if CYTHON_VECTORCALL_TPNEW
     args, nargs, kwnames
 #else
@@ -15492,7 +15492,7 @@ static PyTypeObject __pyx_type_7aiohttp_10_websocket_8reader_c_WebSocketReader =
 };
 #endif
 
-static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyObject *o, 
+static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyObject *o,
 #if CYTHON_VECTORCALL_TPNEW
     CYTHON_UNUSED PyObject *const *args, CYTHON_UNUSED Py_ssize_t nargs, CYTHON_UNUSED PyObject *kwnames
 #else
@@ -15502,7 +15502,7 @@ static PyObject *__pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___
   return o;
 }
 
-static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyTypeObject *t, 
+static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(PyTypeObject *t,
 #if CYTHON_VECTORCALL_TPNEW
     PyObject *const *args, Py_ssize_t nargs, PyObject *kwnames
 #else
@@ -15530,7 +15530,7 @@ static PyObject *__pyx_tp_new_vectorcall_7aiohttp_10_websocket_8reader_c___pyx_s
     o = __Pyx_AllocateExtensionType(t, 1);
   }
   if (unlikely(!o)) return 0;
-  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(o, 
+  return __pyx_tp_new__initialisation_7aiohttp_10_websocket_8reader_c___pyx_scope_struct__read(o,
 #if CYTHON_VECTORCALL_TPNEW
     args, nargs, kwnames
 #else
@@ -16216,7 +16216,7 @@ static CYTHON_SMALL_CODE int __pyx_pymod_exec_reader_c(PyObject *__pyx_pyinit_mo
         Py_FatalError("failed to import 'refnanny' module");
   }
   #endif
-  
+
 __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __Pyx_init_runtime_version();
   if (__Pyx_check_binary_version(__PYX_LIMITED_VERSION_HEX, __Pyx_get_runtime_version(), CYTHON_COMPILING_IN_LIMITED_API) < (0)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -16258,7 +16258,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":3
  * """Reader for WebSocket protocol versions 13 and 8."""
- * 
+ *
  * import asyncio             # <<<<<<<<<<<<<<
  * import builtins
  * import sys
@@ -16270,7 +16270,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "aiohttp/_websocket/reader_py.py":4
- * 
+ *
  * import asyncio
  * import builtins             # <<<<<<<<<<<<<<
  * import sys
@@ -16300,7 +16300,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * import sys
  * import weakref             # <<<<<<<<<<<<<<
  * from collections import deque
- * 
+ *
 */
   __pyx_t_1 = __Pyx_Import(__pyx_mstate_global->__pyx_n_u_weakref, 0, 0, NULL, 0); if (unlikely(!__pyx_t_1)) __PYX_ERR(0, 6, __pyx_L1_error)
   __pyx_t_2 = __pyx_t_1;
@@ -16312,7 +16312,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * import sys
  * import weakref
  * from collections import deque             # <<<<<<<<<<<<<<
- * 
+ *
  * from ..base_protocol import BaseProtocol
 */
   {
@@ -16334,7 +16334,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":9
  * from collections import deque
- * 
+ *
  * from ..base_protocol import BaseProtocol             # <<<<<<<<<<<<<<
  * from ..compression_utils import TooManyMembersError, ZLibDecompressor
  * from ..helpers import _EXC_SENTINEL, set_exception
@@ -16357,7 +16357,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __Pyx_DECREF(__pyx_t_2); __pyx_t_2 = 0;
 
   /* "aiohttp/_websocket/reader_py.py":10
- * 
+ *
  * from ..base_protocol import BaseProtocol
  * from ..compression_utils import TooManyMembersError, ZLibDecompressor             # <<<<<<<<<<<<<<
  * from ..helpers import _EXC_SENTINEL, set_exception
@@ -16647,7 +16647,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {
  *     int(WSCloseCode.ABNORMAL_CLOSURE)             # <<<<<<<<<<<<<<
  * }
- * 
+ *
 */
   __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_WSCloseCode); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 32, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
@@ -16702,7 +16702,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * READ_PAYLOAD_LENGTH = 2
  * READ_PAYLOAD_MASK = 3             # <<<<<<<<<<<<<<
  * READ_PAYLOAD = 4
- * 
+ *
 */
   __pyx_v_7aiohttp_10_websocket_8reader_c_READ_PAYLOAD_MASK = 3;
 
@@ -16710,7 +16710,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * READ_PAYLOAD_LENGTH = 2
  * READ_PAYLOAD_MASK = 3
  * READ_PAYLOAD = 4             # <<<<<<<<<<<<<<
- * 
+ *
  * # Largest declared payload length the reader can represent: the compiled
 */
   __pyx_v_7aiohttp_10_websocket_8reader_c_READ_PAYLOAD = 4;
@@ -16719,7 +16719,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * # (the win32 and armv7l wheels) and 2**63-1 everywhere else.
  * # TODO: Remove when we drop 32 bit support (and from reader_c.pxd).
  * MAX_PAYLOAD_LEN = sys.maxsize             # <<<<<<<<<<<<<<
- * 
+ *
  * WS_MSG_TYPE_BINARY = WSMsgType.BINARY
 */
   __Pyx_GetModuleGlobalName(__pyx_t_5, __pyx_mstate_global->__pyx_n_u_sys); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 46, __pyx_L1_error)
@@ -16733,10 +16733,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":48
  * MAX_PAYLOAD_LEN = sys.maxsize
- * 
+ *
  * WS_MSG_TYPE_BINARY = WSMsgType.BINARY             # <<<<<<<<<<<<<<
  * WS_MSG_TYPE_TEXT = WSMsgType.TEXT
- * 
+ *
 */
   __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMsgType, __pyx_mstate_global->__pyx_n_u_BINARY); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 48, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
@@ -16746,10 +16746,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __pyx_t_4 = 0;
 
   /* "aiohttp/_websocket/reader_py.py":49
- * 
+ *
  * WS_MSG_TYPE_BINARY = WSMsgType.BINARY
  * WS_MSG_TYPE_TEXT = WSMsgType.TEXT             # <<<<<<<<<<<<<<
- * 
+ *
  * # WSMsgType values unpacked so they can by cythonized to ints
 */
   __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMsgType, __pyx_mstate_global->__pyx_n_u_TEXT); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 49, __pyx_L1_error)
@@ -16760,7 +16760,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __pyx_t_4 = 0;
 
   /* "aiohttp/_websocket/reader_py.py":52
- * 
+ *
  * # WSMsgType values unpacked so they can by cythonized to ints
  * OP_CODE_NOT_SET = -1             # <<<<<<<<<<<<<<
  * OP_CODE_CONTINUATION = WSMsgType.CONTINUATION.value
@@ -16837,7 +16837,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * OP_CODE_CLOSE = WSMsgType.CLOSE.value
  * OP_CODE_PING = WSMsgType.PING.value             # <<<<<<<<<<<<<<
  * OP_CODE_PONG = WSMsgType.PONG.value
- * 
+ *
 */
   __pyx_t_4 = __Pyx_PyObject_GetAttrStr(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMsgType, __pyx_mstate_global->__pyx_n_u_PING); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 57, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
@@ -16852,7 +16852,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * OP_CODE_CLOSE = WSMsgType.CLOSE.value
  * OP_CODE_PING = WSMsgType.PING.value
  * OP_CODE_PONG = WSMsgType.PONG.value             # <<<<<<<<<<<<<<
- * 
+ *
  * EMPTY_FRAME_ERROR = (True, b"")
 */
   __pyx_t_5 = __Pyx_PyObject_GetAttrStr(__pyx_v_7aiohttp_10_websocket_8reader_c_WSMsgType, __pyx_mstate_global->__pyx_n_u_PONG); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 58, __pyx_L1_error)
@@ -16866,10 +16866,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":60
  * OP_CODE_PONG = WSMsgType.PONG.value
- * 
+ *
  * EMPTY_FRAME_ERROR = (True, b"")             # <<<<<<<<<<<<<<
  * EMPTY_FRAME = (False, b"")
- * 
+ *
 */
   __Pyx_INCREF(__pyx_mstate_global->__pyx_tuple[2]);
   __Pyx_XGOTREF(__pyx_v_7aiohttp_10_websocket_8reader_c_EMPTY_FRAME_ERROR);
@@ -16877,10 +16877,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[2]);
 
   /* "aiohttp/_websocket/reader_py.py":61
- * 
+ *
  * EMPTY_FRAME_ERROR = (True, b"")
  * EMPTY_FRAME = (False, b"")             # <<<<<<<<<<<<<<
- * 
+ *
  * COMPRESSED_NOT_SET = -1
 */
   __Pyx_INCREF(__pyx_mstate_global->__pyx_tuple[3]);
@@ -16890,7 +16890,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":63
  * EMPTY_FRAME = (False, b"")
- * 
+ *
  * COMPRESSED_NOT_SET = -1             # <<<<<<<<<<<<<<
  * COMPRESSED_FALSE = 0
  * COMPRESSED_TRUE = 1
@@ -16898,11 +16898,11 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
   __pyx_v_7aiohttp_10_websocket_8reader_c_COMPRESSED_NOT_SET = -1;
 
   /* "aiohttp/_websocket/reader_py.py":64
- * 
+ *
  * COMPRESSED_NOT_SET = -1
  * COMPRESSED_FALSE = 0             # <<<<<<<<<<<<<<
  * COMPRESSED_TRUE = 1
- * 
+ *
 */
   __pyx_v_7aiohttp_10_websocket_8reader_c_COMPRESSED_FALSE = 0;
 
@@ -16910,16 +16910,16 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * COMPRESSED_NOT_SET = -1
  * COMPRESSED_FALSE = 0
  * COMPRESSED_TRUE = 1             # <<<<<<<<<<<<<<
- * 
+ *
  * TUPLE_NEW = tuple.__new__
 */
   __pyx_v_7aiohttp_10_websocket_8reader_c_COMPRESSED_TRUE = 1;
 
   /* "aiohttp/_websocket/reader_py.py":67
  * COMPRESSED_TRUE = 1
- * 
+ *
  * TUPLE_NEW = tuple.__new__             # <<<<<<<<<<<<<<
- * 
+ *
  * # Overhead added to each message to ensure that tiny messages can't use
 */
   __pyx_t_4 = __Pyx_PyObject_GetAttrStr(((PyObject *)(&PyTuple_Type)), __pyx_mstate_global->__pyx_n_u_new); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 67, __pyx_L1_error)
@@ -16933,13 +16933,13 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
  * # Overhead added to each message to ensure that tiny messages can't use
  * # unreasonable amounts of memory.
  * MSG_SIZE_OVERHEAD = 128             # <<<<<<<<<<<<<<
- * 
+ *
  * STALLED_READER_COLLECTED = (
 */
   __pyx_v_7aiohttp_10_websocket_8reader_c_MSG_SIZE_OVERHEAD = 0x80;
 
   /* "aiohttp/_websocket/reader_py.py":74
- * 
+ *
  * STALLED_READER_COLLECTED = (
  *     "WebSocketReader was garbage collected while stalled; "             # <<<<<<<<<<<<<<
  *     "callers of set_parser() must hold a strong reference"
@@ -16949,19 +16949,19 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":78
  * )
- * 
+ *
  * cython_int = int  # Typed to int in Python, but cython with use a signed int in the pxd             # <<<<<<<<<<<<<<
- * 
- * 
+ *
+ *
 */
   if (PyDict_SetItem(__pyx_mstate_global->__pyx_d, __pyx_mstate_global->__pyx_n_u_cython_int, ((PyObject *)(&PyLong_Type))) < (0)) __PYX_ERR(0, 78, __pyx_L1_error)
 
   /* "aiohttp/_websocket/reader_py.py":102
  *         self._stalled_reader: "weakref.ref[WebSocketReader] | None" = None
- * 
+ *
  *     def is_eof(self) -> bool:             # <<<<<<<<<<<<<<
  *         return self._eof
- * 
+ *
 */
   __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 102, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
@@ -16978,10 +16978,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":105
  *         return self._eof
- * 
+ *
  *     def exception(self) -> type[BaseException] | BaseException | None:             # <<<<<<<<<<<<<<
  *         return self._exception
- * 
+ *
 */
   __pyx_t_5 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_5)) __PYX_ERR(0, 105, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_5);
@@ -17011,7 +17011,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":108
  *         return self._exception
- * 
+ *
  *     def set_exception(             # <<<<<<<<<<<<<<
  *         self,
  *         exc: type[BaseException] | BaseException,
@@ -17043,7 +17043,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":126
  *             waiter.set_result(None)
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self._eof = True
  *         self._release_waiter()
@@ -17063,7 +17063,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":131
  *         self._exception = None  # Break cyclic references
- * 
+ *
  *     def feed_data(self, data: "WSMessage") -> None:             # <<<<<<<<<<<<<<
  *         # Unbox into the typed local before adding, so Cython keeps the sum in
  *         # C instead of boxing MSG_SIZE_OVERHEAD for a Python-level add.
@@ -17083,7 +17083,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":141
  *             self._protocol.pause_reading()
- * 
+ *
  *     async def read(self) -> WSMessage:             # <<<<<<<<<<<<<<
  *         if not self._buffer and not self._eof:
  *             assert not self._waiter
@@ -17130,10 +17130,10 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":227
  *         self._compress = compress
- * 
+ *
  *     def feed_eof(self) -> None:             # <<<<<<<<<<<<<<
  *         self.queue.feed_eof()
- * 
+ *
 */
   __pyx_t_4 = __Pyx_PyDict_NewPresized(1); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 227, __pyx_L1_error)
   __Pyx_GOTREF(__pyx_t_4);
@@ -17170,7 +17170,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":249
  *         return EMPTY_FRAME
- * 
+ *
  *     def _handle_frame(             # <<<<<<<<<<<<<<
  *         self,
  *         fin: bool,
@@ -17193,7 +17193,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":396
  *             )
- * 
+ *
  *     def _feed_data(self, data: bytes) -> None:             # <<<<<<<<<<<<<<
  *         """Return the next frame from the socket."""
  *         self.queue._stalled_reader = None
@@ -17268,7 +17268,7 @@ __Pyx_RefNannySetupContext("PyInit_reader_c", 0);
 
   /* "aiohttp/_websocket/reader_py.py":1
  * """Reader for WebSocket protocol versions 13 and 8."""             # <<<<<<<<<<<<<<
- * 
+ *
  * import asyncio
 */
   __pyx_t_4 = __Pyx_PyDict_NewPresized(0); if (unlikely(!__pyx_t_4)) __PYX_ERR(0, 1, __pyx_L1_error)
@@ -17386,10 +17386,10 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
 
   /* "aiohttp/_websocket/reader_py.py":60
  * OP_CODE_PONG = WSMsgType.PONG.value
- * 
+ *
  * EMPTY_FRAME_ERROR = (True, b"")             # <<<<<<<<<<<<<<
  * EMPTY_FRAME = (False, b"")
- * 
+ *
 */
   {
     PyObject* __pyx_temp[2] = {Py_True, __pyx_mstate_global->__pyx_kp_b__3};
@@ -17399,10 +17399,10 @@ static int __Pyx_InitCachedConstants(__pyx_mstatetype *__pyx_mstate) {
   __Pyx_GIVEREF(__pyx_mstate_global->__pyx_tuple[2]);
 
   /* "aiohttp/_websocket/reader_py.py":61
- * 
+ *
  * EMPTY_FRAME_ERROR = (True, b"")
  * EMPTY_FRAME = (False, b"")             # <<<<<<<<<<<<<<
- * 
+ *
  * COMPRESSED_NOT_SET = -1
 */
   {
@@ -17713,22 +17713,22 @@ static int __Pyx_InitGlobals(void) {
   int __pyx_clineno = 0;
   /* PythonCompatibility.init */
   if (likely(__Pyx_init_co_variables() == 0 && __Pyx_init_tpflags_variables() == 0)); else
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* AssertionsEnabled.init */
   if (likely(__Pyx_init_assertions_enabled() == 0)); else
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* CommonTypesMetaclass.init */
   if (likely(__pyx_CommonTypesMetaclass_init(__pyx_m) == 0)); else
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* Coroutine.init */
   if (likely(__pyx_Coroutine_init(__pyx_m) == 0)); else
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* Coro_CheckExact.init */
@@ -17742,7 +17742,7 @@ static int __Pyx_InitGlobals(void) {
       }
   } // error handling follows
   #endif
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* PyFrozenDict.init */
@@ -17764,7 +17764,7 @@ static int __Pyx_InitGlobals(void) {
       }
   } // error handling follows
   #endif
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   /* CachedMethodType.init */
@@ -17778,7 +17778,7 @@ static int __Pyx_InitGlobals(void) {
       }
   } // error handling follows
   #endif
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   return 0;
@@ -17793,7 +17793,7 @@ static int __Pyx_InitAfterSharedUtility(void) {
   int __pyx_clineno = 0;
   /* CythonFunctionPerModule.init */
   if (likely(__pyx_CyFunction_init(__pyx_m) == 0)); else
-  
+
   if (unlikely(PyErr_Occurred())) __PYX_ERR(0, 1, __pyx_L1_error)
 
   return 0;
@@ -17901,7 +17901,7 @@ static CYTHON_INLINE int __Pyx_PyObject_CompareBoolEq_str_str(PyObject *op1, PyO
     if (unlikely(op2 == Py_None)) {
         if (op1 == Py_None) goto __pyx_return_true; else goto __pyx_return_false;
     }
-    
+
     if (likely(op1 != Py_None)) {
         if (op1 == op2) goto __pyx_return_true;
         if (likely(op2 != Py_None)) {
@@ -17909,7 +17909,7 @@ static CYTHON_INLINE int __Pyx_PyObject_CompareBoolEq_str_str(PyObject *op1, PyO
         }
         goto __pyx_richcmp;
     }
-    
+
     if ((0)) goto __pyx_richcmp;
     if ((0)) goto __pyx_return_true;
     if ((0)) goto __pyx_return_false;
@@ -19043,7 +19043,7 @@ static PyObject* __Pyx_Unpacked___Pyx_PyLong_MultiplyObjC(PyObject *op1, PyObjec
             llx = lla * llb;
             return PyLong_FromLongLong(llx);
         }
-    
+
 }
 #endif
 static PyObject* __Pyx_Float___Pyx_PyLong_MultiplyObjC(PyObject *float_val, long intval, int zerodivision_check) {
@@ -19051,7 +19051,7 @@ static PyObject* __Pyx_Float___Pyx_PyLong_MultiplyObjC(PyObject *float_val, long
     const long b = intval;
     double a = __Pyx_PyFloat_AS_DOUBLE(float_val);
         double result;
-        
+
         result = ((double)a) * (double)b;
         return PyFloat_FromDouble(result);
 }
@@ -21643,7 +21643,7 @@ static PyObject* __Pyx_Unpacked___Pyx_PyLong_FloorDivideObjC(PyObject *op1, PyOb
             q -= ((r != 0) & ((r ^ llb) < 0));
             return PyLong_FromLongLong(q);
         }
-    
+
 }
 #endif
 static CYTHON_INLINE PyObject* __Pyx_PyLong_FloorDivideObjC(PyObject *op1, PyObject *op2, long intval, int inplace, int zerodivision_check) {
