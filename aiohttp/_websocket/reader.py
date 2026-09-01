@@ -612,7 +612,7 @@ class WebSocketReader(_WeakrefBase):
 
                 if self._payload_bytes_to_read != 0:
                     if f_start_pos < f_end_pos:  # skip a header-only read
-                        self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                        self._payload_fragments.append(data[f_start_pos:f_end_pos])
                     if (
                         self._max_fragments != 0
                         and len(self._payload_fragments) > self._max_fragments
