@@ -212,31 +212,26 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        fnparams: list[tuple[int, str, bool, str]] = []
-        for key, value in params.items():
-            if not key.startswith(name_suf):
-                continue
-            _, tail = key.split("*", 1)
-            extended = tail.endswith("*")
-            if extended:
-                tail = tail[:-1]
-            if not tail.isdigit():
-                continue
-            # RFC 2231 Section 3 requires numeric, not lexicographic,
-            # ordering of the continuation sections ("*2" before "*10").
-            fnparams.append((int(tail), tail, extended, value))
-        fnparams.sort()
+        section_re = re.compile(re.escape(name) + r"\*([0-9]+)(\*)?")
+        matches = (
+            (m, value)
+            for key, value in params.items()
+            if (m := section_re.fullmatch(key)) is not None
+        )
+        # RFC 2231 Section 3 requires numeric, not lexicographic,
+        # ordering of the continuation sections ("*2" before "*10").
+        fnparams = sorted(matches, key=lambda mv: int(mv[0].group(1)))
         parts: list[str] = []
-        # Consecutive extended sections are decoded as one unit, because a
+        # Consecutive encoded sections are decoded as one unit, because a
         # single multibyte character may be split across a section boundary.
         pending: list[str] = []
         encoding = "utf-8"
-        for num, (_, tail, extended, value) in enumerate(fnparams):
-            if tail != str(num):  # Missing section or leading zero.
+        for num, (m, value) in enumerate(fnparams):
+            if m.group(1) != str(num):  # Missing section or leading zero.
                 break
-            if extended:
-                # RFC 2231 Section 4.1: only extended ("*N*") sections are
-                # percent-encoded, and only the initial one may carry the
+            if m.group(2) is not None:
+                # RFC 2231 Section 4.1: only encoded ("*N*") sections are
+                # percent-decoded, and only the initial one may carry the
                 # charset'language' prefix.
                 if num == 0 and value.count("'") >= 2:
                     encoding, _, value = value.split("'", 2)
