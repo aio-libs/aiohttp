@@ -460,7 +460,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         if self._reading_paused:
             # After upgrade nothing will read the stream again, so we need
-            # to resume here. Before feeding the tail, so a pause in the
+            # to resume here before feeding the tail, so a pause in the
             # upgraded protocol still takes effect.
             self.resume_reading(resume_parser=False)
 
