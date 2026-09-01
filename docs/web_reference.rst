@@ -2813,7 +2813,7 @@ application on specific TCP or Unix socket, e.g.::
       Raises :exc:`asyncio.CancelledError` when :meth:`cleanup`
       is called.
 
-      .. versionadded:: 3.11
+      .. versionadded:: 4.0
 
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)
