@@ -34,7 +34,7 @@ cffi==2.1.1
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-cryptography==50.0.0
+cryptography==50.0.1
     # via trustme
 distlib==0.4.3
     # via virtualenv
