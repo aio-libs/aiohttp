@@ -99,7 +99,7 @@ class FileResponse(StreamResponse):
         self._chunk_size = chunk_size
         if text_charset == "":
             raise ValueError("text_charset must not be an empty string")
-        self._text_charset = text_charset.lower() if text_charset is not None else None
+        self._text_charset = text_charset
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
@@ -386,9 +386,9 @@ class FileResponse(StreamResponse):
             else:
                 guesser = CONTENT_TYPES.guess_type
             content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
-            if self._text_charset is not None and content_type.startswith("text/"):
-                content_type = f"{content_type}; charset={self._text_charset}"
             self.content_type = content_type
+            if self._text_charset is not None and content_type.startswith("text/"):
+                self.charset = self._text_charset
 
         if file_encoding:
             self._headers[hdrs.CONTENT_ENCODING] = file_encoding
