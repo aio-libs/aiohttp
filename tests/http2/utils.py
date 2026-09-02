@@ -1,12 +1,8 @@
-import asyncio
 import struct
-from typing import Any, Generator, List, Optional, Tuple
-from unittest.mock import MagicMock
+from typing import Any, Optional
 
-import pytest
 from hpack import Encoder
 
-from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.settings import (
     FlagData,
     FlagHeaders,

@@ -1,10 +1,8 @@
-import asyncio
 import random
-import struct
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-from http2.utils import (
+from http2.utils import (  # noqa: I900
     build_data_frame,
     build_goaway,
     build_headers_frame,
@@ -12,13 +10,11 @@ from http2.utils import (
     build_rst_stream,
     build_settings_frame,
     build_window_update,
-    frame_header,
 )
 
 from aiohttp.http2.connection import Http2Connection
-from aiohttp.http2.errors import ErrorCode, ProtocolError
+from aiohttp.http2.errors import ErrorCode
 from aiohttp.http2.settings import DEFAULT_SETTINGS, FrameType, Setting
-from aiohttp.http2.stream import StreamState
 
 
 # ----------------------------------------------------------------------
@@ -100,8 +96,7 @@ class FuzzerConfig:
 # Main fuzzer class
 # ----------------------------------------------------------------------
 class Http2ServerFuzzer:
-    """Stateful fuzzer that acts as an HTTP/2 server and sends arbitrary frames
-    to an aiohttp client connection.
+    """Stateful fuzzer that acts as an HTTP/2 server and sends arbitrary frames to an aiohttp client connection.
 
     Parameters
     ----------
@@ -166,7 +161,6 @@ class Http2ServerFuzzer:
             length = int.from_bytes(data[:3], "big")
             ftype = data[3]
             flags = data[4]
-            stream_id = int.from_bytes(data[5:9], "big") & 0x7FFFFFFF
             if len(data) < 9 + length:
                 break  # incomplete frame
             payload = data[9 : 9 + length]
@@ -402,6 +396,7 @@ class Http2ServerFuzzer:
         state: ServerConnectionState,
     ) -> bool:
         """Basic sanity checks:
+
         - Client must not crash (obviously handled by test harness)
         - If we send a GOAWAY, client should eventually close connection.
         - If we send RST_STREAM on a stream, client should not send DATA on that stream.
