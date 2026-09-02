@@ -225,6 +225,22 @@ class TestClientConnectorCertificateError:
         assert err.errno == 1
         assert err.strerror == "Bad certificate"
 
+    def test_ssl_is_the_same_as_on_the_base_class(self) -> None:
+        context = ssl.create_default_context()
+        connection_key = self.connection_key._replace(is_ssl=True, ssl=context)
+        certificate_error = Exception("Bad certificate")
+
+        err = client.ClientConnectorCertificateError(
+            connection_key=connection_key, certificate_error=certificate_error
+        )
+        base_err = client.ClientConnectorError(
+            connection_key=connection_key, os_error=OSError(1, "Bad certificate")
+        )
+
+        assert err.ssl is context
+        assert err.ssl is base_err.ssl
+
+
 class TestServerDisconnectedError:
     def test_ctor(self) -> None:
         err = client.ServerDisconnectedError()
