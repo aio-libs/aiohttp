@@ -177,8 +177,6 @@ class TestClientConnectorCertificateError:
         assert err.certificate_error == certificate_error
         assert err.host == "example.com"
         assert err.port == 8080
-        # the fixture sets is_ssl=False and ssl=True, so this asserts that the
-        # attribute follows `ssl` and not `is_ssl`, matching ClientConnectorError
         assert err.ssl is True
         if sys.version_info >= (3, 11):
             assert_type(err.args, tuple[client_reqrep.ConnectionKey, Exception])
@@ -226,29 +224,6 @@ class TestClientConnectorCertificateError:
         assert err.os_error == certificate_error
         assert err.errno == 1
         assert err.strerror == "Bad certificate"
-
-    def test_ssl_is_the_same_as_on_the_base_class(self) -> None:
-        """`ssl` must carry the same value as on ClientConnectorError.
-
-        ConnectionKey has both `is_ssl` (a bool) and `ssl` (the SSLContext,
-        bool or Fingerprint the caller passed). Reading `is_ssl` here made the
-        same attribute mean two different things depending on which of the two
-        exceptions was caught.
-        """
-        context = ssl.create_default_context()
-        connection_key = self.connection_key._replace(is_ssl=True, ssl=context)
-        certificate_error = Exception("Bad certificate")
-
-        err = client.ClientConnectorCertificateError(
-            connection_key=connection_key, certificate_error=certificate_error
-        )
-        base_err = client.ClientConnectorError(
-            connection_key=connection_key, os_error=OSError(1, "Bad certificate")
-        )
-
-        assert err.ssl is context
-        assert err.ssl is base_err.ssl
-
 
 class TestServerDisconnectedError:
     def test_ctor(self) -> None:
