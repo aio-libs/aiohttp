@@ -2560,6 +2560,7 @@ The definition is created by functions like :func:`get` or
 
 .. function:: static(prefix, path, *, name=None, expect_handler=None, \
                      chunk_size=256*1024, \
+                     text_charset=None, \
                      show_index=False, break_symlink_sandbox=False, \
                      append_version=False)
    :canonical: aiohttp.web_routedef.static
@@ -2673,6 +2674,7 @@ A routes table definition used for describing routes by decorators
 
    .. method:: static(prefix, path, *, name=None, expect_handler=None, \
                       chunk_size=256*1024, \
+                      text_charset=None, \
                       show_index=False, break_symlink_sandbox=False, \
                       append_version=False)
 
