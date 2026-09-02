@@ -558,7 +558,7 @@ jobs:
         done
         exit 1
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v5.0.3
+      uses: CodSpeedHQ/action@v5.2.1
       with:
         mode: instrumentation
         run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
@@ -836,7 +836,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v3.0.2
+      uses: softprops/action-gh-release@v3.0.3
       with:
         # dist/ contains the built packages plus the Sigstore signatures
         # and certificates emitted alongside them by the signing step above.

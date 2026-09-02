@@ -2364,6 +2364,23 @@ def test_c_parser_error_snippet_at_buffer_end_request(
         parser.feed_data(text)
 
 
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Python parser lacks error pos output")
+def test_c_parser_error_message_bounded_for_crlf_free_input(
+    event_loop: asyncio.AbstractEventLoop,
+    server: Server[Request],
+) -> None:
+    """Garbage with no CRLF must not be echoed back whole."""
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserC(
+        protocol, event_loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = parser
+    with pytest.raises(http_exceptions.BadHttpMethod) as exc_info:
+        parser.feed_data(b"A" * (64 * 1024))
+    # Two bounded windows, escaped by repr, plus the pointer line beneath them.
+    assert len(exc_info.value.message) < 2048
+
+
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 @pytest.mark.parametrize("split", [1, 2, 3, 5])
 @pytest.mark.parametrize(("body", "snippet", "reason"), _BAD_CHUNKED_RESPONSES)

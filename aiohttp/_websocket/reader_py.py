@@ -5,7 +5,6 @@ import builtins
 import sys
 import weakref
 from collections import deque
-from typing import Final
 
 from ..base_protocol import BaseProtocol
 from ..compression_utils import TooManyMembersError, ZLibDecompressor
@@ -27,7 +26,11 @@ from .models import (
     WSMsgType,
 )
 
-ALLOWED_CLOSE_CODES: set[int] = {int(i) for i in WSCloseCode}
+# ABNORMAL_CLOSURE is used internally, should never be accepted from a client.
+# https://datatracker.ietf.org/doc/html/rfc6455#section-7.4.1
+ALLOWED_CLOSE_CODES = {int(i) for i in WSCloseCode} - {
+    int(WSCloseCode.ABNORMAL_CLOSURE)
+}
 
 # States for the reader, used to parse the WebSocket frame
 # integer values are used so they can be cythonized
@@ -65,9 +68,9 @@ TUPLE_NEW = tuple.__new__
 
 # Overhead added to each message to ensure that tiny messages can't use
 # unreasonable amounts of memory.
-MSG_SIZE_OVERHEAD: Final[int] = 128
+MSG_SIZE_OVERHEAD = 128
 
-STALLED_READER_COLLECTED: Final[str] = (
+STALLED_READER_COLLECTED = (
     "WebSocketReader was garbage collected while stalled; "
     "callers of set_parser() must hold a strong reference"
 )
@@ -206,10 +209,12 @@ class WebSocketReader:
         self._opcode: int = OP_CODE_NOT_SET
         self._frame_fin = False
         self._frame_opcode: int = OP_CODE_NOT_SET
+        # Reads of an in-flight frame, joined once when it completes.
         self._payload_fragments: list[bytes] = []
-        # Limit number of fragments, so a large number of tiny fragments
-        # doesn't exceed reasonable memory usage.
+        # Fold reads into _payload_buffer past this count to bound the object
+        # count (bytes are bounded by max_msg_size).
         self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
+        self._payload_buffer = bytearray()
         self._frame_payload_len = 0
 
         self._tail: bytes = b""
@@ -569,22 +574,29 @@ class WebSocketReader:
                 start_pos = f_end_pos
 
                 if self._payload_bytes_to_read != 0:
-                    # If we don't have a complete frame, we need to save the
-                    # data for the next call to feed_data.
-                    self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
+                    if f_start_pos < f_end_pos:  # skip a header-only read
+                        self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
                     if (
                         self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
-                        and not self.queue._protocol._reading_paused
                     ):
-                        self.queue._protocol.pause_reading()
+                        # Fold to bound the object count. Not a pause: nothing
+                        # resumes reading until the frame is queued.
+                        self._payload_buffer += b"".join(self._payload_fragments)
+                        self._payload_fragments.clear()
                     break
 
                 payload: bytes | bytearray
                 if had_fragments:
-                    # We have to join the payload fragments get the payload
                     self._payload_fragments.append(data_cstr[f_start_pos:f_end_pos])
-                    if self._has_mask:
+                    if self._payload_buffer:  # folded prefix
+                        self._payload_buffer += b"".join(self._payload_fragments)
+                        if self._has_mask:
+                            assert self._frame_mask is not None
+                            websocket_mask(self._frame_mask, self._payload_buffer)
+                        payload = self._payload_buffer
+                        self._payload_buffer = bytearray()  # detach; payload aliases it
+                    elif self._has_mask:
                         assert self._frame_mask is not None
                         payload_bytearray = bytearray(b"".join(self._payload_fragments))
                         websocket_mask(self._frame_mask, payload_bytearray)
