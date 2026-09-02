@@ -265,6 +265,122 @@ async def test_static_file_with_content_type(aiohttp_client, sender) -> None:
     await client.close()
 
 
+@pytest.mark.parametrize(
+    ("filename", "charset", "expected_type"),
+    (
+        ("hello.txt", "utf-8", "text/plain; charset=utf-8"),
+        ("hello.html", "UTF-8", "text/html; charset=utf-8"),
+        ("hello.txt", "koi8-r", "text/plain; charset=koi8-r"),
+    ),
+)
+async def test_static_file_charset(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    filename: str,
+    charset: str,
+    expected_type: str,
+) -> None:
+    """Test that the charset is appended to guessed text/* content types."""
+    file_path = tmp_path / filename
+    file_path.write_bytes(b"Hello")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, text_charset=charset)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == expected_type
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected_type"),
+    (
+        ("data.bin", "application/octet-stream"),
+        ("data.json", "application/json"),
+    ),
+)
+async def test_static_file_charset_not_applied_to_non_text(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    filename: str,
+    expected_type: str,
+) -> None:
+    """Test that the charset is not appended to non-text content types."""
+    file_path = tmp_path / filename
+    file_path.write_bytes(b"data")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, text_charset="utf-8")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == expected_type
+
+
+async def test_static_file_charset_keeps_explicit_content_type(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that the charset never modifies a user-supplied Content-Type header."""
+    file_path = tmp_path / "hello.txt"
+    file_path.write_bytes(b"Hello")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(
+            file_path,
+            headers={"Content-Type": "text/plain; charset=latin-1"},
+            text_charset="utf-8",
+        )
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "text/plain; charset=latin-1"
+
+
+async def test_static_route_charset(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that add_static passes the charset through to file responses."""
+    (tmp_path / "hello.txt").write_bytes(b"Hello")
+    (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02")
+
+    app = web.Application()
+    app.router.add_static("/static", tmp_path, text_charset="utf-8")
+    client = await aiohttp_client(app)
+
+    async with client.get("/static/hello.txt") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+    async with client.get("/static/data.bin") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "application/octet-stream"
+
+
+def test_static_file_text_charset_empty() -> None:
+    """Test that an empty text_charset is rejected at construction time."""
+    with pytest.raises(ValueError, match="text_charset"):
+        web.FileResponse(pathlib.Path("hello.txt"), text_charset="")
+
+
+def test_static_route_text_charset_empty(tmp_path: pathlib.Path) -> None:
+    """Test that an empty text_charset is rejected when the route is set up."""
+    app = web.Application()
+    with pytest.raises(ValueError, match="text_charset"):
+        app.router.add_static("/static", tmp_path, text_charset="")
+
+
 @pytest.mark.parametrize("hello_txt", ["gzip", "br"], indirect=True)
 async def test_static_file_custom_content_type(
     hello_txt: pathlib.Path, aiohttp_client: Any, sender: Any

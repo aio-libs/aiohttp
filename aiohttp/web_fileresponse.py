@@ -105,11 +105,15 @@ class FileResponse(StreamResponse):
         status: int = 200,
         reason: str | None = None,
         headers: LooseHeaders | None = None,
+        text_charset: str | None = None,
     ) -> None:
         super().__init__(status=status, reason=reason, headers=headers)
 
         self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
+        if text_charset == "":
+            raise ValueError("text_charset must not be an empty string")
+        self._text_charset = text_charset
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:
         fobj.seek(offset)
@@ -395,7 +399,10 @@ class FileResponse(StreamResponse):
                 guesser = CONTENT_TYPES.guess_file_type
             else:
                 guesser = CONTENT_TYPES.guess_type
-            self.content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
+            content_type = guesser(self._path)[0] or FALLBACK_CONTENT_TYPE
+            self.content_type = content_type
+            if self._text_charset is not None and content_type.startswith("text/"):
+                self.charset = self._text_charset
 
         if file_encoding:
             self._headers[hdrs.CONTENT_ENCODING] = file_encoding
