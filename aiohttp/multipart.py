@@ -218,8 +218,8 @@ def content_disposition_filename(
             for key, value in params.items()
             if (m := section_re.fullmatch(key)) is not None
         )
-        # RFC 2231 Section 3 requires numeric, not lexicographic,
-        # ordering of the continuation sections ("*2" before "*10").
+        # https://www.rfc-editor.org/info/rfc2231/#section-3
+        # Order numerically.
         fnparams = sorted(matches, key=lambda mv: int(mv[0].group(1)))
         parts: list[str] = []
         # Consecutive encoded sections are decoded as one unit, because a
@@ -229,16 +229,15 @@ def content_disposition_filename(
         for num, (m, value) in enumerate(fnparams):
             if m.group(1) != str(num):  # Missing section or leading zero.
                 break
-            if m.group(2) is not None:
-                # RFC 2231 Section 4.1: only encoded ("*N*") sections are
-                # percent-decoded, and only the initial one may carry the
-                # charset'language' prefix.
+            if m.group(2) is not None:  # encoded parameter
+                # https://www.rfc-editor.org/info/rfc2231/#section-4.1
                 if num == 0 and value.count("'") >= 2:
                     encoding, _, value = value.split("'", 2)
                     encoding = encoding or "utf-8"
                 pending.append(value)
                 continue
             if pending:
+                # Current value is not encoded, so process encoding of previous parts
                 decoded = _decode_continuations(pending, encoding)
                 if decoded is None:
                     return None
