@@ -21,7 +21,7 @@ from contextlib import suppress
 
 import atheris  # noqa: I900
 
-with atheris.instrument_imports():
+with atheris.instrument_imports():  # type: ignore[attr-defined]
     from multidict import CIMultiDict
 
     from aiohttp import BodyPartReader, StreamReader
@@ -39,31 +39,31 @@ class FuzzStream(StreamReader):
     def at_eof(self) -> bool:
         return self.content.tell() == len(self.content.getbuffer())
 
-    async def readline(self) -> bytes:
+    async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return self.content.readline()
 
     def unread_data(self, data: bytes) -> None:
         self.content = io.BytesIO(data + self.content.read())
 
 
-@atheris.instrument_func
-async def fuzz_bodypart_reader(data: bytes) -> None:
-    fdp = atheris.FuzzedDataProvider(data)
+@atheris.instrument_func  # type: ignore[attr-defined]
+async def fuzz_bodypart_reader(data: bytes) -> None:  # type: ignore[misc]
+    fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     obj = BodyPartReader(
         b"--:",
         HeadersDictProxy(CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)})),
-        FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),
+        FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),  # type: ignore[attr-defined]
     )
     if not obj.at_eof():
         await obj.form()
 
 
-@atheris.instrument_func
-def TestOneInput(data: bytes) -> None:
+@atheris.instrument_func  # type: ignore[attr-defined]
+def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
     with suppress(ValueError):
         asyncio.run(fuzz_bodypart_reader(data))
 
 
 if __name__ == "__main__":
-    atheris.Setup(sys.argv, TestOneInput)
-    atheris.Fuzz()
+    atheris.Setup(sys.argv, TestOneInput)  # type: ignore[attr-defined]
+    atheris.Fuzz()  # type: ignore[attr-defined]

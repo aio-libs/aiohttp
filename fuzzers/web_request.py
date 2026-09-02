@@ -19,16 +19,16 @@ import sys
 
 import atheris  # noqa: I900
 
-with atheris.instrument_imports():
+with atheris.instrument_imports():  # type: ignore[attr-defined]
     from multidict import CIMultiDict
     from yarl import URL
 
     from aiohttp.test_utils import make_mocked_request
 
 
-@atheris.instrument_func
-async def fuzz_run_one_async(data: bytes) -> None:
-    fdp = atheris.FuzzedDataProvider(data)
+@atheris.instrument_func  # type: ignore[attr-defined]
+async def fuzz_run_one_async(data: bytes) -> None:  # type: ignore[misc]
+    fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     url_s = fdp.ConsumeString(fdp.ConsumeIntInRange(0, 512))
     try:
         URL(url_s)
@@ -44,11 +44,11 @@ async def fuzz_run_one_async(data: bytes) -> None:
     await req.post()
 
 
-@atheris.instrument_func
-def TestOneInput(data: bytes) -> None:
+@atheris.instrument_func  # type: ignore[attr-defined]
+def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
     asyncio.run(fuzz_run_one_async(data))
 
 
 if __name__ == "__main__":
-    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
-    atheris.Fuzz()
+    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)  # type: ignore[attr-defined]
+    atheris.Fuzz()  # type: ignore[attr-defined]

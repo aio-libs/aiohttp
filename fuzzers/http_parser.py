@@ -21,7 +21,7 @@ from unittest import mock
 
 import atheris  # noqa: I900
 
-with atheris.instrument_imports():
+with atheris.instrument_imports():  # type: ignore[attr-defined]
     from aiohttp.base_protocol import BaseProtocol
     from aiohttp.http_exceptions import BadHttpMessage
     from aiohttp.http_parser import HttpRequestParser
@@ -30,8 +30,8 @@ LOOP = mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=T
 PROTOCOL = BaseProtocol(LOOP)
 
 
-@atheris.instrument_func
-def TestOneInput(data: bytes) -> None:
+@atheris.instrument_func  # type: ignore[attr-defined]
+def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
     parser = HttpRequestParser(PROTOCOL, LOOP, 32768)
     with suppress(BadHttpMessage):
         parser.feed_data(data)
@@ -39,5 +39,5 @@ def TestOneInput(data: bytes) -> None:
 
 
 if __name__ == "__main__":
-    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
-    atheris.Fuzz()
+    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)  # type: ignore[attr-defined]
+    atheris.Fuzz()  # type: ignore[attr-defined]
