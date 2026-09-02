@@ -850,12 +850,13 @@ class TestContentDispositionFilename:
         assert content_disposition_filename(params) is None
 
     def test_attfncontlz(self) -> None:
+        # A malformed section sequence is rejected rather than truncated.
         params = {"filename*0": "foo", "filename*01": "bar"}
-        assert "foo" == content_disposition_filename(params)
+        assert content_disposition_filename(params) is None
 
     def test_attfncontnc(self) -> None:
         params = {"filename*0": "foo", "filename*2": "bar"}
-        assert "foo" == content_disposition_filename(params)
+        assert content_disposition_filename(params) is None
 
     def test_attfnconts1(self) -> None:
         params = {"filename*1": "foo", "filename*2": "bar"}

@@ -1,7 +1,6 @@
 import base64
 import binascii
 import builtins
-import functools
 import json
 import re
 import sys
@@ -185,32 +184,6 @@ def parse_content_disposition(
     return disptype.lower(), params
 
 
-@functools.lru_cache(maxsize=None)
-def _filename_section_re(name: str) -> "re.Pattern[str]":
-    # The index is capped at six digits so a header cannot force a
-    # multi-thousand-digit int() past CPython's int-to-str limit. Real RFC 2231
-    # section indices are tiny, and a longer run of digits simply does not match
-    # and is ignored as a non-continuation key.
-    return re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
-
-
-def _decode_continuations(sections: list[str], encoding: str) -> str | None:
-    """Percent-decode adjacent RFC 2231 encoded sections as a single value.
-
-    The octets are joined before decoding so that a multibyte character
-    split across a section boundary is still decoded correctly.  Returns
-    ``None`` if the joined octets are not valid for ``encoding``.
-    """
-    try:
-        return unquote("".join(sections), encoding, "strict")
-    except (builtins.LookupError, UnicodeDecodeError):
-        # Both the charset name and the octets are attacker-controlled here;
-        # an unknown encoding raises the builtin LookupError (shadowed in this
-        # module by payload.LookupError) and undecodable bytes raise
-        # UnicodeDecodeError.
-        return None
-
-
 def content_disposition_filename(
     params: Mapping[str, str], name: str = "filename"
 ) -> str | None:
@@ -222,7 +195,9 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        section_re = _filename_section_re(name)
+        # The index is capped at six digits so a header cannot push int() past
+        # CPython's int-to-str limit; a longer run of digits simply never matches.
+        section_re = re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
         matches = (
             (m, value)
             for key, value in params.items()
@@ -238,7 +213,7 @@ def content_disposition_filename(
         encoding = "utf-8"
         for num, (m, value) in enumerate(fnparams):
             if m.group(1) != str(num):  # Missing section or leading zero.
-                break
+                return None
             if m.group(2) is not None:  # encoded parameter
                 # https://www.rfc-editor.org/info/rfc2231/#section-4.1
                 if num == 0 and value.count("'") >= 2:
@@ -248,17 +223,17 @@ def content_disposition_filename(
                 continue
             if pending:
                 # Current value is not encoded, so process encoding of previous parts
-                decoded = _decode_continuations(pending, encoding)
-                if decoded is None:
+                try:
+                    parts.append(unquote("".join(pending), encoding, "strict"))
+                except (builtins.LookupError, UnicodeDecodeError):
                     return None
-                parts.append(decoded)
                 pending.clear()
             parts.append(value)
         if pending:
-            decoded = _decode_continuations(pending, encoding)
-            if decoded is None:
+            try:
+                parts.append(unquote("".join(pending), encoding, "strict"))
+            except (builtins.LookupError, UnicodeDecodeError):
                 return None
-            parts.append(decoded)
         if not parts:
             return None
         return "".join(parts).lstrip("\\/")
