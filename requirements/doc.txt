@@ -12,17 +12,17 @@ babel==2.18.0
     # via sphinx
 certifi==2026.7.22
     # via requests
-charset-normalizer==3.4.9
+charset-normalizer==3.5.1
     # via requests
-click==8.4.2
+click==8.5.0
     # via towncrier
 docutils==0.21.2
     # via
     #   myst-parser
     #   sphinx
-idna==3.18
+idna==3.19
     # via requests
-imagesize==2.0.0
+imagesize==2.0.1
     # via sphinx
 jinja2==3.1.6
     # via
@@ -44,7 +44,7 @@ myst-parser==4.0.1
     # via -r requirements/doc.in
 packaging==26.3
     # via sphinx
-pygments==2.20.0
+pygments==2.21.0
     # via sphinx
 pyyaml==6.0.3
     # via

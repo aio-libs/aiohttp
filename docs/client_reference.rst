@@ -2887,6 +2887,12 @@ Connection errors
 
    Derived from :exc:`ClientOSError`
 
+   .. attribute:: ssl
+
+      The value passed as the ``ssl`` parameter of the request: an
+      :class:`ssl.SSLContext`, a :class:`bool`, or a
+      :class:`~aiohttp.Fingerprint`.
+
 .. class:: ClientConnectorDNSError
    :canonical: aiohttp.client_exceptions.ClientConnectorDNSError
 

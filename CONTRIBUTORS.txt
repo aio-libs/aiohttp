@@ -54,6 +54,7 @@ Anton Kasyanov
 Anton Zhdan-Pushkin
 Arcadiy Ivanov
 Arie Bovenberg
+Arockia Rajamanickam
 Arseny Timoniq
 Arsh Smith
 Arshiya Tabasum
@@ -155,6 +156,7 @@ Gary Leung
 Gary Wilson Jr.
 Gene Hoffman
 Gennady Andreyev
+George Fifth
 Georges Dubus
 goingforstudying-ctrl
 Greg Holt
@@ -243,6 +245,7 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
+Lalith Kothuru
 Lars P. Søndergaard
 Lee LieWhite
 Liu Hua
@@ -256,10 +259,13 @@ Lukasz Marcin Dobrzanski
 Lukshya Supyal
 Lénárd Szolnoki
 Makc Belousow
+Manny7717
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
+Marco Gorelli
 Marco Paolini
+Marcus Campbell
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
@@ -446,6 +452,7 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Zuhef Ahmed
 Łukasz Setla
 Марк Коренберг
 Семён Марьясин

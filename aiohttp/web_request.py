@@ -4,12 +4,12 @@ import io
 import re
 import string
 import sys
-import tempfile
 import types
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Final,
@@ -63,9 +63,31 @@ from .web_exceptions import (
 from .web_response import StreamResponse
 
 if sys.version_info >= (3, 11):
+    from tempfile import SpooledTemporaryFile
     from typing import Self
 else:
+    import tempfile
+
     Self = Any
+
+    class SpooledTemporaryFile(tempfile.SpooledTemporaryFile[bytes], io.IOBase):
+        """Make the spooled file satisfy the documented `FileField.file` type.
+
+        `tempfile.SpooledTemporaryFile` only became an `io.IOBase` subclass in
+        3.11 (python/cpython#70363), and never grew the three capability
+        predicates before then. Both underlying files (`io.BytesIO` before
+        rollover, a `w+b` temp file after) are readable, writable and seekable.
+        """
+
+        def readable(self) -> bool:
+            return True
+
+        def writable(self) -> bool:
+            return True
+
+        def seekable(self) -> bool:
+            return True
+
 
 __all__ = ("BaseRequest", "FileField", "Request")
 
@@ -85,11 +107,18 @@ class _CloneKwargs(TypedDict, total=False):
     remote: str
 
 
+# Multipart file parts are buffered in memory and only spilled to a temporary
+# file once they outgrow this size. A temp file per part would let a body made
+# of many tiny parts exhaust the process's file descriptors; spooling bounds
+# that at ``client_max_size // _FILE_SPOOL_MAX_SIZE`` descriptors per request.
+_FILE_SPOOL_MAX_SIZE: Final[int] = 1024**2
+
+
 @frozen_dataclass_decorator
 class FileField:
     name: str
     filename: str
-    file: io.BufferedReader
+    file: IO[bytes]
     content_type: str
     headers: HeadersDictProxy
 
@@ -348,9 +377,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         value += port
                     elem[name.lower()] = value
                     pos += len(match.group(0))
-                elif not field_value[pos : field_value.find(";", pos)].strip(" \t"):
+                elif (semi := field_value.find(";", pos)) == -1:
+                    # No further pair to parse; a trailing empty or malformed
+                    # value ends this field-value.
+                    break
+                elif not field_value[pos:semi].strip(" \t"):
                     # Empty value
-                    pos = field_value.find(";", pos) + 1
+                    pos = semi + 1
                 else:
                     # bad syntax here, skip to next field value
                     break
@@ -608,7 +641,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if rng is not None:
             try:
                 pattern = r"^bytes=(\d*)-(\d*)$"
-                start, end = re.findall(pattern, rng, re.ASCII)[0]
+                # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
+                start, end = re.findall(pattern, rng, re.ASCII | re.IGNORECASE)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptable format")
 
@@ -740,8 +774,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             multipart = await self.multipart()
             max_size = self._client_max_size
 
-            size = 0
+            payload = self._payload
             while (field := await multipart.next()) is not None:
+                # This check is needed for empty payloads, which still add
+                # overhead without entering the loop and the check below.
+                if 0 < max_size < payload.total_bytes:
+                    raise HTTPRequestEntityTooLarge(max_size)
+
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
                 if isinstance(field, BodyPartReader):
@@ -753,20 +792,35 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     # present.
                     # https://tools.ietf.org/html/rfc7578#section-4.4
                     if field.filename:
-                        # store file in temp file
-                        tmp = await self._loop.run_in_executor(
-                            None, tempfile.TemporaryFile
-                        )
+                        tmp = SpooledTemporaryFile(_FILE_SPOOL_MAX_SIZE)
+                        # rolled means the temp file now uses the disk, at
+                        # which point we want to run in the executor.
+                        rolled = False
                         while chunk := await field.read_chunk(size=DEFAULT_CHUNK_SIZE):
-                            async for decoded_chunk in field.decode_iter(chunk):
-                                await self._loop.run_in_executor(
-                                    None, tmp.write, decoded_chunk
-                                )
-                                size += len(decoded_chunk)
-                                if 0 < max_size < size:
+                            # Bounds one part, mid-read.
+                            if 0 < max_size < payload.total_bytes:
+                                if rolled:
                                     await self._loop.run_in_executor(None, tmp.close)
-                                    raise HTTPRequestEntityTooLarge(max_size)
-                        await self._loop.run_in_executor(None, tmp.seek, 0)
+                                else:
+                                    tmp.close()
+                                raise HTTPRequestEntityTooLarge(max_size)
+                            async for decoded_chunk in field.decode_iter(chunk):
+                                # Update before writing, so we know if next
+                                # write is going to hit the disk.
+                                rolled = rolled or (
+                                    tmp.tell() + len(decoded_chunk)
+                                    > _FILE_SPOOL_MAX_SIZE
+                                )
+                                if rolled:
+                                    await self._loop.run_in_executor(
+                                        None, tmp.write, decoded_chunk
+                                    )
+                                else:
+                                    tmp.write(decoded_chunk)
+                        if rolled:
+                            await self._loop.run_in_executor(None, tmp.seek, 0)
+                        else:
+                            tmp.seek(0)
 
                         if field_ct is None:
                             field_ct = "application/octet-stream"
@@ -774,7 +828,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         ff = FileField(
                             field.name,
                             field.filename,
-                            cast(io.BufferedReader, tmp),
+                            tmp,
                             field_ct,
                             field.headers,
                         )
@@ -783,8 +837,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                         # deal with ordinary data
                         raw_data = bytearray()
                         while chunk := await field.read_chunk():
-                            size += len(chunk)
-                            if 0 < max_size < size:
+                            if 0 < max_size < payload.total_bytes:
                                 raise HTTPRequestEntityTooLarge(max_size)
                             raw_data.extend(chunk)
 
@@ -795,7 +848,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
-                            out.add(field.name, value.decode(charset))
+                            try:
+                                decoded = value.decode(charset)
+                            except (LookupError, UnicodeDecodeError):
+                                raise HTTPUnsupportedMediaType()
+                            out.add(field.name, decoded)
                         else:
                             out.add(field.name, value)  # type: ignore[arg-type]
                 else:
@@ -848,10 +905,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if self._post is None or self.content_type != "multipart/form-data":
             return
 
-        # NOTE: Release file descriptors for the
-        # NOTE: `tempfile.Temporaryfile`-created `_io.BufferedRandom`
-        # NOTE: instances of files sent within multipart request body
-        # NOTE: via HTTP POST request.
+        # Release the temp files created within multipart request body.
         for file_name, file_field_object in self._post.items():
             if isinstance(file_field_object, FileField):
                 file_field_object.file.close()

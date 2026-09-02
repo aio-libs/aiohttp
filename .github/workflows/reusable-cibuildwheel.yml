@@ -1,0 +1,141 @@
+---
+
+name: >-
+  ❌
+  [DO NOT CLICK]
+  Reusable cibuildwheel
+
+on:  # yamllint disable-line rule:truthy
+  workflow_call:
+    inputs:
+      check-name:
+        description: A custom name for the Checks API-reported status
+        required: false
+        type: string
+      dists-artifact-name:
+        description: >-
+          Workflow artifact name containing dists.
+          Defaults to "python-package-distributions".
+        default: python-package-distributions
+        required: false
+        type: string
+      environment-variables:
+        description: >-
+          A newline-delimited blob of text with environment variables
+          to be set using `${GITHUB_ENV}`
+        required: false
+        type: string
+      qemu:
+        default: false
+        description: >-
+          Whether this job needs to configure QEMU to emulate a foreign
+          architecture before running `cibuildwheel`. Defaults to "false".
+        required: false
+        type: boolean
+      runner-vm-os:
+        description: VM OS to use
+        default: ubuntu-latest
+        required: false
+        type: string
+      source-tarball-name:
+        default: >-
+          *.tar.gz
+        description: Sdist filename wildcard. Defaults to "*.tar.gz".
+        required: false
+        type: string
+      timeout-minutes:
+        description: Deadline for the job to complete
+        required: true
+        type: number
+
+env:
+  FORCE_COLOR: "1"  # Make tools pretty.
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_NO_PYTHON_VERSION_WARNING: "1"
+
+jobs:
+
+  build-wheel:
+    name: >-
+      ${{
+        inputs.check-name
+        && inputs.check-name
+        || format(
+          'Build wheels on {0}{1}',
+          inputs.runner-vm-os,
+          inputs.qemu && ' under QEMU' || ''
+        )
+      }}
+    runs-on: ${{ inputs.runner-vm-os }}
+    timeout-minutes: ${{ fromJSON(inputs.timeout-minutes) }}
+
+    defaults:
+      run:
+        shell: bash -eEuxo pipefail {0}
+
+    steps:
+    - name: Export requested job-global environment variables
+      if: inputs.environment-variables != ''
+      env:
+        INPUT_ENVIRONMENT_VARIABLES: ${{ inputs.environment-variables }}
+      run: echo "${INPUT_ENVIRONMENT_VARIABLES}" >> "${GITHUB_ENV}"
+
+    - name: Compute GHA artifact name ending
+      id: gha-artifact-name
+      run: |
+        from hashlib import sha512
+        from os import environ
+        from pathlib import Path
+
+        FILE_APPEND_MODE = 'a'
+
+        inputs_json_str = """${{ toJSON(inputs) }}"""
+
+        hash = sha512(inputs_json_str.encode()).hexdigest()
+
+        with Path(environ['GITHUB_OUTPUT']).open(
+                mode=FILE_APPEND_MODE,
+        ) as outputs_file:
+            print(f'hash={hash}', file=outputs_file)
+      shell: python
+
+    - name: Download the source distribution
+      uses: actions/download-artifact@v8
+      with:
+        name: ${{ inputs.dists-artifact-name }}
+        path: dist/
+
+    - name: Set up QEMU
+      if: inputs.qemu
+      uses: docker/setup-qemu-action@v4
+      with:
+        platforms: all
+        # This should be temporary
+        # xref https://github.com/docker/setup-qemu-action/issues/188
+        # xref https://github.com/tonistiigi/binfmt/issues/215
+        image: tonistiigi/binfmt:qemu-v8.1.5
+
+    - name: Build wheels
+      uses: pypa/cibuildwheel@v4.2.0
+      with:
+        package-dir: >-  # not necessarily a dir, we pass an acceptable sdist
+          dist/${{ inputs.source-tarball-name }}
+        # `build-frontend = "build[uv]"` (pyproject.toml) requires uv to be
+        # available on the runner for Windows and macOS. Installing
+        # cibuildwheel with the `uv` extra bundles uv with it; the
+        # tested-arch manylinux/musllinux containers also ship uv
+        # preinstalled. Odd-arch (QEMU) containers do not -- callers of
+        # this workflow are expected to set `CIBW_BUILD_FRONTEND=build`
+        # via `environment-variables` for those cells.
+        extras: uv
+
+    - name: Upload built artifacts for testing and publishing
+      uses: actions/upload-artifact@v7
+      with:
+        name: ${{ inputs.dists-artifact-name }}-
+          ${{ inputs.runner-vm-os }}-
+          ${{ inputs.qemu && 'qemu-' || '' }}
+          ${{ steps.gha-artifact-name.outputs.hash }}
+        path: ./wheelhouse/*.whl
+
+...

@@ -4,7 +4,6 @@ import gc
 import ipaddress
 import itertools
 import sys
-import time
 import weakref
 from collections.abc import Iterator
 from math import ceil, modf
@@ -353,22 +352,20 @@ def test_timeout_handle(event_loop: asyncio.AbstractEventLoop) -> None:
     assert not handle._callbacks
 
 
-@pytest.mark.skipif(
-    time.get_clock_info("monotonic").resolution > 0.001,
-    reason="loop.time() resolution is coarser than the test's 1ms tolerance",
-)
 def test_when_timeout_smaller_second(event_loop: asyncio.AbstractEventLoop) -> None:
     timeout = 0.1
 
     handle = helpers.TimeoutHandle(event_loop, timeout)
-    timer = event_loop.time() + timeout
+    before = event_loop.time()
     start_handle = handle.start()
+    after = event_loop.time()
     assert start_handle is not None
     when = start_handle.when()
     handle.close()
 
+    # Below the ceil threshold the deadline keeps sub-second precision.
     assert isinstance(when, float)
-    assert when - timer == pytest.approx(0, abs=0.001)
+    assert before + timeout <= when <= after + timeout
 
 
 def test_when_timeout_smaller_second_with_low_threshold(
@@ -377,14 +374,15 @@ def test_when_timeout_smaller_second_with_low_threshold(
     timeout = 0.1
 
     handle = helpers.TimeoutHandle(event_loop, timeout, 0.01)
-    timer = event_loop.time() + timeout
+    before = event_loop.time()
     start_handle = handle.start()
+    after = event_loop.time()
     assert start_handle is not None
     when = start_handle.when()
     handle.close()
 
     assert isinstance(when, int)
-    assert when == ceil(timer)
+    assert ceil(before + timeout) <= when <= ceil(after + timeout)
 
 
 def test_timeout_handle_cb_exc(event_loop: asyncio.AbstractEventLoop) -> None:
