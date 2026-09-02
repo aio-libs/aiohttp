@@ -97,6 +97,8 @@ class FileResponse(StreamResponse):
 
         self._path = pathlib.Path(path)
         self._chunk_size = chunk_size
+        if text_charset == "":
+            raise ValueError("text_charset must not be an empty string")
         self._text_charset = text_charset.lower() if text_charset is not None else None
 
     def _seek_and_read(self, fobj: BinaryIO, offset: int, chunk_size: int) -> bytes:

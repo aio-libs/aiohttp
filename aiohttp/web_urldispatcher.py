@@ -523,6 +523,8 @@ class StaticResource(PrefixResource):
         self._directory = directory
         self._show_index = show_index
         self._chunk_size = chunk_size
+        if text_charset == "":
+            raise ValueError("text_charset must not be an empty string")
         self._text_charset = text_charset
         self._break_symlink_sandbox = break_symlink_sandbox
         self._expect_handler = expect_handler

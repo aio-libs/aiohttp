@@ -364,6 +364,19 @@ async def test_static_route_charset(
         assert resp.headers["Content-Type"] == "application/octet-stream"
 
 
+def test_static_file_text_charset_empty() -> None:
+    """Test that an empty text_charset is rejected at construction time."""
+    with pytest.raises(ValueError, match="text_charset"):
+        web.FileResponse(pathlib.Path("hello.txt"), text_charset="")
+
+
+def test_static_route_text_charset_empty(tmp_path: pathlib.Path) -> None:
+    """Test that an empty text_charset is rejected when the route is set up."""
+    app = web.Application()
+    with pytest.raises(ValueError, match="text_charset"):
+        app.router.add_static("/static", tmp_path, text_charset="")
+
+
 @pytest.mark.parametrize("hello_txt", ["gzip", "br"], indirect=True)
 async def test_static_file_custom_content_type(
     hello_txt: pathlib.Path, aiohttp_client: AiohttpClient, sender: _Sender
