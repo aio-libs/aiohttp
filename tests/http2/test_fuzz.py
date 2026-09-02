@@ -5,6 +5,7 @@ from unittest.mock import MagicMock
 
 from http2.fuzz import FuzzerConfig, Http2ServerFuzzer  # noqa: I900
 
+
 async def test_fuzz_client(
     connection: Any, mock_transport: Any, event_loop: Any
 ) -> None:
