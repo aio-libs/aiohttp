@@ -1,6 +1,7 @@
 import base64
 import binascii
 import builtins
+import functools
 import json
 import re
 import sys
@@ -184,8 +185,17 @@ def parse_content_disposition(
     return disptype.lower(), params
 
 
+@functools.lru_cache(maxsize=None)
+def _filename_section_re(name: str) -> "re.Pattern[str]":
+    # The index is capped at six digits so a header cannot force a
+    # multi-thousand-digit int() past CPython's int-to-str limit. Real RFC 2231
+    # section indices are tiny, and a longer run of digits simply does not match
+    # and is ignored as a non-continuation key.
+    return re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
+
+
 def _decode_continuations(sections: list[str], encoding: str) -> str | None:
-    """Percent-decode adjacent RFC 2231 extended sections as a single value.
+    """Percent-decode adjacent RFC 2231 encoded sections as a single value.
 
     The octets are joined before decoding so that a multibyte character
     split across a section boundary is still decoded correctly.  Returns
@@ -212,7 +222,7 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        section_re = re.compile(re.escape(name) + r"\*([0-9]+)(\*)?")
+        section_re = _filename_section_re(name)
         matches = (
             (m, value)
             for key, value in params.items()

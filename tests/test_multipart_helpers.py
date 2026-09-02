@@ -799,6 +799,12 @@ class TestContentDispositionFilename:
         params = {"filename*0": "foo", "filename*x": "bar", "filename*1": ".html"}
         assert "foo.html" == content_disposition_filename(params)
 
+    def test_attfncont_absurd_section_index(self) -> None:
+        # A section index long enough to trip CPython's int-to-str limit must
+        # not raise; the over-long key is simply ignored as a non-continuation.
+        params = {"filename*0": "foo.html", "filename*" + "0" * 4400: "x"}
+        assert "foo.html" == content_disposition_filename(params)
+
     def test_attfncont_undecodable_octets(self) -> None:
         # Octets that are still invalid once the sections are joined are
         # rejected rather than decoded with replacement characters.
