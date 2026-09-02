@@ -4816,7 +4816,8 @@ async def test_create_connection_uses_loop_when_aiofastnet_missing() -> None:
             ssl_shutdown_timeout=1.0,
         )
 
-    assert result is loop.create_connection.return_value
+    r1, r2 = loop.create_connection.return_value
+    assert result == (r1, r2._handler)
     expected_kwargs: dict[str, Any] = {
         "ssl": None,
         "sock": sock,

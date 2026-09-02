@@ -55,7 +55,7 @@ DEFAULT_SETTINGS: Dict[Setting, int] = {
     Setting.HEADER_TABLE_SIZE: 4096,
     Setting.ENABLE_PUSH: 0,  # we do not support server push
     Setting.MAX_CONCURRENT_STREAMS: 2**32 - 1,
-    Setting.INITIAL_WINDOW_SIZE: 65535,
+    Setting.INITIAL_WINDOW_SIZE: 1048576,  # from 65535
     Setting.MAX_FRAME_SIZE: 16384,
     Setting.MAX_HEADER_LIST_SIZE: 2**32 - 1,
 }

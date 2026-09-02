@@ -112,7 +112,7 @@ async def create_connection(
     ssl_shutdown_timeout: float | None = None,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
-        return await aiofastnet.create_connection(
+        transport, proto = await aiofastnet.create_connection(
             loop,
             protocol_factory,
             ssl=ssl,
@@ -122,7 +122,7 @@ async def create_connection(
         )
     else:
         if sys.version_info >= (3, 11):  # type: ignore[unreachable]
-            return await loop.create_connection(
+            transport, proto = await loop.create_connection(
                 protocol_factory,
                 ssl=ssl,
                 sock=sock,
@@ -130,12 +130,14 @@ async def create_connection(
                 ssl_shutdown_timeout=ssl_shutdown_timeout,
             )
         else:
-            return await loop.create_connection(
+            transport, proto = await loop.create_connection(
                 protocol_factory,
                 ssl=ssl,
                 sock=sock,
                 server_hostname=server_hostname,
             )
+
+    return transport, proto._handler  # type: ignore[attr-defined]
 
 
 async def start_tls(
@@ -1513,7 +1515,8 @@ class TCPConnector(BaseConnector):
             )  # Kick the state machine of the new TLS protocol
 
         # HACK use the correct type
-        return tls_transport, tls_proto  # type: ignore[return-value]
+        proto = tls_proto._handler
+        return tls_transport, proto  # type: ignore[return-value]
 
     def _convert_hosts_to_addr_infos(
         self, hosts: list[ResolveResult]

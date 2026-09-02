@@ -86,6 +86,9 @@ class TestProtocolCompliance:
         conn, transport = connection
         stream = await conn.create_stream()
         stream.state = StreamState.OPEN  # assume request already sent
+        # hack stream to send the data directly to the body
+        # because it will send it to a buffer if headers haven't been received
+        stream._headers_received = True
 
         # Send DATA with some bytes
         data = b"hello"
@@ -100,9 +103,12 @@ class TestProtocolCompliance:
         )
 
         # Send more data to drop below 32768
-        big_data = b"x" * 40000
+        data_len = 40000
+        big_data = b"x" * data_len
         frame2 = build_data_frame(stream.stream_id, big_data, end_stream=False)
         conn.data_received(frame2)
+        # not until the end (because we didn't send eof)
+        await stream.body_reader.read(data_len)
         # Now session window should have triggered an update
         updates = [
             call.args[0]
@@ -324,10 +330,11 @@ class TestProtocolCompliance:
         """INITIAL_WINDOW_SIZE setting updates stream windows."""
         conn, _ = connection
         stream = await conn.create_stream()
-        old_window = stream.outbound_window
-        frame = build_settings_frame([(Setting.INITIAL_WINDOW_SIZE, 131072)])
+        stream._headers_received = True
+        new = 131072
+        frame = build_settings_frame([(Setting.INITIAL_WINDOW_SIZE, new)])
         conn.data_received(frame)
-        assert stream.outbound_window == old_window + (131072 - 65535)
+        assert stream.outbound_window == new
 
     @pytest.mark.asyncio
     async def test_settings_header_table_size(

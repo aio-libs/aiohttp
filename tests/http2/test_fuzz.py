@@ -1,7 +1,6 @@
 """Fuzzy tests for HTTP/2. These aim to test a sample of the cartesian product of all possible HTTP/2 messages."""
 
 from typing import Any
-from unittest.mock import MagicMock
 
 from http2.fuzz import FuzzerConfig, Http2ServerFuzzer  # noqa: I900
 

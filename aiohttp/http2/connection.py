@@ -278,8 +278,15 @@ class Http2Connection:
         if stream:
             stream.transition(StreamState.CLOSED)
             if not stream.response_future.done():
+                verbose = (
+                    ErrorCode(error_code)
+                    if error_code in ErrorCode._value2member_map_
+                    else ""
+                )
                 stream.response_future.set_exception(
-                    RuntimeError(f"Stream reset by server (code={error_code})")
+                    RuntimeError(
+                        f"Stream reset by server (code={error_code}, verbose={str(verbose)})"
+                    )
                 )
             self._close_stream(stream)
 
@@ -305,10 +312,8 @@ class Http2Connection:
         # Parse key‑value pairs
         for i in range(0, len(payload), 6):
             identifier, value = struct.unpack("!H I", payload[i : i + 6])
-            # the attribute is defined
-            # accessing __members__ avoids a costly try-catch (ValueError)
             if (
-                identifier not in Setting.__members__.values()
+                identifier not in Setting._value2member_map_
             ):  # ignore: type[attr-defined]
                 # ignoring as per the RFC
                 logger.warning("Unknown setting identifier %d", identifier)
@@ -520,13 +525,17 @@ class Http2Connection:
         # Build pseudo‑headers
         assert url.scheme
         assert url.host
+        assert url.raw_host
+
+        authority = url.raw_host
+        if url.port is not None and not url.is_default_port():
+            authority += f":{url.port}"
 
         req_headers = [
             (":method", method),
             (":path", path_and_query),
             (":scheme", url.scheme),
-            # XXX add port
-            (":authority", url.host),
+            (":authority", authority),
         ]
 
         for name, value in headers:
@@ -554,19 +563,17 @@ class Http2Connection:
             stream.transition(StreamState.HALF_CLOSED_LOCAL)
         self._send_frame(FrameType.HEADERS, flags, stream.stream_id, hdrs)
 
-    # -------------------- Connection lifecycle --------------------
     def initiate_connection(self) -> None:
         """Send the connection preface and initial SETTINGS."""
         # Connection preface (RFC 7540, 3.5)
         self._transport.write(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n")
 
-        # Send initial SETTINGS (our preferences)
-        settings_payload = struct.pack(
-            "!H I", Setting.ENABLE_PUSH, 0  # disable server push
+        # Send local SETTINGS
+        settings_payload = b"".join(
+            struct.pack("!H I", setting, value)
+            for setting, value in self.local_settings.items()
         )
         self._send_frame(FrameType.SETTINGS, 0, 0, settings_payload)
-
-        # Update local HPACK table size if needed
         self.hpack_encoder.header_table_size = self.local_settings[
             Setting.HEADER_TABLE_SIZE
         ]
@@ -575,15 +582,12 @@ class Http2Connection:
 
     def maybe_reset_window(self) -> None:
         window_size = self.local_settings[Setting.INITIAL_WINDOW_SIZE]
-        # XXX add semaphore
         # HTTP/2 is multiplexed so we might send updates from
         # multiple connections and reset the window multiple times
-        # and if we reset the window with a 0, the server resets the connection
+        # If we reset the window with a 0, the server resets the connection (protocol error)
         # creating a hard-to-catch bug
-        # send less updates
         updated = window_size - self.session_inbound_window
-        half_size = window_size // 2
-        if self.session_inbound_window < half_size:
+        if updated > 0:
             self._send_window_update(0, updated)
             self.session_inbound_window = window_size
 
