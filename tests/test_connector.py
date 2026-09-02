@@ -13,7 +13,7 @@ from collections import defaultdict, deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator, Sequence
 from concurrent import futures
 from contextlib import closing, suppress
-from typing import Any, Literal, NoReturn
+from typing import Any, Literal, NoReturn, Protocol
 from unittest import mock
 
 import pytest
@@ -50,7 +50,11 @@ from aiohttp.tracing import Trace
 if sys.version_info >= (3, 11):
     from typing import Unpack
 
-    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     _RequestMaker = Any
 

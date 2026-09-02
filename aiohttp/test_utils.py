@@ -60,6 +60,7 @@ else:
 
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
+_ServerRequest = TypeVar("_ServerRequest", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -237,8 +238,8 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     ) -> None: ...
     @overload
     def __init__(
-        self: "TestClient[_Request, None]",
-        server: BaseTestServer[_Request],
+        self: "TestClient[_ServerRequest, None]",
+        server: BaseTestServer[_ServerRequest],
         *,
         cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
