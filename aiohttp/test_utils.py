@@ -60,11 +60,6 @@ else:
 
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
-# Deliberately distinct from `_Request` above: per the typing spec
-# (https://typing.python.org/en/latest/spec/constructors.html#init-method),
-# a self-type annotation on __init__ may use a function-scoped type variable
-# to influence the constructor's return type, but must not reuse one of the
-# class's own type parameters.
 _ServerRequest = TypeVar("_ServerRequest", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
