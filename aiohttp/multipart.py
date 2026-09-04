@@ -200,33 +200,48 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        parts = []
-        fnparams = sorted(
-            (key, value) for key, value in params.items() if key.startswith(name_suf)
+        # The index is capped at six digits so a header cannot push int() past
+        # CPython's int-to-str limit; a longer run of digits simply never matches.
+        section_re = re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
+        matches = (
+            (m, value)
+            for key, value in params.items()
+            if (m := section_re.fullmatch(key)) is not None
         )
-        for num, (key, value) in enumerate(fnparams):
-            _, tail = key.split("*", 1)
-            if tail.endswith("*"):
-                tail = tail[:-1]
-            if tail == str(num):
-                parts.append(value)
-            else:
-                break
+        # https://www.rfc-editor.org/info/rfc2231/#section-3
+        # Order numerically.
+        fnparams = sorted(matches, key=lambda mv: int(mv[0].group(1)))
+        parts: list[str] = []
+        # Consecutive encoded sections are decoded as one unit, because a
+        # single multibyte character may be split across a section boundary.
+        pending: list[str] = []
+        encoding = "utf-8"
+        for num, (m, value) in enumerate(fnparams):
+            if m.group(1) != str(num):  # Missing section or leading zero.
+                return None
+            if m.group(2) is not None:  # encoded parameter
+                # https://www.rfc-editor.org/info/rfc2231/#section-4.1
+                if num == 0 and value.count("'") >= 2:
+                    encoding, _, value = value.split("'", 2)
+                    encoding = encoding or "utf-8"
+                pending.append(value)
+                continue
+            if pending:
+                # Current value is not encoded, so process encoding of previous parts
+                try:
+                    parts.append(unquote("".join(pending), encoding, "strict"))
+                except (builtins.LookupError, UnicodeDecodeError):
+                    return None
+                pending.clear()
+            parts.append(value)
+        if pending:
+            try:
+                parts.append(unquote("".join(pending), encoding, "strict"))
+            except (builtins.LookupError, UnicodeDecodeError):
+                return None
         if not parts:
             return None
-        value = "".join(parts)
-        if "'" in value:
-            encoding, _, value = value.split("'", 2)
-            encoding = encoding or "utf-8"
-            try:
-                return unquote(value, encoding, "strict").lstrip("\\/")
-            except (builtins.LookupError, UnicodeDecodeError):
-                # Both the charset name and the octets are attacker-controlled
-                # here; an unknown encoding raises the builtin LookupError
-                # (shadowed in this module by payload.LookupError) and
-                # undecodable bytes raise UnicodeDecodeError.
-                return None
-        return value.lstrip("\\/")
+        return "".join(parts).lstrip("\\/")
 
 
 class MultipartResponseWrapper:
