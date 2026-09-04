@@ -169,8 +169,17 @@ async def test_constructor(
     jar_cookies = SimpleCookie()
     for cookie in jar:
         dict.__setitem__(jar_cookies, cookie.key, cookie)
-    expected_cookies = cookies_to_send
+
+    # Input Morsels are copied, so compare against another jar fed the same
+    # raw input rather than the caller's (unmutated) cookie objects.
+    expected_jar = CookieJar()
+    expected_jar.update_cookies(_cookies_to_send())
+    expected_cookies = SimpleCookie()
+    for cookie in expected_jar:
+        dict.__setitem__(expected_cookies, cookie.key, cookie)
     assert jar_cookies == expected_cookies
+    # Caller objects must remain untouched by jar path/domain normalization.
+    assert cookies_to_send["domain-cookie"]["path"] == ""
 
 
 async def test_constructor_with_expired(
@@ -200,11 +209,7 @@ def test_save_load(
     jar_load = CookieJar()
     jar_load.load(file_path=file_path)
 
-    jar_test = SimpleCookie()
-    for cookie in jar_load:
-        jar_test[cookie.key] = cookie
-
-    assert jar_test == cookies_to_receive
+    assert jar_save._cookies == jar_load._cookies
 
 
 def test_save_load_partitioned_cookies(tmp_path: Path) -> None:
@@ -845,6 +850,33 @@ async def test_loose_cookies_types() -> None:
 
     for loose_cookies_type in accepted_types:
         jar.update_cookies(cookies=loose_cookies_type)
+
+
+async def test_update_cookies_copies_caller_morsel() -> None:
+    """Caller-supplied Morsels must be copied; later mutations must not leak."""
+    url = URL("http://example.com/")
+    jar = CookieJar()
+    morsels = SimpleCookie()
+    morsels["auth"] = "user-a-token"
+    morsels["auth"]["path"] = "/"
+    morsels["auth"]["httponly"] = True
+    caller_morsel = morsels["auth"]
+
+    jar.update_cookies({"auth": caller_morsel}, url)
+
+    # Mutate the caller's Morsel after it was stored in the jar.
+    caller_morsel.set("auth", "unexpected-value", "unexpected-value")
+    caller_morsel["path"] = "/hijacked"
+    caller_morsel["httponly"] = False
+
+    sent = jar.filter_cookies(url)
+    assert sent["auth"].value == "user-a-token"
+
+    stored = next(c for c in jar if c.key == "auth")
+    assert stored is not caller_morsel
+    assert stored.value == "user-a-token"
+    assert stored["path"] == "/"
+    assert stored["httponly"] is True
 
 
 async def test_cookie_jar_clear_all() -> None:

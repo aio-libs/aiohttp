@@ -421,6 +421,7 @@ Vladimir Zakharov
 Vladyslav Bohaichuk
 Vladyslav Bondar
 Vojtěch Boček
+Vyrn Synx
 W. Trevor King
 Wei Lin
 Weiwei Wang

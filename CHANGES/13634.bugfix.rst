@@ -1,0 +1,1 @@
+Fixed ``CookieJar.update_cookies()`` storing a caller-supplied ``http.cookies.Morsel`` by reference so later mutations of that object could silently change jar state -- by :user:`vyrnsynx`.

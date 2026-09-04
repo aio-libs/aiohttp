@@ -1,5 +1,6 @@
 import calendar
 import contextlib
+import copy
 import datetime
 import heapq
 import itertools
@@ -338,6 +339,10 @@ class CookieJar(AbstractCookieJar):
                 tmp = SimpleCookie()
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
+            else:
+                # Copy so jar state is independent of the caller's Morsel
+                # and so jar mutations (domain/path) do not affect the caller.
+                cookie = copy.copy(cookie)
 
             domain = cookie["domain"]
 
