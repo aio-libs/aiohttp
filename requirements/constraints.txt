@@ -33,6 +33,8 @@ async-timeout==5.0.1 ; python_version < "3.11"
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   valkey
+atheris==3.0.0
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
 babel==2.18.0
@@ -166,7 +168,7 @@ pip-tools==7.6.1
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.11.5
+platformdirs==4.11.6
     # via virtualenv
 pluggy==1.6.0
     # via
