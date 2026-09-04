@@ -162,26 +162,7 @@ class Stream:
                 self.body_reader.feed_data(data)
 
         if end_stream:
-            # Flush any remaining decompressed data and signal EOF.
-            if self.decompressor is not None:
-                try:
-                    self.decompressor.feed_eof()
-                except ContentEncodingError as exc:
-                    self.body_reader.set_exception(exc)
-                    self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
-                    return
-            else:
-                self.body_reader.feed_eof()
-
-            if self.state == StreamState.OPEN:
-                self.transition(StreamState.HALF_CLOSED_REMOTE)
-            elif self.state == StreamState.HALF_CLOSED_LOCAL:
-                self.transition(StreamState.CLOSED)
-                self.conn._close_stream(self)
-            else:
-                raise ProtocolError(
-                    f"Unexpected stream state {self.state.name} for END_STREAM"
-                )
+            self.close()
 
     def receive_headers(
         self,
@@ -231,26 +212,28 @@ class Stream:
         self.maybe_deliver_response()
 
         if end_stream:
-            # If END_STREAM on HEADERS, signal EOF immediately.
-            if self.decompressor is not None:
-                try:
-                    self.decompressor.feed_eof()
-                except ContentEncodingError as exc:
-                    self.body_reader.set_exception(exc)
-                    self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
-                    return
-            else:
-                self.body_reader.feed_eof()
+            self.close()
 
-            if self.state == StreamState.OPEN:
-                self.transition(StreamState.HALF_CLOSED_REMOTE)
-            elif self.state == StreamState.HALF_CLOSED_LOCAL:
-                self.transition(StreamState.CLOSED)
-                self.conn._close_stream(self)
-            else:
-                raise ProtocolError(
-                    f"Unexpected stream state {self.state.name} for END_STREAM on headers"
-                )
+    def close(self) -> None:
+        if self.decompressor is not None:
+            try:
+                self.decompressor.feed_eof()
+            except ContentEncodingError as exc:
+                self.body_reader.set_exception(exc)
+                self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
+                return
+        else:
+            self.body_reader.feed_eof()
+
+        if self.state == StreamState.OPEN:
+            self.transition(StreamState.HALF_CLOSED_REMOTE)
+        elif self.state == StreamState.HALF_CLOSED_LOCAL:
+            self.transition(StreamState.CLOSED)
+            self.conn._close_stream(self)
+        else:
+            raise ProtocolError(
+                f"Unexpected stream state {self.state.name} for END_STREAM"
+            )
 
     def maybe_deliver_response(self) -> None:
         """Resolve the response future once headers have been received."""
@@ -260,3 +243,20 @@ class Stream:
             and not self.response_future.done()
         ):
             self.response_future.set_result((self.response, self.body_reader))
+
+    def cancel(self, reason: Exception) -> None:
+        """Cancel any pending response or body data."""
+        # Clear buffered data to free memory
+        self._pending_data.clear()
+
+        # Fail the response future if it hasn't completed
+        if not self.response_future.done():
+            self.response_future.set_exception(reason)
+
+        # Fail any pending reads on the body reader
+        self.body_reader.set_exception(reason)
+
+        # Mark the stream as closed so no further frames are accepted
+        # There are no formal transitions from everything to CLOSED
+        # so cancelling bypasses the transition table
+        self.transition(StreamState.CLOSED)

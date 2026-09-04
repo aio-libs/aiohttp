@@ -56,7 +56,6 @@ from .stream import Stream, StreamState
 # Logging – plaintext wire‑format emission for debugging
 # ----------------------------------------------------------------------
 logger = logging.getLogger("aiohttp.http2.connection")
-# logger.setLevel(logging.DEBUG)
 
 FRAME_HEADER_LENGTH = 9  # 9 octets
 STREAM_ID_MASK = 0x7FFFFFFF  # to avoid setting the reserved bit to 1
@@ -220,12 +219,6 @@ class Http2Connection:
 
     # ---------- Individual frame handlers ----------
     def _handle_data_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
-        stream = self.streams.get(stream_id)
-        if stream is None:
-            if stream_id > self._last_peer_stream_id:
-                self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
-            return
-
         pad_length = 0
         pos = 0
         if flags & FlagData.PADDED:
@@ -233,15 +226,28 @@ class Http2Connection:
             # verify if it's an error
             pad_length = payload[0]
             pos = 1
-            # XXX padding might be too long
-            # send protocol error
-
-        # pad_length >= len(payload)
+            # rfc9113, 6.1
+            # this must be gated behind
+            # the flag otherwise:
+            # 0 >= 0
+            if pad_length >= len(payload):
+                self._protocol_error()
+                return
         data = payload[pos : len(payload) - pad_length]
         end_stream = bool(flags & FlagData.END_STREAM)
 
         # Update session flow control
         self.session_inbound_window -= len(data)
+
+        # we check this at this point
+        # to avoid the case where a misbehaved server
+        # sends data to an unknown stream and silently
+        # consumes the whole window
+        stream = self.streams.get(stream_id)
+        if stream is None:
+            if stream_id > self._last_peer_stream_id:
+                self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
+            return
 
         stream.receive_data(data, end_stream)
 
@@ -276,19 +282,15 @@ class Http2Connection:
         error_code = struct.unpack("!I", payload)[0]
         stream = self.streams.get(stream_id)
         if stream:
-            stream.transition(StreamState.CLOSED)
-            if not stream.response_future.done():
-                verbose = (
-                    ErrorCode(error_code)
-                    if error_code in ErrorCode._value2member_map_
-                    else ""
-                )
-                stream.response_future.set_exception(
-                    RuntimeError(
-                        f"Stream reset by server (code={error_code}, verbose={str(verbose)})"
-                    )
-                )
-            self._close_stream(stream)
+            verbose = (
+                ErrorCode(error_code)
+                if error_code in ErrorCode._value2member_map_
+                else ""
+            )
+            exc = RuntimeError(
+                f"Stream reset by server (code={error_code}, verbose={str(verbose)})"
+            )
+            self._close_stream(stream, exc)
 
     def _handle_settings_frame(
         self, flags: int, stream_id: int, payload: bytes
@@ -325,11 +327,14 @@ class Http2Connection:
 
             # React to certain settings
             if setting == Setting.INITIAL_WINDOW_SIZE and value != old_value:
-                # might become negative
-                # send WINDOW_UPDATE
+                # might become negative if window shrinks
+                # the server should send a WINDOW_UPDATE
                 delta = value - old_value
                 for s in self.streams.values():
                     s.outbound_window += delta
+                # this is only necessary if the server sends the SETTING
+                # after the first ACK (I don't see that happening)
+                self._flow_control_updated.set()
             elif setting == Setting.MAX_CONCURRENT_STREAMS:
                 self.max_concurrent_streams = value
                 self._maybe_unblock_streams()
@@ -364,14 +369,14 @@ class Http2Connection:
             error_code,
             extra.decode(errors="replace"),
         )
+
+        self._cancel_streams(last_stream_id)
+
+    def _cancel_streams(self, last_stream_id: int) -> None:
         # Cancel streams with higher IDs
         for sid, stream in list(self.streams.items()):
             if sid > last_stream_id:
-                if not stream.response_future.done():
-                    stream.response_future.set_exception(
-                        ConnectionError("GOAWAY received")
-                    )
-                self._close_stream(stream)
+                self._close_stream(stream, RuntimeError("GOAWAY sent or received"))
         # clear pending streams?
 
     def _handle_window_update_frame(
@@ -421,6 +426,9 @@ class Http2Connection:
         self._send_frame(FrameType.GOAWAY, 0, 0, payload)
         self._goaway_sent = True
 
+        # cancel all
+        self._cancel_streams(0)
+
     def _send_rst_stream(self, stream_id: int, error_code: int) -> None:
         payload = struct.pack("!I", error_code)
         self._send_frame(FrameType.RST_STREAM, 0, stream_id, payload)
@@ -430,7 +438,13 @@ class Http2Connection:
         self._send_frame(FrameType.WINDOW_UPDATE, 0, stream_id, payload)
 
     # -------------------- Stream lifecycle --------------------
-    def _close_stream(self, stream: Stream) -> None:
+    def _close_stream(self, stream: Stream, reason: Optional[Exception] = None) -> None:
+        # if no reason is given
+        # it is assumed that the stream
+        # was closed gracefully via `stream.finalize` (internally)
+        if reason is not None:
+            stream.cancel(reason)
+
         self.streams.pop(stream.stream_id, None)
         self._closed_streams.add(stream.stream_id)
         # Release stream concurrency slot
@@ -438,7 +452,12 @@ class Http2Connection:
 
     def _maybe_unblock_streams(self) -> None:
         """Create streams from pending requests if concurrency allows."""
-        while self._pending_streams and len(self.streams) < self.max_concurrent_streams:
+        while (
+            self._pending_streams
+            and len(self.streams) < self.max_concurrent_streams
+            # to not wake them up if we are closing
+            and not self.should_close
+        ):
             fut = self._pending_streams.pop(0)
             if not fut.done():
                 stream = self._create_stream_internal()
@@ -778,8 +797,8 @@ class Http2Protocol(BaseProtocol):
 
         self._reschedule_timeout()
 
-        assert self._connection
-        self._connection.maybe_reset_window()
+        if self._connection is not None:
+            self._connection.maybe_reset_window()
 
     # ------------------------------------------------------------------
     # Error injection
