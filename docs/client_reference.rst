@@ -2466,7 +2466,14 @@ Utilities
 
    Implements cookie storage adhering to RFC 6265.
 
-   :param bool unsafe: (optional) Whether to accept cookies from IPs.
+   :param bool unsafe: (optional) Retained for backwards compatibility and
+                       ignored. Cookies from an origin addressed by IP are
+                       accepted as host-only cookies per :rfc:`6265`, see
+                       :ref:`aiohttp-client-cookie-safety`.
+
+      .. versionchanged:: 4.0
+
+         No longer has any effect.
 
    :param bool quote_cookie: (optional) Whether to quote cookies according to
                              :rfc:`2109`.  Some backend systems

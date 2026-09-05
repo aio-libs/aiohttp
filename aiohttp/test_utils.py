@@ -258,7 +258,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
             )
         self._server = server
         if cookie_jar is None:
-            cookie_jar = aiohttp.CookieJar(unsafe=True)
+            cookie_jar = aiohttp.CookieJar()
         self._session = ClientSession(cookie_jar=cookie_jar, **kwargs)
         self._session._retry_connection = False
         self._closed = False
