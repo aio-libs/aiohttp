@@ -383,7 +383,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. versionadded:: 3.1
 
-      .. versionchanged:: 4.0
+      .. versionchanged:: 3.15
 
          The entity-tag form is now parsed and returned as an
          :class:`~aiohttp.ETag`.
