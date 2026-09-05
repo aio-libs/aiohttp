@@ -268,8 +268,8 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
-| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` only for `LineTooLong`; `BadStatusLine` / `InvalidHeader` / `TransferEncodingError` carry the offending line up to `max_line_size` / `max_field_size`. | **Audit any aiohttp path where `BadHttpMessage` content is reflected to the client unsanitised.** **User**: Review custom `web_log` configurations and any middleware that reflects parser exception messages back to the peer. |
-| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`). | None. When new attack vectors emerge, add them to the parameterised tests. |
+| 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` only for `LineTooLong`; `BadStatusLine` / `InvalidHeader` / `TransferEncodingError` carry the offending line up to `max_line_size` / `max_field_size`. `_http_parser.pyx` bounds its snippet to 50 bytes either side of the error position, so input with no CRLF to delimit the offending line is not quoted in full (`test_c_parser_error_message_bounded_for_crlf_free_input`). | **Audit any aiohttp path where `BadHttpMessage` content is reflected to the client unsanitised.** **User**: Review custom `web_log` configurations and any middleware that reflects parser exception messages back to the peer. |
+| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`), control characters in the request target (`test_http_request_parser_ctl_in_request_target`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
 | 1.15 | Nested coding amplification | `http_parser.py:parse_content_encoding` (shared by both parsers) decodes at most `MAX_CONTENT_CODINGS = 2` codings — real-world misconfiguration is double-compression (#13364); deeper nesting is hostile — and raises `ContentEncodingError` beyond that instead of decoding or silently passing compressed bytes through. Unknown codings anywhere in the chain disable decoding (passthrough, as for a single unknown coding). `DeflateBuffer` pumps the stage nearest the output first, so each stage buffers at most one `max_length`-sized delivery from the previous one. | None. |
@@ -550,7 +550,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. | None. |
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
-| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) `WebSocketReader.__init__` caps the total fragment count at `max(1024, max_msg_size // 256)` and pauses reading for backpressure once exceeded. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
+| 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) The reader collects a frame's reads in a list and joins them once when the frame completes; if a frame arrives in more than `max(1024, max_msg_size // 256)` reads, the pending reads are folded into a single `bytearray`. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
 | 3.9 | PMCE decompression bomb | `WebSocketReader._handle_frame` decompresses with a `max_length` of `max_msg_size + 1` and checks the result; on overflow, raises `MESSAGE_TOO_BIG` (1009). This `max_length` post-decompress check was introduced by PR #11898 (v3.13.3). | **Documented known limitation.** Some backends (notably `isal_zlib`) do not strictly honour `max_length` in `decompress()` and may overshoot by up to one zlib block before the post-decompress size check fires. The post-check still catches it before the bytes reach the application, but a transient over-allocation is possible. Document and monitor. |
 | 3.10 | PMCE context retention | Default extensions request context takeover (per RFC 7692 default); user can negotiate `server_no_context_takeover` / `client_no_context_takeover` via handshake. | Documented design decision: keep the RFC 7692 default (context takeover). **Document the memory tradeoff in user-facing WebSocket docs.** **User**: configure no-context-takeover on long-lived sessions running on memory-constrained hosts. |
 | 3.11 | UTF-8 validation | Strict `bytes.decode("utf-8")` post-assembly. | None. |
@@ -577,13 +577,28 @@ client-side, the writer adds masks to outgoing frames.
   RFC 6455 §5.2 requires failing such frames). Fixed by passing
   `compress=bool(compress)` in `client.py:_ws_connect` and removing the
   `compress` / `decode_text` defaults on `WebSocketReader.__init__`.
-- **PR #13350** (follow-up to CVE-2026-54274) — the per-frame
+- **PR #13393** — queue accounting only counted payload bytes, so a flood
+  of empty/tiny frames could pin unbounded per-message object overhead in
+  `WebSocketDataQueue` before the `_limit` high-water mark fired. Each
+  queued message is now charged a 128-byte accounting overhead
+  (`MSG_SIZE_OVERHEAD`) and the reader stalls at a frame boundary once the
+  queue is over the mark: the unparsed remainder stays compressed in
+  `_tail`, the queue keeps only a weakref to the stalled reader, and
+  drains re-drive it at a `_limit // 2` low-water mark (each resume
+  re-slices the tail, so per-pop resumes would make draining a tiny-frame
+  burst quadratic CPU), and the transport stays paused until the stash is
+  exhausted (resuming earlier would admit a fresh socket read into `_tail`
+  per couple of drained messages, relocating the memory bound there).
+  Callers constructing a `WebSocketReader` for
+  `set_parser()` must hold a strong reference to it (both in-tree response
+  classes do, via `_parser`).
+- **PR #13488** — the per-frame
   `max_msg_size` byte cap still let a size-legal frame dribbled in tiny
   transport reads pin ~28x its on-wire size in per-read `bytes` objects
-  (`_payload_fragments`). `WebSocketReader` now caps the retained
-  fragment count (`max(1024, max_msg_size // 256)`) and pauses reading for
-  backpressure once exceeded, mirroring the HTTP chunk-splits limit in
-  `StreamReader` (PR #11894).
+  (`_payload_fragments`). The reader now collects reads in a list and joins
+  them once when the frame completes; if a frame arrives in more than
+  `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
+  a single `bytearray` and cleared.
 
 ---
 

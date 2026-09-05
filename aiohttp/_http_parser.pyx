@@ -559,6 +559,9 @@ cdef class HttpParser:
             self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
 
         self._messages.append((msg, payload))
+        if self._max_msg_queue_size:
+            # Count the message where it is handed over, not where its body completes.
+            self._msg_in_flight += 1
 
     cdef _on_message_complete(self):
         # The payload is None when feed_eof() already completed a fully
@@ -699,10 +702,13 @@ cdef class HttpParser:
                 else:
                     error_pos = cparser.llhttp_get_error_pos(self._cparser)
                     error_off = error_pos - base
+
+                    # Bounded window either side of the error position of 50 bytes.
                     before = data[:error_off]
-                    after = data[error_off:].split(b"\r\n", 1)[0]
-                    before = before.rsplit(b"\r\n", 1)[-1]
+                    before = before.rsplit(b"\r\n", 1)[-1][-50:]
+                    after = data[error_off:].split(b"\r\n", 1)[0][:50]
                     data = before + after
+
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
                 self._payload = None
@@ -944,12 +950,12 @@ cdef int cb_on_message_complete(cparser.llhttp_t* parser) except? -1:
         pyparser._last_error = exc
         return -1
     else:
-        if pyparser._max_msg_queue_size:
-            pyparser._msg_in_flight += 1
-            if pyparser._msg_in_flight >= pyparser._max_msg_queue_size:
-                # Queue full: pause llhttp between messages. feed_data() buffers
-                # the remainder as tail; resumes once the queue drains.
-                return cparser.HPE_PAUSED
+        if (
+            pyparser._max_msg_queue_size
+            and pyparser._msg_in_flight >= pyparser._max_msg_queue_size
+        ):
+            # Queue full: pause llhttp between messages.
+            return cparser.HPE_PAUSED
         return 0
 
 

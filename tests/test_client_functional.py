@@ -4050,7 +4050,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
+async def test_server_close_keepalive_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -4075,7 +4075,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4091,7 +4091,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
+async def test_handle_keepalive_on_closed_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -4110,7 +4110,7 @@ async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> No
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4366,14 +4366,12 @@ async def test_socket_timeout(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
-    request_count = 0
+    slow = True
 
     async def handler(request: web.Request) -> web.Response:
-        nonlocal request_count
-        request_count += 1
-        if request_count < 3:
+        if slow:
             await asyncio.sleep(0.5)
-        return web.Response(body=f"request:{request_count}")
+        return web.Response(body=b"done")
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4392,8 +4390,13 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
 
     # Make sure its really closed
     assert not client.session.connector._conns
-    async with client.get("/") as result:
-        assert await result.read() == b"request:3"
+    # A client-side timeout doesn't guarantee the handler ever ran (the
+    # timeout can fire before the request is dispatched on a slow CI run),
+    # so switch behaviour with the flag instead of counting invocations, and
+    # override the tight session timeout so the round trip can't flake either.
+    slow = False
+    async with client.get("/", timeout=aiohttp.ClientTimeout(total=10)) as result:
+        assert await result.read() == b"done"
 
     # Make sure its not closed
     assert client.session.connector._conns

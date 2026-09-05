@@ -5,7 +5,7 @@ import pathlib
 import sys
 from collections.abc import AsyncIterator, Callable, Iterable
 from http.cookies import BaseCookie, SimpleCookie
-from typing import Any
+from typing import Any, Protocol
 from unittest import mock
 
 import pytest
@@ -35,7 +35,11 @@ from aiohttp.multipart import MultipartWriter
 if sys.version_info >= (3, 11):
     from typing import Unpack
 
-    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     _RequestMaker = Any
 
@@ -311,6 +315,17 @@ async def test_host_header_explicit_host_with_port(
         headers=CIMultiDict({"host": "example.com:99"}),
     )
     assert req.headers["HOST"] == "example.com:99"
+
+
+async def test_host_header_duplicate_dropped(
+    make_client_request: _RequestMaker,
+) -> None:
+    req = make_client_request(
+        "get",
+        URL("http://python.org/"),
+        headers=CIMultiDict([("host", "example.com"), ("host", "evil.example")]),
+    )
+    assert req.headers.getall("HOST") == ["example.com"]
 
 
 async def test_host_header_ipv4(make_client_request: _RequestMaker) -> None:

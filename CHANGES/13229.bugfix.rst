@@ -1,0 +1,3 @@
+Fixed an infinite loop in :attr:`aiohttp.web.BaseRequest.forwarded` that let a
+single malformed ``Forwarded`` request header (e.g. ``Forwarded: a``) spin the
+event loop at 100% CPU and hang the worker -- by :user:`arshsmith1`.

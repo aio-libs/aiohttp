@@ -2141,6 +2141,29 @@ def test_http_request_parser_bad_nonascii_uri(parser: HttpRequestParser) -> None
         parser.feed_data(b"GET \xff HTTP/1.1\r\n\r\n")
 
 
+@pytest.mark.parametrize(
+    "target",
+    (
+        b"/a\x00b",
+        b"/a\tb",
+        b"/a\nb",
+        b"/a\rb",
+        b"/a\x1fb",
+        b"/a\x7fb",
+        b"/a?b=\x01",
+        b"/a#\x01",
+        b"http://example.com/a\x00b",
+    ),
+    ids=("nul", "htab", "lf", "cr", "us", "del", "query", "fragment", "absolute-form"),
+)
+def test_http_request_parser_ctl_in_request_target(
+    parser: HttpRequestParser, target: bytes
+) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 @pytest.mark.parametrize("size", [40965, 8191])
 def test_http_request_max_status_line(parser: HttpRequestParser, size: int) -> None:
     path = b"t" * (size - 5)
@@ -2446,6 +2469,23 @@ def test_c_parser_error_snippet_at_buffer_end_request(
     assert snippet in text
     with pytest.raises(http_exceptions.BadHttpMessage, match=re.escape(repr(snippet))):
         parser.feed_data(text)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Python parser lacks error pos output")
+def test_c_parser_error_message_bounded_for_crlf_free_input(
+    event_loop: asyncio.AbstractEventLoop,
+    server: Server[Request],
+) -> None:
+    """Garbage with no CRLF must not be echoed back whole."""
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserC(
+        protocol, event_loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    protocol._parser = parser
+    with pytest.raises(http_exceptions.BadHttpMethod) as exc_info:
+        parser.feed_data(b"A" * (64 * 1024))
+    # Two bounded windows, escaped by repr, plus the pointer line beneath them.
+    assert len(exc_info.value.message) < 2048
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")

@@ -63,6 +63,13 @@ __all__ = (
 )
 
 
+# The base64 alphabet plus the padding character.
+_BASE64_CHARS = frozenset(
+    b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
+)
+_NON_BASE64_BYTES = bytes(b for b in range(256) if b not in _BASE64_CHARS)
+
+
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
 
@@ -195,33 +202,48 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        parts = []
-        fnparams = sorted(
-            (key, value) for key, value in params.items() if key.startswith(name_suf)
+        # The index is capped at six digits so a header cannot push int() past
+        # CPython's int-to-str limit; a longer run of digits simply never matches.
+        section_re = re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
+        matches = (
+            (m, value)
+            for key, value in params.items()
+            if (m := section_re.fullmatch(key)) is not None
         )
-        for num, (key, value) in enumerate(fnparams):
-            _, tail = key.split("*", 1)
-            if tail.endswith("*"):
-                tail = tail[:-1]
-            if tail == str(num):
-                parts.append(value)
-            else:
-                break
+        # https://www.rfc-editor.org/info/rfc2231/#section-3
+        # Order numerically.
+        fnparams = sorted(matches, key=lambda mv: int(mv[0].group(1)))
+        parts: list[str] = []
+        # Consecutive encoded sections are decoded as one unit, because a
+        # single multibyte character may be split across a section boundary.
+        pending: list[str] = []
+        encoding = "utf-8"
+        for num, (m, value) in enumerate(fnparams):
+            if m.group(1) != str(num):  # Missing section or leading zero.
+                return None
+            if m.group(2) is not None:  # encoded parameter
+                # https://www.rfc-editor.org/info/rfc2231/#section-4.1
+                if num == 0 and value.count("'") >= 2:
+                    encoding, _, value = value.split("'", 2)
+                    encoding = encoding or "utf-8"
+                pending.append(value)
+                continue
+            if pending:
+                # Current value is not encoded, so process encoding of previous parts
+                try:
+                    parts.append(unquote("".join(pending), encoding, "strict"))
+                except (builtins.LookupError, UnicodeDecodeError):
+                    return None
+                pending.clear()
+            parts.append(value)
+        if pending:
+            try:
+                parts.append(unquote("".join(pending), encoding, "strict"))
+            except (builtins.LookupError, UnicodeDecodeError):
+                return None
         if not parts:
             return None
-        value = "".join(parts)
-        if "'" in value:
-            encoding, _, value = value.split("'", 2)
-            encoding = encoding or "utf-8"
-            try:
-                return unquote(value, encoding, "strict").lstrip("\\/")
-            except (builtins.LookupError, UnicodeDecodeError):
-                # Both the charset name and the octets are attacker-controlled
-                # here; an unknown encoding raises the builtin LookupError
-                # (shadowed in this module by payload.LookupError) and
-                # undecodable bytes raise UnicodeDecodeError.
-                return None
-        return value.lstrip("\\/")
+        return "".join(parts).lstrip("\\/")
 
 
 class MultipartResponseWrapper:
@@ -304,6 +326,7 @@ class BodyPartReader:
             raise ValueError(f"invalid Content-Length: {length!r}")
         self._length = int(length) if length is not None else None
         self._read_bytes = 0
+        self._b64_carry = b""
         self._unread: deque[bytes] = deque()
         self._prev_chunk: bytes | None = None
         self._content_eof = 0
@@ -358,42 +381,58 @@ class BodyPartReader:
         """
         if self._at_eof:
             return b""
+        carry = self._b64_carry
+        want = size - len(carry)
+        if carry:
+            self._b64_carry = b""
+            want = max(want, self._boundary_len)
         if self._length:
-            chunk = await self._read_chunk_from_length(size)
+            fresh = await self._read_chunk_from_length(want)
         else:
-            chunk = await self._read_chunk_from_stream(size)
+            fresh = await self._read_chunk_from_stream(want)
+        chunk = carry + fresh
+        self._read_bytes += len(fresh)
 
-        # For the case of base64 data, we must read a fragment of size with a
-        # remainder of 0 by dividing by 4 for string without symbols \n or \r
+        # base64 decodes in quartets and every chunk is decoded on its own, so
+        # a chunk should not end mid-quartet.
         encoding = self.headers.get(CONTENT_TRANSFER_ENCODING)
         if encoding and encoding.lower() == "base64":
-            stripped_chunk = b"".join(chunk.split())
-            remainder = len(stripped_chunk) % 4
+            chunk = self._align_base64_chunk(chunk, len(carry) + want)
 
-            while remainder != 0 and not self.at_eof():
-                over_chunk_size = 4 - remainder
-                over_chunk = b""
-
-                if self._prev_chunk:
-                    over_chunk = self._prev_chunk[:over_chunk_size]
-                    self._prev_chunk = self._prev_chunk[len(over_chunk) :]
-
-                if len(over_chunk) != over_chunk_size:
-                    over_chunk += await self._content.read(4 - len(over_chunk))
-
-                if not over_chunk:
-                    self._at_eof = True
-
-                stripped_chunk += b"".join(over_chunk.split())
-                chunk += over_chunk
-                remainder = len(stripped_chunk) % 4
-
-        self._read_bytes += len(chunk)
         if self._read_bytes == self._length:
             self._at_eof = True
         if self._at_eof and await self._content.readline() != b"\r\n":
             raise ValueError("Reader did not read all the data or it is malformed")
         return chunk
+
+    def _align_base64_chunk(self, chunk: bytes, size: int) -> bytes:
+        at_end = self._at_eof or (
+            self._length is not None and self._read_bytes >= self._length
+        )
+        if not at_end and len(chunk) > size:
+            self._b64_carry = chunk[size:]
+            chunk = chunk[:size]
+
+        remainder = len(chunk.translate(None, _NON_BASE64_BYTES)) % 4
+        if not remainder or at_end:
+            return chunk
+
+        # Walk back over the trailing partial quartet and carry it into the
+        # next chunk.
+        cut = len(chunk)
+        left = remainder
+        while left:
+            cut -= 1
+            if chunk[cut] in _BASE64_CHARS:
+                left -= 1
+        if not cut:
+            # No whole quartet to hand back, and carrying the lot would make
+            # no progress: the caller asked for this many bytes, and a part
+            # that holds no quartet within them holds none to give.
+            return chunk
+
+        self._b64_carry = chunk[cut:] + self._b64_carry
+        return chunk[:cut]
 
     async def _read_chunk_from_length(self, size: int) -> bytes:
         # Reads body part content chunk of the specified size.
