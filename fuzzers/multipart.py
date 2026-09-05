@@ -26,7 +26,6 @@ with atheris.instrument_imports():  # type: ignore[attr-defined]
 
     from aiohttp import BodyPartReader, StreamReader
     from aiohttp.hdrs import CONTENT_TYPE
-    from aiohttp.helpers import HeadersDictProxy
 
 
 class FuzzStream(StreamReader):
@@ -47,11 +46,11 @@ class FuzzStream(StreamReader):
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-async def fuzz_bodypart_reader(data: bytes) -> None:  # type: ignore[misc]
+async def fuzz_bodypart_reader(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     obj = BodyPartReader(
         b"--:",
-        HeadersDictProxy(CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)})),
+        CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)}),
         FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),  # type: ignore[attr-defined]
     )
     if not obj.at_eof():
@@ -59,7 +58,7 @@ async def fuzz_bodypart_reader(data: bytes) -> None:  # type: ignore[misc]
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     with suppress(ValueError):
         asyncio.run(fuzz_bodypart_reader(data))
 
