@@ -4326,14 +4326,12 @@ async def test_socket_timeout(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
-    request_count = 0
+    slow = True
 
     async def handler(request: web.Request) -> web.Response:
-        nonlocal request_count
-        request_count += 1
-        if request_count < 3:
+        if slow:
             await asyncio.sleep(0.5)
-        return web.Response(body=f"request:{request_count}")
+        return web.Response(body=b"done")
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4352,10 +4350,13 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
 
     # Make sure its really closed
     assert not client.session.connector._conns
-    # This request works (handler responds instantly); override the tight
-    # session timeout so slow CI can't flake the round trip on a new connection.
+    # A client-side timeout doesn't guarantee the handler ever ran (the
+    # timeout can fire before the request is dispatched on a slow CI run),
+    # so switch behaviour with the flag instead of counting invocations, and
+    # override the tight session timeout so the round trip can't flake either.
+    slow = False
     async with client.get("/", timeout=aiohttp.ClientTimeout(total=10)) as result:
-        assert await result.read() == b"request:3"
+        assert await result.read() == b"done"
 
     # Make sure its not closed
     assert client.session.connector._conns
