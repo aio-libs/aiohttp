@@ -1,17 +1,13 @@
-import asyncio
 import zlib
-from unittest.mock import AsyncMock, MagicMock
 from typing import Any
-
-import pytest
+from unittest.mock import MagicMock
 
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
-from aiohttp.http_exceptions import ContentEncodingError
-from aiohttp.http2.connection import Http2Protocol
 from aiohttp.http2 import stream as h2_stream
 from aiohttp.http2.errors import ErrorCode
 from aiohttp.http2.settings import Setting
 from aiohttp.http2.stream import StreamState
+from aiohttp.http_exceptions import ContentEncodingError
 
 
 async def test_deflate_buffer_assertion_on_unflushed_data(connection: Any) -> None:
@@ -40,6 +36,7 @@ async def test_deflate_buffer_assertion_on_unflushed_data(connection: Any) -> No
     # assertion inside feed_eof() fails.
     stream.receive_data(compressed, end_stream=True)
 
+
 def test_zip_bomb_protection(connection: Any, event_loop: Any) -> None:
     conn, _ = connection
     # Mock connection and protocol
@@ -51,7 +48,9 @@ def test_zip_bomb_protection(connection: Any, event_loop: Any) -> None:
     protocol._auto_decompress = True
 
     # Create the stream
-    stream = h2_stream.Stream(stream_id=1, conn=conn, loop=event_loop, protocol=protocol)
+    stream = h2_stream.Stream(
+        stream_id=1, conn=conn, loop=event_loop, protocol=protocol
+    )
     stream.state = StreamState.OPEN
 
     # Send headers indicating gzip compression
@@ -59,10 +58,10 @@ def test_zip_bomb_protection(connection: Any, event_loop: Any) -> None:
         (":status", "200"),
         ("content-encoding", "deflate"),
     ]
-    stream.receive_headers(headers, end_stream=False) # type: ignore[arg-type]
+    stream.receive_headers(headers, end_stream=False, limit=65535)  # type: ignore[arg-type]
 
     # Generate a small zip bomb
-    bomb = zlib.compress(b"\x00" * (1024 * 1024 * 1))
+    bomb = zlib.compress(b"\x00" * (1024 * 1024 * 3))
 
     # Feed the bomb as a DATA frame
     stream.receive_data(bomb, end_stream=False)

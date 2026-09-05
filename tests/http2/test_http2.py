@@ -1328,7 +1328,7 @@ class TestReceiveData:
 
         stream.receive_data(data, end_stream=False)
 
-        mock_deflate.feed_data.assert_called_once_with(data)
+        mock_deflate.feed_data.assert_any_call(data)
         stream.body_reader.feed_data.assert_not_called()
 
     async def test_decompressor_error_resets_stream(self, stream_setup: Any) -> None:

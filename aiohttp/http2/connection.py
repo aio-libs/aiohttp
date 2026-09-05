@@ -221,14 +221,13 @@ class Http2Connection:
     def _handle_data_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
         pad_length = 0
         pos = 0
-        if not payload:
-            logger.warning("Empty payload")
-            self._protocol_error()
-            return
 
         if flags & FlagData.PADDED:
-            # use fuzzy tests to
-            # verify if it's an error
+            if not payload:
+                logger.warning("Empty payload")
+                self._protocol_error()
+                return
+
             pad_length = payload[0]
             pos = 1
             # rfc9113, 6.1

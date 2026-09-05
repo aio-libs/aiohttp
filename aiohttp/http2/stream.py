@@ -155,7 +155,9 @@ class Stream:
     def receive_data(self, data: bytes, end_stream: bool, limit: int = 0) -> None:
         """Process incoming DATA frame payload."""
         self.inbound_window -= len(data)
-        limit = limit or MAX_DECOMPRESS_SIZE
+        # the second time we have to pass b"" to the decompressor
+        # to it will end up reading two times `limit`
+        limit = (limit or MAX_DECOMPRESS_SIZE) // 2
 
         # --- stream-level flow control refill ---
         self.maybe_reset_window()
@@ -172,9 +174,10 @@ class Stream:
             # Feed data to the decompressor or directly to the reader.
             if self.decompressor is not None:
                 try:
-                    more = self.decompressor.feed_data(data)
+                    self.decompressor.feed_data(data)
+                    more = self.decompressor.feed_data(b"")
                     if more is True:
-                        msg = f"Uncompressed data contains more than {MAX_DECOMPRESS_SIZE} bytes."
+                        msg = "Overflow detected when decompressing data"
                         raise ContentEncodingError(msg)
                 except ContentEncodingError as exc:
                     self.body_reader.set_exception(exc)
@@ -190,6 +193,7 @@ class Stream:
         self,
         headers: Iterable[HeaderTuple],
         end_stream: bool,
+        limit: int = 0,
     ) -> None:
         """Process incoming HEADERS frame payload."""
         # HeaderTuple can be tuple[str, str] yet the type hint says
@@ -197,6 +201,7 @@ class Stream:
         self.response_headers = headers  # type: ignore[assignment]
         self.response = feed_headers(headers)  # type: ignore[arg-type]
         self._headers_received = True
+        limit = limit or MAX_DECOMPRESS_SIZE
 
         if self._auto_decompress:
             encoding = self.response.headers.get("content-encoding")
@@ -205,7 +210,7 @@ class Stream:
                 self.decompressor = DeflateBuffer(
                     self.body_reader,
                     encoding=encoding,
-                    max_decompress_size=MAX_DECOMPRESS_SIZE,
+                    max_decompress_size=limit,
                 )
                 # Feed any data that arrived before headers.
                 if self._pending_data:
