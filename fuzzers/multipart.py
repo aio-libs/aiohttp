@@ -22,7 +22,7 @@ from contextlib import suppress
 import atheris  # noqa: I900
 
 with atheris.instrument_imports():  # type: ignore[attr-defined]
-    from multidict import CIMultiDict
+    from multidict import CIMultiDict, CIMultiDictProxy
 
     from aiohttp import BodyPartReader, StreamReader
     from aiohttp.hdrs import CONTENT_TYPE
@@ -50,7 +50,7 @@ async def fuzz_bodypart_reader(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     obj = BodyPartReader(
         b"--:",
-        CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)}),
+        CIMultiDictProxy(CIMultiDict({CONTENT_TYPE: fdp.ConsumeUnicode(30)})),
         FuzzStream(fdp.ConsumeBytes(atheris.ALL_REMAINING)),  # type: ignore[attr-defined]
     )
     if not obj.at_eof():
