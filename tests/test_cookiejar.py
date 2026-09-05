@@ -1810,7 +1810,12 @@ async def test_load_falls_back_to_pickle(
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    assert jar_test == cookies_to_receive
+    assert jar_test.keys() == cookies_to_receive.keys()
+    for name, expected in cookies_to_receive.items():
+        # The jar stores normalized copies, so only the parts that
+        # normalization must not touch are compared here.
+        assert jar_test[name].value == expected.value
+        assert jar_test[name].coded_value == expected.coded_value
 
 
 async def test_save_load_json_roundtrip(
