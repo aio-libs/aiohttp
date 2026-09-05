@@ -357,6 +357,8 @@ async def test_close(ws_key: str, key_data: bytes) -> None:
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
     mresp.connection.protocol.read_timeout = None
+    # The compiled reader unboxes this as bool when deciding to resume.
+    mresp.connection.protocol._reading_paused = False
     with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
         with mock.patch("aiohttp.client.os") as m_os:
             with mock.patch("aiohttp.client.ClientSession.request") as m_req:
