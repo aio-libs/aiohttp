@@ -1,0 +1,3 @@
+Added ``Payload.bytes_written`` and ``Payload.upload_complete`` for tracking
+upload progress of a request body
+-- by :user:`Dreamsorcerer`.

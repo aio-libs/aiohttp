@@ -363,7 +363,17 @@ class ClientResponse(HeadersMixin):
 
     @property
     def output_size(self) -> int:
-        """Number of bytes sent for this request."""
+        """Number of bytes sent for this request.
+
+        .. deprecated:: 3.14.4
+           Use :attr:`Payload.bytes_written` instead.
+        """
+        warnings.warn(
+            "ClientResponse.output_size is deprecated, "
+            "use Payload.bytes_written instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self._stream_writer is not None:
             return self._stream_writer.output_size
         return self._output_size
@@ -372,8 +382,15 @@ class ClientResponse(HeadersMixin):
     def upload_complete(self) -> "asyncio.Future[None]":
         """Future set when the request body has been fully sent.
 
-        Already done when the request had no body or was written eagerly.
+        .. deprecated:: 3.14.4
+           Use :attr:`Payload.upload_complete` instead.
         """
+        warnings.warn(
+            "ClientResponse.upload_complete is deprecated, "
+            "use Payload.upload_complete instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self._upload_complete is None:
             self._upload_complete = self._loop.create_future()
             if self._stream_writer is None:  # upload already finished
@@ -1010,6 +1027,7 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
+            self._mark_body_sent()
         self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
@@ -1021,6 +1039,10 @@ class ClientRequestBase:
     ) -> None:
         # Base class never has a body, this will never be run.
         assert False
+
+    def _mark_body_sent(self) -> None:
+        """Hook invoked when the request is sent without a body to write."""
+        # Base class requests (CONNECT) never carry a body payload.
 
 
 class ClientRequestArgs(TypedDict, total=False):
@@ -1275,6 +1297,10 @@ class ClientRequest(ClientRequestBase):
                 body = FormData(body, boundary=boundary)()
 
         self._body = body
+        # A payload may be reused from an earlier request (redirects,
+        # retries, or explicit reuse): drop that attempt's upload state so
+        # a failure of this request cannot be masked by a stale outcome.
+        body._reset_upload()
 
         # enable chunked encoding if needed
         if not self.chunked and hdrs.CONTENT_LENGTH not in self.headers:
@@ -1369,6 +1395,13 @@ class ClientRequest(ClientRequestBase):
         # Close existing payload if it exists and needs closing
         if self._body is not None:
             await self._body.close()
+            # Abort upload progress on the original body.
+            if (
+                self._body is not body
+                and self._body is not self._EMPTY_BODY
+                and not self._body._upload_active
+            ):
+                self._body._abort_upload()
         self._update_body(body)
 
     def _update_expect_continue(self, expect: bool = False) -> None:
@@ -1456,6 +1489,11 @@ class ClientRequest(ClientRequestBase):
             self.body.size != 0 or self._continue is not None or protocol.writing_paused
         )
 
+    def _mark_body_sent(self) -> None:
+        body = self._body
+        if body is not self._EMPTY_BODY and body._start_upload():
+            body._finish_upload()
+
     async def _write_bytes(
         self,
         writer: AbstractStreamWriter,
@@ -1481,6 +1519,8 @@ class ClientRequest(ClientRequestBase):
         - Content length constraints for chunked encoding
         - Error handling for network issues, cancellation, and other exceptions
         - Signaling EOF and timeout management
+        - Upload progress bookkeeping on the payload
+          (:attr:`Payload.bytes_written` / :attr:`Payload.upload_complete`)
 
         Raises:
             ClientOSError: When there's an OS-level error writing the body
@@ -1488,48 +1528,66 @@ class ClientRequest(ClientRequestBase):
             asyncio.CancelledError: When the operation is cancelled
 
         """
-        # 100 response
-        if self._continue is not None:
-            # Force headers to be sent before waiting for 100-continue
-            writer.send_headers()
-            await writer.drain()
-            await self._continue
-
-        protocol = conn.protocol
-        assert protocol is not None
+        body = self._body
+        # Progress tracking is exclusive per payload; when overlapping
+        # requests share one instance, later uploads run untracked.
+        track_progress = body is not self._EMPTY_BODY and body._start_upload()
+        if track_progress:
+            writer = payload._ProgressWriter(writer, body)
+        abort_exc: BaseException | None = None
         try:
-            await self._body.write_with_length(writer, content_length)
-        except OSError as underlying_exc:
-            reraised_exc = underlying_exc
+            # 100 response
+            if self._continue is not None:
+                # Force headers to be sent before waiting for 100-continue
+                writer.send_headers()
+                await writer.drain()
+                await self._continue
 
-            # Distinguish between timeout and other OS errors for better error reporting
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                underlying_exc, asyncio.TimeoutError
-            )
-            if exc_is_not_timeout:
-                reraised_exc = ClientOSError(
-                    underlying_exc.errno,
-                    f"Can not write request body for {self.url !s}",
+            protocol = conn.protocol
+            assert protocol is not None
+            try:
+                await body.write_with_length(writer, content_length)
+            except OSError as underlying_exc:
+                reraised_exc = underlying_exc
+
+                # Distinguish between timeout and other OS errors for better error reporting
+                exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                    underlying_exc, asyncio.TimeoutError
                 )
+                if exc_is_not_timeout:
+                    reraised_exc = ClientOSError(
+                        underlying_exc.errno,
+                        f"Can not write request body for {self.url !s}",
+                    )
 
-            set_exception(protocol, reraised_exc, underlying_exc)
-        except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused
-            conn.close()
-            raise
-        except Exception as underlying_exc:
-            set_exception(
-                protocol,
-                ClientConnectionError(
+                set_exception(protocol, reraised_exc, underlying_exc)
+                abort_exc = reraised_exc
+            except Exception as underlying_exc:
+                abort_exc = ClientConnectionError(
                     "Failed to send bytes into the underlying connection "
                     f"{conn !s}: {underlying_exc!r}",
-                ),
-                underlying_exc,
-            )
-        else:
-            # Successfully wrote the body, signal EOF and start response timeout
-            await writer.write_eof()
-            protocol.start_timeout()
+                )
+                set_exception(protocol, abort_exc, underlying_exc)
+            else:
+                # Successfully wrote the body, signal EOF and start response timeout
+                await writer.write_eof()
+                if track_progress:
+                    body._finish_upload()
+                protocol.start_timeout()
+        except asyncio.CancelledError:
+            # Body hasn't been fully sent, so the connection can't be reused.
+            conn.close()
+            raise
+        except BaseException as underlying_exc:
+            # Failures escaping the inner handlers (100-continue preamble,
+            # write_eof) must still complete upload_complete with the error.
+            abort_exc = underlying_exc
+            raise
+        finally:
+            if track_progress:
+                # No-op when the upload finished; reports the failure or,
+                # on cancellation, cancels upload_complete.
+                body._abort_upload(abort_exc)
 
     async def _close(self) -> None:
         if self._writer_task is not None:
