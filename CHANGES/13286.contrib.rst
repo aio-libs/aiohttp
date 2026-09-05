@@ -1,0 +1,3 @@
+Made the test suite skip the symlink tests when the host does not permit creating
+symlinks, rather than failing with ``OSError: [WinError 1314]`` on Windows without
+``SeCreateSymbolicLinkPrivilege`` -- by :user:`Zuhef`.

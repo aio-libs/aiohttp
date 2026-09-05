@@ -14,7 +14,7 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 from unittest import mock
 from uuid import uuid4
 
@@ -63,8 +63,16 @@ except ImportError:
 
 if sys.version_info >= (3, 11):
     from typing import Unpack
+
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     from typing import Any as Unpack
+
+    _RequestMaker = Any
 
 
 # We require pytest-aiohttp to avoid confusing debugging if it's not installed.
@@ -204,6 +212,18 @@ async def loop_debug_mode() -> AsyncIterator[None]:
         yield
     finally:
         loop.set_debug(False)
+
+
+@pytest.fixture(scope="session")
+def symlinks_supported() -> None:
+    """Skip tests if symlinks not support (e.g. Windows permission problem)."""
+    with TemporaryDirectory() as tmp_dir:
+        target = Path(tmp_dir) / "symlink-target"
+        target.touch()
+        try:
+            (Path(tmp_dir) / "symlink").symlink_to(target)
+        except OSError as exc:  # pragma: no cover
+            pytest.skip(f"requires privilege to create symlinks: {exc}")
 
 
 @pytest.fixture
@@ -432,9 +452,7 @@ def parametrize_zlib_backend(
 
 
 @pytest.fixture
-async def make_client_request() -> (
-    AsyncIterator[Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]]
-):
+async def make_client_request() -> AsyncIterator[_RequestMaker]:
     """Fixture to help creating test ClientRequest objects with defaults."""
     requests: list[ClientRequest] = []
     sessions: list[ClientSession] = []

@@ -2,9 +2,8 @@
 
 import asyncio
 import sys
-from collections.abc import Callable
 from http.cookies import BaseCookie
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Protocol
 
 import pytest
 from multidict import CIMultiDict
@@ -25,7 +24,11 @@ from aiohttp.tracing import Trace
 if sys.version_info >= (3, 11):
     from typing import Unpack
 
-    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     _RequestMaker = Any
 if TYPE_CHECKING:

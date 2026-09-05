@@ -1,7 +1,9 @@
 import json
+import os
 import pprint
 import socket
 import subprocess
+import sys
 import time
 from collections.abc import Iterator
 from pathlib import Path
@@ -103,13 +105,25 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
     try:
         wait_for_port(9001)
-        subprocess.run(("coverage", "run", "-a", "tests/autobahn/client/client.py"))
+        subprocess.run(
+            (
+                sys.executable,
+                "-m",
+                "coverage",
+                "run",
+                "--append",
+                "tests/autobahn/client/client.py",
+            ),
+            env={
+                "COVERAGE_PARALLEL_MODE": "false",
+                **os.environ.copy(),
+            },
+        )
     finally:
         autobahn_container.stop()
 
     results = get_test_results(report_dir / "clients", "aiohttp")
     xfail = {
-        "7.9.5": "The close code should have been 1002 or empty",
         "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",
@@ -141,7 +155,18 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 @pytest.mark.autobahn
 def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     server = subprocess.Popen(
-        ("coverage", "run", "-a", "tests/autobahn/server/server.py")
+        (
+            sys.executable,
+            "-m",
+            "coverage",
+            "run",
+            "--append",
+            "tests/autobahn/server/server.py",
+        ),
+        env={
+            "COVERAGE_PARALLEL_MODE": "false",
+            **os.environ.copy(),
+        },
     )
     try:
         wait_for_port(9001)
@@ -168,7 +193,6 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     xfail = {
-        "7.9.5": "The close code should have been 1002 or empty",
         "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",

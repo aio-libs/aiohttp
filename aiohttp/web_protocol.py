@@ -2,6 +2,7 @@ import asyncio
 import asyncio.streams
 import sys
 import traceback
+from asyncio.base_events import BaseEventLoop
 from collections import deque
 from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
@@ -183,6 +184,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_msg_queue_resume_size",
         "_msg_queue_paused",
         "_message_tail",
+        "_read_bufsize",
         "_handler_waiter",
         "_waiter",
         "_task_handler",
@@ -224,6 +226,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # Low-water mark: resume reading once the queue drains to half the limit
         # so we refill in batches instead of churning pause/resume per request.
         self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
+        self._read_bufsize = read_bufsize
         # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
         # if BaseProtocol ever triggers a resume during init.
         self._msg_queue_paused = False
@@ -402,7 +405,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager.connection_made(self, real_transport)
 
         loop = self._loop
-        if sys.version_info >= (3, 12):
+        if sys.version_info >= (3, 14):
+            if isinstance(loop, BaseEventLoop):
+                task = asyncio.create_task(self.start(), eager_start=True)
+            else:
+                task = asyncio.Task(self.start(), loop=loop, eager_start=True)
+        elif sys.version_info >= (3, 12):
             task = asyncio.Task(self.start(), loop=loop, eager_start=True)
         else:
             task = loop.create_task(self.start())
@@ -450,9 +458,18 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._payload_parser = parser
         self._data_received_cb = data_received_cb
 
+        if self._reading_paused:
+            # After upgrade nothing will read the stream again, so we need
+            # to resume here before feeding the tail, so a pause in the
+            # upgraded protocol still takes effect.
+            self.resume_reading(resume_parser=False)
+
         if self._message_tail:
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
+
+        if self._msg_queue_paused:
+            self._resume_msg_queue_reading()
 
     def eof_received(self) -> None:
         pass
@@ -497,6 +514,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # no parser, just store
         elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
+            if (
+                not self._msg_queue_paused
+                and len(self._message_tail) >= self._read_bufsize
+            ):
+                self._pause_msg_queue_reading()
 
         # feed payload
         elif data:
@@ -520,6 +542,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 pass
 
     def _resume_msg_queue_reading(self) -> None:
+        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
+        if self._message_tail and len(self._message_tail) >= self._read_bufsize:
+            return
+
         if not self._upgraded:
             # Reparse buffered pipelined requests while still marked paused so
             # a refill past the limit does not re-pause an already-paused
@@ -535,6 +561,67 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 # Transport lacks flow control; nothing to resume. Intentionally
                 # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
+
+    def _replay_message_tail(self) -> None:
+        """Re-feed the bytes buffered behind a rejected upgrade.
+
+        The parser stops at an upgrade boundary and holds everything after it in
+        ``_message_tail``. If the upgrade is rejected those bytes are
+        pipelined requests and have to go back through the parser.
+        """
+        if (
+            not self._upgraded
+            # The upgrade request is the last request before the parser paused,
+            # so wait for messages to be empty.
+            or self._messages
+            # payload_parser is not None if the upgrade was accepted.
+            or self._payload_parser is not None
+            or self._parser is None
+        ):
+            return
+
+        self._parser.set_upgraded(False)
+        self._upgraded = False
+        if not self._message_tail:
+            return
+
+        messages: Sequence[_MsgType]
+        try:
+            messages, upgraded, tail = self._parser.feed_data(self._message_tail)
+        except HttpProcessingError as parse_exc:
+            # Garbage (or an oversized request line) buffered behind the
+            # upgrade: answer 400 instead of letting the error escape
+            # and lose this response, like data_received() does.
+            messages = [
+                (
+                    _ErrInfo(
+                        status=400,
+                        exc=parse_exc,
+                        message=parse_exc.message,
+                    ),
+                    EMPTY_PAYLOAD,
+                )
+            ]
+            upgraded = False
+            tail = b""
+
+        # A further upgrade request in the tail buffers its own remainder.
+        self._upgraded = upgraded
+        self._message_tail = tail
+        for msg, payload in messages:
+            self._request_count += 1
+            self._messages.append((msg, payload))
+
+        if len(self._messages) >= self._max_msg_queue_size:
+            # Pause the transport, like in data_received().
+            self._pause_msg_queue_reading()
+        elif self._msg_queue_paused:
+            # Resume reading now the tail has been parsed.
+            self._resume_msg_queue_reading()
+
+        # This shouldn't be possible. If a future refactor results in this
+        # failing, then the code may need to be updated to set the waiter.
+        assert self._waiter is None
 
     def keep_alive(self, val: bool) -> None:
         """Set keep-alive connection mode.
@@ -712,7 +799,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, self._request_handler)
-                if sys.version_info >= (3, 12):
+                if sys.version_info >= (3, 14):
+                    if isinstance(loop, BaseEventLoop):
+                        task = asyncio.create_task(coro, eager_start=True)
+                    else:
+                        task = asyncio.Task(coro, loop=loop, eager_start=True)
+                elif sys.version_info >= (3, 12):
                     task = asyncio.Task(coro, loop=loop, eager_start=True)
                 else:
                     task = loop.create_task(coro)
@@ -764,6 +856,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 payload.set_exception(_PAYLOAD_ACCESS_ERROR)
 
+                # Draining the body above can have been what finally settled a
+                # deferred upgrade, seating a tail that finish_response() was
+                # too early to see.
+                self._replay_message_tail()
             except asyncio.CancelledError:
                 self.log_debug("Ignored premature client disconnection")
                 self.force_close()
@@ -807,24 +903,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         prematurely.
         """
         request._finish()
-        if self._parser is not None:
-            self._parser.set_upgraded(False)
-            self._upgraded = False
-            if self._message_tail:
-                messages, _upgraded, tail = self._parser.feed_data(self._message_tail)
-                self._message_tail = tail
-                for msg, payload in messages:
-                    self._request_count += 1
-                    self._messages.append((msg, payload))
-                # Pause the transport, like in data_received().
-                if (
-                    not self._msg_queue_paused
-                    and len(self._messages) >= self._max_msg_queue_size
-                ):
-                    self._pause_msg_queue_reading()
-                # This shouldn't be possible. If a future refactor results in this
-                # failing, then the code may need to be updated to set the waiter.
-                assert self._waiter is None
+
+        self._replay_message_tail()
         try:
             prepare_meth = resp.prepare
         except AttributeError:

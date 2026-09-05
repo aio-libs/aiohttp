@@ -1,0 +1,18 @@
+name: AgentScan
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - reopened
+
+jobs:
+  agentscan:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: AgentScan
+        uses: MatteoGabriele/agentscan-action@v2.5.0
+        with:
+          mode: labels
