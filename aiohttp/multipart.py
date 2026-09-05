@@ -1167,7 +1167,7 @@ class MultipartWriter(Payload):
         parts: list[bytes] = []
 
         # Process each part
-        for part, _e, _te in self._parts:
+        for part, part_encoding, te_encoding in self._parts:
             # Add boundary
             parts.append(b"--" + self._boundary + b"\r\n")
 
@@ -1176,6 +1176,20 @@ class MultipartWriter(Payload):
 
             # Add payload content using as_bytes for async safety
             part_bytes = await part.as_bytes(encoding, errors)
+
+            # Apply the same Content-Encoding/Content-Transfer-Encoding
+            # transformations that write() applies when sending to the network,
+            # so both produce the same body.
+            if part_encoding:
+                compressor = ZLibCompressor(
+                    encoding=part_encoding, suppress_deflate_header=True
+                )
+                part_bytes = await compressor.compress(part_bytes) + compressor.flush()
+            if te_encoding == "base64":
+                part_bytes = base64.b64encode(part_bytes)
+            elif te_encoding == "quoted-printable":
+                part_bytes = _encode_quoted_printable(part_bytes)
+
             parts.append(part_bytes)
 
             # Add trailing CRLF
@@ -1241,6 +1255,61 @@ class MultipartWriter(Payload):
                     )
 
 
+# Raw bytes of a quoted-printable line encoded per binascii.b2a_qp call.
+# Lines longer than this are encoded in fixed-size blocks joined by soft
+# line breaks, so MultipartPayloadWriter can flush a partial line without
+# ever buffering more than one block of it (a newline-free payload would
+# otherwise buffer in full before anything reached the transport).
+_QP_BLOCK_SIZE = 4096
+_QP_SOFT_BREAK = b"=\r\n"
+
+
+def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
+    r"""Encode one line (any ``\n`` is its final byte) as quoted-printable.
+
+    Lines longer than _QP_BLOCK_SIZE raw bytes are encoded one
+    _QP_BLOCK_SIZE block at a time, with a soft line break inserted
+    between blocks (binascii.a2b_qp decodes a soft break to nothing).
+    Block boundaries sit at fixed offsets from the start of the line, so
+    the encoding stays a pure function of the line bytes while letting
+    the streaming writer flush every complete block as it arrives.  The
+    result differs from encoding the whole line in a single b2a_qp call
+    (each call restarts its soft-break column counter), but it decodes
+    to the same bytes, and as_bytes() and write() share this routine so
+    their outputs stay identical.
+    """
+    parts: list[bytes] = []
+    pos = 0
+    while len(line) - pos > _QP_BLOCK_SIZE:
+        parts.append(binascii.b2a_qp(line[pos : pos + _QP_BLOCK_SIZE]))
+        parts.append(_QP_SOFT_BREAK)
+        pos += _QP_BLOCK_SIZE
+    parts.append(binascii.b2a_qp(line[pos:]))
+    return b"".join(parts)
+
+
+def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
+    r"""Encode *data* as quoted-printable, one line at a time.
+
+    binascii.b2a_qp derives the line-ending convention, soft line-break
+    positions, and trailing-whitespace quoting from the whole buffer it
+    is given, so encoding a body in one call produces different bytes
+    than encoding it chunk by chunk.  Encoding each ``\n``-terminated
+    line separately (in _QP_BLOCK_SIZE blocks) makes the result a pure
+    function of the payload bytes, so the streamed wire bytes
+    (MultipartPayloadWriter) and as_bytes() stay identical no matter how
+    the payload was chunked.
+    """
+    parts: list[bytes] = []
+    start = 0
+    while (end := data.find(b"\n", start)) != -1:
+        parts.append(_encode_quoted_printable_line(data[start : end + 1]))
+        start = end + 1
+    if start < len(data):
+        parts.append(_encode_quoted_printable_line(data[start:]))
+    return b"".join(parts)
+
+
 class MultipartPayloadWriter:
     def __init__(self, writer: AbstractStreamWriter) -> None:
         self._writer = writer
@@ -1254,6 +1323,7 @@ class MultipartPayloadWriter:
             self._encoding_buffer = bytearray()
         elif encoding == "quoted-printable":
             self._encoding = "quoted-printable"
+            self._encoding_buffer = bytearray()
 
     def enable_compression(
         self, encoding: str = "deflate", strategy: int | None = None
@@ -1274,6 +1344,11 @@ class MultipartPayloadWriter:
         if self._encoding == "base64":
             if self._encoding_buffer:
                 await self._writer.write(base64.b64encode(self._encoding_buffer))
+        elif self._encoding == "quoted-printable":
+            if self._encoding_buffer:
+                await self._writer.write(
+                    _encode_quoted_printable(self._encoding_buffer)
+                )
 
     async def write(self, chunk: bytes) -> None:
         if self._compress is not None:
@@ -1294,6 +1369,31 @@ class MultipartPayloadWriter:
                     b64chunk = base64.b64encode(enc_chunk)
                     await self._writer.write(b64chunk)
         elif self._encoding == "quoted-printable":
-            await self._writer.write(binascii.b2a_qp(chunk))
+            buf = self._encoding_buffer
+            assert buf is not None
+            buf.extend(chunk)
+
+            # b2a_qp output depends on seeing a complete line, so encode
+            # up to the last newline and keep the partial line buffered
+            # until more data or write_eof() completes it.  To bound that
+            # buffer, also flush every complete _QP_BLOCK_SIZE block of
+            # the partial line, followed by the soft break that
+            # _encode_quoted_printable_line() puts after non-final
+            # blocks.  Flushed data always ends on a line or block
+            # boundary, so the retained tail starts on a block boundary
+            # and the wire bytes stay a pure function of the payload
+            # bytes regardless of chunking.
+            parts: list[bytes] = []
+            start = 0
+            while (end := buf.find(b"\n", start)) != -1:
+                parts.append(_encode_quoted_printable_line(buf[start : end + 1]))
+                start = end + 1
+            while len(buf) - start > _QP_BLOCK_SIZE:
+                parts.append(binascii.b2a_qp(buf[start : start + _QP_BLOCK_SIZE]))
+                parts.append(_QP_SOFT_BREAK)
+                start += _QP_BLOCK_SIZE
+            if start:
+                del buf[:start]
+                await self._writer.write(b"".join(parts))
         else:
             await self._writer.write(chunk)
