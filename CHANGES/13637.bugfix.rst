@@ -1,0 +1,1 @@
+Fixed ``CookieJar.update_cookies()`` to copy user-passed mutable ``Morsel`` objects -- by :user:`Dreamsorcerer`.
