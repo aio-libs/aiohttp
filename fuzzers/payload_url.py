@@ -26,7 +26,7 @@ with atheris.instrument_imports():  # type: ignore[attr-defined]
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     original = fdp.ConsumeString(sys.maxsize)
 

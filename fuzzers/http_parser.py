@@ -31,7 +31,7 @@ PROTOCOL = BaseProtocol(LOOP)
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     parser = HttpRequestParser(PROTOCOL, LOOP, 32768)
     with suppress(BadHttpMessage):
         parser.feed_data(data)

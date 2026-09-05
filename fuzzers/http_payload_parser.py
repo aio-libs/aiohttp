@@ -32,7 +32,7 @@ PROTOCOL = BaseProtocol(LOOP)
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     out = StreamReader(PROTOCOL, 2**16, loop=LOOP)
     parser = HttpPayloadParser(out, headers_parser=HeadersParser())
     with suppress(BadHttpMessage):

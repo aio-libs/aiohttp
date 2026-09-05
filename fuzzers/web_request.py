@@ -27,7 +27,7 @@ with atheris.instrument_imports():  # type: ignore[attr-defined]
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-async def fuzz_run_one_async(data: bytes) -> None:  # type: ignore[misc]
+async def fuzz_run_one_async(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     url_s = fdp.ConsumeString(fdp.ConsumeIntInRange(0, 512))
     try:
@@ -45,7 +45,7 @@ async def fuzz_run_one_async(data: bytes) -> None:  # type: ignore[misc]
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     asyncio.run(fuzz_run_one_async(data))
 
 
