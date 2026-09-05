@@ -1595,3 +1595,92 @@ async def test_send_headers_with_payload_chunked_eof_no_data(
     assert b"GET /test HTTP/1.1\r\n" in buf
     assert b"Transfer-Encoding: chunked\r\n" in buf
     assert buf.endswith(b"0\r\n\r\n")
+
+
+async def test_on_body_write_counts_payload_bytes(
+    buf: bytearray, protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
+    """The on_body_write callback reports accepted body bytes."""
+    sizes: list[int] = []
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.on_body_write = sizes.append
+
+    await msg.write(b"a" * 4)
+    await msg.write(b"")
+    await msg.write_eof(b"b" * 2)
+
+    assert sizes == [4, 2]
+
+
+async def test_on_body_write_clipped_chunk(
+    buf: bytearray, protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
+    """Bytes clipped at the declared length are not reported."""
+    sizes: list[int] = []
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.on_body_write = sizes.append
+    msg.length = 2
+
+    await msg.write(b"a" * 4)
+    await msg.write(b"b" * 4)
+
+    assert buf == b"aa"
+    assert sizes == [2]
+
+
+async def test_on_body_write_compressed_chunk(
+    buf: bytearray, protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
+    """With compression the pre-compression payload size is reported."""
+    sizes: list[int] = []
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.on_body_write = sizes.append
+    msg.enable_compression("deflate")
+
+    # The compressor emits only its stream header for the first small
+    # chunk and buffers the second one entirely; both writes send no
+    # payload yet but are still reported as accepted.
+    buffered = b"y" * 16
+    await msg.write(buffered)
+    await msg.write(buffered)
+
+    chunk = b"x" * 8192
+    await msg.write(chunk)
+    await msg.write_eof()
+
+    assert sizes == [len(buffered), len(buffered), len(chunk)]
+    # The wire carried the compressed form, smaller than what was reported.
+    assert 0 < len(buf) < len(chunk)
+
+
+@pytest.mark.parametrize(
+    ("compress", "chunked", "buffer_headers"),
+    (
+        (True, False, True),
+        (True, False, False),
+        (False, False, True),
+        (False, True, False),
+    ),
+)
+async def test_on_body_write_write_eof_final_chunk(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    compress: bool,
+    chunked: bool,
+    buffer_headers: bool,
+) -> None:
+    """A final chunk is reported across the framing/compression paths."""
+    sizes: list[int] = []
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.on_body_write = sizes.append
+    if compress:
+        msg.enable_compression("deflate")
+    if chunked:
+        msg.enable_chunking()
+    if buffer_headers:
+        await msg.write_headers("POST / HTTP/1.1", CIMultiDict())
+
+    await msg.write_eof(b"x" * 64)
+
+    assert sizes == [64]

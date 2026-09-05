@@ -65,6 +65,7 @@ from .client_exceptions import (
     ServerTimeoutError,
     SocketTimeoutError,
     TooManyRedirects,
+    UploadAbortedError,
     WSMessageTypeError,
     WSServerHandshakeError,
 )
@@ -77,6 +78,7 @@ from .client_reqrep import (
     Fingerprint,
     RequestInfo,
     ResponseParams,
+    UploadTracker,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -137,12 +139,14 @@ __all__ = (
     "ServerTimeoutError",
     "SocketTimeoutError",
     "TooManyRedirects",
+    "UploadAbortedError",
     "WSServerHandshakeError",
     # client_reqrep
     "ClientRequest",
     "ClientResponse",
     "Fingerprint",
     "RequestInfo",
+    "UploadTracker",
     # connector
     "BaseConnector",
     "TCPConnector",
@@ -194,6 +198,7 @@ class _RequestOptions(TypedDict, total=False):
     max_field_size: int | None
     max_headers: int | None
     middlewares: Sequence[ClientMiddlewareType] | None
+    upload_tracker: UploadTracker | None
 
 
 class _WSConnectOptions(TypedDict, total=False):
@@ -234,6 +239,8 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
+    if (tracker := req._upload_tracker) is not None:
+        req._upload_gen = tracker._attempt_started()
     try:
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
     except asyncio.TimeoutError as exc:
@@ -494,112 +501,147 @@ class ClientSession:
         max_field_size: int | None = None,
         max_headers: int | None = None,
         middlewares: Sequence[ClientMiddlewareType] | None = None,
+        upload_tracker: UploadTracker | None = None,
     ) -> ClientResponse:
         # NOTE: timeout clamps existing connect and read timeouts.  We cannot
         # set the default to None because we need to detect if the user wants
         # to use the existing timeouts by setting timeout to None.
 
-        if self.closed:
-            raise RuntimeError("Session is closed")
+        # Bound outside the settle-guaranteeing try block: a rebind error
+        # must not settle a tracker owned by another request.
+        if upload_tracker is not None:
+            upload_tracker._bind()
 
-        method = method.upper()
-
-        if ssl is sentinel:
-            ssl = self._default_ssl
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                f"got {ssl!r} instead."
-            )
-
-        if data is not None and json is not None:
-            raise ValueError(
-                "data and json parameters can not be used at the same time"
-            )
-        elif json is not None:
-            if self._json_serialize_bytes is not None:
-                data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
-            else:
-                data = payload.JsonPayload(json, dumps=self._json_serialize)
-
-        redirects = 0
-        history: list[ClientResponse] = []
-        version = self._version
-        params = params or {}
-
-        # Merge with default headers and transform to CIMultiDict
-        headers = self._prepare_headers(headers)
+        tm: TimeoutHandle | None = None
+        handle: asyncio.TimerHandle | None = None
+        traces: list[Trace] = []
+        traces_started = 0
+        trace_url: URL | None = None
+        trace_headers: "CIMultiDict[str] | None" = None
 
         try:
-            url = self._build_url(str_or_url)
-        except ValueError as e:
-            raise InvalidUrlClientError(str_or_url) from e
+            if self.closed:
+                raise RuntimeError("Session is closed")
 
-        assert self._connector is not None
-        if url.scheme not in self._connector.allowed_protocol_schema_set:
-            raise NonHttpUrlClientError(url)
+            method = method.upper()
 
-        skip_headers: Iterable[istr] | None
-        if skip_auto_headers is not None:
-            skip_headers = {
-                istr(i) for i in skip_auto_headers
-            } | self._skip_auto_headers
-        elif self._skip_auto_headers:
-            skip_headers = self._skip_auto_headers
-        else:
-            skip_headers = None
+            if ssl is sentinel:
+                ssl = self._default_ssl
+            if not isinstance(ssl, SSL_ALLOWED_TYPES):
+                raise TypeError(
+                    "ssl should be SSLContext, Fingerprint, or bool, "
+                    f"got {ssl!r} instead."
+                )
 
-        if proxy is None:
-            proxy = self._default_proxy
+            if data is not None and json is not None:
+                raise ValueError(
+                    "data and json parameters can not be used at the same time"
+                )
+            elif json is not None:
+                if self._json_serialize_bytes is not None:
+                    data = payload.JsonBytesPayload(
+                        json, dumps=self._json_serialize_bytes
+                    )
+                else:
+                    data = payload.JsonPayload(json, dumps=self._json_serialize)
 
-        resolved_proxy_headers: CIMultiDict[str] | None
-        if proxy is None:
-            resolved_proxy_headers = None
-        else:
-            resolved_proxy_headers = self._prepare_headers(proxy_headers)
-            try:
-                proxy = URL(proxy)
-            except ValueError as e:
-                raise InvalidURL(proxy) from e
-
-        if timeout is sentinel or timeout is None:
-            real_timeout: ClientTimeout = self._timeout
-        else:
-            real_timeout = timeout
-        # timeout is cumulative for all request operations
-        # (request, redirects, responses, data consuming)
-        tm = TimeoutHandle(
-            self._loop, real_timeout.total, ceil_threshold=real_timeout.ceil_threshold
-        )
-        handle = tm.start()
-
-        if read_bufsize is None:
-            read_bufsize = self._read_bufsize
-
-        if auto_decompress is None:
-            auto_decompress = self._auto_decompress
-
-        if max_line_size is None:
-            max_line_size = self._max_line_size
-
-        if max_field_size is None:
-            max_field_size = self._max_field_size
-
-        if max_headers is None:
-            max_headers = self._max_headers
-
-        traces = [
-            Trace(
-                self,
-                trace_config,
-                trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
+            real_timeout = (
+                self._timeout if timeout is sentinel or timeout is None else timeout
             )
-            for trace_config in self._trace_configs
-        ]
+            # timeout is cumulative for all request operations
+            # (request, redirects, responses, data consuming)
+            tm = TimeoutHandle(
+                self._loop,
+                real_timeout.total,
+                ceil_threshold=real_timeout.ceil_threshold,
+            )
 
-        for trace in traces:
-            await trace.send_request_start(method, url.update_query(params), headers)
+            redirects = 0
+            history: list[ClientResponse] = []
+            version = self._version
+            params = params or {}
 
+            # Merge with default headers and transform to CIMultiDict
+            headers = self._prepare_headers(headers)
+
+            try:
+                url = self._build_url(str_or_url)
+            except ValueError as e:
+                raise InvalidUrlClientError(str_or_url) from e
+
+            assert self._connector is not None
+            if url.scheme not in self._connector.allowed_protocol_schema_set:
+                raise NonHttpUrlClientError(url)
+
+            skip_headers: Iterable[istr] | None
+            if skip_auto_headers is not None:
+                skip_headers = {
+                    istr(i) for i in skip_auto_headers
+                } | self._skip_auto_headers
+            elif self._skip_auto_headers:
+                skip_headers = self._skip_auto_headers
+            else:
+                skip_headers = None
+
+            if proxy is None:
+                proxy = self._default_proxy
+
+            resolved_proxy_headers: CIMultiDict[str] | None
+            if proxy is None:
+                resolved_proxy_headers = None
+            else:
+                resolved_proxy_headers = self._prepare_headers(proxy_headers)
+                try:
+                    proxy = URL(proxy)
+                except ValueError as e:
+                    raise InvalidURL(proxy) from e
+
+            handle = tm.start()
+
+            if read_bufsize is None:
+                read_bufsize = self._read_bufsize
+
+            if auto_decompress is None:
+                auto_decompress = self._auto_decompress
+
+            if max_line_size is None:
+                max_line_size = self._max_line_size
+
+            if max_field_size is None:
+                max_field_size = self._max_field_size
+
+            if max_headers is None:
+                max_headers = self._max_headers
+
+            traces = [
+                Trace(
+                    self,
+                    trace_config,
+                    trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
+                )
+                for trace_config in self._trace_configs
+            ]
+
+            trace_url = url.update_query(params)
+            trace_headers = headers
+            for trace in traces:
+                await trace.send_request_start(method, trace_url, trace_headers)
+                traces_started += 1
+        except BaseException as e:
+            if tm is not None:
+                tm.close()
+            if handle is not None:
+                handle.cancel()
+            if upload_tracker is not None:
+                upload_tracker._finalize()
+            # Traces that saw send_request_start must also see a terminal
+            # event; traces whose start never ran get neither.
+            for trace in traces[:traces_started]:
+                assert trace_url is not None and trace_headers is not None
+                await trace.send_request_exception(method, trace_url, trace_headers, e)
+            raise
+
+        assert tm is not None
         timer = tm.timer()
         req: ClientRequest | None = None
         try:
@@ -709,6 +751,7 @@ class ClientSession:
                         traces=traces,
                         trust_env=self.trust_env,
                     )
+                    req._upload_tracker = upload_tracker
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware
                     effective_middlewares = (
@@ -883,6 +926,8 @@ class ClientSession:
                 await trace.send_request_end(
                     method, url.update_query(params), headers, resp
                 )
+            if upload_tracker is not None:
+                upload_tracker._finalize()
             return resp
 
         except BaseException as e:
@@ -890,7 +935,9 @@ class ClientSession:
             tm.close()
             if handle:
                 handle.cancel()
-                handle = None
+
+            if upload_tracker is not None:
+                upload_tracker._finalize()
 
             if req is not None and req._body is not None:
                 await req._body.close()

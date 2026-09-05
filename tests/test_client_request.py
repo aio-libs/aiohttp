@@ -23,6 +23,7 @@ from aiohttp.client_reqrep import (
     ClientResponse,
     ClientTimeout,
     Fingerprint,
+    UploadTracker,
     _gen_default_accept_encoding,
 )
 from aiohttp.compression_utils import ZLibBackend
@@ -2327,3 +2328,223 @@ async def test_empty_body_isolation_after_update(
 
     assert ClientRequest._EMPTY_BODY.consumed is False
     assert ClientRequest._EMPTY_BODY.size == 0
+
+
+async def test_upload_tracker_stale_attempt_events_ignored() -> None:
+    """Events from a superseded attempt must not affect the current one."""
+    tracker = UploadTracker()
+    stale = tracker._attempt_started()
+    gen = tracker._attempt_started()
+    tracker._attempt_writing(gen)
+
+    tracker._add_bytes(gen, 10)
+    tracker._add_bytes(stale, 100)
+    assert tracker.bytes_written == 10
+
+    tracker._attempt_failed(stale, RuntimeError("stale"))
+    tracker._attempt_cancelled(stale)
+    tracker._attempt_finished(stale)
+    assert not tracker.upload_complete.done()
+
+    tracker._finalize()
+    # The final attempt is still writing; its own completion settles.
+    assert not tracker.upload_complete.done()
+    tracker._attempt_finished(gen)
+    assert tracker.upload_complete.result() is None
+    assert tracker.attempts == 2
+
+
+async def test_upload_tracker_failed_attempt_superseded_by_resend() -> None:
+    """Only the final attempt's outcome is reported after a resend."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, RuntimeError("first try"))
+    assert not tracker.upload_complete.done()
+
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_cancelled_attempt_superseded_by_resend() -> None:
+    """A cancelled non-final attempt leaves the future pending for a resend."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_cancelled(gen)
+    assert not tracker.upload_complete.done()
+
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_externally_cancelled_future() -> None:
+    """User code cancelling upload_complete must not break settling."""
+    tracker = UploadTracker()
+    tracker.upload_complete.cancel()
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.cancelled()
+
+
+async def test_oserror_on_write_bytes_with_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A write failure is recorded on the request's UploadTracker."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    await req.update_body(b"test data")
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
+
+    writer = WriterMock()
+    writer.write.side_effect = OSError
+
+    await req._write_bytes(writer, conn, None)
+
+    tracker._finalize()
+    assert tracker.attempts == 1
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.ClientOSError)
+
+
+@pytest.mark.parametrize("with_tracker", (True, False))
+async def test_preamble_failure_reported_to_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker, with_tracker: bool
+) -> None:
+    """A failure before the body write (100-continue preamble) is recorded."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+    tracker = UploadTracker() if with_tracker else None
+    req._upload_tracker = tracker
+    if tracker is not None:
+        req._upload_gen = tracker._attempt_started()
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+    writer.drain.side_effect = RuntimeError("preamble boom")
+
+    with pytest.raises(RuntimeError, match="preamble boom"):
+        await req._write_bytes(writer, conn, None)
+
+    # The body was never sent on a connection with headers on the wire.
+    assert conn.close.called
+    if tracker is not None:
+        tracker._finalize()
+        assert tracker.attempts == 1
+        assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="TimeoutError is OSError only on 3.11+"
+)
+async def test_timeout_on_write_bytes_not_wrapped(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """An asyncio.TimeoutError from the write is not wrapped in ClientOSError."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    await req.update_body(b"test data")
+
+    writer = WriterMock()
+    writer.write.side_effect = asyncio.TimeoutError
+
+    await req._write_bytes(writer, conn, None)
+
+    assert conn.protocol.set_exception.called
+    exc = conn.protocol.set_exception.call_args[0][0]
+    assert type(exc) is asyncio.TimeoutError
+
+
+async def test_upload_tracker_unretrieved_error_not_logged() -> None:
+    """A settled upload error must not log 'Future exception was never retrieved'."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, RuntimeError("boom"))
+    tracker._finalize()
+
+    # The documented pattern only polls done(), so the settle itself must
+    # have consumed the log; the error stays retrievable.
+    assert tracker.upload_complete._log_traceback is False
+    assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+async def test_cancel_during_expect100_preamble_closes_connection(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A writer cancelled while waiting for 100-continue closes the connection.
+
+    The request headers are already on the wire at that point, so releasing
+    the connection for reuse would corrupt the next request on it.
+    """
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert conn.close.called
+
+
+async def test_conn_close_failure_still_settles_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """The attempt is recorded before conn.close(), which conceivably raises."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
+    conn.close.side_effect = RuntimeError("close boom")
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(RuntimeError, match="close boom"):
+        await task
+
+    tracker._finalize()
+    assert tracker.upload_complete.done()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
+async def test_upload_tracker_dispatched_resend_never_writing() -> None:
+    """A dispatched resend that never starts writing settles as aborted."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_writing(gen)
+    tracker._add_bytes(gen, 2048)
+    tracker._attempt_finished(gen)
+
+    tracker._attempt_started()  # Resend dispatched; never writes.
+    assert tracker.bytes_written == 0
+    # Events from the superseded attempt are ignored; a stale writing
+    # transition must not make _finalize() defer to a dead writer.
+    tracker._attempt_writing(gen)
+    tracker._attempt_finished(gen)
+    tracker._add_bytes(gen, 100)
+    assert tracker.bytes_written == 0
+
+    tracker._finalize()
+    assert tracker.attempts == 2
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)

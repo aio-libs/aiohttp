@@ -9,6 +9,7 @@ import traceback
 import warnings
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable, Sequence
+from enum import Enum, auto
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
 from types import MappingProxyType, TracebackType
@@ -32,6 +33,7 @@ from .client_exceptions import (
     ContentTypeError,
     InvalidURL,
     ServerFingerprintMismatch,
+    UploadAbortedError,
 )
 from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
@@ -245,6 +247,114 @@ class ResponseParams(TypedDict):
     max_headers: int
 
 
+class _UploadState(Enum):
+    PENDING = auto()
+    ACTIVE = auto()
+    FINISHED = auto()
+    FAILED = auto()
+    CANCELLED = auto()
+
+
+class UploadTracker:
+    """Tracks upload progress of a single client request.
+
+    Pass a fresh instance via the request's ``upload_tracker`` argument and
+    read the plain attributes (``bytes_written``, ``attempts``,
+    ``upload_complete``) while the request runs.
+
+    Must be created inside a running event loop. A tracker observes exactly
+    one request: passing it to a second request raises :exc:`RuntimeError`.
+    """
+
+    def __init__(self) -> None:
+        self.bytes_written = 0
+        self.attempts = 0
+        self.upload_complete: asyncio.Future[None] = (
+            asyncio.get_running_loop().create_future()
+        )
+        self._bound = False
+        # State of the latest upload attempt.
+        self._state = _UploadState.PENDING
+        self._exc: BaseException | None = None
+        # Set once the request reaches a terminal point (returned or raised);
+        # no further attempts can start after that.
+        self._final = False
+
+    def _bind(self) -> None:
+        if self._bound:
+            raise RuntimeError("UploadTracker is already bound to a request")
+        self._bound = True
+
+    def _attempt_started(self) -> int:
+        """A new upload attempt is dispatched; returns its generation token.
+
+        Called before connecting, so a resend failing early settles as
+        aborted instead of reporting the superseded attempt's outcome.
+        """
+        self.attempts += 1
+        self.bytes_written = 0
+        self._state = _UploadState.PENDING
+        self._exc = None
+        return self.attempts
+
+    def _attempt_writing(self, gen: int) -> None:
+        """The attempt's body write has begun; settling now defers to it."""
+        if gen == self.attempts:
+            self._state = _UploadState.ACTIVE
+
+    def _add_bytes(self, gen: int, size: int) -> None:
+        # A stale writer of a superseded attempt (e.g. still being torn
+        # down while a redirect resends the body) must not corrupt the counter.
+        if gen == self.attempts:
+            self.bytes_written += size
+
+    def _attempt_finished(self, gen: int) -> None:
+        if gen == self.attempts:
+            self._state = _UploadState.FINISHED
+            if self._final:
+                self._settle()
+
+    def _attempt_failed(self, gen: int, exc: BaseException) -> None:
+        if gen == self.attempts:
+            self._state = _UploadState.FAILED
+            self._exc = exc
+            if self._final:
+                self._settle()
+
+    def _attempt_cancelled(self, gen: int) -> None:
+        if gen == self.attempts:
+            self._state = _UploadState.CANCELLED
+            if self._final:
+                self._settle()
+
+    def _finalize(self) -> None:
+        """Mark the request terminal: no further attempts will start.
+
+        Settles upload_complete unless the final attempt is still writing,
+        in which case the attempt's own terminal event settles it.
+        """
+        self._final = True
+        if self._state is not _UploadState.ACTIVE:
+            self._settle()
+
+    def _settle(self) -> None:
+        fut = self.upload_complete
+        if fut.done():
+            return
+        if self._state is _UploadState.FINISHED:
+            fut.set_result(None)
+            return
+        if self._state is _UploadState.FAILED:
+            assert self._exc is not None
+            fut.set_exception(self._exc)
+        else:
+            # PENDING (the body was never sent) or CANCELLED (the attempt
+            # was cut short).
+            fut.set_exception(UploadAbortedError("The request body was not fully sent"))
+        # Avoid 'exception was never retrieved' when doing a .done() poll.
+        fut.exception()
+
+
 class ClientResponse(HeadersMixin):
     # Some of these attributes are None when created,
     # but will be set by the start() method.
@@ -363,7 +473,17 @@ class ClientResponse(HeadersMixin):
 
     @property
     def output_size(self) -> int:
-        """Number of bytes sent for this request."""
+        """Number of bytes sent for this request.
+
+        .. deprecated:: 3.14.4
+           Use :class:`UploadTracker` instead.
+        """
+        warnings.warn(
+            "ClientResponse.output_size is deprecated, "
+            "use aiohttp.UploadTracker instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self._stream_writer is not None:
             return self._stream_writer.output_size
         return self._output_size
@@ -372,8 +492,15 @@ class ClientResponse(HeadersMixin):
     def upload_complete(self) -> "asyncio.Future[None]":
         """Future set when the request body has been fully sent.
 
-        Already done when the request had no body or was written eagerly.
+        .. deprecated:: 3.14.4
+           Use :class:`UploadTracker` instead.
         """
+        warnings.warn(
+            "ClientResponse.upload_complete is deprecated, "
+            "use aiohttp.UploadTracker instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if self._upload_complete is None:
             self._upload_complete = self._loop.create_future()
             if self._stream_writer is None:  # upload already finished
@@ -808,6 +935,9 @@ class ClientRequestBase:
 
     _writer_task: asyncio.Task[None] | None = None  # async task for streaming data
 
+    _upload_tracker: UploadTracker | None = None
+    _upload_gen = 0
+
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
     # N.B.
@@ -1010,6 +1140,10 @@ class ClientRequestBase:
             protocol.start_timeout()
             writer.set_eof()
             task = None
+            if (tracker := self._upload_tracker) is not None:
+                # The request went out without a body-writer task: the
+                # dispatched attempt is trivially complete with zero bytes.
+                tracker._attempt_finished(self._upload_gen)
         self._response = self._create_response(task, stream_writer=writer)
         return self._response
 
@@ -1481,6 +1615,7 @@ class ClientRequest(ClientRequestBase):
         - Content length constraints for chunked encoding
         - Error handling for network issues, cancellation, and other exceptions
         - Signaling EOF and timeout management
+        - Upload progress reporting to the request's UploadTracker
 
         Raises:
             ClientOSError: When there's an OS-level error writing the body
@@ -1488,48 +1623,69 @@ class ClientRequest(ClientRequestBase):
             asyncio.CancelledError: When the operation is cancelled
 
         """
-        # 100 response
-        if self._continue is not None:
-            # Force headers to be sent before waiting for 100-continue
-            writer.send_headers()
-            await writer.drain()
-            await self._continue
-
-        protocol = conn.protocol
-        assert protocol is not None
+        tracker = self._upload_tracker
+        gen = self._upload_gen
+        if tracker is not None:
+            writer.on_body_write = functools.partial(tracker._add_bytes, gen)
+            tracker._attempt_writing(gen)
         try:
-            await self._body.write_with_length(writer, content_length)
-        except OSError as underlying_exc:
-            reraised_exc = underlying_exc
+            # 100 response
+            if self._continue is not None:
+                # Force headers to be sent before waiting for 100-continue
+                writer.send_headers()
+                await writer.drain()
+                await self._continue
 
-            # Distinguish between timeout and other OS errors for better error reporting
-            exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                underlying_exc, asyncio.TimeoutError
-            )
-            if exc_is_not_timeout:
-                reraised_exc = ClientOSError(
-                    underlying_exc.errno,
-                    f"Can not write request body for {self.url !s}",
+            protocol = conn.protocol
+            assert protocol is not None
+            try:
+                await self._body.write_with_length(writer, content_length)
+            except OSError as underlying_exc:
+                reraised_exc = underlying_exc
+
+                # Distinguish between timeout and other OS errors for better error reporting
+                exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                    underlying_exc, asyncio.TimeoutError
                 )
+                if exc_is_not_timeout:
+                    reraised_exc = ClientOSError(
+                        underlying_exc.errno,
+                        f"Can not write request body for {self.url !s}",
+                    )
 
-            set_exception(protocol, reraised_exc, underlying_exc)
-        except asyncio.CancelledError:
-            # Body hasn't been fully sent, so connection can't be reused
-            conn.close()
-            raise
-        except Exception as underlying_exc:
-            set_exception(
-                protocol,
-                ClientConnectionError(
+                set_exception(protocol, reraised_exc, underlying_exc)
+                if tracker is not None:
+                    tracker._attempt_failed(gen, reraised_exc)
+            except Exception as underlying_exc:
+                wrapped_exc = ClientConnectionError(
                     "Failed to send bytes into the underlying connection "
                     f"{conn !s}: {underlying_exc!r}",
-                ),
-                underlying_exc,
-            )
-        else:
-            # Successfully wrote the body, signal EOF and start response timeout
-            await writer.write_eof()
-            protocol.start_timeout()
+                )
+                set_exception(protocol, wrapped_exc, underlying_exc)
+                if tracker is not None:
+                    tracker._attempt_failed(gen, wrapped_exc)
+            else:
+                # Successfully wrote the body, signal EOF and start response timeout
+                await writer.write_eof()
+                if tracker is not None:
+                    tracker._attempt_finished(gen)
+                protocol.start_timeout()
+        except asyncio.CancelledError:
+            # Record the attempt first: the tracker transitions cannot
+            # fail, while conn.close() conceivably can.
+            if tracker is not None:
+                tracker._attempt_cancelled(gen)
+            # Body hasn't been fully sent, so the connection can't be reused.
+            conn.close()
+            raise
+        except BaseException as underlying_exc:
+            # Failures escaping the inner handlers (100-continue preamble,
+            # write_eof) leave the body unsent: the connection can't be
+            # reused, and the tracker must still be notified.
+            if tracker is not None:
+                tracker._attempt_failed(gen, underlying_exc)
+            conn.close()
+            raise
 
     async def _close(self) -> None:
         if self._writer_task is not None:
