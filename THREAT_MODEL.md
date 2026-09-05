@@ -333,12 +333,6 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   Now rejected at the point it is seen, matching llhttp (request line,
   headers, chunk-size, trailers). Not a vulnerability because no proxy would
   pipeline requests from multiple clients and forward raw LFs to the backend.
-- **Issue #13364** — multi-coding `Content-Encoding` (e.g. `gzip,gzip` from
-  servers that compress twice) was passed through undecoded; now decoded in
-  reverse application order, capped at `MAX_CONTENT_CODINGS = 2` with an
-  explicit `ContentEncodingError` beyond the cap (threat 1.15). Coding
-  tokens are matched case-insensitively and repeated `Content-Encoding`
-  headers are treated as one comma-joined list in both parsers.
 
 These are all currently in place; this section assumes no regression.
 

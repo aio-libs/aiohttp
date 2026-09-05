@@ -461,8 +461,7 @@ cdef class HttpParser:
                 if self._content_encoding is None:
                     self._content_encoding = value
                 else:
-                    # Repeated Content-Encoding headers are equivalent to a
-                    # single comma-joined one, per RFC 9110 section 5.3.
+                    # https://www.rfc-editor.org/info/rfc9110/#section-5.3-1
                     self._content_encoding = self._content_encoding + "," + value
 
             self._has_value = False

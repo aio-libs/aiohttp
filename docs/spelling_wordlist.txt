@@ -81,7 +81,6 @@ codebase
 codec
 codspeed
 Codings
-codings
 committer
 committers
 Conda

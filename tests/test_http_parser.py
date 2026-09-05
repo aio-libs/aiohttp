@@ -1147,7 +1147,7 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
 
 
 def test_compression_case_insensitive(parser: HttpRequestParser) -> None:
-    # RFC 9110 section 8.4.1: content codings are case-insensitive.
+    # https://www.rfc-editor.org/info/rfc9110/#section-8.4.1-3
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: GZip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
@@ -1155,7 +1155,7 @@ def test_compression_case_insensitive(parser: HttpRequestParser) -> None:
 
 
 def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
-    # RFC 9110 section 8.4: codings are listed in the order they were applied.
+    # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: deflate, gzip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]

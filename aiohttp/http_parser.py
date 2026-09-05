@@ -136,8 +136,7 @@ def parse_content_encoding(value: str, auto_decompress: bool) -> str | None:
         return enc
     if "," not in enc:
         return None
-    # RFC 9110 section 8.4: multiple codings are listed in the order applied.
-    # "identity" is a synonym for "no encoding".
+    # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
     codings = [c for c in (t.strip(" \t") for t in enc.split(",")) if c != "identity"]
     if not codings or not SUPPORTED_CONTENT_CODINGS.issuperset(codings):
         return None
@@ -657,9 +656,6 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             if "upgrade" in conn_tokens and headers.get(hdrs.UPGRADE):
                 upgrade = True
 
-        # encoding
-        # Repeated Content-Encoding headers arrive comma-joined from
-        # HeadersDictProxy.__getitem__, per RFC 9110 section 5.3.
         enc = headers.get(hdrs.CONTENT_ENCODING)
         if enc is not None:
             encoding = parse_content_encoding(enc, self._auto_decompress)
@@ -1227,9 +1223,7 @@ class DeflateBuffer:
         self.size = 0
         out.total_compressed_bytes = self.size
         self.encoding = encoding
-        # Codings are listed in the order they were applied (RFC 9110
-        # section 8.4), so decoding walks them in reverse: the last coding
-        # is the outermost layer on the wire.
+        # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
         codings = encoding.split(",") if encoding and "," in encoding else [encoding]
         self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
