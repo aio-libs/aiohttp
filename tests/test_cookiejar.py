@@ -1532,7 +1532,7 @@ async def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(filtered) == 0
 
 
-def test_update_cookies_copies_caller_morsel() -> None:
+async def test_update_cookies_copies_caller_morsel() -> None:
     """Test that mutating a Morsel after update_cookies() does not change the jar.
 
     https://github.com/aio-libs/aiohttp/issues/13634
@@ -1549,7 +1549,7 @@ def test_update_cookies_copies_caller_morsel() -> None:
     assert jar.filter_cookies(url)["auth"].value == "original-value"
 
 
-def test_update_cookies_does_not_mutate_caller_morsel() -> None:
+async def test_update_cookies_does_not_mutate_caller_morsel() -> None:
     """Test that update_cookies() normalization does not leak into the caller's Morsel.
 
     https://github.com/aio-libs/aiohttp/issues/13634
