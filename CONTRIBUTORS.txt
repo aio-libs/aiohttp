@@ -362,6 +362,7 @@ Sergey Skripnick
 Serhii Charykov
 Serhii Kostel
 Serhiy Storchaka
+Shahzaib Niaz
 Shensheng Shen
 Shubh Agarwal
 Simon Kennedy

@@ -2232,11 +2232,21 @@ Resource classes hierarchy::
 
    .. attribute:: canonical
 
-      Read-only *canonical path* associate with the resource. Returns the
-      formatter obtained from the path used to create the DynamicResource.
-      For example, from a path ``/get/{num:^\d+}``, it returns ``/get/{num}``
+      Read-only *canonical path* associate with the resource. Returns the path
+      used to create the DynamicResource with every variable part reduced to
+      its name and no percent-encoding applied.
+      For example, from a path ``/get/{num:^\d+}``, it returns ``/get/{num}``,
+      and from ``/hello world/{name}`` it returns ``/hello world/{name}``.
+
+      The percent-encoded form used to build URLs is available as
+      ``get_info()['formatter']``.
 
       .. versionadded:: 3.3
+
+      .. versionchanged:: 3.14.4
+
+         Fixed parts are no longer percent-encoded; previously
+         ``/hello world/{name}`` was reported as ``/hello%20world/{name}``.
 
    .. method:: url_for(**params)
 
@@ -2259,9 +2269,17 @@ Resource classes hierarchy::
    .. attribute:: canonical
 
       Read-only *canonical path* associate with the resource. Returns the prefix
-      used to create the StaticResource. For example ``/prefix``
+      used to create the StaticResource, without percent-encoding applied.
+      For example ``/prefix``, or ``/static files`` for a resource registered
+      as ``/static files/``.
 
       .. versionadded:: 3.3
+
+      .. versionchanged:: 3.14.4
+
+         The prefix is no longer percent-encoded, neither here nor in
+         ``get_info()['prefix']``; previously ``/static files`` was reported
+         as ``/static%20files``.
 
    .. method:: url_for(filename, append_version=None)
 
@@ -2309,10 +2327,16 @@ Resource classes hierarchy::
    .. attribute:: canonical
 
       Read-only *canonical path* associate with the resource. Returns the
-      prefix used to create the PrefixedSubAppResource.
+      prefix used to create the PrefixedSubAppResource, without
+      percent-encoding applied.
       For example ``/prefix``
 
       .. versionadded:: 3.3
+
+      .. versionchanged:: 3.14.4
+
+         The prefix is no longer percent-encoded, neither here nor in
+         ``get_info()['prefix']``.
 
    .. method:: url_for(**kwargs)
 
