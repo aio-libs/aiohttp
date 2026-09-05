@@ -273,6 +273,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
             req.stream_id = stream.stream_id
             # release again to clear the protocol from _acquired if required
             connector._release(conn._key, conn.protocol, should_close=False)
+            conn.protocol.set_response_params(**req._response_params)
             resp = await req._send(conn)
             resp.stream_id = stream.stream_id
         else:

@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Tuple,
 
 from multidict import CIMultiDict
 
+from .. import hdrs
 from ..abc import AbstractStreamWriter
 from ..base_protocol import BaseProtocol
 from ..helpers import HeadersDictProxy
@@ -37,21 +38,30 @@ def feed_headers(
     """Convert raw headers to the standard RawResponseMessage format"""
     # Build a minimal RawResponseMessage (the fields that ClientResponse uses).
     raw_headers: List[Tuple[bytes, bytes]] = []
+    # we should consider raising an exception
+    # if the server doesn't send :status
     code = 500
+    ci_headers = CIMultiDict(headers)
     # there is no guarantee that the status code comes first
     for key, value in headers:
         if key == ":status":
             code = int(value)
         raw_headers.append((key.encode("latin-1"), value.encode("latin-1")))
+
+    encoding = None
+    enc = ci_headers.get(hdrs.CONTENT_ENCODING, "")
+    if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
+        encoding = enc
+
     msg = RawResponseMessage(
         version=HttpVersion(2, 0),  # HTTP/2.0
         code=code,
         # HTTP/2 has no reason phrase
         reason="",
-        headers=HeadersDictProxy(CIMultiDict(headers)),
+        headers=HeadersDictProxy(ci_headers),
         raw_headers=tuple(raw_headers),
         should_close=False,
-        compression=None,  # XXX propagate the configuration
+        compression=encoding,
         upgrade=False,  # not implemented
         chunked=False,  # n/a
     )
@@ -97,7 +107,7 @@ class Http2StreamWriter(AbstractStreamWriter):
 
         self._protocol._connection.send_headers(
             self.stream_id,
-            self._req.method,
+            self._req.method,  # could be stored when `write_headers` is called
             self._req.url,
             self._headers,
             end_stream=end_stream,

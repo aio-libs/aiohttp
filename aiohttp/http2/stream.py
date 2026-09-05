@@ -1,10 +1,10 @@
 import asyncio
+import logging
 from enum import IntEnum
 from typing import TYPE_CHECKING, Dict, Iterable, Optional, Set
 
 from hpack import HeaderTuple
 
-from ..helpers import DEFAULT_CHUNK_SIZE
 from ..http_exceptions import ContentEncodingError
 from ..http_parser import DeflateBuffer, RawResponseMessage
 from ..streams import StreamReader
@@ -14,6 +14,19 @@ from .settings import Setting
 
 if TYPE_CHECKING:
     from .connection import Http2Connection, Http2Protocol
+
+logger = logging.getLogger("aiohttp.http2.stream")
+
+# Limit for decompressed frames
+# the hard limit is  2**63 -1 but
+# setting it to a reasonable value
+# protects the client against zip bombs
+# and similar attacks.
+# Zip bombs are a (rather unorthodox)
+# defense tactic against scrapers
+# so it's important to protect
+# the client against them.
+MAX_DECOMPRESS_SIZE = 2**31 - 1
 
 
 # ----------------------------------------------------------------------
@@ -129,7 +142,7 @@ class Stream:
         # all streams get a fair share of the bandwidth.
         # It requires synchronizing the `Stream`, the protocol, and the payload.
         # Given we are using the HTTP/1.1 payload which resumes the read at a protocol level
-        # we can't have this kind of control without introducing a breaking change.
+        # we can't have this kind of control without changing the `StreamReader` class.
         # Thus, flow-control is not enforced here.
         # Unless the user has different consumers for the streams
         # (e.g., is acting as a proxy for multiple hosts)
@@ -139,21 +152,30 @@ class Stream:
             self.inbound_window = self._inbound_window_initial
             self.conn._send_window_update(self.stream_id, increment)
 
-    def receive_data(self, data: bytes, end_stream: bool) -> None:
+    def receive_data(self, data: bytes, end_stream: bool, limit: int = 0) -> None:
         """Process incoming DATA frame payload."""
         self.inbound_window -= len(data)
+        limit = limit or MAX_DECOMPRESS_SIZE
 
         # --- stream-level flow control refill ---
         self.maybe_reset_window()
 
         if not self._headers_received:
             # Buffer until we know the content-encoding.
+            if len(self._pending_data) + len(data) > limit:
+                msg = "Received too much data before headers."
+                logging.warning(msg)
+                self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
+                return
             self._pending_data.extend(data)
         else:
             # Feed data to the decompressor or directly to the reader.
             if self.decompressor is not None:
                 try:
-                    self.decompressor.feed_data(data)
+                    more = self.decompressor.feed_data(data)
+                    if more is True:
+                        msg = f"Uncompressed data contains more than {MAX_DECOMPRESS_SIZE} bytes."
+                        raise ContentEncodingError(msg)
                 except ContentEncodingError as exc:
                     self.body_reader.set_exception(exc)
                     self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
@@ -183,7 +205,7 @@ class Stream:
                 self.decompressor = DeflateBuffer(
                     self.body_reader,
                     encoding=encoding,
-                    max_decompress_size=DEFAULT_CHUNK_SIZE,
+                    max_decompress_size=MAX_DECOMPRESS_SIZE,
                 )
                 # Feed any data that arrived before headers.
                 if self._pending_data:

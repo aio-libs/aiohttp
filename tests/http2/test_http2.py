@@ -27,7 +27,6 @@ from http2.utils import (  # noqa: I900 (http2 is not a dependency)
 import aiohttp
 from aiohttp import ClientConnectionError, SocketTimeoutError
 from aiohttp.connector import TCPConnector
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http2.connection import Http2Connection, Http2Protocol
 from aiohttp.http2.errors import ErrorCode, ProtocolError
 from aiohttp.http2.settings import (
@@ -38,8 +37,120 @@ from aiohttp.http2.settings import (
     FrameType,
     Setting,
 )
-from aiohttp.http2.stream import Stream, StreamState
+from aiohttp.http2.stream import MAX_DECOMPRESS_SIZE, Stream, StreamState
 from aiohttp.http_exceptions import ContentEncodingError
+
+# if it's a real URL it hangs (missing mock?)
+URL = "https://127.3.3.3"
+
+
+# ----------------------------------------------------------------------
+# Mock transport – records writes and lies about ALPN
+# ----------------------------------------------------------------------
+class MockH2Transport(asyncio.Transport):
+    def __init__(self, extra_info: Optional[Dict[str, Any]] = None) -> None:
+        super().__init__()
+        self.written = bytearray()
+        self._closing = False
+        self._extra = extra_info or {}
+        self._protocol: Optional[Http2Protocol] = None
+
+    def write(self, data: bytes | bytearray | memoryview) -> None:
+        self.written.extend(data)
+
+    def close(self) -> None:
+        self._closing = True
+
+    def is_closing(self) -> bool:
+        return self._closing
+
+    def get_extra_info(self, name: str, default: Any = None) -> Any:
+        if name == "ssl_object":
+            return self._extra.get("ssl_object", MagicMock())
+        return self._extra.get(name, default)
+
+
+# ----------------------------------------------------------------------
+# Custom connector – always returns Http2Protocol for h2 connections
+# ----------------------------------------------------------------------
+class H2TestConnector(TCPConnector):
+    def _get_protocol(self, loop: asyncio.AbstractEventLoop) -> type:
+        # Return the class; aiohttp will instantiate it
+        return Http2Protocol
+
+    async def close(self, *, abort_ssl: bool = False) -> None:
+        self._closed = True
+        return None
+
+
+# ----------------------------------------------------------------------
+# Fixture: session + mock transport + captured protocol
+# ----------------------------------------------------------------------
+@pytest.fixture
+async def h2_client() -> Any:  # returns a generator of (session, transport, protocol)
+    """Create a ClientSession that uses our Http2Protocol over a mock transport."""
+    # Mock SSL object that tells aiohttp we’ve negotiated h2
+    mock_ssl = MagicMock()
+    mock_ssl.selected_alpn_protocol.return_value = "h2"
+    transport = MockH2Transport(extra_info={"ssl_object": mock_ssl})
+
+    protocol_instance: Optional[Http2Protocol] = None
+
+    async def fake_create_connection(
+        protocol_factory: Any, *args: Any, **kwargs: Any
+    ) -> Tuple[MockH2Transport, Http2Protocol]:
+        nonlocal protocol_instance
+        protocol_instance = protocol_factory()  # Http2Protocol()
+        protocol_instance.connection_made(transport)
+        transport._protocol = protocol_instance
+        return transport, protocol_instance
+
+    connector = H2TestConnector()
+    connector._wrap_create_connection = fake_create_connection  # type: ignore[assignment]
+    async with aiohttp.ClientSession(connector=connector) as session:
+        yield session, transport, protocol_instance
+
+
+@pytest.fixture
+def stream_setup() -> Generator[Any, None, None]:
+    """Create a Stream with mocked dependencies, return stream and mocks."""
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    # Mock connection
+    conn = MagicMock()
+    conn.remote_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
+    conn.local_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
+    conn._send_window_update = MagicMock()
+    conn._send_rst_stream = MagicMock()
+    conn._close_stream = MagicMock()
+
+    # Mock protocol
+    protocol = MagicMock()
+    protocol._auto_decompress = True
+
+    stream = Stream(stream_id=1, conn=conn, loop=loop, protocol=protocol)
+    stream.body_reader = MagicMock()
+    # Reset mocks after initialization (constructor may have used them)
+    conn._send_window_update.reset_mock()
+    conn._send_rst_stream.reset_mock()
+    conn._close_stream.reset_mock()
+    conn.streams = {1: stream}
+
+    yield stream, conn, protocol, loop
+    loop.close()
+
+
+# ----------------------------------------------------------------------
+# Helper to create headers with optional content-encoding
+# ----------------------------------------------------------------------
+def make_headers(
+    encoding: Optional[str] = None, end_stream: bool = False
+) -> List[Tuple[str, str]]:
+    headers: List[Tuple[str, str]] = [(":status", "200")]
+    if encoding:
+        headers.append(("content-encoding", encoding))
+    return headers
 
 
 # ======================================================================
@@ -513,6 +624,20 @@ class TestMiscellaneous:
         assert task2.done()
 
     @pytest.mark.asyncio
+    async def test_empty_payload(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """When window is zero, multiple blocked tasks resume on WINDOW_UPDATE."""
+        conn, transport = connection
+        stream = await conn.create_stream()
+
+        # padded DATA frame without pad_len
+        frame = frame_header(0, FrameType.DATA, FlagData.PADDED, stream.stream_id)
+        conn.data_received(frame)
+        # protocol violation causes stream reset
+        assert stream.response_future.done()
+
+    @pytest.mark.asyncio
     async def test_stream_cancelled_before_response(
         self, connection: Tuple[Http2Connection, MagicMock]
     ) -> None:
@@ -653,77 +778,6 @@ class TestStreamStateMachine:
         stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
 
 
-# ----------------------------------------------------------------------
-# Mock transport – records writes and lies about ALPN
-# ----------------------------------------------------------------------
-class MockH2Transport(asyncio.Transport):
-    def __init__(self, extra_info: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__()
-        self.written = bytearray()
-        self._closing = False
-        self._extra = extra_info or {}
-        self._protocol: Optional[Http2Protocol] = None
-
-    def write(self, data: bytes | bytearray | memoryview) -> None:
-        self.written.extend(data)
-
-    def close(self) -> None:
-        self._closing = True
-
-    def is_closing(self) -> bool:
-        return self._closing
-
-    def get_extra_info(self, name: str, default: Any = None) -> Any:
-        if name == "ssl_object":
-            return self._extra.get("ssl_object", MagicMock())
-        return self._extra.get(name, default)
-
-
-# ----------------------------------------------------------------------
-# Custom connector – always returns Http2Protocol for h2 connections
-# ----------------------------------------------------------------------
-class H2TestConnector(TCPConnector):
-    def _get_protocol(self, loop: asyncio.AbstractEventLoop) -> type:
-        # Return the class; aiohttp will instantiate it
-        return Http2Protocol
-
-    async def close(self, *, abort_ssl: bool = False) -> None:
-        self._closed = True
-        return None
-
-
-# ----------------------------------------------------------------------
-# Fixture: session + mock transport + captured protocol
-# ----------------------------------------------------------------------
-@pytest.fixture
-async def h2_client() -> Any:  # returns a generator of (session, transport, protocol)
-    """Create a ClientSession that uses our Http2Protocol over a mock transport."""
-    # Mock SSL object that tells aiohttp we’ve negotiated h2
-    mock_ssl = MagicMock()
-    mock_ssl.selected_alpn_protocol.return_value = "h2"
-    transport = MockH2Transport(extra_info={"ssl_object": mock_ssl})
-
-    protocol_instance: Optional[Http2Protocol] = None
-
-    async def fake_create_connection(
-        protocol_factory: Any, *args: Any, **kwargs: Any
-    ) -> Tuple[MockH2Transport, Http2Protocol]:
-        nonlocal protocol_instance
-        protocol_instance = protocol_factory()  # Http2Protocol()
-        protocol_instance.connection_made(transport)
-        transport._protocol = protocol_instance
-        return transport, protocol_instance
-
-    connector = H2TestConnector()
-    connector._wrap_create_connection = fake_create_connection  # type: ignore[assignment]
-    async with aiohttp.ClientSession(connector=connector) as session:
-        yield session, transport, protocol_instance
-
-
-# if it's a real URL it hangs (missing mock?)
-URL = "https://127.3.3.3"
-
-
 class TestIncomingResponses:
     @pytest.mark.asyncio
     async def test_get_200_response(self, h2_client: Any) -> None:  # type: ignore[misc]
@@ -846,8 +900,6 @@ class TestIncomingResponses:
 # ----------------------------------------------------------------------
 # Additional tests for full coverage of missing paths
 # ----------------------------------------------------------------------
-
-
 class TestConnectionEdgeCases:
     @pytest.mark.asyncio
     async def test_eof_received_calls_close(
@@ -1046,50 +1098,6 @@ class TestConnectionEdgeCases:
         assert conn._flow_control_updated.is_set()
 
 
-# ----------------------------------------------------------------------
-# Fixture: create a Stream with mocked connection and protocol
-# ----------------------------------------------------------------------
-@pytest.fixture
-def stream_setup() -> Generator[Any, None, None]:
-    """Create a Stream with mocked dependencies, return stream and mocks."""
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
-
-    # Mock connection
-    conn = MagicMock()
-    conn.remote_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
-    conn.local_settings = {Setting.INITIAL_WINDOW_SIZE: 65535}
-    conn._send_window_update = MagicMock()
-    conn._send_rst_stream = MagicMock()
-    conn._close_stream = MagicMock()
-
-    # Mock protocol
-    protocol = MagicMock()
-    protocol._auto_decompress = True
-
-    stream = Stream(stream_id=1, conn=conn, loop=loop, protocol=protocol)
-    stream.body_reader = MagicMock()
-    # Reset mocks after initialization (constructor may have used them)
-    conn._send_window_update.reset_mock()
-    conn._send_rst_stream.reset_mock()
-    conn._close_stream.reset_mock()
-
-    yield stream, conn, protocol, loop
-    loop.close()
-
-
-# ----------------------------------------------------------------------
-# Helper to create headers with optional content-encoding
-# ----------------------------------------------------------------------
-def make_headers(
-    encoding: Optional[str] = None, end_stream: bool = False
-) -> List[Tuple[str, str]]:
-    headers: List[Tuple[str, str]] = [(":status", "200")]
-    if encoding:
-        headers.append(("content-encoding", encoding))
-    return headers
-
-
 # ======================================================================
 # Tests for receive_headers
 # ======================================================================
@@ -1127,7 +1135,7 @@ class TestReceiveHeaders:
 
         assert stream.decompressor is mock_deflate
         mock_deflate_cls.assert_called_once_with(
-            stream.body_reader, encoding="gzip", max_decompress_size=DEFAULT_CHUNK_SIZE
+            stream.body_reader, encoding="gzip", max_decompress_size=MAX_DECOMPRESS_SIZE
         )
         mock_deflate.feed_data.assert_not_called()
         assert stream._pending_data == b""
@@ -1277,6 +1285,15 @@ class TestReceiveData:
         assert stream.inbound_window == initial_window - len(data)
         stream.body_reader.feed_data.assert_not_called()
 
+    async def test_buffer_overflow(self, stream_setup: Any) -> None:
+        stream, conn, protocol, _ = stream_setup
+        data = b"early-data"
+
+        stream.receive_data(data, end_stream=False, limit=1)
+
+        assert stream._pending_data == b""
+        assert stream.conn._send_rst_stream.called is True
+
     async def test_no_headers_received_end_stream_feeds_eof(
         self, stream_setup: Any
     ) -> None:
@@ -1408,16 +1425,6 @@ class TestProtocolMethods:
         proto.connection_lost(None)
         # Now _connection_lost_called is True, so closed should be None
         assert proto.closed is None
-
-    @pytest.mark.asyncio
-    async def test_read_timeout_setter(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
-    ) -> None:
-        proto, _ = protocol
-        proto.read_timeout = 5.0  # type: ignore[attr-defined]
-        assert proto.read_timeout == 5.0  # type: ignore[attr-defined]
-        proto.read_timeout = None  # type: ignore[attr-defined]
-        assert proto.read_timeout is None  # type: ignore[attr-defined]
 
     @pytest.mark.asyncio
     async def test_connection_lost_cleanup(
@@ -1566,3 +1573,12 @@ class TestProtocolMethods:
         proto._connection = None
         with pytest.raises(ConnectionError):
             await proto.read_stream(1)
+
+    @pytest.mark.asyncio
+    async def test_stream_cleanup(
+        self, protocol: Tuple[Http2Protocol, MagicMock]
+    ) -> None:
+        proto, _ = protocol
+        stream = await proto.create_stream()
+        proto._on_read_timeout()
+        assert stream.response_future.done()

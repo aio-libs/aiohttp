@@ -221,6 +221,11 @@ class Http2Connection:
     def _handle_data_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
         pad_length = 0
         pos = 0
+        if not payload:
+            logger.warning("Empty payload")
+            self._protocol_error()
+            return
+
         if flags & FlagData.PADDED:
             # use fuzzy tests to
             # verify if it's an error
@@ -430,6 +435,10 @@ class Http2Connection:
         self._cancel_streams(0)
 
     def _send_rst_stream(self, stream_id: int, error_code: int) -> None:
+        stream = self.streams.get(stream_id)
+        if stream is not None:
+            self._close_stream(stream, Exception(ErrorCode(error_code)))
+
         payload = struct.pack("!I", error_code)
         self._send_frame(FrameType.RST_STREAM, 0, stream_id, payload)
 
@@ -779,6 +788,9 @@ class Http2Protocol(BaseProtocol):
     def _on_read_timeout(self) -> None:
         exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
+        # cancel all
+        if self._connection is not None:
+            self._connection._cancel_streams(0)
 
     # ------------------------------------------------------------------
     # Backpressure
