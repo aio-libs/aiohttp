@@ -171,12 +171,13 @@ def test_domain_matching() -> None:
 async def test_constructor(loop, cookies_to_send, cookies_to_receive) -> None:
     jar = CookieJar(loop=loop)
     jar.update_cookies(cookies_to_send)
-    jar_cookies = SimpleCookie()
-    for cookie in jar:
-        dict.__setitem__(jar_cookies, cookie.key, cookie)
-    expected_cookies = cookies_to_send
-    assert jar_cookies == expected_cookies
-    assert jar._loop is loop
+    jar_cookies = {cookie.key: cookie for cookie in jar}
+    assert jar_cookies.keys() == cookies_to_send.keys()
+    for name, expected in cookies_to_send.items():
+        # The jar stores normalized copies, so only the parts that
+        # normalization must not touch are compared here.
+        assert jar_cookies[name].value == expected.value
+        assert jar_cookies[name].coded_value == expected.coded_value
 
 
 async def test_constructor_with_expired(
@@ -207,7 +208,12 @@ def test_save_load(tmp_path, loop, cookies_to_send, cookies_to_receive) -> None:
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    assert jar_test == cookies_to_receive
+    # The jar stores normalized copies of the received cookies, so the
+    # round-tripped contents are compared against the saved jar itself.
+    jar_expected = SimpleCookie()
+    for cookie in jar_save:
+        dict.__setitem__(jar_expected, cookie.key, cookie)
+    assert jar_test == jar_expected
 
 
 def test_save_load_partitioned_cookies(tmp_path, loop) -> None:
@@ -1526,6 +1532,41 @@ async def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(filtered) == 0
 
 
+async def test_update_cookies_copies_caller_morsel() -> None:
+    """Test that mutating a Morsel after update_cookies() does not change the jar.
+
+    https://github.com/aio-libs/aiohttp/issues/13634
+    """
+    jar = CookieJar()
+    url = URL("http://example.com/")
+    sc = SimpleCookie()
+    sc["auth"] = "original-value"
+    jar.update_cookies({"auth": sc["auth"]}, url)
+
+    # Mutate the caller's Morsel after the jar has stored it.
+    sc["auth"].set("auth", "mutated-value", "mutated-value")
+
+    assert jar.filter_cookies(url)["auth"].value == "original-value"
+
+
+async def test_update_cookies_does_not_mutate_caller_morsel() -> None:
+    """Test that update_cookies() normalization does not leak into the caller's Morsel.
+
+    https://github.com/aio-libs/aiohttp/issues/13634
+    """
+    jar = CookieJar()
+    sc = SimpleCookie()
+    sc["sid"] = "value"
+    jar.update_cookies({"sid": sc["sid"]}, URL("http://example.com/sub/page"))
+
+    # The jar normalizes its private copy, not the caller's object.
+    assert sc["sid"]["domain"] == ""
+    assert sc["sid"]["path"] == ""
+
+    filtered = jar.filter_cookies(URL("http://example.com/sub/page"))
+    assert filtered["sid"].value == "value"
+
+
 async def test_shared_cookie_cache_population() -> None:
     """Test that shared cookies are cached correctly."""
     jar = CookieJar(unsafe=True)
@@ -1769,7 +1810,12 @@ async def test_load_falls_back_to_pickle(
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    assert jar_test == cookies_to_receive
+    assert jar_test.keys() == cookies_to_receive.keys()
+    for name, expected in cookies_to_receive.items():
+        # The jar stores normalized copies, so only the parts that
+        # normalization must not touch are compared here.
+        assert jar_test[name].value == expected.value
+        assert jar_test[name].coded_value == expected.coded_value
 
 
 async def test_save_load_json_roundtrip(

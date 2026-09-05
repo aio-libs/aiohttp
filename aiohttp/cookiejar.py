@@ -12,14 +12,14 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType
-from typing import Union
+from typing import Union, cast
 
 from yarl import URL
 
-from ._cookie_helpers import preserve_morsel_with_coded_value
+from ._cookie_helpers import parse_set_cookie_headers, preserve_morsel_with_coded_value
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
@@ -375,6 +375,20 @@ class CookieJar(AbstractCookieJar):
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
+        self._update_cookies(cookies, response_url, copy_morsels=True)
+
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
+            # The freshly parsed Morsels are not shared with the caller,
+            # so they can be stored and normalized without a defensive copy.
+            self._update_cookies(cookies_to_update, response_url, copy_morsels=False)
+
+    def _update_cookies(
+        self, cookies: LooseCookies, response_url: URL, *, copy_morsels: bool
+    ) -> None:
         hostname = response_url.raw_host
 
         if not self._unsafe and is_ip_address(hostname):
@@ -389,6 +403,9 @@ class CookieJar(AbstractCookieJar):
                 tmp = SimpleCookie()
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
+            elif copy_morsels:
+                # TODO(https://github.com/python/typeshed/pull/16346): Remove cast
+                cookie = cast("Morsel[str]", cookie.copy())
 
             domain = cookie["domain"]
 
