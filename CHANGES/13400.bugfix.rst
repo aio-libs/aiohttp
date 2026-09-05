@@ -1,0 +1,1 @@
+Allowed up to 2 encodings to be used in ``Content-Encoding`` -- by :user:`Dreamsorcerer`.
