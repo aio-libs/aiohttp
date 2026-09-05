@@ -1230,7 +1230,7 @@ class DeflateBuffer:
         # Codings are listed in the order they were applied (RFC 9110
         # section 8.4), so decoding walks them in reverse: the last coding
         # is the outermost layer on the wire.
-        codings = encoding.split(",") if encoding and "," in encoding else [encoding]
+        codings = encoding.split(",") if encoding else [encoding]
         self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
 
