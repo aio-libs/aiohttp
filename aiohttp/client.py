@@ -374,6 +374,7 @@ class ClientSession:
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        http2_enabled: bool = False,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -413,7 +414,7 @@ class ClientSession:
             )
 
         if connector is None:
-            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout, http2_enabled=http2_enabled)
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -1646,7 +1647,8 @@ else:
         connector_owner = False
         if connector is None:
             connector_owner = True
-            connector = TCPConnector(force_close=True)
+            http2_enabled = kwargs.get("http2_enabled", False)
+            connector = TCPConnector(force_close=True, http2_enabled=http2_enabled)
 
         session = ClientSession(
             cookies=kwargs.pop("cookies", None),

@@ -11,7 +11,7 @@ from collections import OrderedDict, defaultdict, deque
 from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import suppress
 from http import HTTPStatus
-from itertools import chain, cycle, islice
+from itertools import chain, cycle, islice, product
 from time import monotonic
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -931,7 +931,7 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
-def _make_ssl_context(verified: bool) -> SSLContext:
+def _make_ssl_context(verified: bool, http2_enabled: bool = False) -> SSLContext:
     """Create SSL context.
 
     This method is not async-friendly and should be called from a thread
@@ -952,19 +952,26 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.set_default_verify_paths()
 
     protocols = ["http/1.1"]
-    if os.getenv("AIOHTTP_ENABLE_EXPERIMENTAL_PROTOCOLS", False):
+    if http2_enabled:
         protocols += ["h2"]
     sslcontext.set_alpn_protocols(tuple(protocols))
     return sslcontext
 
 
+# map configuratons to ssl context
+# enable_http2, enable_http3, enable_http4, ...
+OPTIONAL_PROTOCOLS = 1
+_SSL_CONTEXT_MAP = {}
+for verified in (True, False):
+    for mask in product((True, False), repeat=OPTIONAL_PROTOCOLS):
+        _SSL_CONTEXT_MAP[(verified,) + mask] = _make_ssl_context(verified, *mask)
+
 # The default SSLContext objects are created at import time
 # since they do blocking I/O to load certificates from disk,
 # and imports should always be done before the event loop starts
 # or in a thread.
-_SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
-_SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
-
+_SSL_CONTEXT_VERIFIED = _SSL_CONTEXT_MAP[(True, False)]
+_SSL_CONTEXT_UNVERIFIED = _SSL_CONTEXT_MAP[(False, False)]
 
 class TCPConnector(BaseConnector):
     """TCP connector.
@@ -1027,6 +1034,7 @@ class TCPConnector(BaseConnector):
         interleave: int | None = None,
         socket_factory: SocketFactoryType | None = None,
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        http2_enabled: bool = False,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -1066,6 +1074,7 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: set[asyncio.Task[list[ResolveResult]]] = set()
         self._socket_factory = socket_factory
         self._ssl_shutdown_timeout: float | None
+        self._http2_enabled = http2_enabled
 
         # Handle ssl_shutdown_timeout with warning for Python < 3.11
         if ssl_shutdown_timeout is sentinel:
@@ -1319,14 +1328,14 @@ class TCPConnector(BaseConnector):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return _SSL_CONTEXT_UNVERIFIED
+            return _SSL_CONTEXT_MAP[(False, self._http2_enabled)]
         sslcontext = self._ssl
         if isinstance(sslcontext, ssl.SSLContext):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return _SSL_CONTEXT_UNVERIFIED
-        return _SSL_CONTEXT_VERIFIED
+            return _SSL_CONTEXT_MAP[(False, self._http2_enabled)]
+        return _SSL_CONTEXT_MAP[(True, self._http2_enabled)]
 
     def _get_fingerprint(self, req: ClientRequestBase) -> "Fingerprint | None":
         ret = req.ssl
