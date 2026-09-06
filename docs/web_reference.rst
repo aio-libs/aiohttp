@@ -2831,7 +2831,7 @@ application on specific TCP or Unix socket, e.g.::
       :async:
 
       Serve all registered sites until the coroutine is cancelled or
-      :meth:`cleanup` is called. Cancelling the coroutine cleans up the runner
+      :meth:`cleanup` is called. Canceling the coroutine cleans up the runner
       and re-raises :exc:`asyncio.CancelledError`.
 
       :meth:`setup` and at least one site's ``start()`` method must be called
