@@ -2783,8 +2783,7 @@ application on specific TCP or Unix socket, e.g.::
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
-    # wait for finish signal
-    await runner.cleanup()
+    await runner.serve_forever()
 
 
 .. versionadded:: 3.0
@@ -2827,6 +2826,17 @@ application on specific TCP or Unix socket, e.g.::
       :async:
 
       Stop handling all registered sites and cleanup used resources.
+
+   .. method:: serve_forever()
+      :async:
+
+      Serve all registered sites until the coroutine is cancelled or
+      :meth:`cleanup` is called. Cancelling the coroutine cleans up the runner
+      and re-raises :exc:`asyncio.CancelledError`.
+
+      :meth:`setup` and at least one site's ``start()`` method must be called
+      before this method. Only one ``serve_forever()`` coroutine may await a
+      runner at a time.
 
 
 .. class:: AppRunner(app, *, handle_signals=False, **kwargs)

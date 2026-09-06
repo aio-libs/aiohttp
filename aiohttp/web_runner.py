@@ -296,7 +296,14 @@ class SockSite(BaseSite):
 
 
 class BaseRunner(ABC, Generic[_Request]):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
+    __slots__ = (
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_serving_forever_fut",
+        "_sites",
+        "_shutdown_timeout",
+    )
 
     def __init__(
         self,
@@ -308,6 +315,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._handle_signals = handle_signals
         self._kwargs = kwargs
         self._server: Server[_Request] | None = None
+        self._serving_forever_fut: asyncio.Future[None] | None = None
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
 
@@ -374,6 +382,29 @@ class BaseRunner(ABC, Generic[_Request]):
             except NotImplementedError:
                 # remove_signal_handler is not implemented on Windows
                 pass
+
+        serving_forever_fut = self._serving_forever_fut
+        if serving_forever_fut is not None and not serving_forever_fut.done():
+            serving_forever_fut.set_result(None)
+
+    async def serve_forever(self) -> None:
+        if self._serving_forever_fut is not None:
+            raise RuntimeError(f"Runner {self!r} is already being awaited")
+        if self._server is None:
+            raise RuntimeError(f"Call runner.setup() before serve_forever(): {self!r}")
+        if not self._sites:
+            raise RuntimeError(f"Runner {self!r} has no started sites")
+
+        self._serving_forever_fut = asyncio.get_running_loop().create_future()
+        try:
+            await self._serving_forever_fut
+        except asyncio.CancelledError:
+            try:
+                await self.cleanup()
+            finally:
+                raise
+        finally:
+            self._serving_forever_fut = None
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:

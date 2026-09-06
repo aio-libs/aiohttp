@@ -232,6 +232,54 @@ async def test_addresses(make_runner: _RunnerMaker, unix_sockname: str) -> None:
     assert actual_addrs == [(expected_host, expected_post), unix_sockname]
 
 
+async def test_runner_serve_forever_requires_setup_and_site(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+
+    with pytest.raises(RuntimeError, match=r"Call runner\.setup\(\)"):
+        await runner.serve_forever()
+
+    await runner.setup()
+    with pytest.raises(RuntimeError, match="has no started sites"):
+        await runner.serve_forever()
+
+
+async def test_runner_serve_forever_rejects_concurrent_waiter(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0)
+
+    with pytest.raises(RuntimeError, match="is already being awaited"):
+        await runner.serve_forever()
+
+    await runner.cleanup()
+    await serve_task
+
+
+async def test_runner_serve_forever_cancellation_cleans_up(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, host="127.0.0.1", port=0)
+    await site.start()
+    serve_task = asyncio.create_task(runner.serve_forever())
+    await asyncio.sleep(0)
+
+    serve_task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await serve_task
+
+    assert runner.server is None
+    assert not runner.sites
+
+
 @pytest.mark.skipif(
     platform.system() != "Windows", reason="Proactor Event loop present only in Windows"
 )
