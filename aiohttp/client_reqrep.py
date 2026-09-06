@@ -1447,6 +1447,8 @@ class ClientRequest(ClientRequestBase):
         self, protocol: BaseProtocol
     ) -> StreamWriter | Http2StreamWriter:
         if get_version(protocol) == "h2":
+            if self.compress:
+                raise ValueError("Payload compression is not supported over HTTP/2")
             return Http2StreamWriter(protocol, self.loop, self)
         writer = StreamWriter(
             protocol,

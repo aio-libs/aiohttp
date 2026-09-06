@@ -39,10 +39,12 @@ from ..helpers import (
     set_result,
 )
 from ..http_parser import RawResponseMessage
+from ..http_writer import _safe_header
 from ..streams import StreamReader
 from .errors import ErrorCode
 from .settings import (
     DEFAULT_SETTINGS,
+    RFC_DEFAULT_SETTINGS,
     FlagData,
     FlagHeaders,
     FlagPing,
@@ -90,7 +92,7 @@ class Http2Connection:
         self.hpack_decoder: Decoder = Decoder()
 
         # Settings
-        self.remote_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
+        self.remote_settings: Dict[Setting, int] = RFC_DEFAULT_SETTINGS.copy()
         self.local_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
 
         # Flow control
@@ -127,6 +129,8 @@ class Http2Connection:
     # -------------------- Transport callbacks --------------------
     def data_received(self, data: bytes) -> None:
         """Assemble frames from the byte stream and dispatch them."""
+        max_frame = self.local_settings[Setting.MAX_FRAME_SIZE]
+
         self._frame_buffer.extend(data)
         # Consume complete frames while enough bytes for the header exist
         while len(self._frame_buffer) >= FRAME_HEADER_LENGTH:
@@ -136,6 +140,15 @@ class Http2Connection:
                 | self._frame_buffer[1] << 8
                 | self._frame_buffer[2]
             )
+            if length > max_frame:
+                logger.error(
+                    "Received frame of length %d exceeding MAX_FRAME_SIZE %d",
+                    length,
+                    max_frame,
+                )
+                self._send_goaway(0, ErrorCode.FRAME_SIZE_ERROR)
+                return
+
             frame_type_val = self._frame_buffer[3]
             flags = self._frame_buffer[4]
             stream_id = struct.unpack("!I", self._frame_buffer[5:9])[0] & STREAM_ID_MASK
@@ -187,7 +200,8 @@ class Http2Connection:
             if not stream.response_future.done():
                 stream.response_future.set_exception(ConnectionError("Connection lost"))
         for fut in self._pending_streams:
-            fut.set_exception(ConnectionError("Connection lost"))
+            if not fut.done():
+                fut.set_exception(ConnectionError("Connection lost"))
         self.streams.clear()
 
     # -------------------- Frame dispatch --------------------
@@ -238,10 +252,13 @@ class Http2Connection:
                 self._protocol_error()
                 return
         data = payload[pos : len(payload) - pad_length]
+        # (rfc9113, 6.1)
+        # The entire DATA frame payload is included in flow control
+        payload_len = len(payload)
         end_stream = bool(flags & FlagData.END_STREAM)
 
         # Update session flow control
-        self.session_inbound_window -= len(data)
+        self.session_inbound_window -= payload_len
 
         # we check this at this point
         # to avoid the case where a misbehaved server
@@ -253,7 +270,7 @@ class Http2Connection:
                 self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
             return
 
-        stream.receive_data(data, end_stream)
+        stream.receive_data(data, end_stream, payload_len)
 
     def _handle_headers_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
         if flags & FlagHeaders.PRIORITY:
@@ -266,7 +283,7 @@ class Http2Connection:
             headers = self.hpack_decoder.decode(payload)
         except Exception as exc:  # too general?
             logger.error(f"HPACK decode error: {exc}")
-            self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
+            self._send_goaway(self._last_peer_stream_id, ErrorCode.COMPRESSION_ERROR)
             return
 
         end_stream = bool(flags & FlagHeaders.END_STREAM)
@@ -376,11 +393,14 @@ class Http2Connection:
 
         self._cancel_streams(last_stream_id)
 
-    def _cancel_streams(self, last_stream_id: int) -> None:
+    def _cancel_streams(
+        self, last_stream_id: int, exc: BaseException | None = None
+    ) -> None:
         # Cancel streams with higher IDs
+        exc = exc or RuntimeError("GOAWAY sent or received")
         for sid, stream in list(self.streams.items()):
             if sid > last_stream_id:
-                self._close_stream(stream, RuntimeError("GOAWAY sent or received"))
+                self._close_stream(stream, exc)
         # clear pending streams?
 
     def _handle_window_update_frame(
@@ -446,7 +466,9 @@ class Http2Connection:
         self._send_frame(FrameType.WINDOW_UPDATE, 0, stream_id, payload)
 
     # -------------------- Stream lifecycle --------------------
-    def _close_stream(self, stream: Stream, reason: Optional[Exception] = None) -> None:
+    def _close_stream(
+        self, stream: Stream, reason: BaseException | None = None
+    ) -> None:
         # if no reason is given
         # it is assumed that the stream
         # was closed gracefully via `stream.finalize` (internally)
@@ -545,9 +567,7 @@ class Http2Connection:
         end_stream: bool = False,
     ) -> None:
         stream = self.streams[stream_id]
-        path_and_query = url.path
-        if url.query:
-            path_and_query += "?" + url.raw_query_string
+        path_and_query = url.raw_path_qs
 
         # Build pseudo‑headers
         assert url.scheme
@@ -568,15 +588,17 @@ class Http2Connection:
         for name, value in headers:
             lname = name.lower()
             # HTTP/2 forbids connection-specific headers and the Host header
-            if lname in (
+            if lname in {
                 "host",
                 "connection",
                 "keep-alive",
                 "proxy-connection",
                 "transfer-encoding",
                 "upgrade",
-            ):
+            }:
                 continue
+            _safe_header(lname)
+            _safe_header(value)
             req_headers.append((lname, value))
 
         hdrs = self.hpack_encoder.encode(req_headers)
@@ -789,7 +811,7 @@ class Http2Protocol(BaseProtocol):
         self.set_exception(exc)
         # cancel all
         if self._connection is not None:
-            self._connection._cancel_streams(0)
+            self._connection._cancel_streams(0, exc)
 
     # ------------------------------------------------------------------
     # Backpressure
@@ -816,11 +838,14 @@ class Http2Protocol(BaseProtocol):
     # ------------------------------------------------------------------
     def set_exception(
         self,
-        exc: type[BaseException] | BaseException,
+        exc: BaseException,
         exc_cause: BaseException = _EXC_SENTINEL,
     ) -> None:
         self._should_close = True
         self._drop_timeout()
+
+        if self._connection is not None:
+            self._connection._cancel_streams(0, exc)
 
     def set_response_params(
         self,

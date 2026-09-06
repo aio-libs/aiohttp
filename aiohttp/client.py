@@ -269,6 +269,17 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
+            if req._continue:
+                # `expect100` is not inherently incompatible
+                # but the implementation does not appear to be
+                # straightforward.
+                # We have to set the result of the future in
+                # the HTTP/2 stream yet we can not close the stream
+                # because we have to wait for the second response.
+                #
+                # Also, it's not really necessary in HTTP/2
+                # because the server can simply reset the stream.
+                raise NotImplementedError("expect100 is not supported over HTTP/2")
             stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
             req.stream_id = stream.stream_id
             # release again to clear the protocol from _acquired if required

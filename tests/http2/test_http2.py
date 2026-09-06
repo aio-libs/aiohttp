@@ -214,9 +214,13 @@ class TestProtocolCompliance:
         )
 
         # Send more data to drop below 32768
-        data_len = 40000
+        data_len = 10000
         big_data = b"x" * data_len
         frame2 = build_data_frame(stream.stream_id, big_data, end_stream=False)
+        # the frame size limit is 16k
+        conn.data_received(frame2)
+        conn.data_received(frame2)
+        conn.data_received(frame2)
         conn.data_received(frame2)
         # not until the end (because we didn't send eof)
         await stream.body_reader.read(data_len)
@@ -944,6 +948,18 @@ class TestConnectionEdgeCases:
         payload = rst_frames[0][9:]  # after 9-byte header
         error_code = struct.unpack("!I", payload)[0]
         assert error_code == 1  # PROTOCOL_ERROR
+
+    @pytest.mark.asyncio
+    async def test_data_frame_too_large(
+        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+    ) -> None:
+        """DATA frame is larger than Setting.MAX_FRAME_SIZE."""
+        conn, transport = connection
+        size = conn.local_settings[Setting.MAX_FRAME_SIZE]
+        frame = build_data_frame(1, b"x" * (size + 1), end_stream=False)
+        conn.data_received(frame)
+
+        assert conn._goaway_sent, "GOAWAY not sent"
 
     @pytest.mark.asyncio
     async def test_data_frame_unknown_stream_not_above_last_peer(

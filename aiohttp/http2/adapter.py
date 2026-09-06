@@ -11,6 +11,7 @@ from ..base_protocol import BaseProtocol
 from ..helpers import HeadersDictProxy
 from ..http_parser import RawResponseMessage
 from ..http_writer import HttpVersion
+from .errors import ProtocolError
 
 if TYPE_CHECKING:
     from ..client_reqrep import ClientRequest
@@ -32,21 +33,27 @@ def _get_version(transport: asyncio.BaseTransport) -> str:
     return alpn_protocol
 
 
-def feed_headers(
-    headers: Iterable[tuple[str, str]],
-) -> RawResponseMessage:
-    """Convert raw headers to the standard RawResponseMessage format"""
-    # Build a minimal RawResponseMessage (the fields that ClientResponse uses).
-    raw_headers: List[Tuple[bytes, bytes]] = []
-    # we should consider raising an exception
-    # if the server doesn't send :status
-    code = 500
-    ci_headers = CIMultiDict(headers)
-    # there is no guarantee that the status code comes first
-    for key, value in headers:
+def feed_headers(headers: Iterable[tuple[str, str]]) -> RawResponseMessage:
+    header_list = list(headers)
+
+    code = None
+    non_pseudo = []
+    for key, value in header_list:
         if key == ":status":
-            code = int(value)
-        raw_headers.append((key.encode("latin-1"), value.encode("latin-1")))
+            try:
+                code = int(value)
+            except ValueError:
+                raise ProtocolError(f"Invalid :status value: {value!r}") from None
+        elif not key.startswith(":"):
+            non_pseudo.append((key, value))
+
+    if code is None:
+        raise ProtocolError("Missing :status pseudo-header")
+
+    ci_headers = CIMultiDict(non_pseudo)
+    raw_headers = [
+        (key.encode("latin-1"), value.encode("latin-1")) for key, value in non_pseudo
+    ]
 
     encoding = None
     enc = ci_headers.get(hdrs.CONTENT_ENCODING, "")
@@ -119,6 +126,10 @@ class Http2StreamWriter(AbstractStreamWriter):
         # Buffer headers so that we can set END_STREAM on HEADERS
         # when there is no request body.
         self._headers = list(headers.items())
+
+    def send_headers(self, end_stream: bool = False) -> None:
+        """Send buffered headers. Does not end the request by default."""
+        self._send_headers(end_stream=end_stream)
 
     async def write(
         self,

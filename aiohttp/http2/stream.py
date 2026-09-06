@@ -152,9 +152,12 @@ class Stream:
             self.inbound_window = self._inbound_window_initial
             self.conn._send_window_update(self.stream_id, increment)
 
-    def receive_data(self, data: bytes, end_stream: bool, limit: int = 0) -> None:
+    def receive_data(
+        self, data: bytes, end_stream: bool, limit: int = 0, payload_len: int = 0
+    ) -> None:
         """Process incoming DATA frame payload."""
-        self.inbound_window -= len(data)
+        # len(data) <= payload_len
+        self.inbound_window -= max(len(data), payload_len)
         # the second time we have to pass b"" to the decompressor
         # to it will end up reading two times `limit`
         limit = (limit or MAX_DECOMPRESS_SIZE) // 2
@@ -271,7 +274,7 @@ class Stream:
         ):
             self.response_future.set_result((self.response, self.body_reader))
 
-    def cancel(self, reason: Exception) -> None:
+    def cancel(self, reason: BaseException) -> None:
         """Cancel any pending response or body data."""
         # Clear buffered data to free memory
         self._pending_data.clear()
@@ -281,7 +284,8 @@ class Stream:
             self.response_future.set_exception(reason)
 
         # Fail any pending reads on the body reader
-        self.body_reader.set_exception(reason)
+        if not self.body_reader.at_eof():
+            self.body_reader.set_exception(reason)
 
         # Mark the stream as closed so no further frames are accepted
         # There are no formal transitions from everything to CLOSED
