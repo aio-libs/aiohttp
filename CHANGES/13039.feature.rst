@@ -1,0 +1,1 @@
+Added experimental support for ``HTTP/2``. It can be enabled via the ``http2_enabled`` parameter of the :class:`~aiohttp.ClientSession`.
