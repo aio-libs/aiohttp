@@ -284,7 +284,7 @@ class Stream:
             self.response_future.set_exception(reason)
 
         # Fail any pending reads on the body reader
-        if not self.body_reader.at_eof():
+        if not self.body_reader.is_eof():
             self.body_reader.set_exception(reason)
 
         # Mark the stream as closed so no further frames are accepted

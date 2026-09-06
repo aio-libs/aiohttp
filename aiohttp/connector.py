@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import os
 import random
 import socket
 import sys
@@ -958,7 +957,7 @@ def _make_ssl_context(verified: bool, http2_enabled: bool = False) -> SSLContext
     return sslcontext
 
 
-# map configuratons to ssl context
+# map configurations to ssl context
 # enable_http2, enable_http3, enable_http4, ...
 OPTIONAL_PROTOCOLS = 1
 _SSL_CONTEXT_MAP = {}
@@ -972,6 +971,7 @@ for verified in (True, False):
 # or in a thread.
 _SSL_CONTEXT_VERIFIED = _SSL_CONTEXT_MAP[(True, False)]
 _SSL_CONTEXT_UNVERIFIED = _SSL_CONTEXT_MAP[(False, False)]
+
 
 class TCPConnector(BaseConnector):
     """TCP connector.

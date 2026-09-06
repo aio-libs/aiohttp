@@ -517,15 +517,19 @@ class Http2Connection:
     ) -> None:
         """Asynchronously send DATA frames, respecting flow control windows."""
         stream = self.streams[stream_id]
-        max_frame_size = self.remote_settings[Setting.MAX_FRAME_SIZE]
         offset = 0
         total = len(data)
 
-        while offset < total:
+        while offset < total or (total == 0 and end_stream):
             # Wait until both session and stream windows have capacity
-            while stream.outbound_window <= 0 or self.session_outbound_window <= 0:
+            while total and (
+                stream.outbound_window <= 0 or self.session_outbound_window <= 0
+            ):
                 self._flow_control_updated.clear()
                 await self._flow_control_updated.wait()
+
+            # this might change dynamically
+            max_frame_size = self.remote_settings[Setting.MAX_FRAME_SIZE]
 
             chunk_size = min(
                 max_frame_size,
@@ -553,6 +557,10 @@ class Http2Connection:
             stream.outbound_window -= chunk_size
             self.session_outbound_window -= chunk_size
             offset += chunk_size
+
+            # avoid sending infinite zero-length DATA frames
+            if end_stream:
+                break
 
             # there is space available
             if self.session_outbound_window and stream.outbound_window:

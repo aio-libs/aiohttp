@@ -151,7 +151,6 @@ class Http2StreamWriter(AbstractStreamWriter):
                 self.stream_id, bytes(chunk), end_stream=False
             )
             self.output_size += len(chunk)
-
         # we would drain here but
         # drain is no-op in HTTP/2
 
