@@ -522,7 +522,6 @@ cdef class HttpParser:
         encoding = None
         enc = self._content_encoding
         if enc is not None:
-            self._content_encoding = None
             encoding = parse_content_encoding(enc, self._auto_decompress)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
@@ -831,6 +830,11 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except? -1:
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
+    pyparser._raw_name = b""
+    pyparser._raw_value = b""
+    pyparser._has_value = False
+    pyparser._header_name_size = 0
+    pyparser._content_encoding = None
     return 0
 
 

@@ -2656,6 +2656,34 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
     # TODO: Add assertion of trailers when API added.
 
 
+async def test_trailer_not_leaked_into_next_message(
+    parser: HttpRequestParser,
+) -> None:
+    """Trailers of one message must not become headers of the next one.
+
+    Regression test for the C parser leaving the trailer section's last
+    field/value pair (and the Content-Encoding capture) pending across
+    messages: it was processed into the next message's header set, so a
+    trailer could inject a header — including a Content-Encoding that
+    switched decompression on for an unencoded body.
+    """
+    msg1 = (
+        b"POST /a HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"3\r\nabc\r\n0\r\nContent-Encoding: gzip\r\nX-Trailer: leaked\r\n\r\n"
+    )
+    msg2 = b"POST /b HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\nhello"
+
+    messages, upgraded, tail = parser.feed_data(msg1)
+    assert messages[0][0].compression is None
+
+    messages, upgraded, tail = parser.feed_data(msg2)
+    msg, payload = messages[0]
+    assert msg.compression is None
+    assert "Content-Encoding" not in msg.headers
+    assert "X-Trailer" not in msg.headers
+    assert await payload.read() == b"hello"
+
+
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
