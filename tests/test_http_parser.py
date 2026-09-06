@@ -20,6 +20,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
     DeflateBuffer,
@@ -3725,24 +3726,36 @@ class TestDeflateBuffer:
     async def test_streaming_decompress_multiple_codings(
         self, protocol: BaseProtocol
     ) -> None:
-        """Chained codings decode with the same windowed walk as a single one.
-
-        The doubly-compressed payload arrives in small chunks; every stage
-        must keep its intermediate buffering bounded while the output stays
-        identical to the original.
-        """
-        original = b"Hello, chained codings! " * 100_000
-        compressed = gzip.compress(gzip.compress(original))
+        """Chained codings keep every stage's intermediate buffering bounded."""
+        max_length = 2048
+        original = b"A" * (16 * 2**20)
+        middle = gzip.compress(original)
+        # Sanity: middle must dwarf one delivery, or this test cannot
+        # distinguish the walk order.
+        assert len(middle) > 4 * max_length
+        compressed = gzip.compress(middle)
 
         buf = aiohttp.StreamReader(
-            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+            protocol, max_length, loop=asyncio.get_running_loop()
         )
-        dbuf = DeflateBuffer(buf, "gzip,gzip")
+        dbuf = DeflateBuffer(buf, "gzip,gzip", max_decompress_size=max_length)
+        outer = dbuf._stages[0].decompressor
+        inner = dbuf._stages[1].decompressor
+        assert isinstance(outer, ZLibDecompressor)
+        assert isinstance(inner, ZLibDecompressor)
+
+        def backlog(d: ZLibDecompressor) -> int:
+            pending = d._pending_unused_data or b""
+            return len(d._decompressor.unconsumed_tail) + len(pending)
 
         for i in range(0, len(compressed), 1024):  # pragma: no branch
             chunk = compressed[i : i + 1024]
             while dbuf.feed_data(chunk):
                 chunk = b""
+                assert backlog(outer) <= max_length
+                assert backlog(inner) <= max_length
+            assert backlog(outer) <= max_length
+            assert backlog(inner) <= max_length
 
         dbuf.feed_eof()
 
