@@ -1231,7 +1231,11 @@ class DeflateBuffer:
         out.total_compressed_bytes = self.size
         self.encoding = encoding
         # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
-        codings = encoding.split(",") if encoding else [encoding]
+        codings: list[str | None]
+        if encoding:
+            codings = [c.strip(" \t").lower() for c in encoding.split(",")]
+        else:
+            codings = [encoding]
         self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
 
