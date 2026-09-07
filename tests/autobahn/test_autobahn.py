@@ -105,7 +105,13 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
     try:
         wait_for_port(9001)
-        subprocess.run(("coverage", "run", "-a", "tests/autobahn/client/client.py"))
+        subprocess.run(
+            ("coverage", "run", "-a", "tests/autobahn/client/client.py")),
+            env={
+                "COVERAGE_PARALLEL_MODE": "false",
+                **os.environ.copy(),
+            },
+        )
     finally:
         # https://github.com/gabrieldemarmiesse/python-on-whales/pull/580
         autobahn_container.stop()  # type: ignore[union-attr]
