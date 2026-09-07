@@ -55,7 +55,6 @@ click==8.4.1
     #   pip-tools
     #   slotscheck
     #   towncrier
-    #   wait-for-it
 coverage==7.14.1
     # via
     #   -r requirements/test-common.in
@@ -309,8 +308,6 @@ valkey==6.1.1
     # via -r requirements/lint.in
 virtualenv==21.4.2
     # via pre-commit
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 wheel==0.47.0
     # via pip-tools
 yarl==1.24.2
