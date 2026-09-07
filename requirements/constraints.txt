@@ -28,6 +28,8 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   valkey
+atheris==3.0.0
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via -r requirements/runtime-deps.in
 babel==2.18.0
@@ -310,7 +312,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.7
+virtualenv==21.7.8
     # via pre-commit
 wait-for-it==2.3.0
     # via -r requirements/test-common-base.in
