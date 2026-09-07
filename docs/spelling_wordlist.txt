@@ -273,12 +273,12 @@ proxied
 PRs
 pubsub
 Punycode
-pyproject
 py
 pydantic
 pyenv
 pyflakes
 pypa
+pyproject
 PyPI
 pyright
 pytest
