@@ -2528,6 +2528,30 @@ async def test_too_many_content_codings(aiohttp_client: AiohttpClient) -> None:
         await client.get("/")
 
 
+async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> None:
+    """A gzip body missing its 8-byte trailer must error, not decode silently.
+
+    The truncated stream inflates in full, so this previously returned the
+    complete plaintext with a 200 and no error. The C parser surfaces the
+    error as ClientResponseError from the request; the pure-Python parser
+    delivers ClientPayloadError from read().
+    """
+    body = gzip.compress(b"payload " * 4096)[:-8]
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body)
+        resp.headers["Content-Encoding"] = "gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises((aiohttp.ClientPayloadError, aiohttp.ClientResponseError)):
+        async with client.get("/") as resp:
+            await resp.read()
+
+
 async def test_payload_decompress_size_limit(aiohttp_client: AiohttpClient) -> None:
     """Test that decompression size limit triggers DecompressSizeError.
 

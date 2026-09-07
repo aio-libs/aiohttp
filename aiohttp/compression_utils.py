@@ -385,9 +385,18 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
         if self._pending_unused_data is not None:
             data = self._pending_unused_data + bytes(data)
             self._pending_unused_data = None
-        result = self._decompressor.decompress(
-            self._decompressor.unconsumed_tail + data, max_length
-        )
+        combined = self._decompressor.unconsumed_tail + data
+        # Previous member ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
+        # confirm the stream is complete.
+        if (
+            combined
+            and self._decompressor.eof
+            and self._mode > self._zlib_backend.MAX_WBITS
+        ):
+            self._decompressor = self._new_decompressor()
+        result = self._decompressor.decompress(combined, max_length)
 
         # Concatenated gzip/deflate stream: decode the members after this one.
         if self._decompressor.eof and self._decompressor.unused_data:
@@ -395,13 +404,6 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
 
         # Only way to know that isal has no further data is checking we get no output
         self._last_empty = result == b""
-
-        # Member ended exactly at chunk boundary — no unused_data, but the
-        # next feed_data() call would fail on the spent decompressor.
-        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
-        # confirm the stream is complete.
-        if self._decompressor.eof and self._mode > self._zlib_backend.MAX_WBITS:
-            self._decompressor = self._new_decompressor()
 
         return result
 
@@ -422,6 +424,13 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
 
     @property
     def eof(self) -> bool:
+        return self._decompressor.eof
+
+    @property
+    def stream_complete(self) -> bool:
+        """True when all input so far ends exactly at a stream/member boundary."""
+        if self._pending_unused_data is not None or self._decompressor.unconsumed_tail:
+            return False
         return self._decompressor.eof
 
 

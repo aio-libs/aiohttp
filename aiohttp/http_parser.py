@@ -1299,9 +1299,16 @@ class DeflateBuffer:
             assert not chunk
 
             if self.size > 0:
-                # decompressor is not brotli unless coding is "br"
-                if stage.coding == "deflate" and not stage.decompressor.eof:  # type: ignore[union-attr]
-                    raise ContentEncodingError("deflate")
+                # A zlib-backed stage (gzip/deflate) must end exactly on a
+                # stream/member boundary, or bytes were lost in transit.
+                if (
+                    stage.coding not in ("br", "zstd")
+                    and not stage.decompressor.stream_complete  # type: ignore[union-attr]
+                ):
+                    raise ContentEncodingError(
+                        "Truncated stream for content-encoding: %s"
+                        % (stage.coding or "deflate")
+                    )
 
         self.out.feed_eof()
 

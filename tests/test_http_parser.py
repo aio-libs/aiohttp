@@ -6,7 +6,7 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -3624,30 +3624,45 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert buf._eof
 
-    async def test_feed_eof_err_deflate(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "deflate")
+    @pytest.mark.parametrize(
+        ("encoding", "make_body"),
+        (
+            ("deflate", lambda data: zlib.compress(data)[:-4]),
+            ("gzip", lambda data: gzip.compress(data)[:-8]),
+            ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data))[:-8]),
+            ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data)[:-8])),
+            ("deflate,gzip", lambda data: gzip.compress(zlib.compress(data)[:-4])),
+        ),
+        ids=(
+            "single-deflate",
+            "single-gzip",
+            "chain-outer",
+            "chain-inner",
+            "mixed-inner-deflate",
+        ),
+    )
+    async def test_feed_eof_truncated_stream(
+        self,
+        protocol: BaseProtocol,
+        encoding: str,
+        make_body: Callable[[bytes], bytes],
+    ) -> None:
+        """A stream cut short of its trailer must raise, not pass silently.
 
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-        dbuf.size = 1  # Simulate that data was previously fed
+        A gzip stream missing its final 8 bytes (CRC32 + ISIZE) still
+        inflates completely, so without the completeness check the consumer
+        would receive the full plaintext with no error. Each case truncates
+        exactly one stage of the chain.
+        """
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, encoding)
+
+        chunk = make_body(b"payload " * 4096)
+        while dbuf.feed_data(chunk):
+            chunk = b""
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
-
-    async def test_feed_eof_no_err_gzip(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "gzip")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
 
     @pytest.mark.skipif(
         sys.platform in ("android", "ios"), reason="brotli not available"
