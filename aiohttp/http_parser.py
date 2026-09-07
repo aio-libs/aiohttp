@@ -1298,17 +1298,13 @@ class DeflateBuffer:
             # remaining data at once.
             assert not chunk
 
-            if self.size > 0:
-                # A zlib-backed stage (gzip/deflate) must end exactly on a
-                # stream/member boundary, or bytes were lost in transit.
-                if (
-                    stage.coding not in ("br", "zstd")
-                    and not stage.decompressor.stream_complete  # type: ignore[union-attr]
-                ):
-                    raise ContentEncodingError(
-                        "Truncated stream for content-encoding: %s"
-                        % (stage.coding or "deflate")
-                    )
+            if self.size > 0 and not stage.decompressor.stream_complete:
+                # Every stage must end exactly on a stream/member boundary,
+                # or bytes were lost in transit.
+                raise ContentEncodingError(
+                    "Truncated stream for content-encoding: %s"
+                    % (stage.coding or "deflate")
+                )
 
         self.out.feed_eof()
 

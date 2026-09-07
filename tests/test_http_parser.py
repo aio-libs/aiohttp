@@ -3632,6 +3632,20 @@ class TestDeflateBuffer:
             ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data))[:-8]),
             ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data)[:-8])),
             ("deflate,gzip", lambda data: gzip.compress(zlib.compress(data)[:-4])),
+            pytest.param(
+                "br",
+                lambda data: brotli.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    brotli is None, reason="brotli is not installed"
+                ),
+            ),
+            pytest.param(
+                "zstd",
+                lambda data: zstandard.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    zstandard is None, reason="zstandard is not installed"
+                ),
+            ),
         ),
         ids=(
             "single-deflate",
@@ -3639,6 +3653,8 @@ class TestDeflateBuffer:
             "chain-outer",
             "chain-inner",
             "mixed-inner-deflate",
+            "single-brotli",
+            "single-zstd",
         ),
     )
     async def test_feed_eof_truncated_stream(
@@ -3663,34 +3679,6 @@ class TestDeflateBuffer:
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
-
-    @pytest.mark.skipif(
-        sys.platform in ("android", "ios"), reason="brotli not available"
-    )
-    async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "br")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
-
-    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
-    async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "zstd")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
 
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(
