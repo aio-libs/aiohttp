@@ -28,6 +28,8 @@ async-timeout==5.0.1 ; python_version < "3.11"
     # via
     #   -r requirements/runtime-deps.in
     #   valkey
+atheris==3.0.0
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via -r requirements/runtime-deps.in
 babel==2.18.0
@@ -258,7 +260,7 @@ sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-mermaid==2.1.0
+sphinxcontrib-mermaid==2.1.1
     # via -r requirements/doc.in
 sphinxcontrib-qthelp==2.0.0
     # via sphinx
