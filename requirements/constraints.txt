@@ -60,7 +60,6 @@ click==8.5.0
     # via
     #   pip-tools
     #   towncrier
-    #   wait-for-it
 coverage==7.16.0
     # via
     #   -r requirements/test-common.in
@@ -260,7 +259,7 @@ sphinxcontrib-htmlhelp==2.1.0
     # via sphinx
 sphinxcontrib-jsmath==1.0.1
     # via sphinx
-sphinxcontrib-mermaid==2.1.0
+sphinxcontrib-mermaid==2.1.1
     # via -r requirements/doc.in
 sphinxcontrib-qthelp==2.0.0
     # via sphinx
@@ -312,10 +311,8 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.7.7
+virtualenv==21.7.8
     # via pre-commit
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 wheel==0.48.0
     # via pip-tools
 yarl==1.24.5

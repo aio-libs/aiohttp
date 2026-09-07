@@ -30,8 +30,6 @@ cffi==2.1.1
     # via
     #   cryptography
     #   pycares
-click==8.5.0
-    # via wait-for-it
 coverage==7.16.0
     # via
     #   -r requirements/test-common.in
@@ -153,8 +151,6 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-wait-for-it==2.3.0
-    # via -r requirements/test-common-base.in
 yarl==1.24.5
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
