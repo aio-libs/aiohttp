@@ -1,1 +1,1 @@
-Fixed truncated compressed bodies not raising :exc:`~aiohttp.http_exceptions.ContentEncodingError` -- by :user:`Dreamsorcerer`.
+Fixed truncated compressed bodies not raising ``ContentEncodingError`` -- by :user:`Dreamsorcerer`.
