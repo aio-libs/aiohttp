@@ -512,6 +512,8 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_redirects: Maximum number of redirects to follow.
          :exc:`TooManyRedirects` is raised if the number is exceeded.
+         ``0`` means no limit, redirects are followed until the request
+         times out. Use ``allow_redirects=False`` to not follow redirects at all.
          Ignored when ``allow_redirects=False``.
          ``10`` by default.
 
@@ -1016,6 +1018,8 @@ certification chaining.
 
    :param int max_redirects: Maximum number of redirects to follow.
       :exc:`TooManyRedirects` is raised if the number is exceeded.
+      ``0`` means no limit, redirects are followed until the request
+      times out. Use ``allow_redirects=False`` to not follow redirects at all.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
