@@ -1,0 +1,4 @@
+Removed the dead pp* cibuildwheel skip selector from pyproject.toml
+and the CI workflow; PyPy build groups have not been enabled by default
+since cibuildwheel 3.0, so the selector matched nothing and only produced
+a build warning -- by :user:`polandia94`.
