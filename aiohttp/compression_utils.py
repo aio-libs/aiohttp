@@ -433,15 +433,13 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
         )
 
     @property
-    def eof(self) -> bool:
-        return self._decompressor.eof
-
-    @property
     def stream_complete(self) -> bool:
         """True when all input so far ends exactly at a stream/member boundary."""
-        if self._pending_unused_data is not None or self._decompressor.unconsumed_tail:
-            return False
-        return self._decompressor.eof
+        return (
+            self._pending_unused_data is None
+            and not self._decompressor.unconsumed_tail
+            and self._decompressor.eof
+        )
 
 
 class BrotliDecompressor(DecompressionBaseHandler):

@@ -1177,7 +1177,7 @@ class _DecompressStage:
 
     __slots__ = ("coding", "decompressor", "_started_decoding")
 
-    def __init__(self, coding: str | None) -> None:
+    def __init__(self, coding: str) -> None:
         self.coding = coding
         self._started_decoding = False
 
@@ -1223,7 +1223,7 @@ class DeflateBuffer:
     def __init__(
         self,
         out: StreamReader,
-        encoding: str | None,
+        encoding: str,
         max_decompress_size: int = DEFAULT_CHUNK_SIZE,
     ) -> None:
         self.out = out
@@ -1231,11 +1231,7 @@ class DeflateBuffer:
         out.total_compressed_bytes = self.size
         self.encoding = encoding
         # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
-        codings: list[str | None]
-        if encoding:
-            codings = [c.strip(" \t").lower() for c in encoding.split(",")]
-        else:
-            codings = [encoding]
+        codings = [c.strip(" \t").lower() for c in encoding.split(",")]
         self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
 
@@ -1302,8 +1298,7 @@ class DeflateBuffer:
                 # Every stage must end exactly on a stream/member boundary,
                 # or bytes were lost in transit.
                 raise ContentEncodingError(
-                    "Truncated stream for content-encoding: %s"
-                    % (stage.coding or "deflate")
+                    "Truncated stream for content-encoding: %s" % stage.coding
                 )
 
         self.out.feed_eof()
