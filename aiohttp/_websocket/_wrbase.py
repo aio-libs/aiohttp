@@ -6,10 +6,6 @@ if TYPE_CHECKING:
     from .reader import WebSocketDataQueue
 
 
-class _WeakrefBase:
-    """Hack for https://github.com/mypyc/mypyc/issues/1102"""
-
-
 class _InterpretedReadMixin:
     """Hack for https://github.com/mypyc/mypyc/issues/1214"""
 

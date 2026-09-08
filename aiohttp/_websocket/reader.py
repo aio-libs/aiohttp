@@ -14,7 +14,7 @@ from ..compression_utils import TooManyMembersError, ZLibDecompressor
 from ..helpers import _EXC_SENTINEL, set_exception
 from ..log import ws_logger
 from ..streams import EofStream
-from ._wrbase import _InterpretedReadMixin, _WeakrefBase
+from ._wrbase import _InterpretedReadMixin
 from .helpers import (
     UNPACK_CLOSE_CODE as _UNPACK_CLOSE_CODE,
     UNPACK_LEN3 as _UNPACK_LEN3,
@@ -209,7 +209,7 @@ class WebSocketDataQueue(_InterpretedReadMixin):
 
 
 @mypyc_attr(allow_interpreted_subclasses=True)
-class WebSocketReader(_WeakrefBase):
+class WebSocketReader:
     def __init__(
         self,
         queue: WebSocketDataQueue,
@@ -223,18 +223,6 @@ class WebSocketReader(_WeakrefBase):
         # Parked on the queue while parsing is stalled; created once so
         # stalling does not allocate.
         self._weak_self = weakref.ref(self)
-        # mypyc's generated dealloc never calls PyObject_ClearWeakRefs
-        # (https://github.com/mypyc/mypyc/issues/1102), so a refcount death
-        # with live weakrefs leaves them dangling and the next deref
-        # crashes.  The self reference forces collection through the cycle
-        # collector, which clears weakrefs before deallocation.  This is
-        # NOT version-gated: crashes were observed on 3.11 (macOS), 3.12
-        # (Windows) and 3.14 (Windows), while the same 3.14 cleared refs on
-        # Linux -- interpreter forgiveness is platform/patch dependent and
-        # cannot be relied on anywhere.  Cost: the reader and its buffers
-        # are reclaimed by full GC passes, not refcounting.  Never break
-        # this cycle manually; remove when the mypyc issue is resolved.
-        self._gc_cycle = self
 
         self._exc: Exception | None = None
         self._partial = bytearray()
@@ -328,7 +316,7 @@ class WebSocketReader(_WeakrefBase):
 
             # Decompress process must to be done after all packets
             # received.
-            if compressed != 0:
+            if compressed:
                 if not self._decompressobj:
                     self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
                 # XXX: It's possible that the zlib backend (isal is known to
@@ -341,7 +329,7 @@ class WebSocketReader(_WeakrefBase):
                         assembled_payload + WS_DEFLATE_TRAILING,
                         (
                             self._max_msg_size + 1
-                            if self._max_msg_size != 0
+                            if self._max_msg_size
                             else self._max_msg_size
                         ),
                     )
@@ -350,7 +338,7 @@ class WebSocketReader(_WeakrefBase):
                         WSCloseCode.MESSAGE_TOO_BIG,
                         "Compressed message has too many deflate members",
                     ) from exc
-                if self._max_msg_size != 0 and len(payload_merged) > self._max_msg_size:
+                if self._max_msg_size and len(payload_merged) > self._max_msg_size:
                     raise WebSocketError(
                         WSCloseCode.MESSAGE_TOO_BIG,
                         f"Decompressed message exceeds size limit {self._max_msg_size}",
@@ -471,7 +459,7 @@ class WebSocketReader(_WeakrefBase):
                 #    1 bit, MUST be 0 unless negotiated otherwise
                 #
                 # Remove rsv1 from this test for deflate development
-                if rsv2 != 0 or rsv3 != 0 or (rsv1 != 0 and not self._compress):
+                if rsv2 or rsv3 or (rsv1 and not self._compress):
                     raise WebSocketError(
                         WSCloseCode.PROTOCOL_ERROR,
                         "Received frame with non-zero reserved bits",
@@ -513,7 +501,7 @@ class WebSocketReader(_WeakrefBase):
                 # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
                 # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
                 if opcode > 0x7:
-                    if rsv1 != 0:
+                    if rsv1:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             "Received frame with non-zero reserved bits",
@@ -523,10 +511,8 @@ class WebSocketReader(_WeakrefBase):
                     # OR set compress status if this is first fragment
                     # Raise error if not first fragment with rsv1 = 0x1
                     if self._frame_fin or self._compressed == COMPRESSED_NOT_SET:
-                        self._compressed = (
-                            COMPRESSED_TRUE if rsv1 != 0 else COMPRESSED_FALSE
-                        )
-                    elif rsv1 != 0:
+                        self._compressed = COMPRESSED_TRUE if rsv1 else COMPRESSED_FALSE
+                    elif rsv1:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
                             "Received frame with non-zero reserved bits",
@@ -558,7 +544,7 @@ class WebSocketReader(_WeakrefBase):
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
                             f"Message size {int(frame_len) + len(self._partial)} "
-                            f"exceeds limit {self._max_msg_size if self._max_msg_size != 0 else MAX_PAYLOAD_LEN}",
+                            f"exceeds limit {self._max_msg_size or MAX_PAYLOAD_LEN}",
                         )
                     self._payload_bytes_to_read = frame_len
                     start_pos += 8
@@ -568,7 +554,7 @@ class WebSocketReader(_WeakrefBase):
                 # Reject oversized data frames before buffering any payload
                 # bytes. Control frames are capped at 125 bytes (checked in
                 # READ_HEADER) so only text/binary/continuation need this.
-                if self._max_msg_size != 0 and self._frame_opcode in (
+                if self._max_msg_size and self._frame_opcode in (
                     OP_CODE_TEXT,
                     OP_CODE_BINARY,
                     OP_CODE_CONTINUATION,
@@ -614,7 +600,7 @@ class WebSocketReader(_WeakrefBase):
                     if f_start_pos < f_end_pos:  # skip a header-only read
                         self._payload_fragments.append(data[f_start_pos:f_end_pos])
                     if (
-                        self._max_fragments != 0
+                        self._max_fragments
                         and len(self._payload_fragments) > self._max_fragments
                     ):
                         # Fold to bound the object count. Not a pause: nothing
@@ -624,7 +610,7 @@ class WebSocketReader(_WeakrefBase):
                     break
 
                 payload: bytes | bytearray
-                if had_fragments != 0:
+                if had_fragments:
                     self._payload_fragments.append(data[f_start_pos:f_end_pos])
                     if self._payload_buffer:  # folded prefix
                         self._payload_buffer += b"".join(self._payload_fragments)
