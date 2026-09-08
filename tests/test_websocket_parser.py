@@ -495,6 +495,17 @@ def test_continuation_err(
         parser._handle_frame(True, WSMsgType.TEXT, b"line2", 0)
 
 
+def test_continuation_non_fin_err(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # RFC 6455 §5.4: a new data frame injected between the initial fragment and
+    # its continuation must fail the connection, even when it clears FIN.
+    parser._handle_frame(False, WSMsgType.TEXT, b"line1", 0)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._handle_frame(False, WSMsgType.TEXT, b"line2", 0)
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_continuation_with_close(
     out: WebSocketDataQueue, parser: WebSocketReader
 ) -> None:
