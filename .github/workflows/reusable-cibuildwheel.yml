@@ -116,7 +116,7 @@ jobs:
         image: tonistiigi/binfmt:qemu-v8.1.5
 
     - name: Build wheels
-      uses: pypa/cibuildwheel@v4.2.0
+      uses: pypa/cibuildwheel@v4.2.1
       with:
         package-dir: >-  # not necessarily a dir, we pass an acceptable sdist
           dist/${{ inputs.source-tarball-name }}
