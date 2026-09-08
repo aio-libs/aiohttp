@@ -10,6 +10,11 @@ comment:
 coverage:
   range: "95..100"
 
+ignore:
+  # Runs only inside the Pyodide runtime (test-pyodide CI job), where
+  # coverage is not collected.
+  - tests/test_pyodide.py
+
 component_management:
   individual_components:
     - component_id: project
