@@ -278,7 +278,6 @@ pydantic
 pyenv
 pyflakes
 pypa
-pyproject
 PyPI
 pyright
 pytest
@@ -368,7 +367,6 @@ timestamps
 TLS
 tmp
 tmpdir
-toml
 toolbar
 toplevel
 towncrier
