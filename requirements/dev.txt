@@ -60,7 +60,6 @@ click==8.5.0
     # via
     #   pip-tools
     #   towncrier
-    #   wait-for-it
 coverage==7.16.0
     # via
     #   -r requirements/test-common.in
@@ -270,7 +269,7 @@ tomli==2.4.1
     #   slotscheck
     #   sphinx
     #   towncrier
-towncrier==25.8.0
+towncrier==26.9.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
