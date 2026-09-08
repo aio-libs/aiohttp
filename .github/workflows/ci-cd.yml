@@ -740,7 +740,7 @@ jobs:
 
         CIBW_PLATFORM=${{ matrix.platform != '' && matrix.platform || 'auto' }}
 
-        CIBW_SKIP=pp* *${{
+        CIBW_SKIP=*${{
           matrix.musl == 'musllinux'
           && 'many'
           || 'musl'
