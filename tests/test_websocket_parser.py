@@ -20,12 +20,7 @@ from aiohttp._websocket.helpers import (
     websocket_mask,
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING
-from aiohttp._websocket.reader import WebSocketDataQueue
-from aiohttp._websocket.reader_py import (
-    MSG_SIZE_OVERHEAD,
-    WebSocketDataQueue as PyWebSocketDataQueue,
-    WebSocketReader as PyWebSocketReader,
-)
+from aiohttp._websocket.reader import MSG_SIZE_OVERHEAD, WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendWrapper
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
@@ -168,6 +163,16 @@ def test_feed_data_remembers_exception(parser: WebSocketReader) -> None:
     error, data = parser.feed_data(b"")
     assert error is True
     assert data == b""
+
+
+def test_feed_data_accepts_non_bytes_input(
+    out: WebSocketDataQueue, parser: WebSocketReader
+) -> None:
+    """Proactor event loops deliver bytearray; asyncio also allows memoryview."""
+    parser.feed_data(bytearray(build_frame(b"first", WSMsgType.TEXT)))
+    parser.feed_data(memoryview(build_frame(b"second", WSMsgType.TEXT)))
+    assert out._buffer[0].data == "first"
+    assert out._buffer[1].data == "second"
 
 
 def test_parse_frame(parser: PatchableWebSocketReader) -> None:
