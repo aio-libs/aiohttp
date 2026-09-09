@@ -364,19 +364,12 @@ class CookieJar(AbstractCookieJar):
                 domain = ""
                 del cookie["domain"]
 
-            host_only = False
-            if not domain and hostname is not None:
-                # Set the cookie's domain to the response hostname
-                # and mark it host-only once the path is normalized
-                host_only = True
-                domain = cookie["domain"] = hostname
-
             if domain and domain[0] == ".":
                 # Remove leading dot
                 domain = domain[1:]
                 cookie["domain"] = domain
 
-            if hostname and not self._is_domain_match(domain, hostname):
+            if domain and hostname and not self._is_domain_match(domain, hostname):
                 # Setting cookies for different domains is not allowed
                 continue
 
@@ -392,8 +385,11 @@ class CookieJar(AbstractCookieJar):
                 cookie["path"] = path
             path = path.rstrip("/")
 
-            if host_only:
-                self._host_only_cookies.add((domain, path, name))
+            if not domain and hostname is not None:
+                # Set the cookie's domain to the response hostname
+                # and set its host-only-flag
+                self._host_only_cookies.add((hostname, path, name))
+                domain = cookie["domain"] = hostname
             else:
                 # A cookie with an explicit Domain attribute replaces any
                 # host-only cookie with the same (domain, path, name) identity.
