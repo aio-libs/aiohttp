@@ -641,7 +641,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if rng is not None:
             try:
                 pattern = r"^bytes=(\d*)-(\d*)$"
-                start, end = re.findall(pattern, rng, re.ASCII)[0]
+                # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
+                start, end = re.findall(pattern, rng, re.ASCII | re.IGNORECASE)[0]
             except IndexError:  # pattern was not found in header
                 raise ValueError("range not in acceptable format")
 
@@ -847,7 +848,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
                         if field_ct is None or field_ct.startswith("text/"):
                             charset = field.get_charset(default="utf-8")
-                            out.add(field.name, value.decode(charset))
+                            try:
+                                decoded = value.decode(charset)
+                            except (LookupError, UnicodeDecodeError):
+                                raise HTTPUnsupportedMediaType()
+                            out.add(field.name, decoded)
                         else:
                             out.add(field.name, value)  # type: ignore[arg-type]
                 else:
