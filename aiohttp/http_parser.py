@@ -1307,17 +1307,23 @@ def _wrap_decompression(
     )
     if unsupported is not None:
         exc = ContentEncodingError(f"Can not decode content-encoding: {unsupported!r}")
-        set_exception(payload, payload_exception(str(exc)) if payload_exception else exc)
+        set_exception(
+            payload, payload_exception(str(exc)) if payload_exception else exc
+        )
         return payload
     if len(codings) > _MAX_CONTENT_ENCODING_LAYERS:
         exc = ContentEncodingError(
             f"Too many content-encodings: {len(codings)} "
             f"(max {_MAX_CONTENT_ENCODING_LAYERS})"
         )
-        set_exception(payload, payload_exception(str(exc)) if payload_exception else exc)
+        set_exception(
+            payload, payload_exception(str(exc)) if payload_exception else exc
+        )
         return payload
     for coding in codings:
-        payload = DeflateBuffer(payload, coding, max_decompress_size=max_decompress_size)
+        payload = DeflateBuffer(
+            payload, coding, max_decompress_size=max_decompress_size
+        )
     return payload
 
 

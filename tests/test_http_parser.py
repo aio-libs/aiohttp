@@ -1145,6 +1145,7 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     msg = messages[0][0]
     assert msg.compression is None
 
+
 async def test_compression_multiple_codings_gzip_gzip(
     response: HttpResponseParser,
 ) -> None:
@@ -1219,7 +1220,6 @@ async def test_compression_multiple_codings_too_many(
     payload = msgs[0][-1]
     with pytest.raises(http_exceptions.ContentEncodingError):
         await payload.read()
-
 
 
 def test_url_connect(parser: HttpRequestParser) -> None:
