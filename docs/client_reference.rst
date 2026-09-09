@@ -2651,10 +2651,16 @@ Utilities
 
    .. attribute:: host_only_cookies
 
-      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
-      cookies are host-only (not sent to subdomains).
+      A :class:`frozenset` of ``(domain, path, name)`` tuples indicating
+      which cookies are host-only (not sent to subdomains).
 
       .. versionadded:: 3.14
+
+      .. versionchanged:: 3.14.4
+
+         The tuples gained the *path* element; host-only state is tracked
+         per ``(domain, path, name)`` cookie identity so that same-named
+         cookies on other paths cannot affect it.
 
 
 .. class:: DummyCookieJar(*, loop=None)

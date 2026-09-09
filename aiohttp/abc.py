@@ -181,7 +181,7 @@ class AbstractCookieJar(Sized, IterableBase):
 
     @property
     @abstractmethod
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return the host-only cookies stored in this jar."""
 
     @abstractmethod
