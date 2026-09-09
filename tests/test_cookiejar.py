@@ -881,7 +881,7 @@ async def test_cookie_jar_host_only_cookies_property() -> None:
     assert ("example.com", "", "hostonly") in host_only
 
 
-def test_host_only_marker_survives_same_name_expiry_on_other_path() -> None:
+async def test_host_only_marker_survives_same_name_expiry_on_other_path() -> None:
     """Expiring a same-name cookie on another path must not clear host-only state."""
     jar = CookieJar()
     origin = URL("http://auth.example.com/")
@@ -901,7 +901,7 @@ def test_host_only_marker_survives_same_name_expiry_on_other_path() -> None:
     assert jar.filter_cookies(origin)["sid"].value == "secret"
 
 
-def test_explicit_domain_replacement_clears_host_only_marker() -> None:
+async def test_explicit_domain_replacement_clears_host_only_marker() -> None:
     """A replacing cookie with an explicit Domain is a domain cookie."""
     jar = CookieJar()
     origin = URL("http://example.com/")
@@ -1892,7 +1892,7 @@ async def test_save_load_json_domain_cookie_still_matches_subdomain(
     assert "sid" in jar_load.filter_cookies(subdomain)
 
 
-def test_save_load_json_host_only_per_path(tmp_path: Path) -> None:
+async def test_save_load_json_host_only_per_path(tmp_path: Path) -> None:
     """Verify save/load keeps host-only state per (domain, path, name)."""
     file_path = tmp_path / "per_path.json"
     origin = URL("https://example.com/")
@@ -1914,7 +1914,7 @@ def test_save_load_json_host_only_per_path(tmp_path: Path) -> None:
     assert filtered["sid"].value == "domainwide"
 
 
-def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
+async def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
     """Verify save/load restores the absolute deadline without resetting it."""
     file_path = tmp_path / "max_age.json"
     url = URL("https://example.com/")
