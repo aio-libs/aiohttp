@@ -1968,7 +1968,6 @@ def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
     jar.update_cookies_from_headers([f"sid=x; Max-Age={'9' * 309}"], url)
 
     assert "sid" in jar.filter_cookies(url)
-    # RFC 6265 5.2.2: out-of-range expiry becomes the latest representable date.
     assert jar._expirations[("example.com", "", "sid")] == CookieJar.MAX_TIME
 
 
