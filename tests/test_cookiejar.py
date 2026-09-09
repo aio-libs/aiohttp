@@ -2103,7 +2103,7 @@ async def test_cookie_jar_unsafe_property() -> None:
     assert jar_unsafe.unsafe is True
 
 
-def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
+async def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
     """A hostile Max-Age larger than float max must clamp, not raise OverflowError."""
     url = URL("https://example.com/")
     jar = CookieJar()
@@ -2114,7 +2114,7 @@ def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
     assert jar._expirations[("example.com", "", "sid")] == CookieJar.MAX_TIME
 
 
-def test_update_cookies_negative_max_age_beyond_float_range_expires() -> None:
+async def test_update_cookies_negative_max_age_beyond_float_range_expires() -> None:
     """A negative Max-Age below float min must expire the cookie, not raise."""
     url = URL("https://example.com/")
     jar = CookieJar()
