@@ -407,7 +407,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         loop = self._loop
         # Need to enable keepalive timeout at start of connection, as there's no other
-        # protection against a dead connection that doesn't send a response at all.
+        # protection against a dead connection that doesn't send a request at all.
         if self._keepalive_timeout > 0:
             close_time = loop.time() + self._keepalive_timeout
             self._next_keepalive_close_time = close_time
