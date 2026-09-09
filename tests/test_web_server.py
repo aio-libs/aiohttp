@@ -427,7 +427,7 @@ async def test_idle_connection_closed_before_first_request(
     """A connection that never sends a request must not be held open forever."""
 
     async def handler(request: web.BaseRequest) -> web.Response:
-        return web.Response()
+        assert False
 
     server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
 
@@ -447,7 +447,7 @@ async def test_trickled_headers_closed_at_first_request_deadline(
     """Partial header bytes must not extend the first-request deadline."""
 
     async def handler(request: web.BaseRequest) -> web.Response:
-        return web.Response()
+        assert False
 
     server = await aiohttp_raw_server(handler, keepalive_timeout=0.4)
 
