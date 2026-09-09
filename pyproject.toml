@@ -169,8 +169,6 @@ include = [
 # cell.
 build-frontend = "build[uv]"
 test-command = ""
-# don't build PyPy wheels, install from source instead
-skip = "pp*"
 
 [tool.cibuildwheel.environment]
 PIP_BUILD_CONSTRAINT = "requirements/cython.txt"
