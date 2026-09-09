@@ -1958,3 +1958,26 @@ async def test_cookie_jar_unsafe_property() -> None:
 
     jar_unsafe = CookieJar(unsafe=True)
     assert jar_unsafe.unsafe is True
+
+
+def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
+    """A hostile Max-Age larger than float max must clamp, not raise OverflowError."""
+    url = URL("https://example.com/")
+    jar = CookieJar()
+
+    jar.update_cookies_from_headers([f"sid=x; Max-Age={'9' * 309}"], url)
+
+    assert "sid" in jar.filter_cookies(url)
+    # RFC 6265 5.2.2: out-of-range expiry becomes the latest representable date.
+    assert jar._expirations[("example.com", "", "sid")] == CookieJar.MAX_TIME
+
+
+def test_update_cookies_negative_max_age_beyond_float_range_expires() -> None:
+    """A negative Max-Age below float min must expire the cookie, not raise."""
+    url = URL("https://example.com/")
+    jar = CookieJar()
+
+    jar.update_cookies_from_headers([f"sid=x; Max-Age=-{'9' * 309}"], url)
+
+    assert "sid" not in jar.filter_cookies(url)
+    assert len(jar) == 0
