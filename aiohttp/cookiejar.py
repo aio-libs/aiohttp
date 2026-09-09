@@ -92,7 +92,8 @@ class CookieJar(AbstractCookieJar):
         self._morsel_cache: defaultdict[tuple[str, str], dict[str, Morsel[str]]] = (
             defaultdict(dict)
         )
-        self._host_only_cookies: set[tuple[str, str]] = set()
+        # Cookie identity is (domain, path, name).
+        self._host_only_cookies: set[tuple[str, str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
@@ -127,7 +128,7 @@ class CookieJar(AbstractCookieJar):
         return MappingProxyType(self._cookies)
 
     @property
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return the host-only cookies stored in this jar."""
         return frozenset(self._host_only_cookies)
 
@@ -156,7 +157,7 @@ class CookieJar(AbstractCookieJar):
                     if attr_val:
                         morsel_data[attr] = attr_val
                 # Persist or it reloads as a domain cookie and leaks to subdomains.
-                if (domain, name) in self._host_only_cookies:
+                if (domain, path, name) in self._host_only_cookies:
                     morsel_data["host_only"] = True
                 if (exp := self._expirations.get((domain, path, name))) is not None:
                     morsel_data["expires_timestamp"] = exp
@@ -309,7 +310,7 @@ class CookieJar(AbstractCookieJar):
 
     def _delete_cookies(self, to_del: list[tuple[str, str, str]]) -> None:
         for domain, path, name in to_del:
-            self._host_only_cookies.discard((domain, name))
+            self._host_only_cookies.discard((domain, path, name))
             self._cookies[(domain, path)].pop(name, None)
             self._morsel_cache[(domain, path)].pop(name, None)
             self._expirations.pop((domain, path, name), None)
@@ -363,10 +364,11 @@ class CookieJar(AbstractCookieJar):
                 domain = ""
                 del cookie["domain"]
 
+            host_only = False
             if not domain and hostname is not None:
                 # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
-                self._host_only_cookies.add((hostname, name))
+                # and mark it host-only once the path is normalized
+                host_only = True
                 domain = cookie["domain"] = hostname
 
             if domain and domain[0] == ".":
@@ -389,6 +391,13 @@ class CookieJar(AbstractCookieJar):
                     path = "/" + path[1 : path.rfind("/")]
                 cookie["path"] = path
             path = path.rstrip("/")
+
+            if host_only:
+                self._host_only_cookies.add((domain, path, name))
+            else:
+                # A cookie with an explicit Domain attribute replaces any
+                # host-only cookie with the same (domain, path, name) identity.
+                self._host_only_cookies.discard((domain, path, name))
 
             if max_age := cookie["max-age"]:
                 try:
@@ -477,7 +486,7 @@ class CookieJar(AbstractCookieJar):
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 
-                if (domain, name) in self._host_only_cookies and domain != hostname:
+                if domain != hostname and p + (name,) in self._host_only_cookies:
                     continue
 
                 # Skip edge case when the cookie has a trailing slash but request doesn't.
@@ -622,7 +631,7 @@ class DummyCookieJar(AbstractCookieJar):
         return MappingProxyType({})
 
     @property
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return an empty frozenset."""
         return frozenset()
 
