@@ -31,7 +31,7 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer
+from .http_parser import DeflateBuffer as _DeflateBuffer, _wrap_decompression
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -515,8 +515,16 @@ cdef class HttpParser:
         enc = self._content_encoding
         if enc is not None:
             self._content_encoding = None
-            if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-                encoding = enc
+            if enc.isascii():
+                enc_lower = enc.lower()
+                if enc_lower in {"gzip", "deflate", "br", "zstd"}:
+                    encoding = enc
+                elif "," in enc_lower:
+                    # Multiple codings (RFC 9110 §8.4). Record the raw value;
+                    # the payload wrapper decodes them in reverse order and
+                    # rejects unsupported or excessive coding lists via
+                    # _wrap_decompression().
+                    encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]
@@ -549,7 +557,12 @@ cdef class HttpParser:
         self._payload = payload
         self._content_length_expected = self._cparser.content_length
         if encoding is not None and self._auto_decompress:
-            self._payload = DeflateBuffer(payload, encoding, max_decompress_size=self._limit)
+            self._payload = _wrap_decompression(
+                payload,
+                encoding,
+                self._limit,
+                payload_exception=self._payload_exception,
+            )
 
         self._messages.append((msg, payload))
         if self._max_msg_queue_size:

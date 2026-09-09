@@ -1145,6 +1145,82 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     msg = messages[0][0]
     assert msg.compression is None
 
+async def test_compression_multiple_codings_gzip_gzip(
+    response: HttpResponseParser,
+) -> None:
+    """Content-Encoding: gzip,gzip decodes both layers (RFC 9110 §8.4)."""
+    original = b"Hello, multiple codings! " * 4
+    compressed = gzip.compress(gzip.compress(original))
+    headers = (
+        b"HTTP/1.1 200 OK\x0d\x0a"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\x0d\x0a"
+        b"Content-Encoding: gzip,gzip\x0d\x0a"
+        b"\x0d\x0a"
+    )
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert result == original
+    assert payload.exception() is None
+
+
+async def test_compression_multiple_codings_mixed(
+    response: HttpResponseParser,
+) -> None:
+    """Mixed codings applied in listed order are decoded in reverse."""
+    original = b"Mixed coding payload! " * 4
+    # Content-Encoding: gzip,deflate -> first gzip, then deflate; decode in reverse.
+    compressed = zlib.compress(gzip.compress(original))
+    headers = (
+        b"HTTP/1.1 200 OK\x0d\x0a"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\x0d\x0a"
+        b"Content-Encoding: gzip,deflate\x0d\x0a"
+        b"\x0d\x0a"
+    )
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert result == original
+    assert payload.exception() is None
+
+
+async def test_compression_multiple_codings_unsupported(
+    response: HttpResponseParser,
+) -> None:
+    """A coding list containing an unsupported entry raises ContentEncodingError."""
+    original = b"payload"
+    compressed = gzip.compress(original)
+    headers = (
+        b"HTTP/1.1 200 OK\x0d\x0a"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\x0d\x0a"
+        b"Content-Encoding: gzip,weird-coding\x0d\x0a"
+        b"\x0d\x0a"
+    )
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        await payload.read()
+
+
+async def test_compression_multiple_codings_too_many(
+    response: HttpResponseParser,
+) -> None:
+    """More codings than the hard cap raises ContentEncodingError (DoS guard)."""
+    compressed = b"payload"
+    for _ in range(5):
+        compressed = gzip.compress(compressed)
+    headers = (
+        b"HTTP/1.1 200 OK\x0d\x0a"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\x0d\x0a"
+        b"Content-Encoding: " + b",".join([b"gzip"] * 5) + b"\x0d\x0a"
+        b"\x0d\x0a"
+    )
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        await payload.read()
+
+
 
 def test_url_connect(parser: HttpRequestParser) -> None:
     text = b"CONNECT www.google.com HTTP/1.1\r\nHost: a\r\ncontent-length: 0\r\n\r\n"

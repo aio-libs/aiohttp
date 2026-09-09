@@ -91,6 +91,23 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
+# Content codings aiohttp can decode (RFC 9110 §8.4.1). Values are
+# case-insensitive on the wire; comparisons are done on lowercased input.
+_SUPPORTED_CONTENT_ENCODINGS: Final[frozenset[str]] = frozenset(
+    {"gzip", "deflate", "br", "zstd"}
+)
+
+# Hard cap on the number of content codings aiohttp will decode for one
+# payload (RFC 9110 §8.4 allows Content-Encoding to list several codings,
+# applied in the listed order and decoded in reverse). Each extra coding
+# costs one full decompression pass over the whole body, so an unbounded
+# list multiplies CPU use per byte received: a max_field_size (8190) byte
+# header could otherwise name ~1600 codings. Real-world servers use 1-3
+# codings (e.g. gzip at the origin plus gzip/br added by an intermediary);
+# 4 leaves headroom over that while keeping the worst case at a small
+# constant factor. Longer lists raise ContentEncodingError.
+_MAX_CONTENT_ENCODING_LAYERS: Final[int] = 4
+
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
 # since real-world servers (e.g. Google APIs, Werkzeug) commonly send
@@ -454,6 +471,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
                                 limit=self._limit,
+                                payload_exception=self.payload_exception,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -481,6 +499,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
                                 limit=self._limit,
+                                payload_exception=self.payload_exception,
                             )
                         elif not empty_body and length is None and self.read_until_eof:
                             payload = StreamReader(
@@ -504,6 +523,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 max_field_size=self.max_field_size,
                                 max_trailers=max_trailers,
                                 limit=self._limit,
+                                payload_exception=self.payload_exception,
                             )
                             if not payload_parser.done:
                                 self._payload_parser = payload_parser
@@ -625,8 +645,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+        if enc.isascii():
+            enc_lower = enc.lower()
+            if enc_lower in _SUPPORTED_CONTENT_ENCODINGS:
+                encoding = enc
+            elif "," in enc_lower:
+                # Multiple codings (RFC 9110 §8.4). Record the raw value; the
+                # payload parser decodes them in reverse order and rejects
+                # unsupported or excessive coding lists via
+                # _wrap_decompression().
+                encoding = enc
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -868,6 +896,7 @@ class HttpPayloadParser:
         max_field_size: int = 8190,
         max_trailers: int = 128,
         limit: int = DEFAULT_CHUNK_SIZE,
+        payload_exception: type[BaseException] | None = None,
     ) -> None:
         self._length = 0
         self._paused = False
@@ -888,8 +917,11 @@ class HttpPayloadParser:
 
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
-            real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
-                payload, compression, max_decompress_size=limit
+            real_payload: StreamReader | DeflateBuffer = _wrap_decompression(
+                payload,
+                compression,
+                max_decompress_size=limit,
+                payload_exception=payload_exception,
             )
         else:
             real_payload = payload
@@ -1173,6 +1205,10 @@ class DeflateBuffer:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 
         self._max_decompress_size = max_decompress_size
+        # Nested DeflateBuffers (multi-coding Content-Encoding) have no
+        # StreamReader buffer to fill, so bound their per-call output by the
+        # same decompression size limit. The value cascades through the chain.
+        self._low_water = getattr(out, "_low_water", max_decompress_size)
 
     def set_exception(
         self,
@@ -1213,7 +1249,12 @@ class DeflateBuffer:
             )
 
         if chunk:
-            self.out.feed_data(chunk)
+            return self.out.feed_data(chunk) or self.decompressor.data_available
+        if isinstance(self.out, DeflateBuffer):
+            # A nested DeflateBuffer (multi-coding Content-Encoding) may still
+            # hold pending output that an empty feed would drain; keep the
+            # parser's feed_data(b"") loop going in that case.
+            return self.out.feed_data(b"") or self.decompressor.data_available
         return self.decompressor.data_available
 
     def feed_eof(self) -> None:
@@ -1235,6 +1276,49 @@ class DeflateBuffer:
 
     def end_http_chunk_receiving(self) -> None:
         self.out.end_http_chunk_receiving()
+
+
+def _wrap_decompression(
+    payload: StreamReader,
+    encoding: str,
+    max_decompress_size: int = DEFAULT_CHUNK_SIZE,
+    *,
+    payload_exception: type[BaseException] | None = None,
+) -> StreamReader | DeflateBuffer:
+    """Wrap `payload` with the DeflateBuffer chain needed for `encoding`.
+
+    `encoding` is the Content-Encoding header value: either a single coding
+    (e.g. "gzip") or a comma-separated list of codings (RFC 9110 §8.4: they
+    are applied in the listed order and must be decoded in reverse). Nesting
+    one DeflateBuffer per coding in listed order decodes them in reverse,
+    since each wrapper decodes one coding and feeds the result to the next.
+
+    Unsupported codings and lists longer than _MAX_CONTENT_ENCODING_LAYERS
+    get a ContentEncodingError set on the payload instead of passing
+    undecodable bytes through to the consumer; the error is raised when the
+    body is read. Like mid-body decode failures, the error is rewrapped with
+    `payload_exception` (e.g. ClientPayloadError on the client) when one is
+    configured.
+    """
+    codings = [coding.strip().lower() for coding in encoding.split(",")]
+    unsupported = next(
+        (coding for coding in codings if coding not in _SUPPORTED_CONTENT_ENCODINGS),
+        None,
+    )
+    if unsupported is not None:
+        exc = ContentEncodingError(f"Can not decode content-encoding: {unsupported!r}")
+        set_exception(payload, payload_exception(str(exc)) if payload_exception else exc)
+        return payload
+    if len(codings) > _MAX_CONTENT_ENCODING_LAYERS:
+        exc = ContentEncodingError(
+            f"Too many content-encodings: {len(codings)} "
+            f"(max {_MAX_CONTENT_ENCODING_LAYERS})"
+        )
+        set_exception(payload, payload_exception(str(exc)) if payload_exception else exc)
+        return payload
+    for coding in codings:
+        payload = DeflateBuffer(payload, coding, max_decompress_size=max_decompress_size)
+    return payload
 
 
 HttpRequestParserPy = HttpRequestParser
