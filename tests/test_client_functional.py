@@ -15,7 +15,7 @@ import tarfile
 import time
 import zipfile
 import zlib
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
@@ -3017,6 +3017,50 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
         for cookie in client.session.cookie_jar:
             assert cookie.key == "overflow"
             assert int(cookie["max-age"]) == int(overflow)
+
+
+async def test_connection_released_when_cookie_processing_fails(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    class EvilJar(aiohttp.CookieJar):
+        def update_cookies_from_headers(
+            self, headers: Sequence[str], response_url: URL
+        ) -> None:
+            raise RuntimeError("boom")
+
+    hold = asyncio.Event()
+
+    async def hostile(request: web.Request) -> web.StreamResponse:
+        ret = web.StreamResponse()
+        ret.content_length = 2
+        ret.set_cookie("sid", "x")
+        await ret.prepare(request)
+        await ret.write(b"x")
+        await hold.wait()
+        assert False
+
+    async def clean(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/hostile", hostile)
+    app.router.add_get("/clean", clean)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector, cookie_jar=EvilJar())
+
+    try:
+        for _ in range(2):
+            with pytest.raises(RuntimeError, match="boom") as excinfo:
+                await client.get("/hostile")
+            assert not connector._acquired
+            del excinfo
+
+        # The single connector slot is free again: an unaffected request
+        # succeeds instead of waiting forever for a connection.
+        async with client.get("/clean") as resp:
+            assert resp.status == 200
+    finally:
+        hold.set()
 
 
 async def test_request_conn_error() -> None:
