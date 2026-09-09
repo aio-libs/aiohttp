@@ -2401,7 +2401,32 @@ def test_http_request_chunked_payload_and_next_message(parser) -> None:
     assert not payload2.is_eof()
 
 
-def test_http_request_chunked_payload_chunks(parser) -> None:
+def test_http_request_parser_head_with_content_length_payload(
+    parser: HttpRequestParser,
+) -> None:
+    smuggled = b"GET /smuggled HTTP/1.1\r\nHost: a\r\n\r\n"
+    text = (
+        b"HEAD /test HTTP/1.1\r\nHost: a\r\nContent-Length: %d\r\n\r\n" % len(smuggled)
+        + smuggled
+        + b"POST /next HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n"
+    )
+    messages, upgraded, tail = parser.feed_data(text)
+
+    assert len(messages) == 2
+    msg, payload = messages[0]
+    assert msg.method == "HEAD"
+    assert b"".join(payload._buffer) == smuggled
+    assert payload.is_eof()
+
+    msg2, payload2 = messages[1]
+    assert msg2.method == "POST"
+    assert msg2.path == "/next"
+    assert payload2.is_eof()
+    assert not upgraded
+    assert not tail
+
+
+def test_http_request_chunked_payload_chunks(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ntransfer-encoding: chunked\r\n\r\n"
     msg, payload = parser.feed_data(text)[0][0]
 
