@@ -386,8 +386,6 @@ class CookieJar(AbstractCookieJar):
             path = path.rstrip("/")
 
             if not domain and hostname is not None:
-                # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
                 self._host_only_cookies.add((hostname, path, name))
                 domain = cookie["domain"] = hostname
             else:
