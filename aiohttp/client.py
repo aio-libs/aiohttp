@@ -697,6 +697,7 @@ class ClientSession:
 
         timer = tm.timer()
         req: ClientRequest | None = None
+        resp: ClientResponse | None = None
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
@@ -1027,6 +1028,10 @@ class ClientSession:
             if handle:
                 handle.cancel()
                 handle = None
+
+            if resp is not None:
+                # A failure occurred after the response was received.
+                resp.close()
 
             if req is not None and req._body is not None:
                 await req._body.close()

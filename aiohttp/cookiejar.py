@@ -428,7 +428,15 @@ class CookieJar(AbstractCookieJar):
             if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
-                    max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
+                    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.2.2
+                    if delta_seconds <= 0:
+                        max_age_expiration = 0.0
+                    else:
+                        # Cap first to protect against OverflowError on next line.
+                        delta_seconds = min(delta_seconds, self.MAX_TIME)
+                        max_age_expiration = min(
+                            time.time() + delta_seconds, self.MAX_TIME
+                        )
                     self._expire_cookie(max_age_expiration, domain, path, name)
                 except ValueError:
                     cookie["max-age"] = ""
