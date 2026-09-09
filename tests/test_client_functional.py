@@ -3037,7 +3037,7 @@ async def test_connection_released_when_cookie_processing_fails(
         await ret.prepare(request)
         await ret.write(b"x")
         await hold.wait()
-        return ret
+        assert False
 
     async def clean(request: web.Request) -> web.Response:
         return web.Response()
