@@ -60,7 +60,8 @@ The client session supports the context manager protocol for self closing.
                          max_field_size=8190, \
                          max_headers=128, \
                          fallback_charset_resolver=lambda r, b: "utf-8", \
-                         ssl_shutdown_timeout=0)
+                         ssl_shutdown_timeout=0, \
+                         http2_enabled=False)
    :canonical: aiohttp.client.ClientSession
 
    The class for creating client sessions and making requests.
@@ -274,6 +275,8 @@ The client session supports the context manager protocol for self closing.
 
       .. deprecated:: 3.12.11
          This parameter is deprecated and will be removed in aiohttp 4.0.
+
+   :param bool http2_enabled: Use ``HTTP/2`` if the server supports it.
 
    .. attribute:: closed
 

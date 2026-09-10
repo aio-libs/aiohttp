@@ -98,6 +98,7 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
+from .http2.adapter import get_version
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import (
@@ -234,23 +235,74 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
+    key = req.connection_key
     try:
+        # only the first connection to a host blocks
+        # the rest of the connection requests are done
+        # concurrently
+        await connector.semaphore.acquire(key)
+
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
+
+        connector.semaphore.release(key)
     except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+    finally:
+        connector.semaphore.release(key)
 
     assert conn.protocol is not None
-    conn.protocol.set_response_params(**req._response_params)
+    assert conn.protocol.transport is not None
+
+    alpn_protocol = get_version(conn.protocol)
+
+    resp = None
+    started = False
+
+    if alpn_protocol == "h2":
+        # release immediately to allow reuse
+        connector._release(conn._key, conn.protocol, should_close=False)
+        # the protocol corresponding to the connection
+        # remains (i.e., the count per host is always 1 for h2)
+        # This is the number of TCP connections not the number of
+        # streams
+        connector._acquired.add(conn.protocol)
     try:
-        resp = await req._send(conn)
-        try:
-            await resp.start(conn)
-        except BaseException:
+        # backwards compatibility
+        if alpn_protocol == "h2":
+            if req._continue:
+                # `expect100` is not inherently incompatible
+                # but the implementation does not appear to be
+                # straightforward.
+                # We have to set the result of the future in
+                # the HTTP/2 stream yet we can not close the stream
+                # because we have to wait for the second response.
+                #
+                # Also, it's not really necessary in HTTP/2
+                # because the server can simply reset the stream.
+                raise NotImplementedError("expect100 is not supported over HTTP/2")
+            stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
+            req.stream_id = stream.stream_id
+            # release again to clear the protocol from _acquired if required
+            connector._release(conn._key, conn.protocol, should_close=False)
+            conn.protocol.set_response_params(**req._response_params)
+            resp = await req._send(conn)
+            resp.stream_id = stream.stream_id
+        else:
+            conn.protocol.set_response_params(**req._response_params)
+            resp = await req._send(conn)
+        await resp.start(conn)
+
+        if alpn_protocol == "h2":
+            # we still have to null the protocol since we didn't close the connection
+            conn._protocol = None
+
+        started = True
+    finally:
+        if resp is not None and not started:
             resp.close()
-            raise
-    except BaseException:
-        conn.close()
-        raise
+            conn.close()
+        if resp is None:
+            conn.close()
     return resp
 
 
@@ -322,6 +374,7 @@ class ClientSession:
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        http2_enabled: bool = False,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -361,7 +414,9 @@ class ClientSession:
             )
 
         if connector is None:
-            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+            connector = TCPConnector(
+                ssl_shutdown_timeout=ssl_shutdown_timeout, http2_enabled=http2_enabled
+            )
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -1599,7 +1654,8 @@ else:
         connector_owner = False
         if connector is None:
             connector_owner = True
-            connector = TCPConnector(force_close=True)
+            http2_enabled = kwargs.get("http2_enabled", False)
+            connector = TCPConnector(force_close=True, http2_enabled=http2_enabled)
 
         session = ClientSession(
             cookies=kwargs.pop("cookies", None),
