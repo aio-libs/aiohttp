@@ -229,12 +229,6 @@ html_theme_options = {
             "height": "20",
             "alt": "Latest PyPI package version",
         },
-        {
-            "image": "https://badges.gitter.im/Join%20Chat.svg",
-            "target": f"https://gitter.im/{github_repo_org}/Lobby",
-            "height": "20",
-            "alt": "Chat on Gitter",
-        },
     ],
 }
 
