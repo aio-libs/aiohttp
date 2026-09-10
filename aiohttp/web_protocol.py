@@ -140,8 +140,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    keepalive_timeout -- number of seconds before closing
-                         keep-alive connection
+    keepalive_timeout -- number of seconds before closing an idle connection.
 
     tcp_keepalive -- TCP keep-alive is on, default is on
 
@@ -244,7 +243,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         super().__init__(loop, parser)
 
         self._request_count = 0
-        self._keepalive = False
+        # True from the start so the deadline armed in connection_made()
+        # closes connections that never deliver a complete first request.
+        self._keepalive = True
         self._current_request: _Request | None = None
         self._manager: Server[_Request] | None = manager
         self._request_handler: _RequestHandler[_Request] | None = (
@@ -405,6 +406,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager.connection_made(self, real_transport)
 
         loop = self._loop
+        # Need to enable keepalive timeout at start of connection, as there's no other
+        # protection against a dead connection that doesn't send a request at all.
+        if self._keepalive_timeout > 0:
+            close_time = loop.time() + self._keepalive_timeout
+            self._next_keepalive_close_time = close_time
+            self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
+
         if sys.version_info >= (3, 14):
             if isinstance(loop, BaseEventLoop):
                 task = asyncio.create_task(self.start(), eager_start=True)
