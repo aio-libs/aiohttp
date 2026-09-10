@@ -49,7 +49,7 @@ class WebSocketWriter:
     def __init__(
         self,
         protocol: BaseProtocol,
-        transport: asyncio.Transport,
+        transport: asyncio.WriteTransport,
         *,
         use_mask: bool = False,
         limit: int = DEFAULT_CHUNK_SIZE,

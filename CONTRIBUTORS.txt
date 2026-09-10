@@ -1,5 +1,6 @@
 - Contributors -
 ----------------
+2sumtech
 A. Jesse Jiryu Davis
 Abdur Rehman Ali
 Adam Bannister
@@ -54,6 +55,7 @@ Anton Kasyanov
 Anton Zhdan-Pushkin
 Arcadiy Ivanov
 Arie Bovenberg
+Arockia Rajamanickam
 Arseny Timoniq
 Arsh Smith
 Arshiya Tabasum
@@ -258,9 +260,11 @@ Lukasz Marcin Dobrzanski
 Lukshya Supyal
 Lénárd Szolnoki
 Makc Belousow
+Manny7717
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
+Marco Gorelli
 Marco Paolini
 Marcus Campbell
 Marcus Stojcevich
@@ -291,6 +295,7 @@ Mikhail Nacharov
 Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
+monasco
 Morgan Delahaye-Prat
 Moss Collum
 Mun Gwan-gyeong
