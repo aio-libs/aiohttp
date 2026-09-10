@@ -1,0 +1,5 @@
+Fixed ``MultipartReader`` raising ``InvalidHeader`` on a ``multipart/form-data``
+body whose first part is the RFC 7578 ``_charset_`` field. The delimiter after
+that part was not consumed, so the boundary line was parsed as the header block
+of the following part, which made ``Request.post()`` return a 500 response for
+any boundary that is not itself parseable as a header -- by :user:`2sumtech`.

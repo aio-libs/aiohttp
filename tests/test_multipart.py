@@ -1185,6 +1185,7 @@ class TestMultipartReader:
             field1 = await reader.next()
             assert isinstance(field1, BodyPartReader)
             assert field1.name == "field1"
+            assert list(field1.headers) == [CONTENT_DISPOSITION]
             assert field1.get_charset("default") == "ascii"
             field2 = await reader.next()
             assert isinstance(field2, BodyPartReader)
@@ -1194,6 +1195,45 @@ class TestMultipartReader:
             assert isinstance(field3, BodyPartReader)
             assert field3.name == "field3"
             assert field3.get_charset("default") == "ascii"
+
+    async def test_read_form_default_encoding_boundary_without_colon(self) -> None:
+        with Stream(
+            b"--WebKitFormBoundary\r\n"
+            b'Content-Disposition: form-data; name="_charset_"\r\n\r\n'
+            b"ascii"
+            b"\r\n"
+            b"--WebKitFormBoundary\r\n"
+            b'Content-Disposition: form-data; name="field1"\r\n\r\n'
+            b"foo"
+            b"\r\n"
+            b"--WebKitFormBoundary--\r\n"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: "multipart/form-data;boundary=WebKitFormBoundary"},
+                stream,
+            )
+            field1 = await reader.next()
+            assert isinstance(field1, BodyPartReader)
+            assert field1.name == "field1"
+            assert list(field1.headers) == [CONTENT_DISPOSITION]
+            assert field1.get_charset("default") == "ascii"
+            assert await field1.read() == b"foo"
+            assert await reader.next() is None
+
+    async def test_read_form_default_encoding_as_last_part(self) -> None:
+        with Stream(
+            b"--WebKitFormBoundary\r\n"
+            b'Content-Disposition: form-data; name="_charset_"\r\n\r\n'
+            b"ascii"
+            b"\r\n"
+            b"--WebKitFormBoundary--\r\n"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: "multipart/form-data;boundary=WebKitFormBoundary"},
+                stream,
+            )
+            assert await reader.next() is None
+            assert reader.at_eof()
 
     async def test_read_form_invalid_default_encoding(self) -> None:
         with Stream(
