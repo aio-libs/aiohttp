@@ -10,7 +10,7 @@ aiofastnet==1.1.0
     # via -r requirements/lint.in
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.9.0
+ast-serialize==0.10.0
     # via mypy
 async-timeout==5.0.1
     # via valkey
