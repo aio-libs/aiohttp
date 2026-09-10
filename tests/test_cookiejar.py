@@ -380,13 +380,113 @@ async def test_domain_filter_ip_cookie_send() -> None:
     assert cookies_sent == "Cookie: shared-cookie=first"
 
 
+@pytest.mark.parametrize("unsafe", (False, True))
 async def test_domain_filter_ip_cookie_receive(
-    cookies_to_receive: SimpleCookie,
+    cookies_to_receive: SimpleCookie, unsafe: bool
 ) -> None:
-    jar = CookieJar()
+    jar = CookieJar(unsafe=unsafe)
 
     jar.update_cookies(cookies_to_receive, URL("http://1.2.3.4/"))
+
+    # The cookie without a Domain attribute is host-only for the address;
+    # every other cookie in the fixture names a domain that cannot match it.
+    assert {c.key for c in jar} == {"unconstrained-cookie"}
+
+
+@pytest.mark.parametrize("unsafe", (False, True))
+@pytest.mark.parametrize(
+    "host", ("1.2.3.4", "::1", "2001:db8::1"), ids=("ipv4", "ipv6-loopback", "ipv6")
+)
+async def test_ip_cookie_round_trips_to_same_address(host: str, unsafe: bool) -> None:
+    """An address origin stores and returns its own cookies (issue #1183)."""
+    origin = URL(f"http://[{host}]/" if ":" in host else f"http://{host}/")
+    jar = CookieJar(unsafe=unsafe)
+
+    jar.update_cookies(SimpleCookie("ip-cookie=value; Path=/"), origin)
+
+    assert "ip-cookie" in jar.filter_cookies(origin)
+
+
+@pytest.mark.parametrize("unsafe", (False, True))
+@pytest.mark.parametrize(
+    "other",
+    ("http://1.2.3.5/", "http://a.1.2.3.4/", "http://example.com/", "http://[::1]/"),
+    ids=("other-address", "dns-suffix", "dns-name", "other-family"),
+)
+async def test_ip_cookie_not_sent_to_other_hosts(other: str, unsafe: bool) -> None:
+    """An address origin has no subdomains, so its cookies never travel."""
+    jar = CookieJar(unsafe=unsafe)
+
+    jar.update_cookies(SimpleCookie("ip-cookie=value; Path=/"), URL("http://1.2.3.4/"))
+
+    assert "ip-cookie" not in jar.filter_cookies(URL(other))
+
+
+@pytest.mark.parametrize("unsafe", (False, True))
+@pytest.mark.parametrize(
+    "domain",
+    ("1.2.3.4", ".1.2.3.4"),
+    ids=("exact", "dot-prefixed"),
+)
+async def test_ip_cookie_accepts_domain_naming_itself(
+    domain: str, unsafe: bool
+) -> None:
+    jar = CookieJar(unsafe=unsafe)
+
+    jar.update_cookies(
+        SimpleCookie(f"ip-cookie=value; Domain={domain}; Path=/"),
+        URL("http://1.2.3.4/"),
+    )
+
+    assert "ip-cookie" in jar.filter_cookies(URL("http://1.2.3.4/"))
+    # Accepting the attribute must not turn the cookie into a domain cookie:
+    # ``a.1.2.3.4`` is a suffix match for ``1.2.3.4`` but a different origin.
+    assert "ip-cookie" not in jar.filter_cookies(URL("http://a.1.2.3.4/"))
+
+
+@pytest.mark.parametrize("unsafe", (False, True))
+@pytest.mark.parametrize(
+    "domain",
+    ("3.4", "2.3.4", "1.2.3.44", "example.com"),
+    ids=("suffix", "longer-suffix", "prefix-of-other", "dns-name"),
+)
+async def test_ip_cookie_rejects_other_domain_attribute(
+    domain: str, unsafe: bool
+) -> None:
+    jar = CookieJar(unsafe=unsafe)
+
+    jar.update_cookies(
+        SimpleCookie(f"ip-cookie=value; Domain={domain}; Path=/"),
+        URL("http://1.2.3.4/"),
+    )
+
     assert len(jar) == 0
+
+
+@pytest.mark.parametrize("unsafe", (False, True))
+async def test_dns_host_cannot_claim_address_as_domain(unsafe: bool) -> None:
+    """``a.1.2.3.4`` suffix-matches ``1.2.3.4`` but must not scope cookies to it."""
+    jar = CookieJar(unsafe=unsafe)
+
+    jar.update_cookies(
+        SimpleCookie("ip-cookie=value; Domain=1.2.3.4; Path=/"),
+        URL("http://a.1.2.3.4/"),
+    )
+
+    assert len(jar) == 0
+
+
+def test_ip_cookie_host_only_survives_save_load(tmp_path: Path) -> None:
+    jar = CookieJar()
+    jar.update_cookies(SimpleCookie("ip-cookie=value; Path=/"), URL("http://1.2.3.4/"))
+    file_path = Path(str(tmp_path)) / "aiohttp.test.ip.cookie"
+    jar.save(file_path=file_path)
+
+    reloaded = CookieJar()
+    reloaded.load(file_path=file_path)
+
+    assert "ip-cookie" in reloaded.filter_cookies(URL("http://1.2.3.4/"))
+    assert "ip-cookie" not in reloaded.filter_cookies(URL("http://a.1.2.3.4/"))
 
 
 @pytest.mark.parametrize(

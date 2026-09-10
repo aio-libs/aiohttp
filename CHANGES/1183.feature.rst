@@ -1,0 +1,9 @@
+Cookies from an origin addressed by IP rather than by DNS name are now stored
+and returned without ``CookieJar(unsafe=True)``, following :rfc:`6265` section
+5.1.3 -- by :user:`dylanpulver`.
+
+Such cookies are always host-only: a ``Domain`` attribute is accepted only when
+it names the same address, and a DNS name may not claim an address as its
+parent domain, so ``1.2.3.4`` and ``a.1.2.3.4`` cannot read each other's
+cookies. ``CookieJar``'s ``unsafe`` argument is still accepted and no longer
+has any effect.
