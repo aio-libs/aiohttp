@@ -1085,21 +1085,49 @@ async def test_static_file_if_range_past_with_range(
     await client.close()
 
 
-async def test_static_file_if_range_future_with_range(
+async def test_static_file_if_range_matching_date_with_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
     client = await aiohttp_client(app_with_static_route)
 
-    lastmod = "Fri, 31 Dec 9999 23:59:59 GMT"
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        last_modified = resp.headers["Last-Modified"]
 
-    resp = await client.get("/", headers={"If-Range": lastmod, "Range": "bytes=2-"})
-    assert 206 == resp.status
-    assert resp.headers["Content-Range"] == "bytes 2-12/13"
-    assert resp.headers["Content-Length"] == "11"
-    resp.close()
+    async with client.get(
+        "/", headers={"If-Range": last_modified, "Range": "bytes=2-"}
+    ) as resp:
+        assert 206 == resp.status
+        assert resp.headers["Content-Range"] == "bytes 2-12/13"
+        assert resp.headers["Content-Length"] == "11"
 
-    resp.release()
-    await client.close()
+
+async def test_static_file_if_range_etag_match_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        etag = resp.headers["ETag"]
+
+    async with client.get("/", headers={"If-Range": etag, "Range": "bytes=2-"}) as resp:
+        assert 206 == resp.status
+        assert resp.headers["Content-Range"] == "bytes 2-12/13"
+        assert resp.headers["Content-Length"] == "11"
+
+
+async def test_static_file_if_range_stale_etag_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get(
+        "/", headers={"If-Range": '"stale-etag"', "Range": "bytes=2-"}
+    ) as resp:
+        assert 200 == resp.status
+        assert resp.headers["Content-Length"] == "13"
+        assert "Content-Range" not in resp.headers
 
 
 async def test_static_file_if_unmodified_since_past_without_range(

@@ -1,5 +1,6 @@
 import asyncio
 import io
+import math
 import os
 import pathlib
 import sys
@@ -309,10 +310,24 @@ class FileResponse(StreamResponse):
         file_mtime: float = st.st_mtime
         count: int = file_size
         start: int | None = None
+        etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
-        if (ifrange := request.if_range) is None or file_mtime <= ifrange.timestamp():
+        # https://www.rfc-editor.org/info/rfc9110/#name-if-range
+        if_range = request.if_range
+        if if_range is None:
+            range_applies = True
+        elif isinstance(if_range, ETag):
+            # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-12.1
+            range_applies = not if_range.is_weak and if_range.value == etag_value
+        else:
+            # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-10.2
+            # Last-Modified is emitted as math.ceil(mtime), so the strong
+            # comparison is against that same rounded value.
+            range_applies = math.ceil(file_mtime) == if_range.timestamp()
+
+        if range_applies:
             # If-Range header check:
-            # condition = cached date >= last modification date
+            # condition = cached validator matches current representation.
             # return 206 if True else 200.
             # if False:
             #   Range header would not be processed, return 200
@@ -398,7 +413,7 @@ class FileResponse(StreamResponse):
             # compress.
             self._compression = False
 
-        self.etag = f"{st.st_mtime_ns:x}-{st.st_size:x}"
+        self.etag = etag_value
         self.last_modified = file_mtime
         self.content_length = count
 
