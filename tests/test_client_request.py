@@ -2363,7 +2363,7 @@ async def test_upload_tracker_stale_attempt_events_ignored() -> None:
     assert tracker.bytes_written == 10
 
     tracker._attempt_failed(stale, RuntimeError("stale"))
-    tracker._attempt_cancelled(stale)
+    tracker._attempt_failed(stale, None)
     tracker._attempt_finished(stale)
     assert not tracker.upload_complete.done()
 
@@ -2392,7 +2392,7 @@ async def test_upload_tracker_cancelled_attempt_superseded_by_resend() -> None:
     """A cancelled non-final attempt leaves the future pending for a resend."""
     tracker = UploadTracker()
     gen = tracker._attempt_started()
-    tracker._attempt_cancelled(gen)
+    tracker._attempt_failed(gen, None)
     assert not tracker.upload_complete.done()
 
     gen = tracker._attempt_started()
@@ -2422,8 +2422,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
     req._upload_tracker = tracker
     req._upload_gen = tracker._attempt_started()
 
-    writer = WriterMock()
-    writer.transport = _ProbeTransport()
+    writer = _ProbeWriter()
     writer.write.side_effect = OSError
 
     await req._write_bytes(writer, conn, None)
@@ -2447,8 +2446,7 @@ async def test_preamble_failure_reported_to_upload_tracker(
     if tracker is not None:
         req._upload_gen = tracker._attempt_started()
 
-    writer = WriterMock()
-    writer.transport = _ProbeTransport()
+    writer = _ProbeWriter()
     writer.send_headers = mock.Mock()
     writer.drain.side_effect = RuntimeError("preamble boom")
 
@@ -2536,8 +2534,7 @@ async def test_conn_close_failure_still_settles_upload_tracker(
     req._upload_gen = tracker._attempt_started()
     conn.close.side_effect = RuntimeError("close boom")
 
-    writer = WriterMock()
-    writer.transport = _ProbeTransport()
+    writer = _ProbeWriter()
     writer.send_headers = mock.Mock()
 
     task = asyncio.create_task(req._write_bytes(writer, conn, None))
