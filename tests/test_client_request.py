@@ -18,13 +18,13 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
+    _MAX_UPLOAD_CHECKPOINTS,
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
     ClientTimeout,
     Fingerprint,
     UploadTracker,
-    _MAX_UPLOAD_CHECKPOINTS,
     _gen_default_accept_encoding,
 )
 from aiohttp.compression_utils import ZLibBackend
