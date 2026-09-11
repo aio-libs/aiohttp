@@ -2211,9 +2211,10 @@ async def test_force_close_response_skips_lingering_close(
         # clean EOF or a reset (the kernel may RST a socket closed with an
         # unread receive buffer) proves the server did not linger. A lingering
         # server instead holds the socket open until wait_for() times out.
-        data = b""
-        with suppress(ConnectionResetError):
+        try:
             data = await asyncio.wait_for(reader.read(4096), 2.0)
+        except ConnectionResetError:
+            data = b""
         assert data == b"", data
     finally:
         writer.close()
