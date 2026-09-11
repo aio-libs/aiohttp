@@ -517,6 +517,7 @@ class ClientSession:
         # Only traces that saw send_request_start; they must also see a terminal event.
         traces: list[Trace] = []
         req: ClientRequest | None = None
+        resp: ClientResponse | None = None
         try:
             if self.closed:
                 raise RuntimeError("Session is closed")
