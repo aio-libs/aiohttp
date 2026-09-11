@@ -1174,9 +1174,28 @@ class MultipartWriter(Payload):
             # Add headers
             parts.append(part._binary_headers)
 
-            # Add payload content using as_bytes for async safety
             part_bytes = await part.as_bytes(encoding, errors)
-            parts.append(part_bytes)
+
+            # Add payload content using as_bytes for async safety
+            if _e or _te:
+                class _BytesWriter:
+                    def __init__(self) -> None:
+                        self.buffer = bytearray()
+
+                    async def write(self, chunk: bytes) -> None:
+                        self.buffer.extend(chunk)
+
+                writer = _BytesWriter()
+                w = MultipartPayloadWriter(writer)  # type: ignore[arg-type]
+                if _e:
+                    w.enable_compression(_e)
+                if _te:
+                    w.enable_encoding(_te)
+                await w.write(part_bytes)
+                await w.write_eof()
+                parts.append(bytes(writer.buffer))
+            else:
+                parts.append(part_bytes)
 
             # Add trailing CRLF
             parts.append(b"\r\n")
