@@ -49,6 +49,29 @@ class WriterMock(mock.AsyncMock):
         """Dummy method."""
 
 
+class _ProbeTransport:
+    """Transport stub with a controllable unsent-buffer size."""
+
+    def __init__(self) -> None:
+        self.buffer = 0
+        self.closing = False
+
+    def is_closing(self) -> bool:
+        return self.closing
+
+    def get_write_buffer_size(self) -> int:
+        return self.buffer
+
+
+class _ProbeWriter(WriterMock):
+    """Writer stub with a controllable transport flush state."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.output_size = 0
+        self.transport = _ProbeTransport()
+
+
 ALL_METHODS = frozenset(
     (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE)
 )
@@ -2331,10 +2354,12 @@ async def test_upload_tracker_stale_attempt_events_ignored() -> None:
     tracker = UploadTracker()
     stale = tracker._attempt_started()
     gen = tracker._attempt_started()
-    tracker._attempt_writing(gen)
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
 
-    tracker._add_bytes(gen, 10)
-    tracker._add_bytes(stale, 100)
+    writer.output_size = 10
+    tracker._add_bytes(gen, 10, 10)
+    tracker._add_bytes(stale, 100, 100)
     assert tracker.bytes_written == 10
 
     tracker._attempt_failed(stale, RuntimeError("stale"))
@@ -2398,6 +2423,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
     req._upload_gen = tracker._attempt_started()
 
     writer = WriterMock()
+    writer.transport = _ProbeTransport()
     writer.write.side_effect = OSError
 
     await req._write_bytes(writer, conn, None)
@@ -2422,6 +2448,7 @@ async def test_preamble_failure_reported_to_upload_tracker(
         req._upload_gen = tracker._attempt_started()
 
     writer = WriterMock()
+    writer.transport = _ProbeTransport()
     writer.send_headers = mock.Mock()
     writer.drain.side_effect = RuntimeError("preamble boom")
 
@@ -2510,6 +2537,7 @@ async def test_conn_close_failure_still_settles_upload_tracker(
     conn.close.side_effect = RuntimeError("close boom")
 
     writer = WriterMock()
+    writer.transport = _ProbeTransport()
     writer.send_headers = mock.Mock()
 
     task = asyncio.create_task(req._write_bytes(writer, conn, None))
@@ -2528,19 +2556,78 @@ async def test_upload_tracker_dispatched_resend_never_writing() -> None:
     """A dispatched resend that never starts writing settles as aborted."""
     tracker = UploadTracker()
     gen = tracker._attempt_started()
-    tracker._attempt_writing(gen)
-    tracker._add_bytes(gen, 2048)
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+    writer.output_size = 2048
+    tracker._add_bytes(gen, 2048, 2048)
     tracker._attempt_finished(gen)
 
     tracker._attempt_started()  # Resend dispatched; never writes.
     assert tracker.bytes_written == 0
     # Events from the superseded attempt are ignored; a stale writing
     # transition must not make _finalize() defer to a dead writer.
-    tracker._attempt_writing(gen)
+    tracker._attempt_writing(gen, writer)
     tracker._attempt_finished(gen)
-    tracker._add_bytes(gen, 100)
+    tracker._add_bytes(gen, 100, 2148)
     assert tracker.bytes_written == 0
 
     tracker._finalize()
     assert tracker.attempts == 2
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
+async def test_upload_tracker_bytes_written_kernel_gated() -> None:
+    """bytes_written excludes bytes still queued in the transport."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 100_000
+    tracker._add_bytes(gen, 100_000, 100_000)
+    writer.transport.buffer = 60_000
+    # 40_000 wire bytes flushed; linear estimate inside the chunk.
+    assert tracker.bytes_written == 40_000
+    writer.transport.buffer = 10_000
+    assert tracker.bytes_written == 90_000
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 100_000
+
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.bytes_written == 100_000
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_bytes_written_compressed_estimate() -> None:
+    """The in-chunk estimate scales payload bytes over smaller wire bytes."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    writer.output_size = 100  # Headers already on the wire.
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 110  # 1000 payload bytes compressed to 10.
+    tracker._add_bytes(gen, 1000, 110)
+    writer.transport.buffer = 5
+    assert tracker.bytes_written == 500
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 1000
+
+
+async def test_upload_tracker_bytes_written_frozen_on_teardown() -> None:
+    """A closing transport keeps the last kernel-confirmed value."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 4096
+    tracker._add_bytes(gen, 4096, 4096)
+    writer.transport.buffer = 1024
+    assert tracker.bytes_written == 3072
+    # Teardown drops the queued tail; it was never sent.
+    writer.transport.closing = True
+    assert tracker.bytes_written == 3072
+    tracker._attempt_failed(gen, RuntimeError("boom"))
+    assert tracker.bytes_written == 3072

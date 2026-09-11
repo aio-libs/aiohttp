@@ -2380,10 +2380,16 @@ Utilities
 
    .. attribute:: bytes_written
 
-      Body bytes of the current upload attempt handed to the connection,
-      before transport-level transformations such as compression or
-      chunked framing. Reset to ``0`` when the request moves on to a new
-      attempt.
+      Body bytes of the current upload attempt that have been sent to
+      the kernel, computed on access from the transport's unsent buffer.
+      Counted before transport-level transformations such as compression
+      or chunked framing; within a partially sent chunk the value is a
+      linear estimate. Reset to ``0`` when the request moves on to a new
+      attempt, and equal to the full body size once the attempt has
+      written everything.
+
+      The kernel's own socket buffers still sit between this counter and
+      actual delivery to the peer.
 
    .. attribute:: attempts
 

@@ -8,6 +8,7 @@ import sys
 import traceback
 import warnings
 from asyncio.base_events import BaseEventLoop
+from collections import deque
 from collections.abc import Callable, Iterable, Sequence
 from enum import Enum, auto
 from hashlib import md5, sha1, sha256
@@ -259,15 +260,14 @@ class UploadTracker:
     """Tracks upload progress of a single client request.
 
     Pass a fresh instance via the request's ``upload_tracker`` argument and
-    read the plain attributes (``bytes_written``, ``attempts``,
-    ``upload_complete``) while the request runs.
+    read ``bytes_written``, ``attempts`` and ``upload_complete`` while the
+    request runs.
 
     Must be created inside a running event loop. A tracker observes exactly
     one request: passing it to a second request raises :exc:`RuntimeError`.
     """
 
     def __init__(self) -> None:
-        self.bytes_written = 0
         self.attempts = 0
         self.upload_complete: asyncio.Future[None] = (
             asyncio.get_running_loop().create_future()
@@ -279,6 +279,53 @@ class UploadTracker:
         # Set once the request reaches a terminal point (returned or raised);
         # no further attempts can start after that.
         self._final = False
+        # Current attempt's writer while its body is being written.
+        self._writer: AbstractStreamWriter | None = None
+        # Payload bytes handed to the writer for the current attempt.
+        self._accepted = 0
+        # Payload bytes known to have left the transport for the kernel,
+        # and the wire position (writer output) they correspond to.
+        self._flushed = 0
+        self._flushed_wire = 0
+        # (payload total, wire total) checkpoints for accepted chunks not
+        # yet fully flushed out of the transport's buffer.
+        self._checkpoints: deque[tuple[int, int]] = deque()
+
+    @property
+    def bytes_written(self) -> int:
+        """Payload bytes of the current attempt sent to the kernel.
+
+        Computed from the transport's unsent buffer on access, so it
+        excludes bytes still queued in the event loop; it cannot see past
+        the kernel's own socket buffering.
+        """
+        self._refresh_flushed()
+        return self._flushed
+
+    def _refresh_flushed(self) -> None:
+        writer = self._writer
+        if writer is None:
+            return
+        transport = writer.transport
+        if transport is None or transport.is_closing():
+            # Torn down: bytes dropped from the buffer were never sent,
+            # so keep the last confirmed value.
+            return
+        wire_sent = writer.output_size - transport.get_write_buffer_size()
+        checkpoints = self._checkpoints
+        while checkpoints and checkpoints[0][1] <= wire_sent:
+            self._flushed, self._flushed_wire = checkpoints.popleft()
+        if checkpoints and wire_sent > self._flushed_wire:
+            # Inside a partially flushed chunk: scale the payload bytes
+            # linearly over the chunk's wire bytes (exact for identity
+            # writes, an estimate under compression).
+            payload_cum, wire_cum = checkpoints[0]
+            self._flushed += (
+                (payload_cum - self._flushed)
+                * (wire_sent - self._flushed_wire)
+                // (wire_cum - self._flushed_wire)
+            )
+            self._flushed_wire = wire_sent
 
     def _bind(self) -> None:
         if self._bound:
@@ -292,25 +339,39 @@ class UploadTracker:
         aborted instead of reporting the superseded attempt's outcome.
         """
         self.attempts += 1
-        self.bytes_written = 0
+        self._writer = None
+        self._accepted = 0
+        self._flushed = 0
+        self._flushed_wire = 0
+        self._checkpoints.clear()
         self._state = _UploadState.PENDING
         self._exc = None
         return self.attempts
 
-    def _attempt_writing(self, gen: int) -> None:
+    def _attempt_writing(self, gen: int, writer: AbstractStreamWriter) -> None:
         """The attempt's body write has begun; settling now defers to it."""
         if gen == self.attempts:
             self._state = _UploadState.ACTIVE
+            self._writer = writer
+            # Baseline past any bytes already on the wire (e.g. headers
+            # sent for the 100-continue preamble).
+            self._flushed_wire = writer.output_size
 
-    def _add_bytes(self, gen: int, size: int) -> None:
+    def _add_bytes(self, gen: int, size: int, wire_position: int) -> None:
         # A stale writer of a superseded attempt (e.g. still being torn
         # down while a redirect resends the body) must not corrupt the counter.
         if gen == self.attempts:
-            self.bytes_written += size
+            self._accepted += size
+            self._checkpoints.append((self._accepted, wire_position))
 
     def _attempt_finished(self, gen: int) -> None:
         if gen == self.attempts:
             self._state = _UploadState.FINISHED
+            # The body was written in full; the tail still in transit is
+            # ordered ahead of the response that completes the request.
+            self._flushed = self._accepted
+            self._checkpoints.clear()
+            self._writer = None
             if self._final:
                 self._settle()
 
@@ -318,14 +379,22 @@ class UploadTracker:
         if gen == self.attempts:
             self._state = _UploadState.FAILED
             self._exc = exc
+            self._freeze_flushed()
             if self._final:
                 self._settle()
 
     def _attempt_cancelled(self, gen: int) -> None:
         if gen == self.attempts:
             self._state = _UploadState.CANCELLED
+            self._freeze_flushed()
             if self._final:
                 self._settle()
+
+    def _freeze_flushed(self) -> None:
+        """Record the last kernel-confirmed value and drop the writer."""
+        self._refresh_flushed()
+        self._checkpoints.clear()
+        self._writer = None
 
     def _finalize(self) -> None:
         """Mark the request terminal: no further attempts will start.
@@ -1627,7 +1696,7 @@ class ClientRequest(ClientRequestBase):
         gen = self._upload_gen
         if tracker is not None:
             writer.on_body_write = functools.partial(tracker._add_bytes, gen)
-            tracker._attempt_writing(gen)
+            tracker._attempt_writing(gen, writer)
         try:
             # 100 response
             if self._continue is not None:

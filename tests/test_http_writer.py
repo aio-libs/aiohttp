@@ -2,7 +2,7 @@
 import array
 import asyncio
 import zlib
-from collections.abc import Generator, Iterable
+from collections.abc import Callable, Generator, Iterable
 from typing import Any
 from unittest import mock
 
@@ -1597,13 +1597,22 @@ async def test_send_headers_with_payload_chunked_eof_no_data(
     assert buf.endswith(b"0\r\n\r\n")
 
 
+def _collect_sizes(sizes: list[int]) -> Callable[[int, int], None]:
+    """Collector for on_body_write, recording the payload sizes only."""
+
+    def collect(size: int, wire_position: int) -> None:
+        sizes.append(size)
+
+    return collect
+
+
 async def test_on_body_write_counts_payload_bytes(
     buf: bytearray, protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
     """The on_body_write callback reports accepted body bytes."""
     sizes: list[int] = []
     msg = http.StreamWriter(protocol, asyncio.get_running_loop())
-    msg.on_body_write = sizes.append
+    msg.on_body_write = _collect_sizes(sizes)
 
     await msg.write(b"a" * 4)
     await msg.write(b"")
@@ -1618,7 +1627,7 @@ async def test_on_body_write_clipped_chunk(
     """Bytes clipped at the declared length are not reported."""
     sizes: list[int] = []
     msg = http.StreamWriter(protocol, asyncio.get_running_loop())
-    msg.on_body_write = sizes.append
+    msg.on_body_write = _collect_sizes(sizes)
     msg.length = 2
 
     await msg.write(b"a" * 4)
@@ -1634,7 +1643,7 @@ async def test_on_body_write_compressed_chunk(
     """With compression the pre-compression payload size is reported."""
     sizes: list[int] = []
     msg = http.StreamWriter(protocol, asyncio.get_running_loop())
-    msg.on_body_write = sizes.append
+    msg.on_body_write = _collect_sizes(sizes)
     msg.enable_compression("deflate")
 
     # The compressor emits only its stream header for the first small
@@ -1673,7 +1682,7 @@ async def test_on_body_write_write_eof_final_chunk(
     """A final chunk is reported across the framing/compression paths."""
     sizes: list[int] = []
     msg = http.StreamWriter(protocol, asyncio.get_running_loop())
-    msg.on_body_write = sizes.append
+    msg.on_body_write = _collect_sizes(sizes)
     if compress:
         msg.enable_compression("deflate")
     if chunked:

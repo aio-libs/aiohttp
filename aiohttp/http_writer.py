@@ -195,7 +195,7 @@ class StreamWriter(AbstractStreamWriter):
             chunk = await self._compress.compress(chunk)
             if not chunk:
                 if notify is not None and body_size:
-                    notify(body_size)
+                    notify(body_size, self.output_size)
                 return
 
         if self.length is not None:
@@ -214,7 +214,7 @@ class StreamWriter(AbstractStreamWriter):
         if self._headers_buf and not self._headers_written:
             self._send_headers_with_payload(chunk, False)
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
             if drain and self.buffer_size > LIMIT:
                 self.buffer_size = 0
                 await self.drain()
@@ -226,7 +226,7 @@ class StreamWriter(AbstractStreamWriter):
             else:
                 self._write(chunk)
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
 
             if drain and self.buffer_size > LIMIT:
                 self.buffer_size = 0
@@ -324,7 +324,7 @@ class StreamWriter(AbstractStreamWriter):
                     # Coalesce headers with compressed data
                     self._writelines((headers_buf, *chunks))
                 if notify is not None and body_size:
-                    notify(body_size)
+                    notify(body_size, self.output_size)
                 await self.drain()
                 self._eof = True
                 return
@@ -338,7 +338,7 @@ class StreamWriter(AbstractStreamWriter):
             else:
                 self._write(chunks[0])
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
             await self.drain()
             self._eof = True
             return
@@ -348,7 +348,7 @@ class StreamWriter(AbstractStreamWriter):
             # Use helper to send headers with payload
             self._send_headers_with_payload(chunk, True)
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
             await self.drain()
             self._eof = True
             return
@@ -363,7 +363,7 @@ class StreamWriter(AbstractStreamWriter):
             else:
                 self._write(b"0\r\n\r\n")
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
             await self.drain()
             self._eof = True
             return
@@ -371,7 +371,7 @@ class StreamWriter(AbstractStreamWriter):
         if chunk:
             self._write(chunk)
             if notify is not None and body_size:
-                notify(body_size)
+                notify(body_size, self.output_size)
             await self.drain()
 
         self._eof = True
