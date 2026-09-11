@@ -2384,10 +2384,21 @@ Utilities
 
    .. attribute:: bytes_written
 
-      Body bytes of the current upload attempt handed to the connection,
-      before transport-level transformations such as compression or
-      chunked framing. Reset to ``0`` when the request moves on to a new
-      attempt.
+      Body bytes of the current upload attempt that have been sent to
+      the kernel. Counted before transport-level transformations such as compression
+      or chunked framing; within a partially sent chunk the value is a
+      linear estimate. Resets to ``0`` when the request moves on to a new
+      attempt, and equal to the full body size once the attempt has
+      written everything.
+
+      .. note::
+
+         Because this only tracks the data sent to the kernel, which then buffers data
+         itself, this feature is effectively useless on small payloads.
+         Typically, payloads less than ~10 MiB will result in the progress
+         appearing to be 100% immediately, even if not a single byte has left
+         the machine yet. A payload ~20 MiB might see the progress jump to 40-50%
+         immediately, etc. The larger the payload, the less noticeable this skew will be.
 
    .. attribute:: attempts
 

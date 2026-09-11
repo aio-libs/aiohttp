@@ -514,11 +514,9 @@ class ClientSession:
 
         tm: TimeoutHandle | None = None
         handle: asyncio.TimerHandle | None = None
+        # Only traces that saw send_request_start; they must also see a terminal event.
         traces: list[Trace] = []
-        traces_started = 0
-        trace_url: URL | None = None
-        trace_headers: "CIMultiDict[str] | None" = None
-
+        req: ClientRequest | None = None
         try:
             if self.closed:
                 raise RuntimeError("Session is closed")
@@ -544,17 +542,6 @@ class ClientSession:
                     )
                 else:
                     data = payload.JsonPayload(json, dumps=self._json_serialize)
-
-            real_timeout = (
-                self._timeout if timeout is sentinel or timeout is None else timeout
-            )
-            # timeout is cumulative for all request operations
-            # (request, redirects, responses, data consuming)
-            tm = TimeoutHandle(
-                self._loop,
-                real_timeout.total,
-                ceil_threshold=real_timeout.ceil_threshold,
-            )
 
             redirects = 0
             history: list[ClientResponse] = []
@@ -596,6 +583,16 @@ class ClientSession:
                 except ValueError as e:
                     raise InvalidURL(proxy) from e
 
+            real_timeout = (
+                self._timeout if timeout is sentinel or timeout is None else timeout
+            )
+            # timeout is cumulative for all request operations
+            # (request, redirects, responses, data consuming)
+            tm = TimeoutHandle(
+                self._loop,
+                real_timeout.total,
+                ceil_threshold=real_timeout.ceil_threshold,
+            )
             handle = tm.start()
 
             if read_bufsize is None:
@@ -613,39 +610,18 @@ class ClientSession:
             if max_headers is None:
                 max_headers = self._max_headers
 
-            traces = [
-                Trace(
+            for trace_config in self._trace_configs:
+                trace = Trace(
                     self,
                     trace_config,
                     trace_config.trace_config_ctx(trace_request_ctx=trace_request_ctx),
                 )
-                for trace_config in self._trace_configs
-            ]
+                await trace.send_request_start(
+                    method, url.update_query(params), headers
+                )
+                traces.append(trace)
 
-            trace_url = url.update_query(params)
-            trace_headers = headers
-            for trace in traces:
-                await trace.send_request_start(method, trace_url, trace_headers)
-                traces_started += 1
-        except BaseException as e:
-            if tm is not None:
-                tm.close()
-            if handle is not None:
-                handle.cancel()
-            if upload_tracker is not None:
-                upload_tracker._finalize()
-            # Traces that saw send_request_start must also see a terminal
-            # event; traces whose start never ran get neither.
-            for trace in traces[:traces_started]:
-                assert trace_url is not None and trace_headers is not None
-                await trace.send_request_exception(method, trace_url, trace_headers, e)
-            raise
-
-        assert tm is not None
-        timer = tm.timer()
-        req: ClientRequest | None = None
-        resp: ClientResponse | None = None
-        try:
+            timer = tm.timer()
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
                 retry_persistent_connection = (
@@ -933,7 +909,8 @@ class ClientSession:
 
         except BaseException as e:
             # cleanup timer
-            tm.close()
+            if tm is not None:
+                tm.close()
             if handle:
                 handle.cancel()
 
@@ -948,8 +925,9 @@ class ClientSession:
                 await req._body.close()
 
             for trace in traces:
+                # url and headers are bound whenever traces is non-empty.
                 await trace.send_request_exception(
-                    method, url.update_query(params), headers, e
+                    method, url.update_query(params), headers, e  # type: ignore[possibly-undefined, arg-type]
                 )
             raise
 
