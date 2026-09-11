@@ -2209,13 +2209,11 @@ async def test_force_close_response_skips_lingering_close(
 
         # A close right after the response is the contract here: either a
         # clean EOF or a reset (the kernel may RST a socket closed with an
-        # unread receive buffer) proves the server did not linger.
-        try:
+        # unread receive buffer) proves the server did not linger. A lingering
+        # server instead holds the socket open until wait_for() times out.
+        data = b""
+        with suppress(ConnectionResetError):
             data = await asyncio.wait_for(reader.read(4096), 2.0)
-        except asyncio.TimeoutError:
-            pytest.fail("connection still open: lingering close was not skipped")
-        except ConnectionResetError:
-            data = b""
         assert data == b"", data
     finally:
         writer.close()
