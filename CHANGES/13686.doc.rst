@@ -1,0 +1,3 @@
+Corrected the documented signature of :py:meth:`~aiohttp.StreamReader.readuntil`, which
+showed a ``str`` separator although the method takes ``bytes``, and documented its
+keyword-only ``max_size`` argument -- by :user:`hxperl`.
