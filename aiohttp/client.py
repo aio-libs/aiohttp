@@ -917,6 +917,10 @@ class ClientSession:
             if upload_tracker is not None:
                 upload_tracker._finalize()
 
+            if resp is not None:
+                # A failure occurred after the response was received.
+                resp.close()
+
             if req is not None and req._body is not None:
                 await req._body.close()
 

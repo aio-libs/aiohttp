@@ -166,11 +166,13 @@ async def test_constructor(
 ) -> None:
     jar = CookieJar()
     jar.update_cookies(cookies_to_send)
-    jar_cookies = SimpleCookie()
-    for cookie in jar:
-        dict.__setitem__(jar_cookies, cookie.key, cookie)
-    expected_cookies = cookies_to_send
-    assert jar_cookies == expected_cookies
+    jar_cookies = {cookie.key: cookie for cookie in jar}
+    assert jar_cookies.keys() == cookies_to_send.keys()
+    for name, expected in cookies_to_send.items():
+        # The jar stores normalized copies, so only the parts that
+        # normalization must not touch are compared here.
+        assert jar_cookies[name].value == expected.value
+        assert jar_cookies[name].coded_value == expected.coded_value
 
 
 async def test_constructor_with_expired(
@@ -204,7 +206,12 @@ def test_save_load(
     for cookie in jar_load:
         jar_test[cookie.key] = cookie
 
-    assert jar_test == cookies_to_receive
+    # The jar stores normalized copies of the received cookies, so the
+    # round-tripped contents are compared against the saved jar itself.
+    jar_expected = SimpleCookie()
+    for cookie in jar_save:
+        dict.__setitem__(jar_expected, cookie.key, cookie)
+    assert jar_test == jar_expected
 
 
 def test_save_load_partitioned_cookies(tmp_path: Path) -> None:
@@ -818,7 +825,45 @@ async def test_cookie_jar_host_only_cookies_property() -> None:
 
     host_only = jar.host_only_cookies
     assert isinstance(host_only, frozenset)
-    assert ("example.com", "hostonly") in host_only
+    assert ("example.com", "", "hostonly") in host_only
+
+
+def test_host_only_marker_survives_same_name_expiry_on_other_path() -> None:
+    """Expiring a same-name cookie on another path must not clear host-only state."""
+    jar = CookieJar()
+    origin = URL("http://auth.example.com/")
+    subdomain = URL("http://evil.auth.example.com/")
+
+    jar.update_cookies_from_headers(["sid=secret; Path=/"], origin)
+    assert "sid" not in jar.filter_cookies(subdomain)
+
+    # Attacker-controlled descendant expires a same-name cookie on its own path.
+    jar.update_cookies_from_headers(
+        ["sid=gone; Domain=auth.example.com; Path=/attacker; Max-Age=0"],
+        subdomain,
+    )
+
+    assert ("auth.example.com", "", "sid") in jar.host_only_cookies
+    assert "sid" not in jar.filter_cookies(subdomain)
+    assert jar.filter_cookies(origin)["sid"].value == "secret"
+
+
+def test_explicit_domain_replacement_clears_host_only_marker() -> None:
+    """A replacing cookie with an explicit Domain is a domain cookie."""
+    jar = CookieJar()
+    origin = URL("http://example.com/")
+    subdomain = URL("http://sub.example.com/")
+
+    jar.update_cookies_from_headers(["sid=hostonly; Path=/"], origin)
+    assert ("example.com", "", "sid") in jar.host_only_cookies
+    assert "sid" not in jar.filter_cookies(subdomain)
+
+    jar.update_cookies_from_headers(
+        ["sid=domainwide; Domain=example.com; Path=/"], origin
+    )
+
+    assert jar.host_only_cookies == frozenset()
+    assert jar.filter_cookies(subdomain)["sid"].value == "domainwide"
 
 
 async def test_cookie_jar_cookies_property_immutable() -> None:
@@ -1425,6 +1470,41 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(filtered) == 0
 
 
+def test_update_cookies_copies_caller_morsel() -> None:
+    """Test that mutating a Morsel after update_cookies() does not change the jar.
+
+    https://github.com/aio-libs/aiohttp/issues/13634
+    """
+    jar = CookieJar()
+    url = URL("http://example.com/")
+    sc = SimpleCookie()
+    sc["auth"] = "original-value"
+    jar.update_cookies({"auth": sc["auth"]}, url)
+
+    # Mutate the caller's Morsel after the jar has stored it.
+    sc["auth"].set("auth", "mutated-value", "mutated-value")
+
+    assert jar.filter_cookies(url)["auth"].value == "original-value"
+
+
+def test_update_cookies_does_not_mutate_caller_morsel() -> None:
+    """Test that update_cookies() normalization does not leak into the caller's Morsel.
+
+    https://github.com/aio-libs/aiohttp/issues/13634
+    """
+    jar = CookieJar()
+    sc = SimpleCookie()
+    sc["sid"] = "value"
+    jar.update_cookies({"sid": sc["sid"]}, URL("http://example.com/sub/page"))
+
+    # The jar normalizes its private copy, not the caller's object.
+    assert sc["sid"]["domain"] == ""
+    assert sc["sid"]["path"] == ""
+
+    filtered = jar.filter_cookies(URL("http://example.com/sub/page"))
+    assert filtered["sid"].value == "value"
+
+
 async def test_shared_cookie_cache_population() -> None:
     """Test that shared cookies are cached correctly."""
     jar = CookieJar(unsafe=True)
@@ -1644,7 +1724,7 @@ def test_save_load_json_preserves_host_only_scope(tmp_path: Path) -> None:
     jar_load = CookieJar()
     jar_load.load(file_path=file_path)
 
-    assert jar_load.host_only_cookies == frozenset({("auth.example.com", "sid")})
+    assert jar_load.host_only_cookies == frozenset({("auth.example.com", "", "sid")})
     assert "sid" not in jar_load.filter_cookies(subdomain)
     assert "sid" in jar_load.filter_cookies(issuer)
 
@@ -1667,6 +1747,28 @@ def test_save_load_json_domain_cookie_still_matches_subdomain(
 
     assert jar_load.host_only_cookies == frozenset()
     assert "sid" in jar_load.filter_cookies(subdomain)
+
+
+def test_save_load_json_host_only_per_path(tmp_path: Path) -> None:
+    """Verify save/load keeps host-only state per (domain, path, name)."""
+    file_path = tmp_path / "per_path.json"
+    origin = URL("https://example.com/")
+    subdomain = URL("https://sub.example.com/")
+
+    jar_save = CookieJar()
+    jar_save.update_cookies_from_headers(
+        ["sid=hostonly; Path=/", "sid=domainwide; Domain=example.com; Path=/api"],
+        origin,
+    )
+    jar_save.save(file_path=file_path)
+
+    jar_load = CookieJar()
+    jar_load.load(file_path=file_path)
+
+    assert jar_load.host_only_cookies == frozenset({("example.com", "", "sid")})
+    assert "sid" not in jar_load.filter_cookies(subdomain)
+    filtered = jar_load.filter_cookies(URL("https://sub.example.com/api/x"))
+    assert filtered["sid"].value == "domainwide"
 
 
 def test_save_load_json_preserves_max_age_deadline(tmp_path: Path) -> None:
@@ -1856,3 +1958,25 @@ async def test_cookie_jar_unsafe_property() -> None:
 
     jar_unsafe = CookieJar(unsafe=True)
     assert jar_unsafe.unsafe is True
+
+
+def test_update_cookies_max_age_beyond_float_range_is_clamped() -> None:
+    """A hostile Max-Age larger than float max must clamp, not raise OverflowError."""
+    url = URL("https://example.com/")
+    jar = CookieJar()
+
+    jar.update_cookies_from_headers([f"sid=x; Max-Age={'9' * 309}"], url)
+
+    assert "sid" in jar.filter_cookies(url)
+    assert jar._expirations[("example.com", "", "sid")] == CookieJar.MAX_TIME
+
+
+def test_update_cookies_negative_max_age_beyond_float_range_expires() -> None:
+    """A negative Max-Age below float min must expire the cookie, not raise."""
+    url = URL("https://example.com/")
+    jar = CookieJar()
+
+    jar.update_cookies_from_headers([f"sid=x; Max-Age=-{'9' * 309}"], url)
+
+    assert "sid" not in jar.filter_cookies(url)
+    assert len(jar) == 0

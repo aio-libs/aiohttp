@@ -423,8 +423,12 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         assert self.protocol is not None
                         # calculate payload
+                        # https://www.rfc-editor.org/info/rfc9112/#name-message-body-length
+                        # https://www.rfc-editor.org/info/rfc9110/#section-9.3.1-6
+                        # EMPTY_BODY_METHODS should only apply to responses.
+                        # self.method is None on request parser.
                         empty_body = code in EMPTY_BODY_STATUS_CODES or bool(
-                            method and method in EMPTY_BODY_METHODS
+                            self.method and self.method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
                             (length is not None and length > 0) or msg.chunked

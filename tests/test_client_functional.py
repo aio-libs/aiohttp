@@ -15,7 +15,7 @@ import tarfile
 import time
 import zipfile
 import zlib
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import suppress
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, NoReturn
@@ -3046,6 +3046,50 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
             assert int(cookie["max-age"]) == int(overflow)
 
 
+async def test_connection_released_when_cookie_processing_fails(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    class EvilJar(aiohttp.CookieJar):
+        def update_cookies_from_headers(
+            self, headers: Sequence[str], response_url: URL
+        ) -> None:
+            raise RuntimeError("boom")
+
+    hold = asyncio.Event()
+
+    async def hostile(request: web.Request) -> web.StreamResponse:
+        ret = web.StreamResponse()
+        ret.content_length = 2
+        ret.set_cookie("sid", "x")
+        await ret.prepare(request)
+        await ret.write(b"x")
+        await hold.wait()
+        assert False
+
+    async def clean(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/hostile", hostile)
+    app.router.add_get("/clean", clean)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector, cookie_jar=EvilJar())
+
+    try:
+        for _ in range(2):
+            with pytest.raises(RuntimeError, match="boom") as excinfo:
+                await client.get("/hostile")
+            assert not connector._acquired
+            del excinfo
+
+        # The single connector slot is free again: an unaffected request
+        # succeeds instead of waiting forever for a connection.
+        async with client.get("/clean") as resp:
+            assert resp.status == 200
+    finally:
+        hold.set()
+
+
 async def test_request_conn_error() -> None:
     async with aiohttp.ClientSession() as client:
         with pytest.raises(aiohttp.ClientConnectionError):
@@ -4037,7 +4081,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
+async def test_server_close_keepalive_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -4062,7 +4106,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4078,7 +4122,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
+async def test_handle_keepalive_on_closed_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -4097,7 +4141,7 @@ async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> No
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4353,14 +4397,12 @@ async def test_socket_timeout(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
-    request_count = 0
+    slow = True
 
     async def handler(request: web.Request) -> web.Response:
-        nonlocal request_count
-        request_count += 1
-        if request_count < 3:
+        if slow:
             await asyncio.sleep(0.5)
-        return web.Response(body=f"request:{request_count}")
+        return web.Response(body=b"done")
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4379,8 +4421,13 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
 
     # Make sure its really closed
     assert not client.session.connector._conns
-    async with client.get("/") as result:
-        assert await result.read() == b"request:3"
+    # A client-side timeout doesn't guarantee the handler ever ran (the
+    # timeout can fire before the request is dispatched on a slow CI run),
+    # so switch behaviour with the flag instead of counting invocations, and
+    # override the tight session timeout so the round trip can't flake either.
+    slow = False
+    async with client.get("/", timeout=aiohttp.ClientTimeout(total=10)) as result:
+        assert await result.read() == b"done"
 
     # Make sure its not closed
     assert client.session.connector._conns

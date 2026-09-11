@@ -478,6 +478,8 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_redirects: Maximum number of redirects to follow.
          :exc:`TooManyRedirects` is raised if the number is exceeded.
+         ``0`` means no limit, redirects are followed until the request
+         times out. Use ``allow_redirects=False`` to not follow redirects at all.
          Ignored when ``allow_redirects=False``.
          ``10`` by default.
 
@@ -976,6 +978,8 @@ certification chaining.
 
    :param int max_redirects: Maximum number of redirects to follow.
       :exc:`TooManyRedirects` is raised if the number is exceeded.
+      ``0`` means no limit, redirects are followed until the request
+      times out. Use ``allow_redirects=False`` to not follow redirects at all.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
@@ -2606,10 +2610,16 @@ Utilities
 
    .. attribute:: host_only_cookies
 
-      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
-      cookies are host-only (not sent to subdomains).
+      A :class:`frozenset` of ``(domain, path, name)`` tuples indicating
+      which cookies are host-only (not sent to subdomains).
 
       .. versionadded:: 3.14
+
+      .. versionchanged:: 3.14.4
+
+         The tuples gained the *path* element; host-only state is tracked
+         per ``(domain, path, name)`` cookie identity so that same-named
+         cookies on other paths cannot affect it.
 
 
 .. class:: DummyCookieJar(*, loop=None)
@@ -2950,6 +2960,12 @@ Connection errors
    Connector related exceptions.
 
    Derived from :exc:`ClientOSError`
+
+   .. attribute:: ssl
+
+      The value passed as the ``ssl`` parameter of the request: an
+      :class:`ssl.SSLContext`, a :class:`bool`, or a
+      :class:`~aiohttp.Fingerprint`.
 
 .. class:: ClientConnectorDNSError
    :canonical: aiohttp.client_exceptions.ClientConnectorDNSError
