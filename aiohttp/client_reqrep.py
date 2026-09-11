@@ -362,7 +362,13 @@ class UploadTracker:
         # down while a redirect resends the body) must not corrupt the counter.
         if gen == self.attempts:
             self._accepted += size
-            self._checkpoints.append((self._accepted, wire_position))
+            checkpoints = self._checkpoints
+            # This can be called after compressor produces an empty chunk.
+            # In this case, we shouldn't checkpoint anything.
+            if wire_position > (
+                checkpoints[-1][1] if checkpoints else self._flushed_wire
+            ):
+                checkpoints.append((self._accepted, wire_position))
 
     def _attempt_finished(self, gen: int) -> None:
         if gen == self.attempts:

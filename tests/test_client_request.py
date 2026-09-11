@@ -2631,3 +2631,25 @@ async def test_upload_tracker_bytes_written_frozen_on_teardown() -> None:
     assert tracker.bytes_written == 3072
     tracker._attempt_failed(gen, RuntimeError("boom"))
     assert tracker.bytes_written == 3072
+
+
+async def test_upload_tracker_compressor_buffered_chunk_not_reported() -> None:
+    """A chunk swallowed by the compressor is not reported as sent."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    # The compressor buffers the whole chunk: no wire output yet.
+    tracker._add_bytes(gen, 1000, 0)
+    assert tracker.bytes_written == 0
+
+    # The next chunk makes the compressor emit; both ride the emission.
+    writer.output_size = 40
+    tracker._add_bytes(gen, 1000, 40)
+    writer.transport.buffer = 40
+    assert tracker.bytes_written == 0
+    writer.transport.buffer = 20
+    assert tracker.bytes_written == 1000
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 2000
