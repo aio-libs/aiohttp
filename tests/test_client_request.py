@@ -24,6 +24,7 @@ from aiohttp.client_reqrep import (
     ClientTimeout,
     Fingerprint,
     UploadTracker,
+    _MAX_UPLOAD_CHECKPOINTS,
     _gen_default_accept_encoding,
 )
 from aiohttp.compression_utils import ZLibBackend
@@ -2697,3 +2698,23 @@ async def test_upload_tracker_writer_without_transport() -> None:
 
     tracker._attempt_finished(gen)
     assert tracker.bytes_written == 1000
+
+
+async def test_upload_tracker_checkpoint_queue_bounded() -> None:
+    """Flushed checkpoints are pruned even when nobody polls bytes_written."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    # Everything flushes as soon as it is written (empty buffer), so the
+    # forced refresh prunes the whole backlog once the bound is crossed.
+    for i in range(1, _MAX_UPLOAD_CHECKPOINTS + 2):
+        writer.output_size = i
+        tracker._add_bytes(gen, 1, i)
+
+    # The refresh fired at the bound and pruned the flushed backlog down
+    # to the sentinel; only the post-refresh chunk sits behind it (an
+    # unbounded queue would hold _MAX_UPLOAD_CHECKPOINTS + 2 entries).
+    assert len(tracker._checkpoints) == 2
+    assert tracker.bytes_written == _MAX_UPLOAD_CHECKPOINTS + 1
