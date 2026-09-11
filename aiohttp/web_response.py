@@ -78,6 +78,7 @@ class StreamResponse(
     _length_check = True
     _body = None
     _keep_alive: bool | None = None
+    _force_close: bool = False
     _chunked: bool = False
     _compression: bool = False
     _compression_strategy: int | None = None
@@ -165,7 +166,14 @@ class StreamResponse(
         return self._keep_alive
 
     def force_close(self) -> None:
+        """Disable :attr:`keep_alive` for connection.
+
+        There are no ways to enable it back. The connection is closed right
+        after the response is written -- the unread part of the request body
+        is not drained (no lingering close).
+        """
         self._keep_alive = False
+        self._force_close = True
 
     @property
     def body_length(self) -> int:

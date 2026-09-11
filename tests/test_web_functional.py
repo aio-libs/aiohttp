@@ -2174,6 +2174,105 @@ async def test_pipelined_requests_after_deferred_upgrade_are_served(
     assert responses.count(b"HTTP/1.1 ") == len(expected), responses[:200]
 
 
+async def test_force_close_response_skips_lingering_close(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """resp.force_close() must close the connection promptly (#1800).
+
+    The client announces a large body but never finishes sending it. With the
+    bug the server lingers up to lingering_time waiting for the rest; with the
+    fix, the connection is closed right after the response is written.
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(text="done")
+        resp.force_close()
+        return resp
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app, lingering_time=10.0)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"POST / HTTP/1.1\r\nHost: localhost\r\n"
+            b"Content-Length: 65536\r\n\r\n" + b"x" * 512
+        )
+        await writer.drain()
+        # Never send the remaining 65024 body bytes.
+        response = b""
+        while b"done" not in response:
+            chunk = await asyncio.wait_for(reader.read(4096), 5)
+            assert chunk, f"connection closed before response completed: {response!r}"
+            response += chunk
+
+        # A close right after the response is the contract here: either a
+        # clean EOF or a reset (the kernel may RST a socket closed with an
+        # unread receive buffer) proves the server did not linger.
+        try:
+            data = await asyncio.wait_for(reader.read(4096), 2.0)
+        except asyncio.TimeoutError:
+            pytest.fail("connection still open: lingering close was not skipped")
+        except ConnectionResetError:
+            data = b""
+        assert data == b"", data
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+
+@pytest.mark.parametrize(
+    "request_head",
+    [
+        b"POST / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n",
+        b"POST / HTTP/1.0\r\nHost: localhost\r\n",
+    ],
+    ids=["connection-close", "http10"],
+)
+async def test_connection_close_request_still_drains_unread_body(
+    aiohttp_server: AiohttpServer,
+    request_head: bytes,
+) -> None:
+    """Declining keep-alive without force_close() must keep the graceful drain.
+
+    ``Connection: close`` and HTTP/1.0 end the connection without reuse, but
+    the lingering close stays: it drains the unread request body so the client
+    can finish sending and read the response without a reset (#1800).
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="done")
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app, lingering_time=10.0)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(request_head + b"Content-Length: 65536\r\n\r\n" + b"x" * 512)
+        await writer.drain()
+        response = b""
+        while b"done" not in response:
+            chunk = await asyncio.wait_for(reader.read(4096), 5)
+            assert chunk, f"connection closed before response completed: {response!r}"
+            response += chunk
+
+        # The graceful drain must hold the connection open while the body is
+        # incomplete, then close as soon as the announced body arrives.
+        eof = asyncio.ensure_future(reader.read(4096))
+        await asyncio.sleep(0.5)
+        assert not eof.done(), "server stopped draining before the body was complete"
+        writer.write(b"y" * 65024)
+        await writer.drain()
+        assert await asyncio.wait_for(eof, 5) == b""
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+
 async def test_websocket_prepared_with_unread_body_does_not_stall(
     aiohttp_server: AiohttpServer,
 ) -> None:

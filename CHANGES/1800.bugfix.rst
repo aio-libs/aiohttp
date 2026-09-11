@@ -1,0 +1,1 @@
+``Response.force_close()`` now closes the connection right after the response is written instead of draining the unread request body (lingering close) -- by :user:`istoolsfox`.

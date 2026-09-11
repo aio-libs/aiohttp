@@ -677,6 +677,10 @@ and :ref:`aiohttp-web-signals` handlers::
       Disable :attr:`keep_alive` for connection. There are no ways to
       enable it back.
 
+      The connection is closed right after the response is written --
+      the unread part of the request body is not drained (no lingering
+      close).
+
    .. attribute:: compression
 
       Read-only :class:`bool` property, ``True`` if compression is enabled.

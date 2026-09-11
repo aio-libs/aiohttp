@@ -827,7 +827,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
                     # Could be force closed while awaiting above tasks.
-                    if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
+                    # An explicit resp.force_close() opts out of lingering:
+                    # the connection closes right after the response (#1800).
+                    if (
+                        not self._force_close  # type: ignore[redundant-expr]
+                        and not resp._force_close
+                        and lingering_time
+                    ):
                         self.log_debug(
                             "Start lingering close timer for %s sec.", lingering_time
                         )
@@ -978,6 +984,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 message = title + "\n\n" + msg
 
         resp = Response(status=status, text=message, content_type=ct)
-        resp.force_close()
+        # Keep-alive off without response force_close(): the graceful drain
+        # must stay for internally generated error responses so the client
+        # can still read the error page -- skipping the drain is reserved
+        # for an explicit force_close() in handler code (#1800).
+        resp._keep_alive = False
 
         return resp
