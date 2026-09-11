@@ -6385,7 +6385,7 @@ async def test_upload_tracker_connect_error(aiohttp_client: AiohttpClient) -> No
     """A request failing before the body write leaves the future cancelled."""
 
     async def handler(request: web.Request) -> web.Response:
-        return web.Response()
+        assert False
 
     app = web.Application()
     app.router.add_get("/", handler)
