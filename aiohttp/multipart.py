@@ -1178,6 +1178,7 @@ class MultipartWriter(Payload):
 
             # Add payload content using as_bytes for async safety
             if _e or _te:
+
                 class _BytesWriter:
                     def __init__(self) -> None:
                         self.buffer = bytearray()

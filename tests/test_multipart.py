@@ -2010,11 +2010,14 @@ async def test_multipart_writer_consumed_follows_body_part_reader() -> None:
         assert part.consumed is True
         assert writer.consumed is True
 
+
 async def test_multipart_writer_as_bytes_with_encoding() -> None:
     """Test that MultipartWriter.as_bytes() applies content encoding."""
+
     class Buf:
         def __init__(self) -> None:
             self.data = bytearray()
+
         async def write(self, chunk: bytes) -> None:
             self.data.extend(chunk)
 
