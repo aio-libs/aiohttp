@@ -2653,3 +2653,46 @@ async def test_upload_tracker_compressor_buffered_chunk_not_reported() -> None:
     assert tracker.bytes_written == 1000
     writer.transport.buffer = 0
     assert tracker.bytes_written == 2000
+
+
+async def test_upload_tracker_writer_without_transport() -> None:
+    """A writer without a transport reports progress only on completion."""
+
+    class MinimalWriter(AbstractStreamWriter):
+        """Concrete writer relying on the ABC's transport default."""
+
+        async def write(
+            self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+        ) -> None:
+            """Accept and drop."""
+
+        async def write_eof(self, chunk: bytes = b"") -> None:
+            """Accept and drop."""
+
+        async def drain(self) -> None:
+            """No buffering."""
+
+        def enable_compression(
+            self, encoding: str = "deflate", strategy: int | None = None
+        ) -> None:
+            """Unused."""
+
+        def enable_chunking(self) -> None:
+            """Unused."""
+
+        async def write_headers(
+            self, status_line: str, headers: CIMultiDict[str]
+        ) -> None:
+            """Unused."""
+
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = MinimalWriter()
+    assert writer.transport is None
+    tracker._attempt_writing(gen, writer)
+
+    tracker._add_bytes(gen, 1000, 1000)
+    assert tracker.bytes_written == 0
+
+    tracker._attempt_finished(gen)
+    assert tracker.bytes_written == 1000
