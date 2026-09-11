@@ -75,6 +75,7 @@ class StreamWriter(AbstractStreamWriter):
         self._on_headers_sent: _T_OnHeadersSent = on_headers_sent
         self._headers_buf: bytes | None = None
         self._headers_written: bool = False
+        self.on_body_write = None
 
     @property
     def transport(self) -> asyncio.Transport | None:
@@ -182,14 +183,20 @@ class StreamWriter(AbstractStreamWriter):
         if self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
 
+        notify = self.on_body_write
         if isinstance(chunk, memoryview):
-            if chunk.nbytes != len(chunk):
+            body_size = chunk.nbytes
+            if body_size != len(chunk):
                 # just reshape it
                 chunk = chunk.cast("c")
+        else:
+            body_size = len(chunk) if notify is not None else 0
 
         if self._compress is not None:
             chunk = await self._compress.compress(chunk)
             if not chunk:
+                if notify is not None and body_size:
+                    notify(body_size, self.output_size)
                 return
 
         if self.length is not None:
@@ -197,6 +204,8 @@ class StreamWriter(AbstractStreamWriter):
             if self.length >= chunk_len:
                 self.length = self.length - chunk_len
             else:
+                # Bytes clipped at the declared length are discarded, not sent.
+                body_size = self.length
                 chunk = chunk[: self.length]
                 self.length = 0
                 if not chunk:
@@ -205,20 +214,19 @@ class StreamWriter(AbstractStreamWriter):
         # Handle buffered headers for small payload optimization
         if self._headers_buf and not self._headers_written:
             self._send_headers_with_payload(chunk, False)
-            if drain and self.buffer_size > LIMIT:
-                self.buffer_size = 0
-                await self.drain()
-            return
-
-        if chunk:
+        elif chunk:
             if self.chunked:
                 self._write_chunked_payload(chunk)
             else:
                 self._write(chunk)
+        else:
+            return
 
-            if drain and self.buffer_size > LIMIT:
-                self.buffer_size = 0
-                await self.drain()
+        if notify is not None and body_size:
+            notify(body_size, self.output_size)
+        if drain and self.buffer_size > LIMIT:
+            self.buffer_size = 0
+            await self.drain()
 
     async def write_headers(
         self, status_line: str, headers: "CIMultiDict[str]"
@@ -308,32 +316,20 @@ class StreamWriter(AbstractStreamWriter):
                 else:
                     # Coalesce headers with compressed data
                     self._writelines((headers_buf, *chunks))
-                await self.drain()
-                self._eof = True
-                return
-
             # Headers already sent, just write compressed data
-            if self.chunked:
+            elif self.chunked:
                 chunk_len_pre = f"{chunks_len:x}\r\n".encode("ascii")
                 self._writelines((chunk_len_pre, *chunks, b"\r\n0\r\n\r\n"))
             elif len(chunks) > 1:
                 self._writelines(chunks)
             else:
                 self._write(chunks[0])
-            await self.drain()
-            self._eof = True
-            return
-
         # No compression - send buffered headers if not yet sent
-        if self._headers_buf and not self._headers_written:
+        elif self._headers_buf and not self._headers_written:
             # Use helper to send headers with payload
             self._send_headers_with_payload(chunk, True)
-            await self.drain()
-            self._eof = True
-            return
-
         # Handle remaining body
-        if self.chunked:
+        elif self.chunked:
             if chunk:
                 # Write final chunk with EOF marker
                 self._writelines(
@@ -341,14 +337,15 @@ class StreamWriter(AbstractStreamWriter):
                 )
             else:
                 self._write(b"0\r\n\r\n")
-            await self.drain()
+        elif chunk:
+            self._write(chunk)
+        else:
             self._eof = True
             return
 
-        if chunk:
-            self._write(chunk)
-            await self.drain()
-
+        if chunk and (notify := self.on_body_write) is not None:
+            notify(len(chunk), self.output_size)
+        await self.drain()
         self._eof = True
 
     async def drain(self) -> None:

@@ -1,0 +1,4 @@
+Fixed a connection being eligible for reuse after its request was cancelled
+or failed while waiting for a ``100 Continue`` response or finalizing the
+body; the request headers were already sent, so reusing the connection
+corrupted the next request on it -- by :user:`Dreamsorcerer`.
