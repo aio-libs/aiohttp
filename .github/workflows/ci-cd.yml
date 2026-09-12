@@ -422,7 +422,7 @@ jobs:
         CIBW_PLATFORM: ${{ matrix.config.platform }}
         CIBW_ARCHS: ${{ matrix.config.archs }}
         CIBW_TEST_REQUIRES: -r requirements/test-mobile.txt
-        CIBW_TEST_SOURCES: setup.cfg README.rst tests
+        CIBW_TEST_SOURCES: pytest.ini README.rst tests
         # Currently only Android supports colored output. See https://github.com/python/cpython/issues/150932 for iOS.
         CIBW_TEST_COMMAND: python -m pytest ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
         SDIST_PATH: >-
