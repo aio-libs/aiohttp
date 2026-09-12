@@ -1,0 +1,2 @@
+Fixed cookies expiring at the Unix epoch being retained and sent in subsequent
+requests -- by :user:`Str0k`.
