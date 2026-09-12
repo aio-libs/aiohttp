@@ -1180,6 +1180,26 @@ def test_domain_valid() -> None:
         ("*.example.com", "jpg.example.com", True),
         ("*.example.com", "a.example.com", True),
         ("*.example.com", "example.com", False),
+        # The registered name is stored lowercased, without a trailing dot
+        # and without the default port; a request Host in any of those
+        # forms names the same origin.
+        ("example.com", "example.com:80", True),
+        ("example.com", "example.com.", True),
+        ("example.com", "example.com.:80", True),
+        ("example.com", "EXAMPLE.COM.:080", True),
+        ("example.com:81", "example.com.:81", True),
+        ("example.com:81", "example.com.:081", True),
+        ("*.example.com", "a.example.com:80", True),
+        ("*.example.com", "a.example.com.", True),
+        ("*.example.com", "A.EXAMPLE.COM", True),
+        # A different port, or a port that is not a number, is a different
+        # origin and must not match.
+        ("example.com", "example.com:8080", False),
+        ("example.com", "example.com:443", False),
+        ("example.com", "example.com:", False),
+        ("example.com", "example.com:x", False),
+        ("example.com", "example.com:\u0668\u0660", False),
+        ("example.com", ":80", False),
     ],
 )
 def test_match_domain(a: str, b: str, result: bool) -> None:
@@ -1249,6 +1269,26 @@ async def test_add_domain(app: web.Application) -> None:
     request = make_mocked_request("POST", "/", {"host": "example.com"})
     match_info = await app.router.resolve(request)
     assert isinstance(match_info.http_exception, web.HTTPMethodNotAllowed)
+
+
+@pytest.mark.parametrize(
+    "host", ("example.com:80", "example.com.", "example.com.:80", "EXAMPLE.COM:80")
+)
+async def test_add_domain_matches_equivalent_host_forms(
+    app: web.Application, host: str
+) -> None:
+    """Another spelling of the registered host must not reach the parent's route."""
+    parent_handler = make_handler()
+    app.router.add_get("/", parent_handler)
+
+    subapp = web.Application()
+    domain_handler = make_handler()
+    subapp.router.add_get("/", domain_handler)
+    app.add_domain("example.com", subapp)
+
+    request = make_mocked_request("GET", "/", {"host": host})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
 
 
 def test_subapp_url_for(app: web.Application) -> None:
