@@ -1,0 +1,2 @@
+Moved pytest config from :file:`setup.cfg` to :file:`pytest.ini`
+-- by :user:`aiolibsbot`.
