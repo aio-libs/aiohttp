@@ -1,0 +1,5 @@
+Fixed :meth:`~aiohttp.web.Application.add_domain` not routing a request to
+its domain application when the ``Host`` header carried a trailing dot,
+an explicit default port or, for a wildcard domain, uppercase letters, so
+the request fell through to the parent application's routes
+-- by :user:`rodrigobnogueira`.
