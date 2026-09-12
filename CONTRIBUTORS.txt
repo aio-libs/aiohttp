@@ -97,6 +97,7 @@ Christopher Schmitt
 Claudiu Popa
 Colin Dunklau
 Cong Xu
+Cristian Ramirez
 Damien Nadé
 Dan King
 Dan Xu
