@@ -262,10 +262,7 @@ class WebSocketReader:
             if not fin:
                 # got partial frame payload
                 if opcode != OP_CODE_CONTINUATION:
-                    # RFC 6455 §5.4: after the first fragment every frame up to
-                    # the FIN must be a continuation. A new data frame arriving
-                    # mid-message is only rejected below when it carries FIN, so
-                    # reject the non-fin case here too.
+                    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
                     if self._opcode != OP_CODE_NOT_SET:
                         raise WebSocketError(
                             WSCloseCode.PROTOCOL_ERROR,
