@@ -1,0 +1,4 @@
+``ClientConnectorCertificateError.ssl`` now returns the value passed to the
+``ssl`` parameter, matching
+:attr:`ClientConnectorError.ssl <aiohttp.ClientConnectorError.ssl>`.
+-- by :user:`ArockiaRajamanickam`.
