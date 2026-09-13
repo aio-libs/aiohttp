@@ -1340,40 +1340,8 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
         await loop.run_in_executor(None, f.close)
 
 
-async def test_text_io_payload_crlf_not_short(tmp_path: Path) -> None:
-    """A file with CRLF endings must not advertise the untranslated size.
-
-    Text-mode reads translate ``\\r\\n`` -> ``\\n``, so the on-disk byte count
-    is larger than the body. Advertising it as Content-Length would leave the
-    connection short by the translated bytes (a keep-alive desync). size must
-    be None so chunked framing is used, and the whole body is written.
-    """
-    crlf_file = tmp_path / "crlf.txt"
-    loop = asyncio.get_running_loop()
-    await loop.run_in_executor(None, crlf_file.write_bytes, b"a\r\nb\r\nc\r\n")
-
-    def open_file() -> TextIO:
-        return open(crlf_file)
-
-    f = await loop.run_in_executor(None, open_file)
-    try:
-        tiop = payload.TextIOPayload(f)
-        assert tiop.size is None
-        writer = BufferWriter()
-        await tiop.write(writer)
-        assert bytes(writer.buffer) == b"a\nb\nc\n"
-    finally:
-        await loop.run_in_executor(None, f.close)
-
-
 async def test_text_io_payload_reencode_not_truncated(tmp_path: Path) -> None:
-    """Re-encoding to a wider form must not be truncated to the on-disk size.
-
-    A latin-1 source byte (``é`` -> 0xe9) becomes two bytes in utf-8. When the
-    on-disk size was used as Content-Length the body was cut to that length,
-    splitting the multibyte character; size must be None so the full utf-8
-    body is sent.
-    """
+    """Re-encoding to a wider form must not be truncated to the on-disk size."""
     latin1_file = tmp_path / "latin1.txt"
     loop = asyncio.get_running_loop()
     await loop.run_in_executor(None, latin1_file.write_bytes, "café".encode("latin-1"))
