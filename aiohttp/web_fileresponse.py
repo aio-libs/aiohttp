@@ -310,16 +310,18 @@ class FileResponse(StreamResponse):
 
         # https://www.rfc-editor.org/info/rfc9110/#name-if-range
         if_range = request.if_range
-        if if_range is None:
-            range_applies = True
-        elif isinstance(if_range, ETag):
+        if isinstance(if_range, ETag):
             # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-12.1
             range_applies = not if_range.is_weak and if_range.value == etag_value
-        else:
+        elif if_range is not None:
             # https://www.rfc-editor.org/info/rfc9110/#section-13.1.5-10.2
             # Last-Modified is emitted as math.ceil(mtime), so the strong
             # comparison is against that same rounded value.
             range_applies = math.ceil(file_mtime) == if_range.timestamp()
+        else:
+            # A malformed validator can't match the current representation,
+            # so only an absent header lets the Range through.
+            range_applies = hdrs.IF_RANGE not in request.headers
 
         if range_applies:
             # If-Range header check:

@@ -1014,6 +1014,30 @@ async def test_static_file_if_range_stale_etag_with_range(
         assert "Content-Range" not in resp.headers
 
 
+@pytest.mark.parametrize(
+    "if_range",
+    ("{etag}", '"{etag}', '"{etag}", "{etag}"', "not a valid HTTP-date"),
+    ids=("unquoted", "unterminated", "list", "date"),
+)
+async def test_static_file_if_range_malformed_with_range(
+    aiohttp_client: AiohttpClient,
+    app_with_static_route: web.Application,
+    if_range: str,
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        etag = resp.headers["ETag"].strip('"')
+
+    async with client.get(
+        "/", headers={"If-Range": if_range.format(etag=etag), "Range": "bytes=2-"}
+    ) as resp:
+        assert 200 == resp.status
+        assert resp.headers["Content-Length"] == "13"
+        assert "Content-Range" not in resp.headers
+
+
 async def test_static_file_if_unmodified_since_past_without_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
