@@ -32,6 +32,7 @@ from .helpers import (
     DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
+    QUOTED_ETAG_RE,
     ChainMapProxy,
     ETag,
     HeadersDictProxy,
@@ -605,12 +606,21 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._if_match_or_none_impl(self.headers.get(hdrs.IF_NONE_MATCH))
 
     @reify
-    def if_range(self) -> datetime.datetime | None:
+    def if_range(self) -> datetime.datetime | ETag | None:
         """The value of If-Range HTTP header, or None.
 
-        This header is represented as a `datetime` object.
+        This header is represented as a `datetime` (HTTP-date form) or an
+        `ETag` (entity-tag form) object.
         """
-        return parse_http_date(self.headers.get(hdrs.IF_RANGE))
+        if_range = self.headers.get(hdrs.IF_RANGE)
+        if if_range is None:
+            return None
+        if (date := parse_http_date(if_range)) is not None:
+            return date
+        match = QUOTED_ETAG_RE.fullmatch(if_range.strip())
+        if match is None:
+            return None
+        return ETag(is_weak=bool(match.group(1)), value=match.group(2))
 
     @reify
     def keep_alive(self) -> bool:
