@@ -724,21 +724,6 @@ class TextIOPayload(IOBasePayload):
     _value: io.TextIOBase
     # _autoclose = False (inherited) - Has text file handle that needs explicit closing
 
-    @property
-    def size(self) -> int | None:
-        """Size of the payload in bytes, or None if it cannot be determined.
-
-        Unlike the binary IOBasePayload, a text stream is decoded and
-        re-encoded before it reaches the wire, so os.fstat().st_size is not
-        the number of bytes actually written. Universal-newline translation
-        (``\\r\\n`` -> ``\\n``) and any difference between the on-disk encoding
-        and the payload encoding change the byte count, so the on-disk size
-        must not be advertised as Content-Length. Report the size as unknown
-        (which selects chunked/close framing) rather than a value that
-        disagrees with the body.
-        """
-        return None
-
     def __init__(
         self,
         value: TextIO,
@@ -765,6 +750,21 @@ class TextIOPayload(IOBasePayload):
             *args,
             **kwargs,
         )
+
+    @property
+    def size(self) -> int | None:
+        """Size of the payload in bytes, or None if it cannot be determined.
+
+        Unlike the binary IOBasePayload, a text stream is decoded and
+        re-encoded before it reaches the wire, so os.fstat().st_size is not
+        the number of bytes actually written. Universal-newline translation
+        (``\\r\\n`` -> ``\\n``) and any difference between the on-disk encoding
+        and the payload encoding change the byte count, so the on-disk size
+        must not be advertised as Content-Length. Report the size as unknown
+        (which selects chunked/close framing) rather than a value that
+        disagrees with the body.
+        """
+        return None
 
     def _read_and_available_len(
         self, remaining_content_len: int | None
