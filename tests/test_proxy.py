@@ -2,7 +2,7 @@ import asyncio
 import socket
 import ssl
 import sys
-from typing import Callable
+from typing import Protocol
 from unittest import mock
 
 import pytest
@@ -25,7 +25,11 @@ from aiohttp.helpers import TimerNoop
 if sys.version_info >= (3, 11):
     from typing import Unpack
 
-    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     from typing import Any
 

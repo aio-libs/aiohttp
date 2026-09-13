@@ -1,0 +1,1 @@
+Fixed two edge cases where flow control could get stuck -- by :user:`Dreamsorcerer`.

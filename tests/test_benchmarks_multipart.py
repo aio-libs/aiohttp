@@ -48,17 +48,26 @@ def _part(body: bytes, loop: asyncio.AbstractEventLoop) -> BodyPartReader:
 def test_read_base64_part(
     event_loop: asyncio.AbstractEventLoop, benchmark: BenchmarkFixture
 ) -> None:
-    """Read a line-wrapped base64 part to completion.
+    """Read a line-wrapped base64 part to completion chunk by chunk.
 
     Every 8 KiB chunk lands mid-quartet, so this covers the common cost of
     the base64 realignment in ``read_chunk`` on well-formed input.
+
+    The chunks are deliberately dropped rather than accumulated: growing one
+    large buffer inside the measured region made the measurement depend on
+    whether realloc could extend it in place -- allocator luck, which showed
+    up as double-digit swings between unrelated CodSpeed runs.
     """
     body = base64.encodebytes(b"x" * (256 * 1024)).replace(b"\n", b"\r\n")
     body += b"\r\n--:--"
 
+    async def read_all_chunks(part: BodyPartReader) -> None:
+        while not part.at_eof():
+            await part.read_chunk(BodyPartReader.chunk_size)
+
     @benchmark
     def _run() -> None:
-        event_loop.run_until_complete(_part(body, event_loop).read())
+        event_loop.run_until_complete(read_all_chunks(_part(body, event_loop)))
 
 
 def test_read_chunk_base64_realignment(

@@ -1,0 +1,1 @@
+Added a ``text_charset`` parameter to ``FileResponse`` and ``UrlDispatcher.add_static`` -- by :user:`Dreamsorcerer`.

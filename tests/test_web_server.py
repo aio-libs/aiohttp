@@ -296,10 +296,12 @@ async def test_raw_server_html_exception_debug(
 
 async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     event = asyncio.Event()
+    started = asyncio.Event()
     sock = unused_port_socket
     port = sock.getsockname()[1]
 
     async def on_request(request: web.Request) -> web.Response:
+        started.set()
         try:
             await asyncio.sleep(10)
         except asyncio.CancelledError:
@@ -320,11 +322,11 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     try:
         assert runner.server.handler_cancellation, "Flag was not propagated"
 
-        async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.15)
-        ) as sess:
-            with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://127.0.0.1:{port}/")
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        await writer.drain()
+        await asyncio.wait_for(started.wait(), timeout=5)
+        writer.close()
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(event.wait(), timeout=1)
@@ -336,13 +338,12 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
 async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> None:
     timeout_event = asyncio.Event()
     done_event = asyncio.Event()
+    started = asyncio.Event()
     sock = unused_port_socket
     port = sock.getsockname()[1]
-    started = False
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal started
-        started = True
+        started.set()
         await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()
         return web.Response()
@@ -357,17 +358,16 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
 
     await site.start()
     try:
-        async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.2)
-        ) as sess:
-            with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://127.0.0.1:{port}/")
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        await writer.drain()
+        await asyncio.wait_for(started.wait(), timeout=5)
+        writer.close()
         await asyncio.sleep(0.1)
         timeout_event.set()
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(done_event.wait(), timeout=1)
-        assert started
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())

@@ -9,6 +9,7 @@ include .coveragerc-cython.toml
 graft aiohttp
 graft docs
 graft examples
+graft fuzzers
 graft tests
 graft tools
 graft requirements

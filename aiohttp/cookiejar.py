@@ -10,14 +10,14 @@ import re
 import time
 import warnings
 from collections import defaultdict
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType
-from typing import Union
+from typing import Union, cast
 
 from yarl import URL
 
-from ._cookie_helpers import preserve_morsel_with_coded_value
+from ._cookie_helpers import parse_set_cookie_headers, preserve_morsel_with_coded_value
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
@@ -92,7 +92,8 @@ class CookieJar(AbstractCookieJar):
         self._morsel_cache: defaultdict[tuple[str, str], dict[str, Morsel[str]]] = (
             defaultdict(dict)
         )
-        self._host_only_cookies: set[tuple[str, str]] = set()
+        # Cookie identity is (domain, path, name).
+        self._host_only_cookies: set[tuple[str, str, str]] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
@@ -127,7 +128,7 @@ class CookieJar(AbstractCookieJar):
         return MappingProxyType(self._cookies)
 
     @property
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return the host-only cookies stored in this jar."""
         return frozenset(self._host_only_cookies)
 
@@ -156,7 +157,7 @@ class CookieJar(AbstractCookieJar):
                     if attr_val:
                         morsel_data[attr] = attr_val
                 # Persist or it reloads as a domain cookie and leaks to subdomains.
-                if (domain, name) in self._host_only_cookies:
+                if (domain, path, name) in self._host_only_cookies:
                     morsel_data["host_only"] = True
                 if (exp := self._expirations.get((domain, path, name))) is not None:
                     morsel_data["expires_timestamp"] = exp
@@ -309,7 +310,7 @@ class CookieJar(AbstractCookieJar):
 
     def _delete_cookies(self, to_del: list[tuple[str, str, str]]) -> None:
         for domain, path, name in to_del:
-            self._host_only_cookies.discard((domain, name))
+            self._host_only_cookies.discard((domain, path, name))
             self._cookies[(domain, path)].pop(name, None)
             self._morsel_cache[(domain, path)].pop(name, None)
             self._expirations.pop((domain, path, name), None)
@@ -324,6 +325,20 @@ class CookieJar(AbstractCookieJar):
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
+        self._update_cookies(cookies, response_url, copy_morsels=True)
+
+    def update_cookies_from_headers(
+        self, headers: Sequence[str], response_url: URL
+    ) -> None:
+        """Update cookies from raw Set-Cookie headers."""
+        if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
+            # The freshly parsed Morsels are not shared with the caller,
+            # so they can be stored and normalized without a defensive copy.
+            self._update_cookies(cookies_to_update, response_url, copy_morsels=False)
+
+    def _update_cookies(
+        self, cookies: LooseCookies, response_url: URL, *, copy_morsels: bool
+    ) -> None:
         hostname = response_url.raw_host
 
         if not self._unsafe and is_ip_address(hostname):
@@ -338,6 +353,9 @@ class CookieJar(AbstractCookieJar):
                 tmp = SimpleCookie()
                 tmp[name] = cookie  # type: ignore[assignment]
                 cookie = tmp[name]
+            elif copy_morsels:
+                # TODO(https://github.com/python/typeshed/pull/16346): Remove cast
+                cookie = cast("Morsel[str]", cookie.copy())
 
             domain = cookie["domain"]
 
@@ -346,18 +364,12 @@ class CookieJar(AbstractCookieJar):
                 domain = ""
                 del cookie["domain"]
 
-            if not domain and hostname is not None:
-                # Set the cookie's domain to the response hostname
-                # and set its host-only-flag
-                self._host_only_cookies.add((hostname, name))
-                domain = cookie["domain"] = hostname
-
             if domain and domain[0] == ".":
                 # Remove leading dot
                 domain = domain[1:]
                 cookie["domain"] = domain
 
-            if hostname and not self._is_domain_match(domain, hostname):
+            if domain and hostname and not self._is_domain_match(domain, hostname):
                 # Setting cookies for different domains is not allowed
                 continue
 
@@ -373,10 +385,26 @@ class CookieJar(AbstractCookieJar):
                 cookie["path"] = path
             path = path.rstrip("/")
 
+            if not domain and hostname is not None:
+                self._host_only_cookies.add((hostname, path, name))
+                domain = cookie["domain"] = hostname
+            else:
+                # A cookie with an explicit Domain attribute replaces any
+                # host-only cookie with the same (domain, path, name) identity.
+                self._host_only_cookies.discard((domain, path, name))
+
             if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
-                    max_age_expiration = min(time.time() + delta_seconds, self.MAX_TIME)
+                    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.2.2
+                    if delta_seconds <= 0:
+                        max_age_expiration = 0.0
+                    else:
+                        # Cap first to protect against OverflowError on next line.
+                        delta_seconds = min(delta_seconds, self.MAX_TIME)
+                        max_age_expiration = min(
+                            time.time() + delta_seconds, self.MAX_TIME
+                        )
                     self._expire_cookie(max_age_expiration, domain, path, name)
                 except ValueError:
                     cookie["max-age"] = ""
@@ -460,7 +488,7 @@ class CookieJar(AbstractCookieJar):
             for name, cookie in self._cookies[p].items():
                 domain = cookie["domain"]
 
-                if (domain, name) in self._host_only_cookies and domain != hostname:
+                if domain != hostname and p + (name,) in self._host_only_cookies:
                     continue
 
                 # Skip edge case when the cookie has a trailing slash but request doesn't.
@@ -605,7 +633,7 @@ class DummyCookieJar(AbstractCookieJar):
         return MappingProxyType({})
 
     @property
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return an empty frozenset."""
         return frozenset()
 

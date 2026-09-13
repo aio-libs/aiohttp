@@ -1,0 +1,1 @@
+Fixed ``BaseRequest.http_range`` not accepting case-insensitive range units -- by :user:`Manny7717`.
