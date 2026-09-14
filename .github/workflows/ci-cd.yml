@@ -317,7 +317,7 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --numprocesses=auto --cov
+        pytest --junitxml=junit.xml
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Re-run the failing tests with maximum verbosity
@@ -326,7 +326,7 @@ jobs:
         COLOR: yes
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
       run: >-  # `exit 1` makes sure that the job remains red with flaky runs
-        pytest --no-cov -vvvvv --lf && exit 1
+        pytest --no-cov --numprocesses=0 -vvvvv --lf && exit 1
       shell: bash
     - name: Run dev_mode tests
       env:
@@ -334,7 +334,7 @@ jobs:
         AIOHTTP_NO_EXTENSIONS: ${{ matrix.no-extensions }}
         PIP_USER: 1
         PYTHONDEVMODE: 1
-      run: pytest -m dev_mode --cov --cov-append --cov-report=xml
+      run: pytest -m dev_mode --cov-append --cov-report=xml --numprocesses=0
       shell: bash
     - name: Upload coverage
       uses: codecov/codecov-action@v7
@@ -418,9 +418,9 @@ jobs:
         CIBW_PLATFORM: ${{ matrix.config.platform }}
         CIBW_ARCHS: ${{ matrix.config.archs }}
         CIBW_TEST_REQUIRES: -r requirements/test-mobile.txt
-        CIBW_TEST_SOURCES: setup.cfg README.rst tests
+        CIBW_TEST_SOURCES: pytest.ini README.rst tests
         # Currently only Android supports colored output. See https://github.com/python/cpython/issues/150932 for iOS.
-        CIBW_TEST_COMMAND: python -m pytest ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
+        CIBW_TEST_COMMAND: python -m pytest --no-cov --numprocesses=0 ${{ matrix.config.platform == 'android' && '--color=yes' || '' }}
         SDIST_PATH: >-
           dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
 
@@ -469,8 +469,8 @@ jobs:
         PIP_USER: 1
       run: >-
         PATH="${HOME}/Library/Python/3.11/bin:${HOME}/.local/bin:${PATH}"
-        pytest --junitxml=junit.xml --cov --cov-report=xml
-        --timeout=0 -m autobahn
+        pytest --junitxml=junit.xml --cov-report=xml --numprocesses=0
+        --timeout=0 -o faulthandler_timeout=0 -m autobahn
       shell: bash
     - name: Upload coverage
       uses: codecov/codecov-action@v7
@@ -564,7 +564,9 @@ jobs:
       uses: CodSpeedHQ/action@v5.2.1
       with:
         mode: instrumentation
-        run: python -Im pytest --no-cov -vvvvv --codspeed --durations=30 --timeout=0
+        run: >-
+          python -Im pytest --no-cov --numprocesses=0 -vvvvv --codspeed
+          --durations=30 --timeout=0 -o faulthandler_timeout=0
 
 
   cython-coverage:
@@ -612,9 +614,8 @@ jobs:
         PIP_USER: 1
       run: >-
         pytest tests/test_client_functional.py tests/test_http_parser.py tests/test_http_writer.py tests/test_web_functional.py tests/test_web_response.py tests/test_websocket_parser.py
-        --cov-config=.coveragerc-cython.toml --cov
+        --cov-config=.coveragerc-cython.toml
         --cov-report=xml:cython-coverage.xml
-        --numprocesses=auto
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Upload coverage

@@ -107,17 +107,17 @@ mypy:
 
 .PHONY: test
 test: .develop
-	@pytest -q
+	@pytest -q --no-cov --numprocesses=0
 
 .PHONY: vtest
 vtest: .develop
-	@pytest -s -v
-	@python -X dev -m pytest -s -v -m dev_mode
+	@pytest -s -v --numprocesses=0
+	@python -X dev -m pytest -s -v --numprocesses=0 -m dev_mode
 
 .PHONY: vvtest
 vvtest: .develop
-	@pytest -vv
-	@python -X dev -m pytest -s -v -m dev_mode
+	@pytest -vv --numprocesses=0
+	@python -X dev -m pytest -s -v --numprocesses=0 -m dev_mode
 
 
 define run_tests_in_docker
