@@ -90,6 +90,21 @@ def cookies_to_receive() -> SimpleCookie:
     )
 
 
+@pytest.mark.parametrize("existing_cookie", [False, True])
+def test_cookie_expires_at_unix_epoch(existing_cookie: bool) -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    if existing_cookie:
+        jar.update_cookies({"demo": "previous"}, url)
+
+    jar.update_cookies_from_headers(
+        ["demo=expired; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"], url
+    )
+
+    assert not jar.filter_cookies(url)
+    assert not list(jar)
+
+
 def test_date_parsing() -> None:
     parse_func = CookieJar._parse_date
     utc = datetime.timezone.utc
