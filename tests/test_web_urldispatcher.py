@@ -1023,3 +1023,61 @@ async def test_route_with_regex(aiohttp_client: AiohttpClient) -> None:
     r = await client.get("/core/locations_tail;id=abcdef")
     assert r.status == 200
     assert await r.text() == "/core/locations{tail}"
+
+
+async def test_directory_index_with_encodable_prefix(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    """Index links under a prefix needing percent-encoding are encoded once."""
+    (tmp_path / "my_file").write_text("hello")
+
+    app = web.Application()
+    app.router.add_static("/static files", str(tmp_path), show_index=True)
+    client = await aiohttp_client(app)
+
+    async with client.get("/static%20files") as r:
+        assert r.status == 200
+        assert '<a href="/static%20files/my_file">' in await r.text()
+
+    async with client.get("/static%20files/my_file") as r:
+        assert r.status == 200
+        assert await r.text() == "hello"
+
+
+async def test_subapp_with_encodable_prefix(
+    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+) -> None:
+    """Resources nested under a sub-app prefix needing encoding stay reachable."""
+    (tmp_path / "my_file").write_text("hello")
+
+    async def handler(request: web.Request) -> web.Response:
+        resource = request.match_info._route.resource
+        assert resource is not None
+        return web.Response(text=resource.canonical)
+
+    subapp = web.Application()
+    subapp.router.add_get("/plain", handler)
+    subapp.router.add_get("/dyn/{var}", handler, name="dyn")
+    subapp.router.add_static("/static", str(tmp_path), name="static")
+
+    app = web.Application()
+    app.add_subapp("/sub app", subapp)
+    client = await aiohttp_client(app)
+
+    assert str(subapp.router["dyn"].url_for(var="x")) == "/sub%20app/dyn/x"
+    assert (
+        str(subapp.router["static"].url_for(filename="my_file"))
+        == "/sub%20app/static/my_file"
+    )
+
+    async with client.get("/sub%20app/plain") as r:
+        assert r.status == 200
+        assert await r.text() == "/sub app/plain"
+
+    async with client.get("/sub%20app/dyn/x") as r:
+        assert r.status == 200
+        assert await r.text() == "/sub app/dyn/{var}"
+
+    async with client.get("/sub%20app/static/my_file") as r:
+        assert r.status == 200
+        assert await r.text() == "hello"
