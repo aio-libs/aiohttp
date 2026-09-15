@@ -63,14 +63,14 @@ jobs:
       with:
         submodules: true
     - name: Cache llhttp generated files
-      uses: actions/cache@v5.0.5
+      uses: actions/cache@v6.1.0
       id: cache
       with:
         key: llhttp-${{ hashFiles('vendor/llhttp/package*.json', 'vendor/llhttp/src/**/*') }}
         path:  vendor/llhttp/build
     - name: Setup NodeJS
       if: steps.cache.outputs.cache-hit != 'true'
-      uses: actions/setup-node@v6
+      uses: actions/setup-node@v7
       with:
         node-version: 18
     - name: Generate llhttp sources
@@ -103,7 +103,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
     - name: Install build tooling and cython
       run: >-
         python -m
@@ -293,7 +293,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v10.1.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -335,7 +335,7 @@ jobs:
       run: pytest -m dev_mode --cov-append --cov-report=xml --numprocesses=0
       shell: bash
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./coverage.xml
         flags: >-
@@ -349,7 +349,7 @@ jobs:
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./junit.xml
         report_type: test_results
@@ -381,7 +381,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v10.1.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -446,7 +446,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v8.1.0
+      uses: astral-sh/setup-uv@v10.1.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -471,14 +471,14 @@ jobs:
         --timeout=0 -o faulthandler_timeout=0 -m autobahn
       shell: bash
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./coverage.xml
         flags: Autobahn
         token: ${{ secrets.CODECOV_TOKEN }}
     - name: Upload test results to Codecov
       if: ${{ !cancelled() }}
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./junit.xml
         report_type: test_results
@@ -509,7 +509,7 @@ jobs:
         path: dist/
     - name: Setup Python 3.13.2
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: 3.13.2
         cache: pip
@@ -552,7 +552,7 @@ jobs:
         done
         exit 1
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v4
+      uses: CodSpeedHQ/action@v5.2.1
       with:
         mode: instrumentation
         run: >-
@@ -579,7 +579,7 @@ jobs:
         submodules: true
     - name: Setup Python
       id: python-install
-      uses: actions/setup-python@v6
+      uses: actions/setup-python@v7.0.0
       with:
         python-version: '3.12'
     - name: Install dependencies
@@ -610,7 +610,7 @@ jobs:
         -m 'not dev_mode and not autobahn'
       shell: bash
     - name: Upload coverage
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         files: ./cython-coverage.xml
         disable_search: true
@@ -636,7 +636,7 @@ jobs:
       with:
         jobs: ${{ toJSON(needs) }}
     - name: Trigger codecov notification
-      uses: codecov/codecov-action@v6
+      uses: codecov/codecov-action@v7
       with:
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: true
@@ -831,7 +831,7 @@ jobs:
       # Confusingly, this action also supports updating releases, not
       # just creating them. This is what we want here, since we've manually
       # created the release above.
-      uses: softprops/action-gh-release@v3.0.2
+      uses: softprops/action-gh-release@v3.0.3
       with:
         # dist/ contains the built packages plus the Sigstore signatures
         # and certificates emitted alongside them by the signing step above.
