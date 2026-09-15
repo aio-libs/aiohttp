@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
+import gzip
 import http.cookies
 import io
 import json
@@ -2485,6 +2486,69 @@ async def test_bad_payload_compression(aiohttp_client: AiohttpClient) -> None:
         assert resp.status == 200
 
         with pytest.raises(aiohttp.ClientPayloadError):
+            await resp.read()
+
+
+async def test_multiple_content_codings(aiohttp_client: AiohttpClient) -> None:
+    """Chained Content-Encoding codings are decoded in reverse order.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13364:
+    some misconfigured servers compress twice, e.g. Content-Encoding: gzip,gzip.
+    """
+    body = gzip.compress(gzip.compress(b'{"hello": "world"}'))
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body, content_type="application/json")
+        resp.headers["Content-Encoding"] = "gzip,gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.json() == {"hello": "world"}
+
+
+async def test_too_many_content_codings(aiohttp_client: AiohttpClient) -> None:
+    """More codings than the decoder accepts fail loudly, not with garbage."""
+    body = gzip.compress(gzip.compress(gzip.compress(b"text")))
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body)
+        resp.headers["Content-Encoding"] = "gzip,gzip,gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> None:
+    """A gzip body missing its 8-byte trailer must error, not decode silently.
+
+    The truncated stream inflates in full, so this previously returned the
+    complete plaintext with a 200 and no error. The C parser surfaces the
+    error as ClientResponseError from the request; the pure-Python parser
+    delivers ClientPayloadError from read().
+    """
+    body = gzip.compress(b"payload " * 4096)[:-8]
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body)
+        resp.headers["Content-Encoding"] = "gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises((aiohttp.ClientPayloadError, aiohttp.ClientResponseError)):
+        async with client.get("/") as resp:
             await resp.read()
 
 
