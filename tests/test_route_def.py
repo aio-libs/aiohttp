@@ -132,6 +132,16 @@ def test_static(router) -> None:
     assert url == URL("/prefix/aiohttp.png")
 
 
+def test_route_defs_are_slotted() -> None:
+    async def handler(request: web.Request) -> web.Response:
+        assert False
+
+    route_def = web.get("/", handler)
+    static_def = web.static("/prefix", pathlib.Path(__file__).parent)
+    assert not hasattr(route_def, "__dict__")
+    assert not hasattr(static_def, "__dict__")
+
+
 def test_head_deco(router) -> None:
     routes = web.RouteTableDef()
 
