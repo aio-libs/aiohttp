@@ -18,8 +18,6 @@ make a Pull Request!
   <https://tutorcruncher.com/features/tutorcruncher-socket/>`_
 * `Eyepea - Custom telephony solutions <http://www.eyepea.eu>`_
 * `ALLOcloud - Telephony in the cloud <https://www.allocloud.com>`_
-* `helpmanual - comprehensive help and man page database
-  <https://helpmanual.io/>`_
 * `bedevere <https://github.com/python/bedevere>`_ - CPython's GitHub
   bot, helps maintain and identify issues with a CPython pull request.
 * `miss-islington <https://github.com/python/miss-islington>`_ -
