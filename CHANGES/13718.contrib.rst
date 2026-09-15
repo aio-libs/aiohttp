@@ -1,0 +1,4 @@
+Dropped the leftover ``PIP_USER`` setting and the ``pip --user`` ``PATH``
+prefix from the CI workflow; both became dead once the test jobs started
+provisioning Python via ``astral-sh/setup-uv``
+-- by :user:`aiolibsbot`.
