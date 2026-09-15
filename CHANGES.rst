@@ -472,8 +472,7 @@ Features
 
 
 
-- Added :attr:`~aiohttp.ClientResponse.output_size` and
-  :attr:`~aiohttp.ClientResponse.upload_complete` -- by :user:`Dreamsorcerer`.
+- Added ``ClientResponse.output_size`` and ``ClientResponse.upload_complete`` -- by :user:`Dreamsorcerer`.
 
 
   *Related issues and pull requests on GitHub:*
