@@ -36,6 +36,8 @@ __all__ = (
 
 
 class AbstractRouteDef(abc.ABC):
+    __slots__ = ()
+
     @abc.abstractmethod
     def register(self, router: UrlDispatcher) -> list[AbstractRoute]:
         pass  # pragma: no cover
