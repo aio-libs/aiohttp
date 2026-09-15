@@ -217,7 +217,7 @@ jobs:
       run: |
         # Some extra requirements are needed to ensure all modules
         # can be scanned by slotscheck.
-        pip install -r requirements/base.txt -c requirements/constraints.txt
+        pip install -r requirements/base.in -c requirements/base.txt
         slotscheck -v -m aiohttp
     - name: Verify CHANGES fragment references PR
       # Skipped on backport PRs: their fragments are numbered for the original
