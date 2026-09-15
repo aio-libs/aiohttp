@@ -151,7 +151,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-yarl==1.24.5
+yarl==1.25.1
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via -r requirements/test-common.in

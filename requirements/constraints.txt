@@ -315,7 +315,7 @@ virtualenv==21.7.9
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
-yarl==1.24.5
+yarl==1.25.1
     # via -r requirements/runtime-deps.in
 zlib-ng==1.0.0
     # via
