@@ -1,0 +1,3 @@
+Added empty ``__slots__`` to ``AbstractRouteDef`` so that ``RouteDef`` and
+``StaticDef`` instances no longer carry an unused ``__dict__``
+-- by :user:`aiolibsbot`.
