@@ -1,0 +1,7 @@
+Switched ``application/x-www-form-urlencoded`` parsing in
+:meth:`~aiohttp.web.BaseRequest.post` to the faster :func:`yarl.query_to_pairs`
+parser and added the ``client_max_fields`` argument to
+:class:`~aiohttp.web.Application` (default ``1000``) to cap the number of form
+fields accepted by :meth:`~aiohttp.web.BaseRequest.post`. Forms with more
+than 1000 fields now receive a ``413`` response unless the cap is raised;
+``0`` disables it -- by :user:`bdraco`.
