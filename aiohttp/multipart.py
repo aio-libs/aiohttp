@@ -757,6 +757,7 @@ class MultipartReader:
         self._max_parts = max_parts
         self._max_parts_error = max_parts_error
         self._parts_read = 0
+        self._headers_pending = False
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -797,18 +798,23 @@ class MultipartReader:
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return None
-        await self._maybe_release_last_part()
-        if self._at_bof:
-            await self._read_until_first_boundary()
-            self._at_bof = False
-        else:
-            await self._read_boundary()
-        if self._at_eof:  # we just read the last boundary, nothing to do there
-            # https://github.com/python/mypy/issues/17537
-            return None  # type: ignore[unreachable]
+        # Skip the boundary read when a previous call raised the part
+        # cap after consuming the boundary, so release() can drain.
+        if not self._headers_pending:
+            await self._maybe_release_last_part()
+            if self._at_bof:
+                await self._read_until_first_boundary()
+                self._at_bof = False
+            else:
+                await self._read_boundary()
+            if self._at_eof:  # we just read the last boundary, nothing to do there
+                # https://github.com/python/mypy/issues/17537
+                return None  # type: ignore[unreachable]
+            self._headers_pending = True
 
         if 0 < self._max_parts <= self._parts_read:
             raise self._max_parts_error(self._max_parts)
+        self._headers_pending = False
         self._parts_read += 1
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
@@ -830,7 +836,11 @@ class MultipartReader:
         return self._last_part
 
     async def release(self) -> None:
-        """Reads all the body parts to the void till the final boundary."""
+        """Reads all the body parts to the void till the final boundary.
+
+        The part cap does not apply here, discarded parts are never kept.
+        """
+        self._max_parts = 0
         while not self._at_eof:
             item = await self.next()
             if item is None:

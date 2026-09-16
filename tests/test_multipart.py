@@ -860,6 +860,24 @@ class TestMultipartReader:
             with pytest.raises(TooManyParts):
                 await reader.next()
 
+    async def test_release_drains_past_max_parts(self) -> None:
+        with Stream(
+            b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:\r\n\r\nthree\r\n--:--"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+                max_parts=1,
+            )
+            first = await reader.next()
+            assert isinstance(first, aiohttp.BodyPartReader)
+            await first.release()
+            with pytest.raises(ValueError, match="Maximum number of parts 1 exceeded"):
+                await reader.next()
+            await reader.release()
+            assert reader.at_eof()
+            assert await reader.next() is None
+
     async def test_nested_reader_inherits_max_parts(self) -> None:
         with Stream(
             b"--:\r\n"

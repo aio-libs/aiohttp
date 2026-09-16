@@ -209,6 +209,7 @@ Multipart reference
       :async:
 
       Reads all the body parts to the void till the final boundary.
+      The *max_parts* limit is not applied while draining.
 
    .. method:: fetch_next_part()
       :async:
