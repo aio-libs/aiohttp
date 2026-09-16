@@ -1107,17 +1107,20 @@ async def test_multipart_formdata_too_many_fields(protocol: BaseProtocol) -> Non
     assert err.value.text == "Maximum number of form fields 2 exceeded."
 
 
-async def test_multipart_formdata_at_field_limit(protocol: BaseProtocol) -> None:
-    payload = _multipart_form_payload(protocol, 2)
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
+async def test_multipart_formdata_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
+) -> None:
+    payload = _multipart_form_payload(protocol, count)
     req = make_mocked_request(
         "POST",
         "/",
         headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
         payload=payload,
-        client_max_fields=2,
+        client_max_fields=client_max_fields,
     )
     result = await req.post()
-    assert dict(result) == {"f0": "v", "f1": "v"}
+    assert len(result) == count
 
 
 @pytest.mark.parametrize(

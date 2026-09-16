@@ -514,6 +514,10 @@ and :ref:`aiohttp-web-signals` handlers.
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
 
+      Raises :exc:`HTTPRequestEntityTooLarge` if the body exceeds
+      :attr:`client_max_size` or the form has more than
+      :attr:`client_max_fields` fields.
+
       .. note::
 
          The method **does** store read data internally, subsequent
