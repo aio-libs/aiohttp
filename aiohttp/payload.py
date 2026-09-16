@@ -142,6 +142,17 @@ class Payload(ABC):
     _size: int | None = None
     _consumed: bool = False  # Default: payload has not been consumed yet
     _autoclose: bool = False  # Default: assume resource needs explicit closing
+    # Upload progress bookkeeping (client requests); see bytes_written.
+    # Tracking is exclusive: only one upload of a payload is tracked at a
+    # time, so overlapping requests sharing an instance cannot corrupt the
+    # owner's counter or complete its future (they run untracked instead).
+    _bytes_written: int = 0
+    _upload_future: "asyncio.Future[None] | None" = None
+    _upload_active: bool = False
+    _upload_finished: bool = False
+    _upload_aborted: bool = False
+    _upload_abort_exc: "BaseException | None" = None
+    _upload_error_propagated: bool = False
 
     def __init__(
         self,
@@ -229,6 +240,130 @@ class Payload(ABC):
         explicit closing. If False, callers must await close() to release resources.
         """
         return self._autoclose
+
+    @property
+    def bytes_written(self) -> int:
+        """Number of bytes of this payload written to the connection so far.
+
+        Counts the bytes handed to the transport while a client request
+        is uploading this payload, before any transport-level transformation
+        (compression, chunked framing). Reset when a new upload of the same
+        payload starts, e.g. when a redirect causes the body to be resent.
+        Only one upload of a payload is tracked at a time: when overlapping
+        requests share an instance, later uploads are not counted.
+        """
+        return self._bytes_written
+
+    @property
+    def upload_complete(self) -> "asyncio.Future[None]":
+        """Future resolved when a request finishes uploading this payload.
+
+        The future completes with ``None`` once the request body has been
+        fully written. If the upload fails, it completes with the upload
+        error (normally also raised by the request; a request can still
+        succeed if the server responded before reading the whole body).
+        If the body is never fully sent (e.g. the request is cancelled or
+        answered without sending it), the future is cancelled. If the
+        payload is sent again (e.g. a redirected request resends the
+        body), a new future is returned for the new upload. When
+        overlapping requests share a payload, the future
+        tracks the first upload only.
+
+        Must be accessed from within the event loop.
+        """
+        if self._upload_future is None:
+            self._upload_future = asyncio.get_running_loop().create_future()
+            if self._upload_aborted:
+                self._resolve_aborted(self._upload_future)
+            elif self._upload_finished:
+                self._upload_future.set_result(None)
+        return self._upload_future
+
+    def _resolve_aborted(self, fut: "asyncio.Future[None]") -> None:
+        if self._upload_abort_exc is None:
+            fut.cancel()
+        else:
+            fut.set_exception(self._upload_abort_exc)
+            if self._upload_error_propagated:
+                # The request raised this failure to its caller, so the
+                # future's copy is supplementary: consume it to avoid a
+                # duplicate never-retrieved log at garbage collection.
+                # When the request succeeded despite the failed upload,
+                # the future is the only holder and the log must stay armed.
+                fut.exception()
+
+    def _mark_upload_error_propagated(self, exc: BaseException) -> None:
+        """Record that the caller received the stored upload failure.
+
+        Only when the exception the request raised is the stored one is
+        the future's copy a duplicate; a different error (e.g. a preamble
+        failure superseded by a timeout) must keep the never-retrieved
+        log armed, or the stored error would vanish entirely.
+        """
+        if exc is not self._upload_abort_exc:
+            return
+        self._upload_error_propagated = True
+        fut = self._upload_future
+        if fut is not None and fut.done() and not fut.cancelled():
+            fut.exception()
+
+    def _reset_upload(self) -> None:
+        """
+        Forget a previous attempt's upload state.
+
+        Called when the payload is attached to a new request, so state
+        left by an earlier attempt cannot be mistaken for the outcome of
+        the new one. Does nothing while another upload is in progress.
+        """
+        if self._upload_active:
+            return
+        self._bytes_written = 0
+        self._upload_finished = False
+        self._upload_aborted = False
+        self._upload_abort_exc = None
+        self._upload_error_propagated = False
+        fut = self._upload_future
+        if fut is not None and fut.done():
+            # A previous upload of this payload already completed (e.g. the
+            # request is resent after a redirect); track the new upload with
+            # a fresh future created lazily on the next upload_complete access.
+            self._upload_future = None
+
+    def _start_upload(self) -> bool:
+        """Try to begin tracking a new upload of this payload.
+
+        Returns False when another upload is already being tracked; the
+        caller must then write the payload without progress tracking.
+        """
+        if self._upload_active:
+            return False
+        self._reset_upload()
+        self._upload_active = True
+        return True
+
+    def _finish_upload(self) -> None:
+        """Mark the payload as fully written to the connection."""
+        self._upload_active = False
+        self._upload_finished = True
+        fut = self._upload_future
+        if fut is not None and not fut.done():
+            fut.set_result(None)
+
+    def _abort_upload(self, exc: BaseException | None = None) -> None:
+        """Mark an unfinished upload as failed or cancelled.
+
+        With an exception, upload_complete reports the upload error;
+        without one (or on cancellation), the future is cancelled.
+        """
+        if self._upload_finished or self._upload_aborted:
+            return
+        self._upload_active = False
+        self._upload_aborted = True
+        if exc is not None and not isinstance(exc, asyncio.CancelledError):
+            self._upload_abort_exc = exc
+        fut = self._upload_future
+        if fut is not None and not fut.done():
+            self._resolve_aborted(fut)
 
     def set_content_disposition(
         self,
@@ -335,6 +470,84 @@ class Payload(ABC):
         In the future, this will be the only close method supported.
         """
         self._close()
+
+
+class _ProgressWriter(AbstractStreamWriter):
+    """Proxy for AbstractStreamWriter to count written bytes on a Payload.
+
+    Used by the client request machinery so that Payload.bytes_written
+    reflects how much of the payload has been handed to the transport.
+    """
+
+    def __init__(self, writer: AbstractStreamWriter, payload: "Payload") -> None:
+        self._writer = writer
+        self._payload = payload
+
+    def __getattr__(self, name: str) -> Any:
+        # Forward non-interface attributes of the wrapped writer
+        # (e.g. StreamWriter.transport) for duck-typing compatibility.
+        return getattr(self._writer, name)
+
+    @property
+    def buffer_size(self) -> int:
+        return self._writer.buffer_size
+
+    @buffer_size.setter
+    def buffer_size(self, value: int) -> None:
+        self._writer.buffer_size = value
+
+    @property
+    def output_size(self) -> int:
+        return self._writer.output_size
+
+    @output_size.setter
+    def output_size(self, value: int) -> None:
+        self._writer.output_size = value
+
+    @property
+    def length(self) -> int | None:
+        return self._writer.length
+
+    @length.setter
+    def length(self, value: int | None) -> None:
+        self._writer.length = value
+
+    async def write(
+        self,
+        chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]",
+        **kwargs: Any,
+    ) -> None:
+        # Keyword arguments are forwarded untouched so payloads written
+        # against a concrete writer's extended signature keep working
+        # (e.g. StreamWriter's write(chunk, drain=False)).
+        await self._writer.write(chunk, **kwargs)
+        self._payload._bytes_written += (
+            chunk.nbytes if isinstance(chunk, memoryview) else len(chunk)
+        )
+
+    async def write_eof(self, chunk: bytes = b"") -> None:
+        await self._writer.write_eof(chunk)
+        if chunk:
+            self._payload._bytes_written += len(chunk)
+
+    async def drain(self) -> None:
+        await self._writer.drain()
+
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int | None = None
+    ) -> None:
+        self._writer.enable_compression(encoding, strategy)
+
+    def enable_chunking(self) -> None:
+        self._writer.enable_chunking()
+
+    async def write_headers(
+        self, status_line: str, headers: "CIMultiDict[str]"
+    ) -> None:
+        await self._writer.write_headers(status_line, headers)
+
+    def send_headers(self) -> None:
+        self._writer.send_headers()
 
 
 class BytesPayload(Payload):
