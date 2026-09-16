@@ -1899,8 +1899,7 @@ async def test_data_discarded_after_protocol_error(
             protocol = connection.protocol
             assert protocol is not None
 
-            # The drain only completes because the client keeps reading
-            # and dropping, so this proves the flood arrived.
+            # The drain only completes if the client read it all.
             async with async_timeout.timeout(10):
                 await flooded.wait()
 
@@ -1958,8 +1957,7 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
             b"Upgrade: websocket\r\n"
             b"Connection: Upgrade\r\n"
             b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
-            # Valid frames, which only the reader may consume, well past
-            # the bound being asserted.
+            # Valid frames, well past the bound, that only a reader may eat.
             + (b"\x81\x7e\xff\xff" + b"y" * 65535) * 32
         )
         with contextlib.suppress(Exception):
@@ -1972,9 +1970,8 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
         context: SimpleNamespace,
         params: aiohttp.TraceRequestEndParams,
     ) -> None:
-        # Stand in for a handler shipping a metric over the network. Holding
-        # the window open until the bound fires is what makes this a test: an
-        # unbounded buffer never pauses, so this waits out its timeout.
+        # A handler shipping a metric, say. An unbounded buffer never
+        # pauses, so that case waits out the timeout instead.
         async with async_timeout.timeout(10):
             await paused.wait()
 
@@ -1999,8 +1996,7 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
                     assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
     finally:
         for writer in writers:
-            # Abort rather than close: the paused peer never drains what is
-            # still queued, so a graceful close would wait for the timeout.
+            # Abort: a paused peer never drains what is still queued.
             writer.transport.abort()
         server.close()
         await server.wait_closed()

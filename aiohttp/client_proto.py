@@ -209,8 +209,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             data, self._tail = self._tail, b""
             self.data_received(data)
         if self._tail_paused:
-            # Safe unconditionally: either a parser is now installed to drain
-            # what follows, or it failed and what follows is discarded.
+            # Unconditional: what follows is now either parsed or discarded.
             self._tail_paused = False
             self._resume_transport_reading()
 
@@ -323,8 +322,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if eof:
                 self._payload = None
                 self._payload_parser = None
-                # EOF is always a protocol error, already stored on the
-                # queue; nothing can parse this connection again.
+                # EOF is always a protocol error, already on the queue.
                 self._should_close = True
                 self._payload_parser_failed = True
 
@@ -335,13 +333,11 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet
             if self._payload_parser_failed:
-                # Dropped rather than closed on, so queued messages can still
-                # be answered and the peer's FIN still arrives.
+                # Dropped, not closed on: queued messages stay answerable.
                 return
             self._tail += data
-            # Nothing drains _tail until set_parser() installs the reader, and
-            # an await after the 101 (a tracing callback, say) can hold that
-            # off indefinitely, so stop reading rather than grow without bound.
+            # Nothing drains this until set_parser() runs, and an await
+            # after the 101 can hold that off; stop reading instead.
             if (
                 self._tail
                 and not self._tail_paused

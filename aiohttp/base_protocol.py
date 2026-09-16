@@ -103,7 +103,7 @@ class BaseProtocol(asyncio.Protocol):
             self.data_received(b"")
 
         # Reading may have been paused again in the above call if there was a lot of
-        # compressed data still pending; _resume_transport_reading() rechecks it.
+        # compressed data still pending, which the helper rechecks.
         if not self._reading_paused_for_msg_queue():
             self._resume_transport_reading()
 
