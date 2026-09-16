@@ -1908,12 +1908,14 @@ async def test_data_discarded_after_protocol_error(
             protocol = connection.protocol
             assert protocol is not None
 
-            assert protocol._payload_parser_failed, "the error was never seen"
-            # Wait for the flood to be written rather than sleeping, so the
-            # assertion below cannot pass just because nothing arrived. The
-            # drain only completes because the client keeps reading it.
+            # Wait for the whole flood to be written rather than sleeping.
+            # The drain only completes because the client keeps reading and
+            # dropping it, so this both proves the data arrived and removes
+            # any assumption about which read the bad frame landed in.
             async with async_timeout.timeout(10):
                 await flooded.wait()
+
+            assert protocol._payload_parser_failed, "the error was never seen"
             # Nothing the peer sent after the error was kept.
             assert protocol._tail == b""
             assert protocol.should_close
