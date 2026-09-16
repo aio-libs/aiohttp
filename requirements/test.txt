@@ -94,7 +94,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-propcache==0.5.2
+propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp

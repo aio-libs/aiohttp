@@ -34,7 +34,7 @@ multidict==6.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-propcache==0.5.2
+propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
