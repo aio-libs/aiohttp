@@ -1855,7 +1855,12 @@ async def test_data_discarded_after_protocol_error(
     later byte lands in ``ResponseHandler._tail``. An application that never
     calls ``receive()`` never closed the connection, so the peer could stream
     until the client ran out of memory.
+
+    The peer also pushes past ``read_bufsize`` before the parser is installed,
+    so the tail pause is held when the error fires. Staying paused would stop
+    the discard branch running and hide the peer's FIN, leaking the socket.
     """
+    read_bufsize = 1024
     writers: list[asyncio.StreamWriter] = []
 
     async def raw_server(
@@ -1874,6 +1879,10 @@ async def test_data_discarded_after_protocol_error(
             b"Upgrade: websocket\r\n"
             b"Connection: Upgrade\r\n"
             b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+            # A valid frame past read_bufsize, so the tail pause is taken
+            # before ws_connect() installs the parser and the error below
+            # fires while that buffer is drained into it.
+            + b"\x81\x7e\x08\x00" + b"y" * 2048
             # RSV1 set without permessage-deflate: a protocol error.
             + b"\x41\x01x"
         )
@@ -1887,7 +1896,7 @@ async def test_data_discarded_after_protocol_error(
     server = await asyncio.start_server(raw_server, sock=unused_port_socket)
     port = unused_port_socket.getsockname()[1]
     try:
-        async with aiohttp.ClientSession() as session:
+        async with aiohttp.ClientSession(read_bufsize=read_bufsize) as session:
             # No receive() call: the long-lived idle client of the report.
             # The bad frame rides along with the handshake, so ws_connect()
             # has already fed it to the reader before returning.
@@ -1902,9 +1911,12 @@ async def test_data_discarded_after_protocol_error(
             # Nothing the peer sent after the error was kept.
             assert protocol._tail == b""
             assert protocol.should_close
-            # The transport stays open so queued messages can still be
-            # answered and the peer's FIN is still delivered.
+            # The transport stays open and reading so queued messages can
+            # still be answered and the peer's FIN is still delivered. A tail
+            # pause taken before the parser was installed has to be lifted
+            # here, or the discard branch never runs and the socket leaks.
             assert protocol.transport is not None
+            assert not protocol._tail_paused
             await ws.close()
     finally:
         for writer in writers:
