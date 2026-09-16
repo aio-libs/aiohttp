@@ -7,7 +7,7 @@ import sys
 import uuid
 import warnings
 from collections import deque
-from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
+from collections.abc import AsyncIterator, Callable, Iterator, Mapping, Sequence
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
@@ -711,6 +711,10 @@ class BodyPartReaderPayload(Payload):
                 await writer.write(d)
 
 
+def _too_many_parts(max_parts: int) -> ValueError:
+    return ValueError(f"Maximum number of parts {max_parts} exceeded.")
+
+
 class MultipartReader:
     """Multipart body reader."""
 
@@ -731,6 +735,8 @@ class MultipartReader:
         max_field_size: int = 8190,
         max_headers: int = 128,
         max_size_error_cls: type[Exception] = ValueError,
+        max_parts: int = 0,
+        max_parts_error: Callable[[int], Exception] = _too_many_parts,
     ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
@@ -748,6 +754,9 @@ class MultipartReader:
         self._max_field_size = max_field_size
         self._max_headers = max_headers
         self._max_size_error_cls = max_size_error_cls
+        self._max_parts = max_parts
+        self._max_parts_error = max_parts_error
+        self._parts_read = 0
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -788,8 +797,6 @@ class MultipartReader:
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return None
-        if 0 < self._client_max_size < self._content.total_bytes:
-            raise self._max_size_error_cls(self._client_max_size)
         await self._maybe_release_last_part()
         if self._at_bof:
             await self._read_until_first_boundary()
@@ -800,6 +807,9 @@ class MultipartReader:
             # https://github.com/python/mypy/issues/17537
             return None  # type: ignore[unreachable]
 
+        if 0 < self._max_parts <= self._parts_read:
+            raise self._max_parts_error(self._max_parts)
+        self._parts_read += 1
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
         if (
@@ -856,6 +866,8 @@ class MultipartReader:
                     max_field_size=self._max_field_size,
                     max_headers=self._max_headers,
                     max_size_error_cls=self._max_size_error_cls,
+                    max_parts=self._max_parts,
+                    max_parts_error=self._max_parts_error,
                 )
             return self.multipart_reader_cls(
                 headers,
@@ -864,6 +876,8 @@ class MultipartReader:
                 max_field_size=self._max_field_size,
                 max_headers=self._max_headers,
                 max_size_error_cls=self._max_size_error_cls,
+                max_parts=self._max_parts,
+                max_parts_error=self._max_parts_error,
             )
         else:
             return self.part_reader_cls(

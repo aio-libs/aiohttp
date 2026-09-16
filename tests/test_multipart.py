@@ -82,7 +82,6 @@ def writer() -> aiohttp.MultipartWriter:
 class Stream(StreamReader):
     def __init__(self, content: bytes) -> None:
         self.content = io.BytesIO(content)
-        self.total_bytes = 0
 
     async def read(self, size: int | None = None) -> bytes:
         return self.content.read(size)
@@ -814,54 +813,74 @@ class TestPartReader:
 
 
 class TestMultipartReader:
-    async def test_next_raises_when_cumulative_size_exceeds_client_max_size(
-        self,
-    ) -> None:
-        protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(
-            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
-        )
-        stream.feed_data(
-            b"".join(
-                b'--:\r\nContent-Disposition: form-data; name="f%d"\r\n\r\n\r\n' % i
-                for i in range(100)
+    async def test_next_raises_when_max_parts_exceeded(self) -> None:
+        with Stream(
+            b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:\r\n\r\nthree\r\n--:--"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+                max_parts=2,
             )
-            + b"--:--\r\n"
-        )
-        stream.feed_eof()
-        reader = aiohttp.MultipartReader(
-            {CONTENT_TYPE: 'multipart/form-data; boundary=":"'},
-            stream,
-            client_max_size=256,
-            max_size_error_cls=HTTPRequestEntityTooLarge,
-        )
-        with pytest.raises(HTTPRequestEntityTooLarge):
+            values = []
+            with pytest.raises(ValueError, match="Maximum number of parts 2 exceeded"):
+                async for part in reader:
+                    assert isinstance(part, aiohttp.BodyPartReader)
+                    values.append(await part.read())
+        assert values == [b"one", b"two"]
+
+    async def test_next_max_parts_allows_exact_count(self) -> None:
+        with Stream(b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:--") as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+                max_parts=2,
+            )
+            values = []
             async for part in reader:
                 assert isinstance(part, aiohttp.BodyPartReader)
-                await part.read()
+                values.append(await part.read())
+        assert values == [b"one", b"two"]
+        assert reader.at_eof()
 
-    async def test_next_within_client_max_size_reads_all_parts(self) -> None:
-        protocol = mock.Mock(_reading_paused=False)
-        stream = StreamReader(
-            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
-        )
-        stream.feed_data(
-            b'--:\r\nContent-Disposition: form-data; name="a"\r\n\r\nx\r\n'
-            b'--:\r\nContent-Disposition: form-data; name="b"\r\n\r\ny\r\n'
-            b"--:--\r\n"
-        )
-        stream.feed_eof()
-        reader = aiohttp.MultipartReader(
-            {CONTENT_TYPE: 'multipart/form-data; boundary=":"'},
-            stream,
-            client_max_size=4096,
-            max_size_error_cls=HTTPRequestEntityTooLarge,
-        )
-        values = []
-        async for part in reader:
-            assert isinstance(part, aiohttp.BodyPartReader)
-            values.append(await part.read())
-        assert values == [b"x", b"y"]
+    async def test_next_max_parts_custom_error(self) -> None:
+        class TooManyParts(Exception):
+            pass
+
+        with Stream(b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:--") as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+                max_parts=1,
+                max_parts_error=lambda n: TooManyParts(n),
+            )
+            first = await reader.next()
+            assert isinstance(first, aiohttp.BodyPartReader)
+            await first.release()
+            with pytest.raises(TooManyParts):
+                await reader.next()
+
+    async def test_nested_reader_inherits_max_parts(self) -> None:
+        with Stream(
+            b"--:\r\n"
+            b"Content-Type: multipart/related;boundary=--:--\r\n\r\n"
+            b"----:--\r\n\r\none\r\n"
+            b"----:--\r\n\r\ntwo\r\n"
+            b"----:----\r\n"
+            b"--:--"
+        ) as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+                max_parts=1,
+            )
+            nested = await reader.next()
+            assert isinstance(nested, aiohttp.MultipartReader)
+            first = await nested.next()
+            assert isinstance(first, aiohttp.BodyPartReader)
+            assert await first.read() == b"one"
+            with pytest.raises(ValueError, match="Maximum number of parts 1 exceeded"):
+                await nested.next()
 
     def test_from_response(self) -> None:
         h = HeadersDictProxy(
@@ -969,7 +988,6 @@ class TestMultipartReader:
     async def test_read_boundary_across_chunks(self) -> None:
         class SplitBoundaryStream(StreamReader):
             def __init__(self) -> None:
-                self.total_bytes = 0
                 self.content = [
                     b"--foobar\r\n\r\n",
                     b"Hello,\r\n-",

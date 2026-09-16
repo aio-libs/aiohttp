@@ -161,22 +161,16 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: client_max_size
 
-      The maximum size of the request body.  This bounds the cumulative
-      bytes consumed both by :meth:`~BaseRequest.post` and by the
-      low-level :meth:`~BaseRequest.multipart` reader.
+      The maximum size of the request body.
 
       The value could be overridden by :meth:`~BaseRequest.clone`.
 
       Read-only :class:`int` property.
 
-      .. versionchanged:: 3.14.4
-
-         Now also bounds the bytes consumed through
-         :meth:`~BaseRequest.multipart`.
-
    .. attribute:: client_max_fields
 
-      The maximum number of form fields accepted by :meth:`~BaseRequest.post`,
+      The maximum number of form fields accepted by :meth:`~BaseRequest.post`
+      and of parts yielded by the :meth:`~BaseRequest.multipart` reader,
       ``0`` disables the limit.
 
       The value could be overridden by :meth:`~BaseRequest.clone`.
@@ -501,11 +495,12 @@ and :ref:`aiohttp-web-signals` handlers.
          you exhausts multipart reader, you cannot get the request payload one
          more time.
 
-      The returned reader enforces :attr:`client_max_size` against the
-      cumulative size of all parts and raises
-      :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once the limit is
-      exceeded.  Set ``client_max_size=0`` on the :class:`Application` to
-      stream arbitrarily large bodies without a limit.
+      The returned reader yields at most :attr:`client_max_fields` parts
+      and raises :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once more
+      arrive.  Per-part body size is still bounded by
+      :attr:`client_max_size` only when a part is buffered with
+      :meth:`~aiohttp.BodyPartReader.read`; streaming a part with
+      :meth:`~aiohttp.BodyPartReader.read_chunk` is not limited.
 
       .. seealso:: :ref:`aiohttp-multipart`
 
@@ -515,8 +510,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
       .. versionchanged:: 3.14.4
 
-         The reader now enforces :attr:`client_max_size` cumulatively
-         across parts.
+         The reader now enforces :attr:`client_max_fields`.
 
    .. method:: post()
       :async:
@@ -1562,8 +1556,9 @@ Application and Router
 
    :param client_max_fields: maximum number of form fields accepted by
                              :meth:`BaseRequest.post`, counting both
-                             urlencoded pairs and multipart parts.  For
-                             urlencoded bodies every ``&``-separated
+                             urlencoded pairs and multipart parts, and of
+                             parts yielded by :meth:`BaseRequest.multipart`.
+                             For urlencoded bodies every ``&``-separated
                              segment counts, including empty ones, so the
                              check runs before any field is decoded.  If a
                              POST request exceeds this value, it raises an

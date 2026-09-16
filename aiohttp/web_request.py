@@ -774,6 +774,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             max_field_size=self._protocol.max_field_size,
             max_headers=self._protocol.max_headers,
             max_size_error_cls=HTTPRequestEntityTooLarge,
+            max_parts=self._client_max_fields,
+            max_parts_error=_too_many_fields,
         )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
@@ -799,7 +801,6 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             out = MultiDict()
             multipart = await self.multipart()
             max_size = self._client_max_size
-            max_fields = self._client_max_fields
 
             payload = self._payload
             while (field := await multipart.next()) is not None:
@@ -807,8 +808,6 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 # overhead without entering the loop and the check below.
                 if 0 < max_size < payload.total_bytes:
                     raise HTTPRequestEntityTooLarge(max_size)
-                if 0 < max_fields <= len(out):
-                    raise _too_many_fields(max_fields)
 
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 

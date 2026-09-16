@@ -2547,28 +2547,39 @@ def _multipart_file_parts(count: int, body: bytes = b"") -> bytes:
     )
 
 
-async def test_multipart_reader_max_client_size_many_empty_parts(
+@pytest.mark.parametrize(
+    ("max_fields", "expected_status", "expected_text"),
+    [
+        (2, 413, "Maximum number of form fields 2 exceeded"),
+        (3, 200, "3"),
+        (0, 200, "3"),
+    ],
+)
+async def test_multipart_reader_max_client_fields(
     aiohttp_client: AiohttpClient,
+    max_fields: int,
+    expected_status: int,
+    expected_text: str,
 ) -> None:
-    async def handler(request: web.Request) -> NoReturn:
+    async def handler(request: web.Request) -> web.Response:
         reader = await request.multipart()
+        count = 0
         async for part in reader:
             assert isinstance(part, aiohttp.BodyPartReader)
             await part.read()
-        assert False
+            count += 1
+        return web.Response(text=str(count))
 
-    app = web.Application(client_max_size=1024)
+    app = web.Application(client_max_fields=max_fields)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    # Many empty parts whose boundary and header overhead alone exceeds the
-    # limit, consumed through the low-level ``multipart()`` reader.
-    body = _multipart_file_parts(1000)
-    assert len(body) > 1024
+    body = _multipart_file_parts(3)
     async with client.post(
         "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
     ) as resp:
-        assert resp.status == 413
+        assert resp.status == expected_status
+        assert expected_text in await resp.text()
 
 
 async def test_post_max_client_size_counts_multipart_headers(
@@ -2738,7 +2749,7 @@ async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=0)  # unlimited: stream part to response
+    app = web.Application(client_max_size=2)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
@@ -2764,7 +2775,7 @@ async def test_response_with_bodypart_named(
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=0)  # unlimited: stream part to response
+    app = web.Application(client_max_size=2)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
@@ -2792,7 +2803,7 @@ async def test_response_with_bodypart_invalid_name(
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=0)  # unlimited: stream part to response
+    app = web.Application(client_max_size=2)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 

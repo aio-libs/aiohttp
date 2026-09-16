@@ -1,5 +1,0 @@
-Fixed ``client_max_size`` not being enforced when a request body is consumed
-directly through :meth:`aiohttp.web.BaseRequest.multipart`; the
-:class:`~aiohttp.MultipartReader` now accounts for the cumulative size of all
-parts and raises :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once the limit is
-exceeded, matching :meth:`~aiohttp.web.BaseRequest.post` -- by :user:`bdraco`.

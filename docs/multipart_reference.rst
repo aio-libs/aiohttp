@@ -169,10 +169,23 @@ Multipart reference
       Readonly :class:`str` property.
 
 
-.. class:: MultipartReader(headers, content)
+.. class:: MultipartReader(headers, content, *, max_parts=0, \
+                           max_parts_error=...)
    :canonical: aiohttp.multipart.MultipartReader
 
    Multipart body reader.
+
+   :param int max_parts: maximum number of parts the reader yields,
+                         ``0`` disables the limit.  Readers created for
+                         nested multipart parts inherit the same limit.
+
+   :param max_parts_error: callable taking *max_parts* and returning the
+                           exception raised when the limit is exceeded,
+                           defaults to :exc:`ValueError`.
+
+   .. versionchanged:: 3.14.4
+
+      Added *max_parts* and *max_parts_error*.
 
    .. classmethod:: from_response(cls, response)
 
