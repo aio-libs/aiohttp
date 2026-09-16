@@ -2389,17 +2389,17 @@ def _multipart_form(count: int) -> aiohttp.FormData:
 
 
 @pytest.mark.parametrize(
-    ("app_kwargs", "data", "expected_status", "expected_text"),
+    ("client_max_fields", "data", "expected_status", "expected_text"),
     [
-        ({"client_max_fields": 2}, {"a": "1", "b": "2", "c": "3"}, 413, "2 exceeded"),
-        ({"client_max_fields": 2}, _multipart_form(3), 413, "2 exceeded"),
-        ({"client_max_fields": 0}, {f"f{i}": "v" for i in range(5)}, 200, "5"),
-        ({}, {f"f{i}": "v" for i in range(1001)}, 413, "1000 exceeded"),
+        (2, {"a": "1", "b": "2", "c": "3"}, 413, "2 exceeded"),
+        (2, _multipart_form(3), 413, "2 exceeded"),
+        (0, {f"f{i}": "v" for i in range(5)}, 200, "5"),
+        (None, {f"f{i}": "v" for i in range(1001)}, 413, "1000 exceeded"),
     ],
 )
 async def test_app_max_client_fields(
     aiohttp_client: AiohttpClient,
-    app_kwargs: dict[str, int],
+    client_max_fields: int | None,
     data: object,
     expected_status: int,
     expected_text: str,
@@ -2408,7 +2408,10 @@ async def test_app_max_client_fields(
         form = await request.post()
         return web.Response(text=str(len(form)))
 
-    app = web.Application(**app_kwargs)
+    if client_max_fields is None:
+        app = web.Application()
+    else:
+        app = web.Application(client_max_fields=client_max_fields)
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
