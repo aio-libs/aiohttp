@@ -330,12 +330,13 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._payload_parser is not None:
             if self._data_received_cb is not None:
                 self._data_received_cb()
-            eof, tail = self._payload_parser.feed_data(data)
-            if eof:
+            # WebSocketReader signals EOF only for a protocol error, never
+            # for a clean close, and has already put the error on the queue.
+            # Its unparsed remainder goes the way of everything after it.
+            protocol_error, _ = self._payload_parser.feed_data(data)
+            if protocol_error:
                 self._payload = None
                 self._payload_parser = None
-                # EOF is always a protocol error, already on the queue.
-                # Anything still in flight, tail included, is discarded below.
                 self._payload_parser_failed = True
             return
 
