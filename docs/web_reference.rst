@@ -1540,7 +1540,10 @@ Application and Router
 
    :param client_max_fields: maximum number of form fields accepted by
                              :meth:`BaseRequest.post`, counting both
-                             urlencoded pairs and multipart parts.  If a
+                             urlencoded pairs and multipart parts.  For
+                             urlencoded bodies every ``&``-separated
+                             segment counts, including empty ones, so the
+                             check runs before any field is decoded.  If a
                              POST request exceeds this value, it raises an
                              `HTTPRequestEntityTooLarge` exception.
                              ``0`` disables the limit.  Default is ``1000``.

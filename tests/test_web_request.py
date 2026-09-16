@@ -1191,6 +1191,15 @@ async def test_urlencoded_form_too_many_fields(protocol: BaseProtocol) -> None:
     assert err.value.text == "Maximum number of form fields 2 exceeded."
 
 
+async def test_urlencoded_form_empty_segments_count(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&&b=2")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge):
+        await req.post()
+
+
 @pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
 async def test_urlencoded_form_within_field_limit(
     protocol: BaseProtocol, client_max_fields: int, count: int

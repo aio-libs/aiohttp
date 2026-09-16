@@ -708,9 +708,6 @@ boundary at which user-supplied strings can become wire bytes.
 - **GHSA-3wq7-rqq7-wx6j (CVE-2026-34517)** (3.13.4) — `Request.post()` enforces
   `client_max_size` during iteration rather than after buffering,
   plugging a memory-blow-up on large form fields.
-- **PR #13738** (3.14.4) — `Request.post()` caps the number of form fields
-  at `client_max_fields` (default `1000`) for both multipart and
-  urlencoded bodies (threat 4.2).
 - **GHSA-m6qw-4cw2-hm4m (CVE-2026-50269)** (3.14.0) —
   `Payload._binary_headers` now rejects CR / LF / NUL in any per-part
   header name or value via `_safe_header`, closing the outbound
@@ -727,5 +724,8 @@ boundary at which user-supplied strings can become wire bytes.
   multipart body parts whose `Content-Length` header is not a plain
   decimal sequence (e.g. `+5`, `-1`, `1_0`) are now rejected, matching
   the main request parser's strictness per RFC 9110 §8.6.
+- **PR #13738** (3.14.4) — `Request.post()` caps the number of form fields
+  at `client_max_fields` (default `1000`) for both multipart and
+  urlencoded bodies (threat 4.2).
 
 These are all currently in place; this section assumes no regression.
