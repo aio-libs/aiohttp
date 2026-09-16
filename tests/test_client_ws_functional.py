@@ -788,6 +788,10 @@ async def test_recv_protocol_error(aiohttp_client: AiohttpClient) -> None:
     assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
     assert str(msg.data) == "Received frame with non-zero reserved bits"
     assert msg.extra is None
+    # The transport is still writable when the error surfaces, so the close
+    # handshake reports the protocol code rather than an abnormal closure.
+    assert resp.close_code == aiohttp.WSCloseCode.PROTOCOL_ERROR
+    assert resp.exception() is None
     await resp.close()
 
 
@@ -1842,10 +1846,10 @@ async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
     assert resp._parser is None
 
 
-async def test_connection_failed_after_protocol_error(
+async def test_data_discarded_after_protocol_error(
     unused_port_socket: socket.socket,
 ) -> None:
-    """A frame error fails the connection instead of buffering what follows.
+    """A frame error drops what follows instead of buffering it.
 
     ``WebSocketReader.feed_data()`` only reports EOF for a protocol error, and
     the connection stays upgraded with no parser installed afterwards, so every
@@ -1875,10 +1879,9 @@ async def test_connection_failed_after_protocol_error(
             + b"\x41\x01x"
         )
         await writer.drain()
-        # One oversized write rather than a stream of small ones: the client
-        # has to stop reading it, so this drain never completes and the
-        # connection teardown is what ends it.
-        writer.write(b"A" * (32 * 1024 * 1024))
+        # One oversized write rather than a stream of small ones. 2 MiB is
+        # far past the bound being asserted, so buffering it would be obvious.
+        writer.write(b"A" * (2 * 1024 * 1024))
         with contextlib.suppress(Exception):
             await writer.drain()
 
@@ -1888,19 +1891,22 @@ async def test_connection_failed_after_protocol_error(
         async with aiohttp.ClientSession() as session:
             # No receive() call: the long-lived idle client of the report.
             # The bad frame rides along with the handshake, so ws_connect()
-            # feeds it to the reader and takes the pause before returning.
+            # has already fed it to the reader before returning.
             ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
             connection = ws._conn
             assert connection is not None
             protocol = connection.protocol
             assert protocol is not None
 
-            assert protocol.transport is None, "connection was never failed"
-            # A socket read already in flight when the close lands is still
-            # delivered, so the tail holds at most one of those rather than
-            # everything the peer wanted to send.
+            assert protocol._payload_parser_failed, "the error was never seen"
+            await asyncio.sleep(0.2)
+            # A read already in flight when the error landed is still buffered,
+            # but nothing after it is.
             assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
             assert protocol.should_close
+            # The transport stays open so queued messages can still be
+            # answered and the peer's FIN is still delivered.
+            assert protocol.transport is not None
             await ws.close()
     finally:
         for writer in writers:

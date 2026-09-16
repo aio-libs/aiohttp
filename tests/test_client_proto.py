@@ -479,8 +479,8 @@ async def test_set_parser_drains_tail_and_resumes_reading(read_bufsize: int) -> 
     transport.resume_reading.assert_called_once_with()
 
 
-async def test_websocket_parser_error_closes_connection() -> None:
-    """A WebSocket protocol error fails the connection, per RFC 6455 7.1.7.
+async def test_websocket_parser_error_discards_later_data() -> None:
+    """A WebSocket protocol error drops what follows instead of buffering it.
 
     ``WebSocketReader.feed_data()`` only ever reports EOF for a protocol error,
     and the connection stays upgraded afterwards, so without this the peer can
@@ -498,8 +498,15 @@ async def test_websocket_parser_error_closes_connection() -> None:
 
     assert proto._payload_parser is None
     assert proto.should_close
-    transport.close.assert_called_once_with()
-    assert proto.transport is None
+    assert proto._payload_parser_failed
+
+    # The peer keeps streaming; none of it is kept, and the transport stays
+    # open so queued messages can still be answered and the FIN is still seen.
+    for _ in range(100):
+        proto.data_received(b"x" * 65536)
+    assert proto._tail == b""
+    transport.close.assert_not_called()
+    transport.pause_reading.assert_not_called()
 
 
 async def test_queue_drain_does_not_resume_paused_tail() -> None:
@@ -589,12 +596,13 @@ async def test_websocket_parser_error_replays_tail() -> None:
     parser.feed_data.return_value = (True, b"leftover")
     proto.data_received(b"bad frame")
 
-    assert proto._tail == b"leftover"
-    transport.close.assert_called_once_with()
+    # The replayed tail is dropped with everything else after the error.
+    assert proto._tail == b""
+    transport.close.assert_not_called()
 
 
-async def test_parser_error_while_draining_tail_closes_connection() -> None:
-    """A parser that errors on the drained tail still fails the connection.
+async def test_parser_error_while_draining_tail_discards_data() -> None:
+    """A parser that errors on the drained tail still discards what follows.
 
     The bad frame usually arrives with the handshake, so it is already in
     ``_tail`` when ``set_parser()`` runs and the error fires during the drain
@@ -609,8 +617,10 @@ async def test_parser_error_while_draining_tail_closes_connection() -> None:
     proto.set_parser(parser, mock.Mock())
 
     assert proto.should_close
-    transport.close.assert_called_once_with()
-    transport.resume_reading.assert_not_called()
+    assert proto._payload_parser_failed
+    proto.data_received(b"y" * 65536)
+    assert proto._tail == b""
+    transport.close.assert_not_called()
 
 
 async def test_empty_read_does_not_pause_on_empty_tail() -> None:

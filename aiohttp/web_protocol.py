@@ -227,7 +227,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # so we refill in batches instead of churning pause/resume per request.
         self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
         self._read_bufsize = read_bufsize
-        # Set before super().__init__ so _reading_paused_for_msg_queue() is safe
+        # Set before super().__init__ so _reading_paused_for_buffer() is safe
         # if BaseProtocol ever triggers a resume during init.
         self._msg_queue_paused = False
         parser = HttpRequestParser(

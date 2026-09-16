@@ -557,7 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
-| 3.16 | Post-error buffering bound | Both sides pause the transport once the buffer they cannot drain reaches `read_bufsize` (default 256 KiB): `web_protocol.py:_pause_msg_queue_reading` for `_message_tail`, `client_proto.py:_pause_tail_reading` for `_tail`. The client additionally pauses the moment the reader reports EOF, since a protocol error means nothing will parse the connection again. | **User**: set `heartbeat` on long-lived client sessions so a wedged connection is torn down rather than left idle; it bounds how long a peer can push, not how fast. |
+| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows rather than appending it to `_tail`; the server closes the connection outright (`web_protocol.py:data_received`). Buffering *before* a parser is installed is bounded separately, by pausing the transport at `read_bufsize` (default 256 KiB) and resuming where `set_parser()` / `set_response_params()` drain it. | Discarding rather than pausing or closing is deliberate: a paused transport is never told the peer hung up, so the socket would leak, and closing makes the transport unwritable, so messages queued before the error could no longer be answered. The cost is that a peer can keep the client reading and dropping bytes until it closes. |
 
 **Past advisories / hardening (recap).**
 
@@ -604,11 +604,12 @@ client-side, the writer adds masks to outgoing frames.
   leaves the connection upgraded) let a peer stream unbounded data into
   `ResponseHandler._tail`: 32 MiB pushed at a client that never called
   `receive()` produced 32 MiB of `_tail`, and `heartbeat` bounded only how
-  long the peer had, not how fast. Fixed by failing the connection on the
-  reader's EOF, as threat 3.16 describes. Bounding it with backpressure
-  instead was rejected: a paused transport is never told the peer hung up, so
-  an application that never reads would accumulate sockets that nothing reaps,
-  trading a memory leak for a file-descriptor leak.
+  long the peer had, not how fast. Fixed by discarding what arrives after the
+  reader's EOF, as threat 3.16 describes. Two alternatives were measured and
+  rejected: pausing the transport bounds the memory but hides the peer's FIN,
+  so an application that never reads accumulates sockets nothing reaps; and
+  closing the transport makes it unwritable, so a message queued before the
+  error can no longer be answered, which broke the Autobahn client runner.
 
 ---
 

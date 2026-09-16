@@ -46,6 +46,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._timer = None
         self._tail = b""
         self._tail_paused = False
+        self._payload_parser_failed = False
         self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
@@ -339,12 +340,11 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if eof:
                 self._payload = None
                 self._payload_parser = None
-                # EOF here is always a WebSocket protocol error, already stored
-                # on the queue. RFC 6455 7.1.7 says to fail the connection, and
-                # nothing would ever read it again: pausing instead would hide
-                # the peer's FIN and leak the socket.
+                # EOF here is always a WebSocket protocol error, already
+                # stored on the queue. Nothing can parse this connection again,
+                # so drop what follows instead of buffering it.
                 self._should_close = True
-                self.close()
+                self._payload_parser_failed = True
 
                 if tail:
                     self.data_received(tail)
@@ -352,6 +352,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet
+            if self._payload_parser_failed:
+                # Discard rather than close: messages queued before the error
+                # are still delivered, and the application may answer them, so
+                # the transport has to stay writable. Reading on keeps the
+                # peer's FIN visible, which a paused transport would hide.
+                return
             self._tail += data
             # Nothing drains _tail until a parser is installed, so stop reading
             # rather than letting the peer grow it without bound. Tested
