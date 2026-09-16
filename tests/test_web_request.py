@@ -1191,7 +1191,7 @@ async def test_urlencoded_form_too_many_fields(protocol: BaseProtocol) -> None:
     assert err.value.text == "Maximum number of form fields 2 exceeded."
 
 
-@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5)])
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
 async def test_urlencoded_form_within_field_limit(
     protocol: BaseProtocol, client_max_fields: int, count: int
 ) -> None:
@@ -1216,7 +1216,7 @@ async def test_urlencoded_form_empty_body(protocol: BaseProtocol) -> None:
 
 
 async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
-    payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9")
+    payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9&f=%FF")
     req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
     result = await req.post()
     assert list(result.items()) == [
@@ -1225,7 +1225,16 @@ async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
         ("c", ""),
         ("d", "%zz"),
         ("e", "\u00e9"),
+        ("f", "\ufffd"),
     ]
+
+
+async def test_urlencoded_form_with_non_utf8_charset(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=%E9&b=\xe9")
+    headers = {"Content-Type": "application/x-www-form-urlencoded; charset=latin-1"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+    result = await req.post()
+    assert list(result.items()) == [("a", "\u00e9"), ("b", "\u00e9")]
 
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:

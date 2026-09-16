@@ -145,6 +145,12 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 ############################################################
 
 
+def _too_many_fields(max_fields: int) -> HTTPRequestEntityTooLarge:
+    return HTTPRequestEntityTooLarge(
+        max_fields, text=f"Maximum number of form fields {max_fields} exceeded."
+    )
+
+
 class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     POST_METHODS = {
         hdrs.METH_PATCH,
@@ -802,10 +808,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 if 0 < max_size < payload.total_bytes:
                     raise HTTPRequestEntityTooLarge(max_size)
                 if 0 < max_fields <= len(out):
-                    raise HTTPRequestEntityTooLarge(
-                        max_fields,
-                        text=f"Maximum number of form fields {max_fields} exceeded.",
-                    )
+                    raise _too_many_fields(max_fields)
 
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
@@ -898,14 +901,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             try:
                 out = MultiDict(
                     query_to_pairs(
-                        query, max_fields=max_fields or None, encoding=charset
+                        query,
+                        max_fields=max_fields if max_fields > 0 else None,
+                        encoding=charset,
                     )
                 )
             except ValueError:
-                raise HTTPRequestEntityTooLarge(
-                    max_fields,
-                    text=f"Maximum number of form fields {max_fields} exceeded.",
-                ) from None
+                raise _too_many_fields(max_fields) from None
 
         self._post = MultiDictProxy(out)
         return self._post

@@ -2390,33 +2390,38 @@ def _multipart_form(count: int) -> aiohttp.FormData:
 
 
 @pytest.mark.parametrize(
-    ("make_app", "data", "expected_status", "expected_text"),
+    ("make_app", "make_data", "expected_status", "expected_text"),
     [
         (
             partial(web.Application, client_max_fields=2),
-            {"a": "1", "b": "2", "c": "3"},
+            partial(dict, a="1", b="2", c="3"),
             413,
             "2 exceeded",
         ),
         (
             partial(web.Application, client_max_fields=2),
-            _multipart_form(3),
+            partial(_multipart_form, 3),
             413,
             "2 exceeded",
         ),
         (
             partial(web.Application, client_max_fields=0),
-            {f"f{i}": "v" for i in range(5)},
+            partial(dict, {f"f{i}": "v" for i in range(5)}),
             200,
             "5",
         ),
-        (web.Application, {f"f{i}": "v" for i in range(1001)}, 413, "1000 exceeded"),
+        (
+            web.Application,
+            partial(dict, {f"f{i}": "v" for i in range(1001)}),
+            413,
+            "1000 exceeded",
+        ),
     ],
 )
 async def test_app_max_client_fields(
     aiohttp_client: AiohttpClient,
     make_app: Callable[[], web.Application],
-    data: object,
+    make_data: Callable[[], object],
     expected_status: int,
     expected_text: str,
 ) -> None:
@@ -2428,7 +2433,7 @@ async def test_app_max_client_fields(
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
-    async with client.post("/", data=data) as resp:
+    async with client.post("/", data=make_data()) as resp:
         assert resp.status == expected_status
         assert expected_text in await resp.text()
 
