@@ -654,7 +654,7 @@ boundary at which user-supplied strings can become wire bytes.
 | # | Component / Vector | STRIDE | Threat | Risk |
 | :--- | :--- | :--- | :--- | :--- |
 | 4.1 | Boundary parameter parsing | T | Malformed boundary parameter (oversized, missing, or containing bytes outside the RFC 2046 §5.1.1 safe set — digits, letters, and a small punctuation set) could enable multipart parser confusion or smuggling. | Low |
-| 4.2 | Number of parts per body | D | A peer submits a body packed with many tiny parts (e.g. ten thousand 100-byte parts inside a 1 MiB body). Each part allocates a `BodyPartReader` plus header dict, so the live-Python-object footprint is far larger than the on-wire byte count. `client_max_size` caps the wire bytes but not the per-part allocation amplification. | Low |
+| 4.2 | Number of parts per body | D | A peer submits a body packed with many tiny parts (e.g. ten thousand 100-byte parts inside a 1 MiB body). Each part allocates a `BodyPartReader` plus header dict, so the live-Python-object footprint is far larger than the on-wire byte count. `client_max_size` caps the wire bytes but not the per-part allocation amplification. The same amplification applies to `application/x-www-form-urlencoded` bodies, where every `&`-separated field becomes a decoded pair in the `MultiDict`. | Low |
 | 4.3 | Nested multipart recursion | D | `MultipartReader.next()` recurses into nested multiparts without a depth cap; deeply nested input can hit `RecursionError`. `Request.post()` short-circuits this by rejecting any nested multipart it sees, but the bare API does not. | Medium |
 | 4.4 | Per-part header block size | D | A peer submits a part with an oversized header block (very long field values, or hundreds of headers per part) to drive memory growth at parse time, multiplied across many parts. | Low |
 | 4.5 | Per-part body size | D | A peer submits a single part with a body that grows arbitrarily large before any framing boundary — if size checking happens only after buffering the whole part, memory blows up before the cap fires. | Low |
@@ -673,7 +673,7 @@ boundary at which user-supplied strings can become wire bytes.
 | # | Threat | Existing | Recommended |
 | :--- | :--- | :--- | :--- |
 | 4.1 | Boundary parameter | 70-char cap; missing-boundary raises; HTTP header layer ([§5.1](#51-http1-parser)) catches CR/LF/NUL. | None. |
-| 4.2 | Many small parts | `client_max_size` caps total bytes. | Documented design decision: rely on `client_max_size` rather than introducing a `max_parts` knob. **User**: operators sensitive to live-object count should reduce `client_max_size`. |
+| 4.2 | Many small parts | `client_max_size` caps total bytes. `Request.post()` additionally caps the number of form fields at `client_max_fields` (default `1000`, `0` disables) since PR #13738: multipart parts are counted before each part is read, and urlencoded bodies are rejected by `yarl.query_to_pairs` before any pair is materialised. Both paths raise `HTTPRequestEntityTooLarge`. | The cap only covers `Request.post()`. Direct `MultipartReader` / `Request.multipart()` users still get an unbounded part count; a `max_parts` parameter on `MultipartReader` would close that path. **User**: operators sensitive to live-object count should reduce `client_max_fields` and `client_max_size`. |
 | 4.3 | Nested-multipart recursion | `Request.post()` rejects any nested multipart with `ValueError` ("To decode nested multipart you need to use custom reader") (`web_request.py:BaseRequest.post`). | **Direct `MultipartReader` users get unlimited recursion. Add a `max_nesting_depth` parameter (default e.g. 10) to fail cleanly before `RecursionError`.** |
 | 4.4 | Per-part headers bounded | `max_field_size` / `max_headers` plumbed since 5fe9dfb64 (Mar 2026). | None. |
 | 4.5 | Per-part body bounded | Per-iteration size check since 9cc4b917c (Mar 2026). | None. |
@@ -708,6 +708,9 @@ boundary at which user-supplied strings can become wire bytes.
 - **GHSA-3wq7-rqq7-wx6j (CVE-2026-34517)** (3.13.4) — `Request.post()` enforces
   `client_max_size` during iteration rather than after buffering,
   plugging a memory-blow-up on large form fields.
+- **PR #13738** (3.14.4) — `Request.post()` caps the number of form fields
+  at `client_max_fields` (default `1000`) for both multipart and
+  urlencoded bodies (threat 4.2).
 - **GHSA-m6qw-4cw2-hm4m (CVE-2026-50269)** (3.14.0) —
   `Payload._binary_headers` now rejects CR / LF / NUL in any per-part
   header name or value via `_safe_header`, closing the outbound
