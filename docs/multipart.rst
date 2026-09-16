@@ -308,7 +308,9 @@ all::
             result.append([(await part.json())])
 
 Let's hack a reader in the way to return pairs of document and reader of the
-related files on each iteration::
+related files on each iteration.  The class set as ``multipart_reader_cls``
+is constructed with the same keyword arguments as :class:`MultipartReader`,
+so it should subclass it and leave the constructor signature alone::
 
     class PairsMultipartReader(aiohttp.MultipartReader):
 
