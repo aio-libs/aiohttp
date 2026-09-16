@@ -204,6 +204,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self._reschedule_timeout()
 
     def _reading_paused_for_msg_queue(self) -> bool:
+        """Override: a WebSocketDataQueue drain must not lift the tail pause.
+
+        Nothing would re-arm it; the bound in data_received() checks _tail_paused.
+        """
         return self._tail_paused
 
     def _pause_tail_reading(self) -> None:
