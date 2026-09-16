@@ -45,9 +45,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._timer = None
         self._tail = b""
-        self._tail_paused = False
         self._payload_parser_failed = False
-        self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
@@ -204,39 +202,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused:
             self._reschedule_timeout()
 
-    def _reading_paused_for_buffer(self) -> bool:
-        """Override: a WebSocketDataQueue drain must not lift the tail pause.
-
-        Nothing would re-arm it; the bound in data_received() checks _tail_paused.
-        """
-        return self._tail_paused
-
-    def _pause_tail_reading(self) -> None:
-        self._tail_paused = True
-        self._pause_transport_reading()
-
-    def _resume_tail_reading(self) -> None:
-        if not self._tail_paused:
-            return
-        if (
-            self._upgraded
-            and self._payload_parser is None
-            and not self._payload_parser_failed
-        ):
-            # No parser yet, so nothing would drain _tail: stay paused, or the
-            # peer simply refills the buffer we paused for. Once the parser has
-            # failed the discard branch keeps _tail empty, so reading resumes
-            # and the peer's FIN still arrives.
-            return
-        self._tail_paused = False
-        self._resume_transport_reading()
-
-    def _drain_tail(self) -> None:
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
-        self._resume_tail_reading()
-
     def set_exception(
         self,
         exc: type[BaseException] | BaseException,
@@ -258,7 +223,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._drop_timeout()
 
-        self._drain_tail()
+        if self._tail:
+            data, self._tail = self._tail, b""
+            self.data_received(data)
 
     def set_response_params(
         self,
@@ -276,7 +243,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     ) -> None:
         self._skip_payload = skip_payload
 
-        self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
@@ -295,7 +261,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             max_headers=max_headers,
         )
 
-        self._drain_tail()
+        if self._tail:
+            data, self._tail = self._tail, b""
+            self.data_received(data)
 
     def _drop_timeout(self) -> None:
         if self._read_timeout_handle is not None:
@@ -346,8 +314,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 self._payload = None
                 self._payload_parser = None
                 # EOF here is always a WebSocket protocol error, already
-                # stored on the queue. Nothing can parse this connection again,
-                # so drop what follows instead of buffering it.
+                # stored on the queue. Nothing can parse this connection
+                # again, so drop what follows instead of buffering it.
                 self._should_close = True
                 self._payload_parser_failed = True
 
@@ -356,7 +324,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             return
 
         if self._upgraded or self._parser is None:
-            # i.e. websocket connection, websocket parser is not set yet
+            # i.e. websocket connection, websocket parser is not set yet.
+            # Unbounded by design: _ws_connect() does not await between the
+            # 101 and set_parser(), so a peer can only land a read or two
+            # here. See the note at that call site.
             if self._payload_parser_failed:
                 # Discard rather than close: messages queued before the error
                 # are still delivered, and the application may answer them, so
@@ -364,15 +335,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 # peer's FIN visible, which a paused transport would hide.
                 return
             self._tail += data
-            # Nothing drains _tail until a parser is installed, so stop reading
-            # rather than letting the peer grow it without bound. Tested
-            # non-empty first so a read_bufsize of 0 cannot pause on nothing.
-            if (
-                self._tail
-                and not self._tail_paused
-                and len(self._tail) >= self._read_bufsize
-            ):
-                self._pause_tail_reading()
             return
 
         # parse http messages

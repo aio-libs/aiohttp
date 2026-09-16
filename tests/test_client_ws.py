@@ -1,13 +1,16 @@
+import ast
 import asyncio
 import base64
 import hashlib
 import os
+import pathlib
 from collections.abc import Mapping
 from unittest import mock
 
 import pytest
 
 import aiohttp
+import aiohttp.client
 from aiohttp import (
     ClientConnectionResetError,
     ClientWSTimeout,
@@ -1005,3 +1008,47 @@ async def test_ws_connect_deflate_server_ext_bad(ws_key: str, key_data: bytes) -
 
             with pytest.raises(client.WSServerHandshakeError):
                 await aiohttp.ClientSession().ws_connect("http://test.org", compress=15)
+
+
+def test_no_suspension_between_upgrade_and_set_parser() -> None:
+    """``_ws_connect()`` must not await between the 101 and ``set_parser()``.
+
+    Until the parser is installed there is nothing to drain what the peer
+    sends, so those bytes queue up in ``ResponseHandler._tail`` unbounded.
+    That buffer is deliberately not size-capped, because this window is only a
+    couple of event loop iterations wide and a peer can land at most a read or
+    two in it. An ``await`` added here would widen it without limit, so the
+    invariant is enforced rather than assumed.
+    """
+    source = pathlib.Path(aiohttp.client.__file__).read_text()
+    module = ast.parse(source)
+    ws_connect = max(
+        (
+            node
+            for node in ast.walk(module)
+            if isinstance(node, ast.AsyncFunctionDef) and node.name == "_ws_connect"
+        ),
+        key=lambda node: node.lineno,
+    )
+    request = next(
+        node
+        for node in ast.walk(ws_connect)
+        if isinstance(node, ast.Await)
+        and getattr(getattr(node.value, "func", None), "attr", None) == "request"
+    )
+    set_parser = next(
+        node
+        for node in ast.walk(ws_connect)
+        if isinstance(node, ast.Call)
+        and getattr(node.func, "attr", None) == "set_parser"
+    )
+    suspensions = [
+        node.lineno
+        for node in ast.walk(ws_connect)
+        if isinstance(node, (ast.Await, ast.AsyncWith, ast.AsyncFor))
+        and request.lineno < node.lineno < set_parser.lineno
+    ]
+    assert not suspensions, (
+        "await added between the 101 response and set_parser() at "
+        f"client.py:{suspensions}; this unbounds the pre-parser _tail buffer"
+    )

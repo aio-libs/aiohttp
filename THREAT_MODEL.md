@@ -557,7 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
-| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows rather than appending it to `_tail`; the server closes the connection outright (`web_protocol.py:data_received`). Buffering *before* a parser is installed is bounded separately, by pausing the transport at `read_bufsize` (default 256 KiB); only `set_parser()` / `set_response_params()` drain that buffer and lift the pause, so a 101 response the client never follows up on stays paused until the connection is dropped. Note `read_bufsize` is documented for `ClientResponse.content` but silently bounds this buffer too. | Discarding rather than pausing or closing is deliberate: a paused transport is never told the peer hung up, so the socket would leak, and closing makes the transport unwritable, so messages queued before the error could no longer be answered. **User**: the residual cost is that a peer can keep the client reading and dropping bytes until one side closes, so set `heartbeat` on long-lived client sessions to tear down a connection the application is not reading. |
+| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows rather than appending it to `_tail`; the server closes the connection outright (`web_protocol.py:data_received`). | Discarding rather than pausing or closing is deliberate: a paused transport is never told the peer hung up, so the socket would leak, and closing makes the transport unwritable, so messages queued before the error could no longer be answered. The client's pre-`set_parser()` buffering is left unbounded, as it is upstream: `_ws_connect` has no `await` between the 101 and `set_parser()`, so a peer can only land a read or two there regardless of how much it sends (measured ~256 KiB against a 128 MiB blast). **User**: a peer can keep the client reading and dropping bytes until one side closes, so set `heartbeat` on long-lived sessions to tear down a connection the application is not reading. |
 
 **Past advisories / hardening (recap).**
 
@@ -610,6 +610,10 @@ client-side, the writer adds masks to outgoing frames.
   so an application that never reads accumulates sockets nothing reaps; and
   closing the transport makes it unwritable, so a message queued before the
   error can no longer be answered, which broke the Autobahn client runner.
+  Bounding the pre-`set_parser()` window with the same backpressure was also
+  dropped: it is self-limiting to a read or two (there is no `await` between
+  the 101 and `set_parser()`), so the flow control only added a second paused
+  state that could be left held.
 
 ---
 

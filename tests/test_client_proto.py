@@ -8,7 +8,6 @@ from yarl import URL
 
 from aiohttp import http
 from aiohttp.abc import AbstractStreamWriter
-from aiohttp.base_protocol import PAUSE_RESUME_READING_ERRORS
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
@@ -431,52 +430,14 @@ async def test_response_start_records_upgrade(
 
 
 def _upgraded_proto(
-    loop: asyncio.AbstractEventLoop, transport: mock.Mock, read_bufsize: int = 1024
+    loop: asyncio.AbstractEventLoop, transport: mock.Mock
 ) -> ResponseHandler:
     """A protocol that has completed the upgrade but has no parser installed."""
     proto = ResponseHandler(loop=loop)
     proto.connection_made(transport)
-    proto.set_response_params(read_bufsize=read_bufsize)
+    proto.set_response_params()
     proto._upgraded = True
     return proto
-
-
-async def test_tail_pauses_reading_at_read_bufsize() -> None:
-    """The tail is bounded while no parser is installed to drain it."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-
-    proto.data_received(b"x" * 1023)
-    transport.pause_reading.assert_not_called()
-
-    proto.data_received(b"x")
-    assert proto._tail_paused
-    transport.pause_reading.assert_called_once_with()
-
-
-@pytest.mark.parametrize("read_bufsize", [1024, 0])
-async def test_set_parser_drains_tail_and_resumes_reading(read_bufsize: int) -> None:
-    """Installing the parser drains the tail and lifts the pause.
-
-    A ``read_bufsize`` of 0 pauses on any data at all, so the resume has to be
-    driven by the drained tail rather than by the limit, or the connection
-    would wedge.
-    """
-    transport = mock.Mock()
-    proto = _upgraded_proto(
-        asyncio.get_running_loop(), transport, read_bufsize=read_bufsize
-    )
-    proto.data_received(b"x" * 2048)
-    transport.pause_reading.assert_called_once_with()
-
-    parser = mock.Mock()
-    parser.feed_data.return_value = (False, b"")
-    proto.set_parser(parser, mock.Mock())
-
-    parser.feed_data.assert_called_once_with(b"x" * 2048)
-    assert proto._tail == b""
-    assert not proto._tail_paused
-    transport.resume_reading.assert_called_once_with()
 
 
 async def test_websocket_parser_error_discards_later_data() -> None:
@@ -507,82 +468,6 @@ async def test_websocket_parser_error_discards_later_data() -> None:
     assert proto._tail == b""
     transport.close.assert_not_called()
     transport.pause_reading.assert_not_called()
-
-
-async def test_queue_drain_does_not_resume_paused_tail() -> None:
-    """WebSocketDataQueue draining must not lift a pause taken for the tail."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-    proto.data_received(b"x" * 2048)
-    transport.pause_reading.assert_called_once_with()
-
-    # This is what WebSocketDataQueue._read_from_buffer() does as it drains.
-    proto.resume_reading()
-
-    assert proto._tail_paused
-    transport.resume_reading.assert_not_called()
-
-
-async def test_pause_tail_reading_without_transport() -> None:
-    """Pausing after the transport is gone is a no-op, not a crash."""
-    proto = ResponseHandler(loop=asyncio.get_running_loop())
-    proto._upgraded = True
-
-    proto._pause_tail_reading()
-
-    assert proto._tail_paused
-
-
-@pytest.mark.parametrize("exc_type", PAUSE_RESUME_READING_ERRORS)
-async def test_tail_pause_resume_on_transport_without_flow_control(
-    exc_type: type[BaseException],
-) -> None:
-    """A transport that cannot pause or resume is tolerated."""
-    transport = mock.Mock()
-    transport.pause_reading.side_effect = exc_type()
-    transport.resume_reading.side_effect = exc_type()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-
-    proto.data_received(b"x" * 2048)
-    assert proto._tail_paused
-
-    parser = mock.Mock()
-    parser.feed_data.return_value = (False, b"")
-    proto.set_parser(parser, mock.Mock())
-
-    assert not proto._tail_paused
-
-
-async def test_tail_stays_paused_when_drain_refills_it() -> None:
-    """A drain that refills the tail past the limit leaves reading paused."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-    proto.data_received(b"x" * 2048)
-    transport.pause_reading.assert_called_once_with()
-
-    # Still upgraded with no parser, so the drain feeds the tail back to itself.
-    proto._drain_tail()
-
-    assert proto._tail == b"x" * 2048
-    assert proto._tail_paused
-    transport.resume_reading.assert_not_called()
-
-
-async def test_tail_resume_leaves_transport_paused_for_the_queue() -> None:
-    """Draining the tail must not resume a transport the queue also paused."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-    proto.data_received(b"x" * 2048)
-    # What WebSocketDataQueue.feed_data() does when it hits its high-water mark.
-    proto.pause_reading()
-
-    parser = mock.Mock()
-    parser.feed_data.return_value = (False, b"")
-    proto.set_parser(parser, mock.Mock())
-
-    assert not proto._tail_paused
-    assert proto._reading_paused
-    transport.resume_reading.assert_not_called()
 
 
 async def test_websocket_parser_error_replays_tail() -> None:
@@ -621,40 +506,3 @@ async def test_parser_error_while_draining_tail_discards_data() -> None:
     proto.data_received(b"y" * 65536)
     assert proto._tail == b""
     transport.close.assert_not_called()
-
-
-async def test_empty_read_does_not_pause_on_empty_tail() -> None:
-    """A read_bufsize of 0 must not pause the transport with nothing buffered."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=0)
-
-    proto.data_received(b"")
-
-    assert not proto._tail_paused
-    transport.pause_reading.assert_not_called()
-
-
-async def test_parser_error_after_tail_pause_resumes_reading() -> None:
-    """A parser failure must lift a tail pause taken before it.
-
-    A peer can push past ``read_bufsize`` before ``set_parser()`` installs the
-    reader and then send a bad frame. Staying paused would leave the transport
-    never reading, so the discard branch could not run and the peer's FIN would
-    never arrive: an fd leak in place of the memory one.
-    """
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-    proto.data_received(b"x" * 2048)
-    transport.pause_reading.assert_called_once_with()
-
-    parser = mock.Mock()
-    parser.feed_data.return_value = (True, b"")
-    proto.set_parser(parser, mock.Mock())
-
-    assert proto._payload_parser_failed
-    assert not proto._tail_paused
-    transport.resume_reading.assert_called_once_with()
-
-    # Reading is back on, and what arrives now is dropped rather than buffered.
-    proto.data_received(b"z" * 65536)
-    assert proto._tail == b""
