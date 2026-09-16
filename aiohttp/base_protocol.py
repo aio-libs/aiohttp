@@ -103,19 +103,9 @@ class BaseProtocol(asyncio.Protocol):
             self.data_received(b"")
 
         # Reading may have been paused again in the above call if there was a lot of
-        # compressed data still pending.
-        if (
-            not self._reading_paused
-            and not self._reading_paused_for_buffer()
-            and self.transport is not None
-        ):
-            try:
-                self.transport.resume_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to resume. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
-            self._reading_paused = False
+        # compressed data still pending; _resume_transport_reading() rechecks it.
+        if not self._reading_paused_for_buffer():
+            self._resume_transport_reading()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:
         tr = cast(asyncio.Transport, transport)
