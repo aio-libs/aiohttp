@@ -365,8 +365,13 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # i.e. websocket connection, websocket parser is not set yet
             self._tail += data
             # Nothing drains _tail until a parser is installed, so stop reading
-            # rather than letting the peer grow it without bound.
-            if not self._tail_paused and len(self._tail) >= self._read_bufsize:
+            # rather than letting the peer grow it without bound. Tested
+            # non-empty first so a read_bufsize of 0 cannot pause on nothing.
+            if (
+                self._tail
+                and not self._tail_paused
+                and len(self._tail) >= self._read_bufsize
+            ):
                 self._pause_tail_reading()
             return
 

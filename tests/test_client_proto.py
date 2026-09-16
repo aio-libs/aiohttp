@@ -612,3 +612,14 @@ async def test_parser_error_while_draining_tail_stays_paused() -> None:
     assert proto.should_close
     transport.pause_reading.assert_called_once_with()
     transport.resume_reading.assert_not_called()
+
+
+async def test_empty_read_does_not_pause_on_empty_tail() -> None:
+    """A read_bufsize of 0 must not pause the transport with nothing buffered."""
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=0)
+
+    proto.data_received(b"")
+
+    assert not proto._tail_paused
+    transport.pause_reading.assert_not_called()
