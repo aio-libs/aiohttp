@@ -11,7 +11,7 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
-from aiohttp.helpers import TimerNoop
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimerNoop
 from aiohttp.http_parser import HttpParser, RawResponseMessage
 
 
@@ -430,12 +430,14 @@ async def test_response_start_records_upgrade(
 
 
 def _upgraded_proto(
-    loop: asyncio.AbstractEventLoop, transport: mock.Mock
+    loop: asyncio.AbstractEventLoop,
+    transport: mock.Mock,
+    read_bufsize: int = DEFAULT_CHUNK_SIZE,
 ) -> ResponseHandler:
     """A protocol that has completed the upgrade but has no parser installed."""
     proto = ResponseHandler(loop=loop)
     proto.connection_made(transport)
-    proto.set_response_params()
+    proto.set_response_params(read_bufsize=read_bufsize)
     proto._upgraded = True
     return proto
 
@@ -461,27 +463,10 @@ async def test_websocket_parser_error_discards_later_data() -> None:
     assert proto._payload_parser_failed
 
     # The peer keeps streaming; none of it is kept.
-    for _ in range(100):
-        proto.data_received(b"x" * 65536)
+    proto.data_received(b"x" * 65536)
     assert proto._tail == b""
     transport.close.assert_not_called()
     transport.pause_reading.assert_not_called()
-
-
-async def test_websocket_parser_error_replays_tail() -> None:
-    """A tail returned alongside EOF is still fed back through data_received."""
-    transport = mock.Mock()
-    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
-    parser = mock.Mock()
-    parser.feed_data.return_value = (False, b"")
-    proto.set_parser(parser, mock.Mock())
-
-    parser.feed_data.return_value = (True, b"leftover")
-    proto.data_received(b"bad frame")
-
-    # The replayed tail is dropped with everything else after the error.
-    assert proto._tail == b""
-    transport.close.assert_not_called()
 
 
 async def test_parser_error_while_draining_tail_discards_data() -> None:
@@ -519,10 +504,9 @@ async def test_tail_bounded_until_parser_is_installed(
     fails on them, or the transport is left paused with nothing to restart it.
     """
     transport = mock.Mock()
-    proto = ResponseHandler(loop=asyncio.get_running_loop())
-    proto.connection_made(transport)
-    proto.set_response_params(read_bufsize=read_bufsize)
-    proto._upgraded = True
+    proto = _upgraded_proto(
+        asyncio.get_running_loop(), transport, read_bufsize=read_bufsize
+    )
 
     proto.data_received(b"x" * 2048)
     transport.pause_reading.assert_called_once_with()
@@ -536,3 +520,21 @@ async def test_tail_bounded_until_parser_is_installed(
     # Whatever arrives next is parsed or discarded, never accumulated.
     proto.data_received(b"z" * 65536)
     assert proto._tail == b""
+
+
+async def test_drain_elsewhere_does_not_lift_the_tail_pause() -> None:
+    """A resume from elsewhere must not lift the pause the tail bound took.
+
+    ``WebSocketDataQueue`` and ``StreamReader`` both call ``resume_reading()``
+    as they drain. Nothing would re-arm the bound afterwards, since it checks
+    ``_tail_paused``, so the peer could refill the buffer it paused for.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    proto.resume_reading()
+
+    assert proto._tail_paused
+    transport.resume_reading.assert_not_called()

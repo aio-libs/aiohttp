@@ -204,6 +204,13 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused:
             self._reschedule_timeout()
 
+    def _reading_paused_for_buffer(self) -> bool:
+        """Override: a drain elsewhere must not lift the tail pause.
+
+        Nothing would re-arm it; the bound checks _tail_paused, which stays set.
+        """
+        return self._tail_paused
+
     def _drain_tail(self) -> None:
         if self._tail:
             data, self._tail = self._tail, b""
@@ -308,10 +315,15 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             set_exception(self._payload, exc)
 
     def data_received(self, data: bytes) -> None:
+        if self._payload_parser_failed:
+            # Dropped, not closed on, so queued messages stay answerable and
+            # the peer's FIN still arrives. Discarded bytes are not progress,
+            # so they must not hold off sock_read either.
+            return
+
         # If no data, then we are resuming decompression. We haven't received
         # data from the socket, so we can avoid the reschedule overhead.
-        # Discarded bytes are not progress, so they must not hold off sock_read.
-        if data and not self._payload_parser_failed:
+        if data:
             self._reschedule_timeout()
 
         # custom payload parser - currently always WebSocketReader
@@ -323,24 +335,18 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 self._payload = None
                 self._payload_parser = None
                 # EOF is always a protocol error, already on the queue.
-                self._should_close = True
+                # Anything still in flight, tail included, is discarded below.
                 self._payload_parser_failed = True
-
-                if tail:
-                    self.data_received(tail)
             return
 
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet
-            if self._payload_parser_failed:
-                # Dropped, not closed on: queued messages stay answerable.
-                return
             self._tail += data
             # Nothing drains this until set_parser() runs, and an await
             # after the 101 can hold that off; stop reading instead.
             if (
-                self._tail
-                and not self._tail_paused
+                not self._tail_paused
+                and self._tail
                 and len(self._tail) >= self._read_bufsize
             ):
                 self._tail_paused = True
