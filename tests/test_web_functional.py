@@ -2547,6 +2547,30 @@ def _multipart_file_parts(count: int, body: bytes = b"") -> bytes:
     )
 
 
+async def test_multipart_reader_max_client_size_many_empty_parts(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        reader = await request.multipart()
+        async for part in reader:
+            assert isinstance(part, aiohttp.BodyPartReader)
+            await part.read()
+        assert False
+
+    app = web.Application(client_max_size=1024)
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    # Many empty parts whose boundary and header overhead alone exceeds the
+    # limit, consumed through the low-level ``multipart()`` reader.
+    body = _multipart_file_parts(1000)
+    assert len(body) > 1024
+    async with client.post(
+        "/", data=body, headers={CONTENT_TYPE: "multipart/form-data; boundary=b"}
+    ) as resp:
+        assert resp.status == 413
+
+
 async def test_post_max_client_size_counts_multipart_headers(
     aiohttp_client: AiohttpClient,
 ) -> None:
@@ -2714,7 +2738,7 @@ async def test_response_with_bodypart(aiohttp_client: AiohttpClient) -> None:
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=2)
+    app = web.Application(client_max_size=0)  # unlimited: stream part to response
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
@@ -2740,7 +2764,7 @@ async def test_response_with_bodypart_named(
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=2)
+    app = web.Application(client_max_size=0)  # unlimited: stream part to response
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
@@ -2768,7 +2792,7 @@ async def test_response_with_bodypart_invalid_name(
         part = await reader.next()
         return web.Response(body=part)
 
-    app = web.Application(client_max_size=2)
+    app = web.Application(client_max_size=0)  # unlimited: stream part to response
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 

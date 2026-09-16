@@ -82,6 +82,7 @@ def writer() -> aiohttp.MultipartWriter:
 class Stream(StreamReader):
     def __init__(self, content: bytes) -> None:
         self.content = io.BytesIO(content)
+        self.total_bytes = 0
 
     async def read(self, size: int | None = None) -> bytes:
         return self.content.read(size)
@@ -813,6 +814,55 @@ class TestPartReader:
 
 
 class TestMultipartReader:
+    async def test_next_raises_when_cumulative_size_exceeds_client_max_size(
+        self,
+    ) -> None:
+        protocol = mock.Mock(_reading_paused=False)
+        stream = StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        stream.feed_data(
+            b"".join(
+                b'--:\r\nContent-Disposition: form-data; name="f%d"\r\n\r\n\r\n' % i
+                for i in range(100)
+            )
+            + b"--:--\r\n"
+        )
+        stream.feed_eof()
+        reader = aiohttp.MultipartReader(
+            {CONTENT_TYPE: 'multipart/form-data; boundary=":"'},
+            stream,
+            client_max_size=256,
+            max_size_error_cls=HTTPRequestEntityTooLarge,
+        )
+        with pytest.raises(HTTPRequestEntityTooLarge):
+            async for part in reader:
+                assert isinstance(part, aiohttp.BodyPartReader)
+                await part.read()
+
+    async def test_next_within_client_max_size_reads_all_parts(self) -> None:
+        protocol = mock.Mock(_reading_paused=False)
+        stream = StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        stream.feed_data(
+            b'--:\r\nContent-Disposition: form-data; name="a"\r\n\r\nx\r\n'
+            b'--:\r\nContent-Disposition: form-data; name="b"\r\n\r\ny\r\n'
+            b"--:--\r\n"
+        )
+        stream.feed_eof()
+        reader = aiohttp.MultipartReader(
+            {CONTENT_TYPE: 'multipart/form-data; boundary=":"'},
+            stream,
+            client_max_size=4096,
+            max_size_error_cls=HTTPRequestEntityTooLarge,
+        )
+        values = []
+        async for part in reader:
+            assert isinstance(part, aiohttp.BodyPartReader)
+            values.append(await part.read())
+        assert values == [b"x", b"y"]
+
     def test_from_response(self) -> None:
         h = HeadersDictProxy(
             CIMultiDict({CONTENT_TYPE: 'multipart/related;boundary=":"'})
@@ -919,6 +969,7 @@ class TestMultipartReader:
     async def test_read_boundary_across_chunks(self) -> None:
         class SplitBoundaryStream(StreamReader):
             def __init__(self) -> None:
+                self.total_bytes = 0
                 self.content = [
                     b"--foobar\r\n\r\n",
                     b"Hello,\r\n-",

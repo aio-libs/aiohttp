@@ -161,11 +161,18 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: client_max_size
 
-      The maximum size of the request body.
+      The maximum size of the request body.  This bounds the cumulative
+      bytes consumed both by :meth:`~BaseRequest.post` and by the
+      low-level :meth:`~BaseRequest.multipart` reader.
 
       The value could be overridden by :meth:`~BaseRequest.clone`.
 
       Read-only :class:`int` property.
+
+      .. versionchanged:: 3.14.4
+
+         Now also bounds the bytes consumed through
+         :meth:`~BaseRequest.multipart`.
 
    .. attribute:: client_max_fields
 
@@ -494,11 +501,22 @@ and :ref:`aiohttp-web-signals` handlers.
          you exhausts multipart reader, you cannot get the request payload one
          more time.
 
+      The returned reader enforces :attr:`client_max_size` against the
+      cumulative size of all parts and raises
+      :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once the limit is
+      exceeded.  Set ``client_max_size=0`` on the :class:`Application` to
+      stream arbitrarily large bodies without a limit.
+
       .. seealso:: :ref:`aiohttp-multipart`
 
       .. versionchanged:: 3.4
 
          Dropped *reader* parameter.
+
+      .. versionchanged:: 3.14.4
+
+         The reader now enforces :attr:`client_max_size` cumulatively
+         across parts.
 
    .. method:: post()
       :async:

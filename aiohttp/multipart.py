@@ -788,6 +788,8 @@ class MultipartReader:
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return None
+        if 0 < self._client_max_size < self._content.total_bytes:
+            raise self._max_size_error_cls(self._client_max_size)
         await self._maybe_release_last_part()
         if self._at_bof:
             await self._read_until_first_boundary()
