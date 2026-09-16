@@ -673,7 +673,7 @@ boundary at which user-supplied strings can become wire bytes.
 | # | Threat | Existing | Recommended |
 | :--- | :--- | :--- | :--- |
 | 4.1 | Boundary parameter | 70-char cap; missing-boundary raises; HTTP header layer ([§5.1](#51-http1-parser)) catches CR/LF/NUL. | None. |
-| 4.2 | Many small parts | `client_max_size` caps total bytes. `client_max_fields` (default `1000`, `0` disables) caps the number of form fields since PR #13738: urlencoded bodies are rejected by `yarl.query_to_pairs` before any pair is materialised, and since PR #13742 `Request.multipart()` passes it to `MultipartReader` as `max_parts`, so the reader raises before parsing the headers of the part past the limit, whether consumed via `Request.post()` or directly. Nested readers get the same cap with their own count (`Request.post()` rejects nested multipart outright, threat 4.3). Both paths raise `HTTPRequestEntityTooLarge`. | Direct `MultipartReader(...)` construction (e.g. `from_response` on the client) defaults to `max_parts=0`; callers that want a cap pass it explicitly. **User**: operators sensitive to live-object count should reduce `client_max_fields` and `client_max_size`. |
+| 4.2 | Many small parts | `client_max_size` caps total bytes. `client_max_fields` (default `1000`, `0` disables) caps the number of form fields since PR #13738: urlencoded bodies are rejected by `yarl.query_to_pairs` before any pair is materialised, and since PR #13742 `Request.multipart()` passes it to `MultipartReader` as `max_parts`, so the reader raises before parsing the headers of the part past the limit, whether consumed via `Request.post()` or directly (a leading RFC 7578 `_charset_` part is consumed without being counted, so at most one extra header block is parsed). `MultipartReader.release()` drains the remaining parts without the cap since nothing is kept. Nested readers get the same cap with their own count (`Request.post()` rejects nested multipart outright, threat 4.3). Both paths raise `HTTPRequestEntityTooLarge`. | Direct `MultipartReader(...)` construction (e.g. `from_response` on the client) defaults to `max_parts=0`; callers that want a cap pass it explicitly. **User**: operators sensitive to live-object count should reduce `client_max_fields` and `client_max_size`. |
 | 4.3 | Nested-multipart recursion | `Request.post()` rejects any nested multipart with `ValueError` ("To decode nested multipart you need to use custom reader") (`web_request.py:BaseRequest.post`). | **Direct `MultipartReader` users get unlimited recursion. Add a `max_nesting_depth` parameter (default e.g. 10) to fail cleanly before `RecursionError`.** |
 | 4.4 | Per-part headers bounded | `max_field_size` / `max_headers` plumbed since 5fe9dfb64 (Mar 2026). | None. |
 | 4.5 | Per-part body bounded | Per-iteration size check since 9cc4b917c (Mar 2026). | None. |
@@ -727,5 +727,11 @@ boundary at which user-supplied strings can become wire bytes.
 - **PR #13738** (3.14.4) — `Request.post()` caps the number of form fields
   at `client_max_fields` (default `1000`) for both multipart and
   urlencoded bodies (threat 4.2).
+- **PR #13742** (3.14.4) — `Request.multipart()` passes `client_max_fields`
+  to `MultipartReader` as `max_parts`, so the low-level reader raises
+  before parsing the headers of the part past the limit; nested readers
+  get the same cap with their own count, a leading `_charset_` part is
+  consumed without being counted, and `release()` drains without the cap
+  (threat 4.2).
 
 These are all currently in place; this section assumes no regression.

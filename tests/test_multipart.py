@@ -856,8 +856,9 @@ class TestMultipartReader:
             first = await reader.next()
             assert isinstance(first, aiohttp.BodyPartReader)
             await first.release()
-            with pytest.raises(HTTPRequestEntityTooLarge):
-                await reader.next()
+            for _ in range(2):
+                with pytest.raises(HTTPRequestEntityTooLarge):
+                    await reader.next()
             await reader.release()
             assert reader.at_eof()
             assert await reader.next() is None

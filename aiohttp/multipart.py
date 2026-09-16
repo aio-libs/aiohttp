@@ -794,6 +794,11 @@ class MultipartReader:
         self,
     ) -> Union["MultipartReader", BodyPartReader] | None:
         """Emits the next multipart body part."""
+        return await self._next(capped=True)
+
+    async def _next(
+        self, *, capped: bool
+    ) -> Union["MultipartReader", BodyPartReader] | None:
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return None
@@ -807,7 +812,7 @@ class MultipartReader:
             # https://github.com/python/mypy/issues/17537
             return None  # type: ignore[unreachable]
 
-        if (max_parts := self._max_parts) > 0:
+        if capped and (max_parts := self._max_parts) > 0:
             if self._parts_read >= max_parts:
                 # Hand the boundary back so release() can still drain.
                 self._unread.append(self._boundary + b"\r\n")
@@ -834,9 +839,8 @@ class MultipartReader:
 
     async def release(self) -> None:
         """Reads all the body parts to the void till the final boundary."""
-        self._max_parts = 0  # draining is never capped
         while not self._at_eof:
-            item = await self.next()
+            item = await self._next(capped=False)
             if item is None:
                 break
             await item.release()
