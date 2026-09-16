@@ -557,7 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
-| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows; the server closes the connection instead (`web_protocol.py:data_received`). | Discarding, not pausing or closing: a paused transport is never told the peer hung up, and a closed one cannot answer messages queued before the error. Buffering *before* `set_parser()` is a separate, pre-existing hole and is still unbounded: the default path only admits a read or two, but an `await` after the 101 reopens it, and `TraceConfig.on_request_end` or an async `raise_for_status` can put one there (measured 32 MiB buffered with a tracing handler that suspends). **User**: a peer can keep the client reading and dropping bytes, so set `heartbeat` on long-lived sessions. |
+| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows; the server closes the connection instead (`web_protocol.py:data_received`). Bytes buffered *before* `set_parser()` installs the reader cannot be discarded, since the reader is entitled to them, so the transport is paused once that buffer reaches `read_bufsize` (default 256 KiB) and resumed where `set_parser()` / `set_response_params()` drain it. | Discarding after the error, not pausing or closing: a paused transport is never told the peer hung up, and a closed one cannot answer messages queued before the error. The pre-parser window needs the opposite treatment because it carries real frames; it is wider than it looks, since an `await` after the 101 holds it open and `TraceConfig.on_request_end` is public API (32 MiB buffered with a suspending handler before the bound, 512 KiB after). **User**: a peer can keep the client reading and dropping bytes, so set `heartbeat` on long-lived sessions. |
 
 **Past advisories / hardening (recap).**
 
@@ -607,6 +607,11 @@ client-side, the writer adds masks to outgoing frames.
   rejected: pausing hides the peer's FIN, so sockets accumulate instead of
   memory; closing makes the transport unwritable, so a message queued before
   the error cannot be answered, which broke the Autobahn client runner.
+  The buffer that fills before `set_parser()` is bounded by backpressure
+  rather than discarded, since those are real frames the reader will want. It
+  looked self-limiting at first (`_ws_connect` does not await), but the window
+  opens earlier, inside `resp.start()`, and `_request` awaits after the 101:
+  a `TraceConfig.on_request_end` doing I/O held it open for 32 MiB.
 
 ---
 

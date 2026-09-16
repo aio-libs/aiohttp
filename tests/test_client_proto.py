@@ -504,3 +504,35 @@ async def test_parser_error_while_draining_tail_discards_data() -> None:
     proto.data_received(b"y" * 65536)
     assert proto._tail == b""
     transport.close.assert_not_called()
+
+
+@pytest.mark.parametrize("read_bufsize", [1024, 0])
+@pytest.mark.parametrize("parser_eof", [False, True])
+async def test_tail_bounded_until_parser_is_installed(
+    read_bufsize: int, parser_eof: bool
+) -> None:
+    """Data buffered before ``set_parser()`` pauses reading, and always resumes.
+
+    An await after the 101, such as a tracing callback doing I/O, holds off
+    ``set_parser()`` while the peer keeps sending, so this buffer needs a bound.
+    The resume must happen whether the parser then accepts the drained bytes or
+    fails on them, or the transport is left paused with nothing to restart it.
+    """
+    transport = mock.Mock()
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(transport)
+    proto.set_response_params(read_bufsize=read_bufsize)
+    proto._upgraded = True
+
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (parser_eof, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert not proto._tail_paused
+    transport.resume_reading.assert_called_once_with()
+    # Whatever arrives next is parsed or discarded, never accumulated.
+    proto.data_received(b"z" * 65536)
+    assert proto._tail == b""

@@ -46,6 +46,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._timer = None
         self._tail = b""
         self._payload_parser_failed = False
+        self._tail_paused = False
+        self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
@@ -202,6 +204,16 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused:
             self._reschedule_timeout()
 
+    def _drain_tail(self) -> None:
+        if self._tail:
+            data, self._tail = self._tail, b""
+            self.data_received(data)
+        if self._tail_paused:
+            # Safe unconditionally: either a parser is now installed to drain
+            # what follows, or it failed and what follows is discarded.
+            self._tail_paused = False
+            self._resume_transport_reading()
+
     def set_exception(
         self,
         exc: type[BaseException] | BaseException,
@@ -223,9 +235,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._drop_timeout()
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def set_response_params(
         self,
@@ -243,6 +253,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     ) -> None:
         self._skip_payload = skip_payload
 
+        self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
@@ -261,9 +272,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             max_headers=max_headers,
         )
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def _drop_timeout(self) -> None:
         if self._read_timeout_handle is not None:
@@ -330,6 +339,16 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 # be answered and the peer's FIN still arrives.
                 return
             self._tail += data
+            # Nothing drains _tail until set_parser() installs the reader, and
+            # an await after the 101 (a tracing callback, say) can hold that
+            # off indefinitely, so stop reading rather than grow without bound.
+            if (
+                self._tail
+                and not self._tail_paused
+                and len(self._tail) >= self._read_bufsize
+            ):
+                self._tail_paused = True
+                self._pause_transport_reading()
             return
 
         # parse http messages

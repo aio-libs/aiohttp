@@ -8,6 +8,7 @@ import socket
 import struct
 import sys
 import zlib
+from types import SimpleNamespace
 from typing import Literal, NoReturn
 from unittest import mock
 
@@ -25,7 +26,9 @@ from aiohttp import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_ws import ClientWSTimeout
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
@@ -1917,5 +1920,87 @@ async def test_data_discarded_after_protocol_error(
             writer.close()
             with contextlib.suppress(Exception):
                 await writer.wait_closed()
+        server.close()
+        await server.wait_closed()
+
+
+async def test_tail_bounded_while_a_trace_callback_suspends(
+    unused_port_socket: socket.socket,
+) -> None:
+    """A tracing callback must not let the peer fill the pre-parser buffer.
+
+    ``_tail`` starts filling when the 101 is parsed, inside ``resp.start()``,
+    and nothing drains it until ``set_parser()`` runs. ``on_request_end`` is
+    public API and runs in between, so a handler doing any real I/O holds that
+    window open for as long as it takes.
+    """
+    paused = asyncio.Event()
+    writers: list[asyncio.StreamWriter] = []
+    pause_reading = ResponseHandler._pause_transport_reading
+
+    def spy(self: ResponseHandler) -> None:
+        pause_reading(self)
+        paused.set()
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writers.append(writer)
+        request = await reader.readuntil(b"\r\n\r\n")
+        key = next(
+            line.split(b":", 1)[1].strip()
+            for line in request.split(b"\r\n")
+            if line.lower().startswith(b"sec-websocket-key")
+        )
+        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+        writer.write(
+            b"HTTP/1.1 101 Switching Protocols\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+            # Valid frames, which only the reader may consume, well past
+            # the bound being asserted.
+            + (b"\x81\x7e\xff\xff" + b"y" * 65535) * 32
+        )
+        with contextlib.suppress(Exception):
+            await writer.drain()
+
+    trace = aiohttp.TraceConfig()
+
+    async def on_request_end(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestEndParams,
+    ) -> None:
+        # Stand in for a handler shipping a metric over the network. Holding
+        # the window open until the bound fires is what makes this a test: an
+        # unbounded buffer never pauses, so this waits out its timeout.
+        async with async_timeout.timeout(10):
+            await paused.wait()
+
+    trace.on_request_end.append(on_request_end)
+
+    server = await asyncio.start_server(raw_server, sock=unused_port_socket)
+    port = unused_port_socket.getsockname()[1]
+    try:
+        with mock.patch.object(ResponseHandler, "_pause_transport_reading", spy):
+            async with aiohttp.ClientSession(trace_configs=[trace]) as session:
+                async with session.ws_connect(
+                    f"http://127.0.0.1:{port}/",
+                    max_msg_size=0,
+                    # This peer never answers a close frame; do not wait for it.
+                    timeout=ClientWSTimeout(ws_close=0.1),
+                ) as ws:
+                    connection = ws._conn
+                    assert connection is not None
+                    protocol = connection.protocol
+                    assert protocol is not None
+                    # One read may already be in flight when the pause lands.
+                    assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
+    finally:
+        for writer in writers:
+            # Abort rather than close: the paused peer never drains what is
+            # still queued, so a graceful close would wait for the timeout.
+            writer.transport.abort()
         server.close()
         await server.wait_closed()

@@ -1,7 +1,8 @@
-Fixed unbounded memory growth on a client WebSocket connection after a frame
-protocol error. The reader is detached by the error but the connection stays
-upgraded, so a peer could stream unlimited data into an internal buffer when
-the application never called
-:meth:`~aiohttp.ClientWebSocketResponse.receive`. Data arriving after the
-error is now discarded, since nothing can parse it
+Fixed unbounded memory growth on a client WebSocket connection. After a frame
+protocol error the reader is detached but the connection stays upgraded, so a
+peer could stream unlimited data into an internal buffer when the application
+never called :meth:`~aiohttp.ClientWebSocketResponse.receive`; data arriving
+after the error is now discarded, since nothing can parse it. Data arriving
+before the reader is installed is now bounded by pausing the transport, which
+matters when a :class:`~aiohttp.TraceConfig` callback delays the handshake
 -- by :user:`bdraco`.
