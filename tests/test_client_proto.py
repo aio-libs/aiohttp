@@ -8,6 +8,7 @@ from yarl import URL
 
 from aiohttp import http
 from aiohttp.abc import AbstractStreamWriter
+from aiohttp.base_protocol import PAUSE_RESUME_READING_ERRORS
 from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
@@ -446,7 +447,6 @@ async def test_tail_pauses_reading_at_read_bufsize() -> None:
     proto = _upgraded_proto(asyncio.get_running_loop(), transport)
 
     proto.data_received(b"x" * 1023)
-    assert not proto._tail_paused
     transport.pause_reading.assert_not_called()
 
     proto.data_received(b"x")
@@ -467,7 +467,7 @@ async def test_set_parser_drains_tail_and_resumes_reading(read_bufsize: int) -> 
         asyncio.get_running_loop(), transport, read_bufsize=read_bufsize
     )
     proto.data_received(b"x" * 2048)
-    assert proto._tail_paused
+    transport.pause_reading.assert_called_once_with()
 
     parser = mock.Mock()
     parser.feed_data.return_value = (False, b"")
@@ -507,10 +507,87 @@ async def test_queue_drain_does_not_resume_paused_tail() -> None:
     transport = mock.Mock()
     proto = _upgraded_proto(asyncio.get_running_loop(), transport)
     proto.data_received(b"x" * 2048)
-    assert proto._tail_paused
+    transport.pause_reading.assert_called_once_with()
 
     # This is what WebSocketDataQueue._read_from_buffer() does as it drains.
     proto.resume_reading()
 
     assert proto._tail_paused
     transport.resume_reading.assert_not_called()
+
+
+async def test_pause_tail_reading_without_transport() -> None:
+    """Pausing after the transport is gone is a no-op, not a crash."""
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto._upgraded = True
+
+    proto._pause_tail_reading()
+
+    assert proto._tail_paused
+
+
+@pytest.mark.parametrize("exc_type", PAUSE_RESUME_READING_ERRORS)
+async def test_tail_pause_resume_on_transport_without_flow_control(
+    exc_type: type[BaseException],
+) -> None:
+    """A transport that cannot pause or resume is tolerated."""
+    transport = mock.Mock()
+    transport.pause_reading.side_effect = exc_type()
+    transport.resume_reading.side_effect = exc_type()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+
+    proto.data_received(b"x" * 2048)
+    assert proto._tail_paused
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert not proto._tail_paused
+
+
+async def test_tail_stays_paused_when_drain_refills_it() -> None:
+    """A drain that refills the tail past the limit leaves reading paused."""
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    # Still upgraded with no parser, so the drain feeds the tail back to itself.
+    proto._drain_tail()
+
+    assert proto._tail == b"x" * 2048
+    assert proto._tail_paused
+    transport.resume_reading.assert_not_called()
+
+
+async def test_tail_resume_leaves_transport_paused_for_the_queue() -> None:
+    """Draining the tail must not resume a transport the queue also paused."""
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    proto.data_received(b"x" * 2048)
+    # What WebSocketDataQueue.feed_data() does when it hits its high-water mark.
+    proto.pause_reading()
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert not proto._tail_paused
+    assert proto._reading_paused
+    transport.resume_reading.assert_not_called()
+
+
+async def test_websocket_parser_error_replays_tail() -> None:
+    """A tail returned alongside EOF is still fed back through data_received."""
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    parser.feed_data.return_value = (True, b"leftover")
+    proto.data_received(b"bad frame")
+
+    assert proto._tail == b"leftover"
+    assert proto._tail_paused
