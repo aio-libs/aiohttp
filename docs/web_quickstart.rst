@@ -483,7 +483,7 @@ form's data encoding (e.g. ``<form enctype="multipart/form-data">``).
 It stores files data in temporary directory. If the body exceeds
 `client_max_size` or the form has more than `client_max_fields` fields
 (1000 by default, `0` disables the cap), `post` raises
-`HTTPRequestEntityTooLarge` exception.
+``HTTPRequestEntityTooLarge`` exception.
 For efficiency use :meth:`aiohttp.web.BaseRequest.multipart`, It is especially effective
 for uploading large files (:ref:`aiohttp-web-file-upload`).
 
