@@ -1878,8 +1878,10 @@ async def test_tail_bounded_after_protocol_error(
         )
         await writer.drain()
         blob = b"A" * 65536
+        # 32 MiB, but backpressure from the paused client stops the drain long
+        # before the count runs out; the loop completing would be the bug.
         with contextlib.suppress(Exception):
-            for _ in range(512):  # 32 MiB
+            for _ in range(512):  # pragma: no branch
                 writer.write(blob)
                 pushed += len(blob)
                 await writer.drain()
