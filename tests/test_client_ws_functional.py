@@ -787,8 +787,7 @@ async def test_recv_protocol_error(aiohttp_client: AiohttpClient) -> None:
     assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
     assert str(msg.data) == "Received frame with non-zero reserved bits"
     assert msg.extra is None
-    # The transport is still writable when the error surfaces, so the close
-    # handshake reports the protocol code rather than an abnormal closure.
+    # Still writable when the error surfaces, so this is 1002, not 1006.
     assert resp.close_code == aiohttp.WSCloseCode.PROTOCOL_ERROR
     assert resp.exception() is None
     await resp.close()
@@ -1874,15 +1873,13 @@ async def test_data_discarded_after_protocol_error(
             b"Upgrade: websocket\r\n"
             b"Connection: Upgrade\r\n"
             b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
-            # A valid frame the application can still be answered with,
-            # then a protocol error in the same read.
+            # A valid frame, then a protocol error in the same read.
             + b"\x81\x04ping"
             # RSV1 set without permessage-deflate: a protocol error.
             + b"\x41\x01x"
         )
         await writer.drain()
-        # One oversized write rather than a stream of small ones. 2 MiB is
-        # far past the bound being asserted, so buffering it would be obvious.
+        # 2 MiB in one write; buffering any of it would be obvious.
         writer.write(b"A" * (2 * 1024 * 1024))
         with contextlib.suppress(Exception):
             await writer.drain()
@@ -1893,18 +1890,14 @@ async def test_data_discarded_after_protocol_error(
     try:
         async with aiohttp.ClientSession() as session:
             # No receive() call: the long-lived idle client of the report.
-            # The bad frame rides along with the handshake, so ws_connect()
-            # has already fed it to the reader before returning.
             ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
             connection = ws._conn
             assert connection is not None
             protocol = connection.protocol
             assert protocol is not None
 
-            # Wait for the whole flood to be written rather than sleeping.
-            # The drain only completes because the client keeps reading and
-            # dropping it, so this both proves the data arrived and removes
-            # any assumption about which read the bad frame landed in.
+            # The drain only completes because the client keeps reading
+            # and dropping, so this proves the flood arrived.
             async with async_timeout.timeout(10):
                 await flooded.wait()
 
@@ -1912,11 +1905,9 @@ async def test_data_discarded_after_protocol_error(
             # Nothing the peer sent after the error was kept.
             assert protocol._tail == b""
             assert protocol.should_close
-            # The transport stays open and reading, so queued messages can
-            # still be answered and the peer's FIN is still delivered.
+            # Still open and reading, so the peer's FIN still arrives.
             assert protocol.transport is not None
-            # The frame that arrived before the error is still deliverable,
-            # and answering it must not raise on a closed transport.
+            # Answering a frame queued before the error must not raise.
             msg = await ws.receive()
             assert msg.type is WSMsgType.TEXT and msg.data == "ping"
             await ws.send_str(msg.data)
