@@ -813,52 +813,35 @@ class TestPartReader:
 
 
 class TestMultipartReader:
-    async def test_next_raises_when_max_parts_exceeded(self) -> None:
-        with Stream(
-            b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:\r\n\r\nthree\r\n--:--"
-        ) as stream:
+    @pytest.mark.parametrize(
+        ("count", "max_parts", "expected"),
+        [
+            (3, 2, [b"part0", b"part1"]),
+            (2, 2, [b"part0", b"part1"]),
+            (3, 0, [b"part0", b"part1", b"part2"]),
+        ],
+    )
+    async def test_next_max_parts(
+        self, count: int, max_parts: int, expected: list[bytes]
+    ) -> None:
+        body = b"".join(b"--:\r\n\r\npart%d\r\n" % i for i in range(count)) + b"--:--"
+        with Stream(body) as stream:
             reader = aiohttp.MultipartReader(
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
                 stream,
-                max_parts=2,
+                max_parts=max_parts,
             )
             values = []
-            with pytest.raises(ValueError, match="Maximum number of parts 2 exceeded"):
+            try:
                 async for part in reader:
                     assert isinstance(part, aiohttp.BodyPartReader)
                     values.append(await part.read())
-        assert values == [b"one", b"two"]
-
-    async def test_next_max_parts_allows_exact_count(self) -> None:
-        with Stream(b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:--") as stream:
-            reader = aiohttp.MultipartReader(
-                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
-                stream,
-                max_parts=2,
-            )
-            values = []
-            async for part in reader:
-                assert isinstance(part, aiohttp.BodyPartReader)
-                values.append(await part.read())
-        assert values == [b"one", b"two"]
-        assert reader.at_eof()
-
-    async def test_next_max_parts_custom_error(self) -> None:
-        class TooManyParts(Exception):
-            pass
-
-        with Stream(b"--:\r\n\r\none\r\n--:\r\n\r\ntwo\r\n--:--") as stream:
-            reader = aiohttp.MultipartReader(
-                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
-                stream,
-                max_parts=1,
-                max_parts_error=lambda n: TooManyParts(n),
-            )
-            first = await reader.next()
-            assert isinstance(first, aiohttp.BodyPartReader)
-            await first.release()
-            with pytest.raises(TooManyParts):
-                await reader.next()
+            except ValueError as exc:
+                assert str(exc) == f"Maximum number of parts {max_parts} exceeded."
+                assert len(expected) < count
+            else:
+                assert reader.at_eof()
+        assert values == expected
 
     async def test_release_drains_past_max_parts(self) -> None:
         with Stream(
@@ -868,11 +851,12 @@ class TestMultipartReader:
                 {CONTENT_TYPE: 'multipart/related;boundary=":"'},
                 stream,
                 max_parts=1,
+                max_parts_error_cls=HTTPRequestEntityTooLarge,
             )
             first = await reader.next()
             assert isinstance(first, aiohttp.BodyPartReader)
             await first.release()
-            with pytest.raises(ValueError, match="Maximum number of parts 1 exceeded"):
+            with pytest.raises(HTTPRequestEntityTooLarge):
                 await reader.next()
             await reader.release()
             assert reader.at_eof()

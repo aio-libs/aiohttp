@@ -736,7 +736,7 @@ class MultipartReader:
         max_headers: int = 128,
         max_size_error_cls: type[Exception] = ValueError,
         max_parts: int = 0,
-        max_parts_error: Callable[[int], Exception] = _too_many_parts,
+        max_parts_error_cls: Callable[[int], Exception] = _too_many_parts,
     ) -> None:
         self._mimetype = parse_mimetype(headers[CONTENT_TYPE])
         assert self._mimetype.type == "multipart", "multipart/* content type expected"
@@ -755,9 +755,8 @@ class MultipartReader:
         self._max_headers = max_headers
         self._max_size_error_cls = max_size_error_cls
         self._max_parts = max_parts
-        self._max_parts_error = max_parts_error
+        self._max_parts_error_cls = max_parts_error_cls
         self._parts_read = 0
-        self._headers_pending = False
         self._at_eof = False
         self._at_bof = True
         self._unread: list[bytes] = []
@@ -798,24 +797,22 @@ class MultipartReader:
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
             return None
-        # Skip the boundary read when a previous call raised the part
-        # cap after consuming the boundary, so release() can drain.
-        if not self._headers_pending:
-            await self._maybe_release_last_part()
-            if self._at_bof:
-                await self._read_until_first_boundary()
-                self._at_bof = False
-            else:
-                await self._read_boundary()
-            if self._at_eof:  # we just read the last boundary, nothing to do there
-                # https://github.com/python/mypy/issues/17537
-                return None  # type: ignore[unreachable]
-            self._headers_pending = True
+        await self._maybe_release_last_part()
+        if self._at_bof:
+            await self._read_until_first_boundary()
+            self._at_bof = False
+        else:
+            await self._read_boundary()
+        if self._at_eof:  # we just read the last boundary, nothing to do there
+            # https://github.com/python/mypy/issues/17537
+            return None  # type: ignore[unreachable]
 
-        if 0 < self._max_parts <= self._parts_read:
-            raise self._max_parts_error(self._max_parts)
-        self._headers_pending = False
-        self._parts_read += 1
+        if (max_parts := self._max_parts) > 0:
+            if self._parts_read >= max_parts:
+                # Hand the boundary back so release() can still drain.
+                self._unread.append(self._boundary + b"\r\n")
+                raise self._max_parts_error_cls(max_parts)
+            self._parts_read += 1
         part = await self.fetch_next_part()
         # https://datatracker.ietf.org/doc/html/rfc7578#section-4.6
         if (
@@ -836,11 +833,8 @@ class MultipartReader:
         return self._last_part
 
     async def release(self) -> None:
-        """Reads all the body parts to the void till the final boundary.
-
-        The part cap does not apply here, discarded parts are never kept.
-        """
-        self._max_parts = 0
+        """Reads all the body parts to the void till the final boundary."""
+        self._max_parts = 0  # draining is never capped
         while not self._at_eof:
             item = await self.next()
             if item is None:
@@ -868,18 +862,8 @@ class MultipartReader:
         mimetype = parse_mimetype(ctype)
 
         if mimetype.type == "multipart":
-            if self.multipart_reader_cls is None:
-                return type(self)(
-                    headers,
-                    self._content,
-                    client_max_size=self._client_max_size,
-                    max_field_size=self._max_field_size,
-                    max_headers=self._max_headers,
-                    max_size_error_cls=self._max_size_error_cls,
-                    max_parts=self._max_parts,
-                    max_parts_error=self._max_parts_error,
-                )
-            return self.multipart_reader_cls(
+            reader_cls = self.multipart_reader_cls or type(self)
+            return reader_cls(
                 headers,
                 self._content,
                 client_max_size=self._client_max_size,
@@ -887,7 +871,7 @@ class MultipartReader:
                 max_headers=self._max_headers,
                 max_size_error_cls=self._max_size_error_cls,
                 max_parts=self._max_parts,
-                max_parts_error=self._max_parts_error,
+                max_parts_error_cls=self._max_parts_error_cls,
             )
         else:
             return self.part_reader_cls(

@@ -775,7 +775,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             max_headers=self._protocol.max_headers,
             max_size_error_cls=HTTPRequestEntityTooLarge,
             max_parts=self._client_max_fields,
-            max_parts_error=_too_many_fields,
+            max_parts_error_cls=_too_many_fields,
         )
 
     async def post(self) -> "MultiDictProxy[str | bytes | FileField]":
