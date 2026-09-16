@@ -497,7 +497,8 @@ and :ref:`aiohttp-web-signals` handlers.
 
       The returned reader yields at most :attr:`client_max_fields` parts
       and raises :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once more
-      arrive.  Per-part body size is still bounded by
+      arrive; readers for nested multipart parts count separately under
+      the same limit.  Per-part body size is still bounded by
       :attr:`client_max_size` only when a part is buffered with
       :meth:`~aiohttp.BodyPartReader.read`; streaming a part with
       :meth:`~aiohttp.BodyPartReader.read_chunk` is not limited.

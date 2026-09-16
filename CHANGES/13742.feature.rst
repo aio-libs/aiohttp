@@ -1,7 +1,7 @@
 Extended ``client_max_fields`` (default ``1000``, ``0`` disables) to the reader
 returned by :meth:`~aiohttp.web.BaseRequest.multipart`, which now raises
 :exc:`~aiohttp.web.HTTPRequestEntityTooLarge` once more parts than the limit
-arrive; handlers that iterate more parts than that must raise
+arrive; handlers that legitimately iterate more parts must increase
 ``client_max_fields`` on the :class:`~aiohttp.web.Application`.
 :class:`~aiohttp.MultipartReader` also accepts a ``max_parts`` argument
 -- by :user:`bdraco`.
