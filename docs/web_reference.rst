@@ -166,6 +166,17 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
+   .. attribute:: client_max_fields
+
+      The maximum number of form fields accepted by :meth:`~BaseRequest.post`,
+      ``0`` disables the limit.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
+      .. versionadded:: 3.14.4
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -500,6 +511,10 @@ and :ref:`aiohttp-web-signals` handlers.
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
+
+      Raises ``HTTPRequestEntityTooLarge`` if the body exceeds
+      :attr:`client_max_size` or the form has more than
+      :attr:`client_max_fields` fields.
 
       .. note::
 
@@ -1519,7 +1534,7 @@ Application and Router
 
 .. class:: Application(*, logger=<default>, router=None, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       loop=None, debug=...)
+                       client_max_fields=1000, loop=None, debug=...)
 
    Application is a synonym for web-server.
 
@@ -1571,6 +1586,18 @@ Application and Router
                            bytes.  If a POST request exceeds this
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
+
+   :param client_max_fields: maximum number of form fields accepted by
+                             :meth:`BaseRequest.post`, counting both
+                             urlencoded pairs and multipart parts.  For
+                             urlencoded bodies every ``&``-separated
+                             segment counts, including empty ones, so the
+                             check runs before any field is decoded.  If a
+                             POST request exceeds this value, it raises an
+                             `HTTPRequestEntityTooLarge` exception.
+                             ``0`` disables the limit.  Default is ``1000``.
+
+                             .. versionadded:: 3.14.4
 
    :param loop: event loop
 
