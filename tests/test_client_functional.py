@@ -5336,6 +5336,30 @@ async def test_multiple_redirects_with_bytes_payload(
     ]
 
 
+async def test_chunked_post_303_redirect(aiohttp_client: AiohttpClient) -> None:
+    """Test that a chunked POST can follow a 303 redirect to a GET."""
+    data_received = []
+
+    async def redirect_handler(request: web.Request) -> web.Response:
+        data_received.append(("redirect", await request.read()))
+        raise web.HTTPSeeOther("/final_destination")
+
+    async def final_handler(request: web.Request) -> web.Response:
+        data_received.append(("final", await request.read()))
+        return web.Response(text="Done")
+
+    app = web.Application()
+    app.router.add_post("/redirect", redirect_handler)
+    app.router.add_get("/final_destination", final_handler)
+
+    client = await aiohttp_client(app)
+
+    async with client.post("/redirect", data=b"data", chunked=True) as resp:
+        assert resp.status == 200
+        assert await resp.text() == "Done"
+    assert data_received == [("redirect", b"data"), ("final", b"")]
+
+
 async def test_redirect_with_empty_payload(aiohttp_client: AiohttpClient) -> None:
     """Test redirects with empty payloads."""
     data_received = []

@@ -1102,6 +1102,55 @@ async def test_chunked_explicit(
     resp.close()
 
 
+@pytest.mark.parametrize("data", (None, b"data"))
+async def test_chunked_false(
+    buf: bytearray,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+    data: bytes | None,
+) -> None:
+    req = make_client_request(
+        "post",
+        URL("http://python.org/"),
+        data=data,
+        chunked=False,
+        loop=asyncio.get_running_loop(),
+    )
+    conn.protocol.writing_paused = False
+    resp = await req._send(conn)
+    await req._close()
+
+    body = data or b""
+    assert hdrs.TRANSFER_ENCODING not in req.headers
+    assert req.headers[hdrs.CONTENT_LENGTH] == str(len(body))
+    assert buf.split(b"\r\n\r\n", 1)[1] == body
+    resp.close()
+
+
+@pytest.mark.parametrize("chunked", (True, False))
+@pytest.mark.parametrize("method", sorted(ClientRequest.GET_METHODS))
+async def test_chunked_no_body_get_methods(
+    buf: bytearray,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+    method: str,
+    chunked: bool,
+) -> None:
+    req = make_client_request(
+        method,
+        URL("http://python.org/"),
+        chunked=chunked,
+        loop=asyncio.get_running_loop(),
+    )
+    conn.protocol.writing_paused = False
+    resp = await req._send(conn)
+    await req._close()
+
+    assert hdrs.TRANSFER_ENCODING not in req.headers
+    assert buf.split(b"\r\n\r\n", 1)[1] == b""
+    resp.close()
+
+
 async def test_chunked_length(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
