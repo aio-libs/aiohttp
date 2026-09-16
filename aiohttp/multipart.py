@@ -840,7 +840,8 @@ class MultipartReader:
     async def release(self) -> None:
         """Reads all the body parts to the void till the final boundary.
 
-        Draining is not bounded by ``max_parts``.
+        Draining is not bounded by ``max_parts`` and does not go through
+        ``next()``.
         """
         while not self._at_eof:
             item = await self._next(capped=False)

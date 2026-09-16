@@ -205,7 +205,11 @@ Multipart reference
       :async:
 
       Reads all the body parts to the void till the final boundary.
-      The *max_parts* limit is not applied while draining.
+      Draining does not go through :meth:`next`, so the *max_parts*
+      limit and subclass overrides of :meth:`next` are not applied.
+      The reader also drains an unconsumed part this way before
+      yielding the next one, so a nested multipart part the caller
+      skips is drained without the limit.
 
    .. method:: fetch_next_part()
       :async:
