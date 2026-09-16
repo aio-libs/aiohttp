@@ -1,7 +1,16 @@
-Bounded the data buffered on an upgraded client connection while no parser is
-installed to drain it. A WebSocket protocol error leaves the connection
-upgraded with the reader detached, so a peer could stream unlimited data into
-the connection's internal tail buffer when the application never called
-:meth:`~aiohttp.ClientWebSocketResponse.receive`. Reading is now paused once
-the buffer reaches ``read_bufsize``, matching the server side
+Fixed unbounded memory growth on a client WebSocket connection after a frame
+protocol error. The reader is detached by the error but the connection stays
+upgraded, so a peer could stream unlimited data into the connection's internal
+buffer whenever the application did not call
+:meth:`~aiohttp.ClientWebSocketResponse.receive`. Such a connection is now
+failed as :rfc:`6455#section-7.1.7` requires instead of being left open.
+
+:meth:`~aiohttp.ClientWebSocketResponse.receive` still returns
+:attr:`~aiohttp.WSMsgType.ERROR` carrying the same :exc:`~aiohttp.WebSocketError`,
+but since the transport is closed before the application sees it,
+:attr:`~aiohttp.ClientWebSocketResponse.close_code` is now
+``1006`` rather than the protocol error code, and
+:meth:`~aiohttp.ClientWebSocketResponse.exception` returns
+:exc:`~aiohttp.ClientConnectionResetError`. Only connections that have already
+hit a protocol error are affected
 -- by :user:`bdraco`.

@@ -1842,15 +1842,15 @@ async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
     assert resp._parser is None
 
 
-async def test_tail_bounded_after_protocol_error(
+async def test_connection_failed_after_protocol_error(
     unused_port_socket: socket.socket,
 ) -> None:
-    """A peer cannot grow the client's tail without bound after a frame error.
+    """A frame error fails the connection instead of buffering what follows.
 
     ``WebSocketReader.feed_data()`` only reports EOF for a protocol error, and
     the connection stays upgraded with no parser installed afterwards, so every
     later byte lands in ``ResponseHandler._tail``. An application that never
-    calls ``receive()`` never closes the connection, so the peer could stream
+    calls ``receive()`` never closed the connection, so the peer could stream
     until the client ran out of memory.
     """
     writers: list[asyncio.StreamWriter] = []
@@ -1895,8 +1895,8 @@ async def test_tail_bounded_after_protocol_error(
             protocol = connection.protocol
             assert protocol is not None
 
-            assert protocol._tail_paused, "reading was never paused"
-            # A socket read already in flight when the pause lands is still
+            assert protocol.transport is None, "connection was never failed"
+            # A socket read already in flight when the close lands is still
             # delivered, so the tail holds at most one of those rather than
             # everything the peer wanted to send.
             assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE

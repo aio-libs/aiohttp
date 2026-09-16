@@ -604,7 +604,11 @@ client-side, the writer adds masks to outgoing frames.
   leaves the connection upgraded) let a peer stream unbounded data into
   `ResponseHandler._tail`: 32 MiB pushed at a client that never called
   `receive()` produced 32 MiB of `_tail`, and `heartbeat` bounded only how
-  long the peer had, not how fast. Bounded as described in threat 3.16.
+  long the peer had, not how fast. Fixed by failing the connection on the
+  reader's EOF, as threat 3.16 describes. Bounding it with backpressure
+  instead was rejected: a paused transport is never told the peer hung up, so
+  an application that never reads would accumulate sockets that nothing reaps,
+  trading a memory leak for a file-descriptor leak.
 
 ---
 

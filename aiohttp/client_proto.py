@@ -339,11 +339,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if eof:
                 self._payload = None
                 self._payload_parser = None
-                # EOF here is always a WebSocket protocol error, already
-                # stored on the queue; nothing will parse this connection
-                # again, so stop reading rather than buffer what follows.
+                # EOF here is always a WebSocket protocol error, already stored
+                # on the queue. RFC 6455 7.1.7 says to fail the connection, and
+                # nothing would ever read it again: pausing instead would hide
+                # the peer's FIN and leak the socket.
                 self._should_close = True
-                self._pause_tail_reading()
+                self.close()
 
                 if tail:
                     self.data_received(tail)
