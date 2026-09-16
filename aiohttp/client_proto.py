@@ -302,7 +302,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def data_received(self, data: bytes) -> None:
         # If no data, then we are resuming decompression. We haven't received
         # data from the socket, so we can avoid the reschedule overhead.
-        if data:
+        # Discarded bytes are not progress, so they must not hold off sock_read.
+        if data and not self._payload_parser_failed:
             self._reschedule_timeout()
 
         # custom payload parser - currently always WebSocketReader
@@ -323,8 +324,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             return
 
         if self._upgraded or self._parser is None:
-            # i.e. websocket connection, websocket parser is not set yet.
-            # Unbounded by design; see the no-await note at set_parser().
+            # i.e. websocket connection, websocket parser is not set yet
             if self._payload_parser_failed:
                 # Dropped rather than closed on, so queued messages can still
                 # be answered and the peer's FIN still arrives.

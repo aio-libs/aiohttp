@@ -71,7 +71,7 @@ class BaseProtocol(asyncio.Protocol):
             self._parser.pause_reading()
         self._pause_transport_reading()
 
-    def _reading_paused_for_buffer(self) -> bool:
+    def _reading_paused_for_msg_queue(self) -> bool:
         """Keep the transport paused for protocol-specific reasons (overridden)."""
         return False
 
@@ -104,7 +104,7 @@ class BaseProtocol(asyncio.Protocol):
 
         # Reading may have been paused again in the above call if there was a lot of
         # compressed data still pending; _resume_transport_reading() rechecks it.
-        if not self._reading_paused_for_buffer():
+        if not self._reading_paused_for_msg_queue():
             self._resume_transport_reading()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:

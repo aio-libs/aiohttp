@@ -1222,9 +1222,6 @@ class ClientSession:
                 decode_text=decode_text,
             )
             cb = None if heartbeat is None else ws_resp._on_data_received
-            # Do not await between the 101 and this call: nothing drains
-            # what the peer sends until the parser is installed, and that
-            # buffer is not size capped. Enforced in tests/test_client_ws.py.
             conn_proto.set_parser(ws_resp._parser, reader, data_received_cb=cb)
             return ws_resp
 
