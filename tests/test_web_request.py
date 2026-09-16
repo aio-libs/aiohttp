@@ -1092,11 +1092,8 @@ _MULTIPART_CONTENT_TYPE = (
 )
 
 
-@pytest.mark.parametrize(("count", "too_many"), [(3, True), (2, False)])
-async def test_multipart_formdata_field_limit(
-    protocol: BaseProtocol, count: int, too_many: bool
-) -> None:
-    payload = _multipart_form_payload(protocol, count)
+async def test_multipart_formdata_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _multipart_form_payload(protocol, 3)
     req = make_mocked_request(
         "POST",
         "/",
@@ -1104,14 +1101,23 @@ async def test_multipart_formdata_field_limit(
         payload=payload,
         client_max_fields=2,
     )
-    if too_many:
-        with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
-            await req.post()
-        assert err.value.status_code == 413
-        assert err.value.text == "Maximum number of form fields 2 exceeded."
-    else:
-        result = await req.post()
-        assert dict(result) == {"f0": "v", "f1": "v"}
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+async def test_multipart_formdata_at_field_limit(protocol: BaseProtocol) -> None:
+    payload = _multipart_form_payload(protocol, 2)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
+        payload=payload,
+        client_max_fields=2,
+    )
+    result = await req.post()
+    assert dict(result) == {"f0": "v", "f1": "v"}
 
 
 @pytest.mark.parametrize(
@@ -1174,12 +1180,20 @@ def _urlencoded_payload(protocol: BaseProtocol, body: bytes) -> StreamReader:
 _URLENCODED_HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
 
 
-@pytest.mark.parametrize(
-    ("client_max_fields", "count", "too_many"),
-    [(2, 3, True), (2, 2, False), (0, 5, False)],
-)
-async def test_urlencoded_form_field_limit(
-    protocol: BaseProtocol, client_max_fields: int, count: int, too_many: bool
+async def test_urlencoded_form_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&b=2&c=3")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5)])
+async def test_urlencoded_form_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
 ) -> None:
     body = "&".join(f"f{i}=v" for i in range(count)).encode()
     payload = _urlencoded_payload(protocol, body)
@@ -1190,14 +1204,8 @@ async def test_urlencoded_form_field_limit(
         headers=_URLENCODED_HEADERS,
         client_max_fields=client_max_fields,
     )
-    if too_many:
-        with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
-            await req.post()
-        assert err.value.status_code == 413
-        assert err.value.text == "Maximum number of form fields 2 exceeded."
-    else:
-        result = await req.post()
-        assert len(result) == count
+    result = await req.post()
+    assert len(result) == count
 
 
 async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:

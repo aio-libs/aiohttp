@@ -787,9 +787,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[str | bytes | FileField] = MultiDict()
+        out: MultiDict[str | bytes | FileField]
 
         if content_type == "multipart/form-data":
+            out = MultiDict()
             multipart = await self.multipart()
             max_size = self._client_max_size
             max_fields = self._client_max_fields
@@ -886,7 +887,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     )
         else:
             data = await self.read()
-            if data:
+            if not data:
+                out = MultiDict()
+            else:
                 charset = self.charset or "utf-8"
                 bytes_query = data.rstrip()
                 try:
@@ -895,15 +898,16 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     raise HTTPUnsupportedMediaType()
                 max_fields = self._client_max_fields
                 try:
-                    pairs = query_to_pairs(
-                        query, max_fields=max_fields or None, encoding=charset
+                    out = MultiDict(
+                        query_to_pairs(
+                            query, max_fields=max_fields or None, encoding=charset
+                        )
                     )
                 except ValueError:
                     raise HTTPRequestEntityTooLarge(
                         max_fields,
                         text=f"Maximum number of form fields {max_fields} exceeded.",
                     ) from None
-                out.extend(pairs)
 
         self._post = MultiDictProxy(out)
         return self._post

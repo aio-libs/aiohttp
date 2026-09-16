@@ -9,6 +9,7 @@ import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
+from functools import partial
 from typing import NoReturn
 from unittest import mock
 
@@ -2389,17 +2390,32 @@ def _multipart_form(count: int) -> aiohttp.FormData:
 
 
 @pytest.mark.parametrize(
-    ("client_max_fields", "data", "expected_status", "expected_text"),
+    ("make_app", "data", "expected_status", "expected_text"),
     [
-        (2, {"a": "1", "b": "2", "c": "3"}, 413, "2 exceeded"),
-        (2, _multipart_form(3), 413, "2 exceeded"),
-        (0, {f"f{i}": "v" for i in range(5)}, 200, "5"),
-        (None, {f"f{i}": "v" for i in range(1001)}, 413, "1000 exceeded"),
+        (
+            partial(web.Application, client_max_fields=2),
+            {"a": "1", "b": "2", "c": "3"},
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=2),
+            _multipart_form(3),
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=0),
+            {f"f{i}": "v" for i in range(5)},
+            200,
+            "5",
+        ),
+        (web.Application, {f"f{i}": "v" for i in range(1001)}, 413, "1000 exceeded"),
     ],
 )
 async def test_app_max_client_fields(
     aiohttp_client: AiohttpClient,
-    client_max_fields: int | None,
+    make_app: Callable[[], web.Application],
     data: object,
     expected_status: int,
     expected_text: str,
@@ -2408,10 +2424,7 @@ async def test_app_max_client_fields(
         form = await request.post()
         return web.Response(text=str(len(form)))
 
-    if client_max_fields is None:
-        app = web.Application()
-    else:
-        app = web.Application(client_max_fields=client_max_fields)
+    app = make_app()
     app.router.add_post("/", handler)
     client = await aiohttp_client(app)
 
