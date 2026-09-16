@@ -1861,6 +1861,7 @@ async def test_data_discarded_after_protocol_error(
     the discard branch running and hide the peer's FIN, leaking the socket.
     """
     read_bufsize = 1024
+    flooded = asyncio.Event()
     writers: list[asyncio.StreamWriter] = []
 
     async def raw_server(
@@ -1892,6 +1893,7 @@ async def test_data_discarded_after_protocol_error(
         writer.write(b"A" * (2 * 1024 * 1024))
         with contextlib.suppress(Exception):
             await writer.drain()
+        flooded.set()
 
     server = await asyncio.start_server(raw_server, sock=unused_port_socket)
     port = unused_port_socket.getsockname()[1]
@@ -1907,7 +1909,11 @@ async def test_data_discarded_after_protocol_error(
             assert protocol is not None
 
             assert protocol._payload_parser_failed, "the error was never seen"
-            await asyncio.sleep(0.2)
+            # Wait for the flood to be written rather than sleeping, so the
+            # assertion below cannot pass just because nothing arrived. The
+            # drain only completes because the client keeps reading it.
+            async with async_timeout.timeout(10):
+                await flooded.wait()
             # Nothing the peer sent after the error was kept.
             assert protocol._tail == b""
             assert protocol.should_close

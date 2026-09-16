@@ -538,7 +538,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
 | 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
 | 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
-| 3.16 | Post-error buffering on an upgraded connection | D | `WebSocketReader.feed_data` reports EOF only for a protocol error, and the connection stays upgraded with the reader detached. Every later byte is buffered by the protocol with nothing left to drain it, so a peer that keeps streaming after a deliberate frame error exhausts memory on a peer that never reads. | Medium |
+| 3.16 | Post-error buffering on an upgraded connection | D | `WebSocketReader.feed_data` reports EOF only for a protocol error, and the connection stays upgraded with the reader detached. Were every later byte still buffered with nothing left to drain it, a peer that kept streaming after a deliberate frame error would exhaust memory on a client that never reads. | Medium |
 
 **Mitigations.**
 

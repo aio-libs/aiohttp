@@ -533,7 +533,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
     def _pause_msg_queue_reading(self) -> None:
         self._msg_queue_paused = True
-        self._pause_reading_for_buffer()
+        self._pause_transport_reading()
 
     def _resume_msg_queue_reading(self) -> None:
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
@@ -548,7 +548,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if len(self._messages) >= self._max_msg_queue_size:
                 return
         self._msg_queue_paused = False
-        self._resume_reading_for_buffer()
+        self._resume_transport_reading()
 
     def _replay_message_tail(self) -> None:
         """Re-feed the bytes buffered behind a rejected upgrade.

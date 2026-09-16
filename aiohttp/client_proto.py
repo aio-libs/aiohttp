@@ -213,7 +213,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def _pause_tail_reading(self) -> None:
         self._tail_paused = True
-        self._pause_reading_for_buffer()
+        self._pause_transport_reading()
 
     def _resume_tail_reading(self) -> None:
         if not self._tail_paused:
@@ -229,7 +229,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # and the peer's FIN still arrives.
             return
         self._tail_paused = False
-        self._resume_reading_for_buffer()
+        self._resume_transport_reading()
 
     def _drain_tail(self) -> None:
         if self._tail:
