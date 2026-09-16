@@ -366,7 +366,13 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         self.set_status(101)
         self.headers.update(headers)
-        self.force_close()
+        # Keep-alive off without response force_close(): the upgraded
+        # connection stays open for the websocket protocol, so "close right
+        # after the response" does not apply, and the handler's lingering
+        # drain is load-bearing here -- it seats an unread request body tail
+        # for the upgraded connection (_replay_message_tail()).
+        self._force_close = False
+        self._keep_alive = False
         self._compress = compress
         transport = request._protocol.transport
         if transport is None:
