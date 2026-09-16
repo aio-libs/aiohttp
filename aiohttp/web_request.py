@@ -19,10 +19,9 @@ from typing import (
     cast,
     overload,
 )
-from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from yarl import URL
+from yarl import URL, query_to_pairs
 
 from . import hdrs
 from ._cookie_helpers import parse_cookie_header
@@ -169,6 +168,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         *,
         client_max_size: int = 1024**2,
+        client_max_fields: int = 1000,
         state: dict[RequestKey[Any] | str, Any] | None = None,
         scheme: str | None = None,
         host: str | None = None,
@@ -209,6 +209,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
+        self._client_max_fields = client_max_fields
         self._loop = loop
 
         self._transport_sslcontext = protocol.ssl_context
@@ -228,6 +229,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -265,6 +267,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             kwargs["remote"] = remote
         if client_max_size is sentinel:
             client_max_size = self._client_max_size
+        if client_max_fields is sentinel:
+            client_max_fields = self._client_max_fields
 
         return self.__class__(
             message,
@@ -274,6 +278,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._task,
             self._loop,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
             state=self._state.copy(),
             pre_handler_error=self._pre_handler_error,
             **kwargs,
@@ -298,6 +303,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     @property
     def client_max_size(self) -> int:
         return self._client_max_size
+
+    @property
+    def client_max_fields(self) -> int:
+        return self._client_max_fields
 
     @property
     def pre_handler_error(self) -> HTTPBadRequest | None:
@@ -783,6 +792,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         if content_type == "multipart/form-data":
             multipart = await self.multipart()
             max_size = self._client_max_size
+            max_fields = self._client_max_fields
 
             payload = self._payload
             while (field := await multipart.next()) is not None:
@@ -790,6 +800,11 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 # overhead without entering the loop and the check below.
                 if 0 < max_size < payload.total_bytes:
                     raise HTTPRequestEntityTooLarge(max_size)
+                if 0 < max_fields <= len(out):
+                    raise HTTPRequestEntityTooLarge(
+                        max_fields,
+                        text=f"Maximum number of form fields {max_fields} exceeded.",
+                    )
 
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
@@ -878,9 +893,17 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     query = bytes_query.decode(charset)
                 except (LookupError, UnicodeDecodeError):
                     raise HTTPUnsupportedMediaType()
-                out.extend(
-                    parse_qsl(qs=query, keep_blank_values=True, encoding=charset)
-                )
+                max_fields = self._client_max_fields
+                try:
+                    pairs = query_to_pairs(
+                        query, max_fields=max_fields or None, encoding=charset
+                    )
+                except ValueError:
+                    raise HTTPRequestEntityTooLarge(
+                        max_fields,
+                        text=f"Maximum number of form fields {max_fields} exceeded.",
+                    ) from None
+                out.extend(pairs)
 
         self._post = MultiDictProxy(out)
         return self._post
@@ -935,6 +958,7 @@ class Request(BaseRequest):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -944,6 +968,7 @@ class Request(BaseRequest):
             host=host,
             remote=remote,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info

@@ -490,7 +490,8 @@ To access form data with ``"POST"`` method use
 ``'application/x-www-form-urlencoded'`` and ``'multipart/form-data'``
 form's data encoding (e.g. ``<form enctype="multipart/form-data">``).
 It stores files data in temporary directory. If `client_max_size` is
-specified `post` raises `ValueError` exception.
+specified `post` raises `ValueError` exception. The number of form
+fields is capped by `client_max_fields`.
 For efficiency use :meth:`aiohttp.web.BaseRequest.multipart`, It is especially effective
 for uploading large files (:ref:`aiohttp-web-file-upload`).
 

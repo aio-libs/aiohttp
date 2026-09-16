@@ -167,6 +167,17 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
+   .. attribute:: client_max_fields
+
+      The maximum number of form fields accepted by :meth:`~BaseRequest.post`,
+      ``0`` disables the limit.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
+      .. versionadded:: 3.14.4
+
    .. attribute:: pre_handler_error
 
       An :exc:`HTTPBadRequest` set by the protocol when the parser
@@ -1482,7 +1493,7 @@ Application and Router
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       debug=...)
+                       client_max_fields=1000, debug=...)
    :canonical: aiohttp.web_app.Application
 
    Application is a synonym for web-server.
@@ -1526,6 +1537,15 @@ Application and Router
                            bytes.  If a POST request exceeds this
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
+
+   :param client_max_fields: maximum number of form fields accepted by
+                             :meth:`BaseRequest.post`, counting both
+                             urlencoded pairs and multipart parts.  If a
+                             POST request exceeds this value, it raises an
+                             `HTTPRequestEntityTooLarge` exception.
+                             ``0`` disables the limit.  Default is ``1000``.
+
+                             .. versionadded:: 3.14.4
 
    :param debug: Switches debug mode.
 
