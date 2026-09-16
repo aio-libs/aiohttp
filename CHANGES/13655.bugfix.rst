@@ -1,9 +1,7 @@
 Fixed unbounded memory growth on a client WebSocket connection after a frame
 protocol error. The reader is detached by the error but the connection stays
-upgraded, so a peer could stream unlimited data into the connection's internal
-buffer whenever the application did not call
-:meth:`~aiohttp.ClientWebSocketResponse.receive`. Data arriving after the error
-is now discarded, since nothing can ever parse it. The connection stays
-readable and writable, so messages queued before the error are still delivered
-and can still be answered, and a close from the peer is still noticed
+upgraded, so a peer could stream unlimited data into an internal buffer when
+the application never called
+:meth:`~aiohttp.ClientWebSocketResponse.receive`. Data arriving after the
+error is now discarded, since nothing can parse it
 -- by :user:`bdraco`.

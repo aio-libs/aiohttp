@@ -1850,12 +1850,10 @@ async def test_data_discarded_after_protocol_error(
 ) -> None:
     """A frame error drops what follows instead of buffering it.
 
-    ``WebSocketReader.feed_data()`` only reports EOF for a protocol error, and
-    the connection stays upgraded with no parser installed afterwards, so every
-    later byte lands in ``ResponseHandler._tail``. An application that never
-    calls ``receive()`` never closed the connection, so the peer could stream
-    until the client ran out of memory.
-
+    The connection stays upgraded with no parser installed, so every later byte
+    used to land in ``ResponseHandler._tail``; an application that never called
+    ``receive()`` never closed the connection, so the peer could stream until
+    the client ran out of memory.
     """
     flooded = asyncio.Event()
     writers: list[asyncio.StreamWriter] = []

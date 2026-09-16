@@ -557,7 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
-| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows rather than appending it to `_tail`; the server closes the connection outright (`web_protocol.py:data_received`). | Discarding rather than pausing or closing is deliberate: a paused transport is never told the peer hung up, so the socket would leak, and closing makes the transport unwritable, so messages queued before the error could no longer be answered. The client's pre-`set_parser()` buffering is left unbounded, as it is upstream: `_ws_connect` has no `await` between the 101 and `set_parser()`, so a peer can only land a read or two there regardless of how much it sends (measured ~256 KiB against a 128 MiB blast). **User**: a peer can keep the client reading and dropping bytes until one side closes, so set `heartbeat` on long-lived sessions to tear down a connection the application is not reading. |
+| 3.16 | Post-error buffering bound | A reader EOF means a protocol error, so `client_proto.py:data_received` discards everything that follows; the server closes the connection instead (`web_protocol.py:data_received`). | Discarding, not pausing or closing: a paused transport is never told the peer hung up, and a closed one cannot answer messages queued before the error. Buffering before `set_parser()` is left uncapped, as upstream: `_ws_connect` does not await in that window, so a 128 MiB blast still leaves ~256 KiB. **User**: a peer can keep the client reading and dropping bytes, so set `heartbeat` on long-lived sessions. |
 
 **Past advisories / hardening (recap).**
 
@@ -599,21 +599,14 @@ client-side, the writer adds masks to outgoing frames.
   them once when the frame completes; if a frame arrives in more than
   `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
   a single `bytearray` and cleared.
-- **Issue #13655** — the client had no equivalent of the server's
-  `_message_tail` bound, so a protocol error (which detaches the reader but
-  leaves the connection upgraded) let a peer stream unbounded data into
+- **Issue #13655** — a protocol error detaches the reader but leaves the
+  connection upgraded, so a peer could stream unbounded data into
   `ResponseHandler._tail`: 32 MiB pushed at a client that never called
-  `receive()` produced 32 MiB of `_tail`, and `heartbeat` bounded only how
-  long the peer had, not how fast. Fixed by discarding what arrives after the
-  reader's EOF, as threat 3.16 describes. Two alternatives were measured and
-  rejected: pausing the transport bounds the memory but hides the peer's FIN,
-  so an application that never reads accumulates sockets nothing reaps; and
-  closing the transport makes it unwritable, so a message queued before the
-  error can no longer be answered, which broke the Autobahn client runner.
-  Bounding the pre-`set_parser()` window with the same backpressure was also
-  dropped: it is self-limiting to a read or two (there is no `await` between
-  the 101 and `set_parser()`), so the flow control only added a second paused
-  state that could be left held.
+  `receive()` produced 32 MiB of `_tail`. Fixed by discarding what arrives
+  after the reader's EOF (threat 3.16). Two alternatives were measured and
+  rejected: pausing hides the peer's FIN, so sockets accumulate instead of
+  memory; closing makes the transport unwritable, so a message queued before
+  the error cannot be answered, which broke the Autobahn client runner.
 
 ---
 

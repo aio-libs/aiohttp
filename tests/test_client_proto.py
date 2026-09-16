@@ -443,9 +443,8 @@ def _upgraded_proto(
 async def test_websocket_parser_error_discards_later_data() -> None:
     """A WebSocket protocol error drops what follows instead of buffering it.
 
-    ``WebSocketReader.feed_data()`` only ever reports EOF for a protocol error,
-    and the connection stays upgraded afterwards, so without this the peer can
-    stream unbounded data into ``_tail``.
+    EOF is only ever reported for a protocol error, and the connection stays
+    upgraded, so without this the peer can stream unbounded data into ``_tail``.
     """
     transport = mock.Mock()
     loop = asyncio.get_running_loop()
@@ -461,8 +460,7 @@ async def test_websocket_parser_error_discards_later_data() -> None:
     assert proto.should_close
     assert proto._payload_parser_failed
 
-    # The peer keeps streaming; none of it is kept, and the transport stays
-    # open so queued messages can still be answered and the FIN is still seen.
+    # The peer keeps streaming; none of it is kept.
     for _ in range(100):
         proto.data_received(b"x" * 65536)
     assert proto._tail == b""

@@ -1013,12 +1013,9 @@ async def test_ws_connect_deflate_server_ext_bad(ws_key: str, key_data: bytes) -
 def test_no_suspension_between_upgrade_and_set_parser() -> None:
     """``_ws_connect()`` must not await between the 101 and ``set_parser()``.
 
-    Until the parser is installed there is nothing to drain what the peer
-    sends, so those bytes queue up in ``ResponseHandler._tail`` unbounded.
-    That buffer is deliberately not size-capped, because this window is only a
-    couple of event loop iterations wide and a peer can land at most a read or
-    two in it. An ``await`` added here would widen it without limit, so the
-    invariant is enforced rather than assumed.
+    Nothing drains what the peer sends until the parser is installed, and
+    ``_tail`` is not size capped because that window is only a couple of event
+    loop iterations wide. An ``await`` here would remove that ceiling.
     """
     source = pathlib.Path(aiohttp.client.__file__).read_text()
     module = ast.parse(source)

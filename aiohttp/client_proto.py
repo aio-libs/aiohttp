@@ -313,9 +313,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if eof:
                 self._payload = None
                 self._payload_parser = None
-                # EOF here is always a WebSocket protocol error, already
-                # stored on the queue. Nothing can parse this connection
-                # again, so drop what follows instead of buffering it.
+                # EOF is always a protocol error, already stored on the
+                # queue; nothing can parse this connection again.
                 self._should_close = True
                 self._payload_parser_failed = True
 
@@ -325,14 +324,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet.
-            # Unbounded by design: _ws_connect() does not await between the
-            # 101 and set_parser(), so a peer can only land a read or two
-            # here. See the note at that call site.
+            # Unbounded by design; see the no-await note at set_parser().
             if self._payload_parser_failed:
-                # Discard rather than close: messages queued before the error
-                # are still delivered, and the application may answer them, so
-                # the transport has to stay writable. Reading on keeps the
-                # peer's FIN visible, which a paused transport would hide.
+                # Dropped rather than closed on, so queued messages can still
+                # be answered and the peer's FIN still arrives.
                 return
             self._tail += data
             return
