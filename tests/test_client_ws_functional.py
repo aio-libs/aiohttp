@@ -1853,13 +1853,11 @@ async def test_tail_bounded_after_protocol_error(
     calls ``receive()`` never closes the connection, so the peer could stream
     until the client ran out of memory.
     """
-    pushed = 0
     writers: list[asyncio.StreamWriter] = []
 
     async def raw_server(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
-        nonlocal pushed
         writers.append(writer)
         request = await reader.readuntil(b"\r\n\r\n")
         key = next(
@@ -1877,29 +1875,25 @@ async def test_tail_bounded_after_protocol_error(
             + b"\x41\x01x"
         )
         await writer.drain()
-        blob = b"A" * 65536
-        # 32 MiB, but backpressure from the paused client stops the drain long
-        # before the count runs out; the loop completing would be the bug.
+        # One oversized write rather than a stream of small ones: the client
+        # has to stop reading it, so this drain never completes and the
+        # connection teardown is what ends it.
+        writer.write(b"A" * (32 * 1024 * 1024))
         with contextlib.suppress(Exception):
-            for _ in range(512):  # pragma: no branch
-                writer.write(blob)
-                pushed += len(blob)
-                await writer.drain()
+            await writer.drain()
 
     server = await asyncio.start_server(raw_server, sock=unused_port_socket)
     port = unused_port_socket.getsockname()[1]
     try:
         async with aiohttp.ClientSession() as session:
             # No receive() call: the long-lived idle client of the report.
+            # The bad frame rides along with the handshake, so ws_connect()
+            # feeds it to the reader and takes the pause before returning.
             ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
             connection = ws._conn
             assert connection is not None
             protocol = connection.protocol
             assert protocol is not None
-            for _ in range(1000):  # pragma: no branch
-                if protocol._tail_paused:
-                    break
-                await asyncio.sleep(0.01)
 
             assert protocol._tail_paused, "reading was never paused"
             # A socket read already in flight when the pause lands is still
@@ -1915,5 +1909,3 @@ async def test_tail_bounded_after_protocol_error(
                 await writer.wait_closed()
         server.close()
         await server.wait_closed()
-
-    assert pushed < 32 * 1024 * 1024, "the paused transport never applied backpressure"

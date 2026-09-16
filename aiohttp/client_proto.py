@@ -219,8 +219,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def _resume_tail_reading(self) -> None:
         if not self._tail_paused:
             return
-        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
-        if self._tail and len(self._tail) >= self._read_bufsize:
+        if self._upgraded and self._payload_parser is None:
+            # Nothing will drain _tail: the parser either errored on what was
+            # just drained or has not been installed yet. Stay paused, or the
+            # peer simply refills the buffer we paused for.
             return
         self._tail_paused = False
         if not self._reading_paused and self.transport is not None:

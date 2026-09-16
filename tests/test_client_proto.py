@@ -591,3 +591,24 @@ async def test_websocket_parser_error_replays_tail() -> None:
 
     assert proto._tail == b"leftover"
     assert proto._tail_paused
+
+
+async def test_parser_error_while_draining_tail_stays_paused() -> None:
+    """A parser that errors on the drained tail leaves reading paused.
+
+    The bad frame usually arrives with the handshake, so it is already in
+    ``_tail`` when ``set_parser()`` runs and the error fires during the drain
+    rather than on a later read.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    proto._tail = b"bad frame"
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (True, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert proto._tail_paused
+    assert proto.should_close
+    transport.pause_reading.assert_called_once_with()
+    transport.resume_reading.assert_not_called()
