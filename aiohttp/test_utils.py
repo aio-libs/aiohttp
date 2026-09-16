@@ -701,6 +701,7 @@ def make_mocked_request(
     payload: StreamReader = EMPTY_PAYLOAD,
     sslcontext: SSLContext | None = None,
     client_max_size: int = 1024**2,
+    client_max_fields: int = 1000,
     loop: Any = ...,
 ) -> Request:
     """Creates mocked web.Request testing purposes.
@@ -781,7 +782,14 @@ def make_mocked_request(
     protocol.writer = writer
 
     req = Request(
-        message, payload, protocol, writer, task, loop, client_max_size=client_max_size
+        message,
+        payload,
+        protocol,
+        writer,
+        task,
+        loop,
+        client_max_size=client_max_size,
+        client_max_fields=client_max_fields,
     )
 
     match_info = UrlMappingMatchInfo(
