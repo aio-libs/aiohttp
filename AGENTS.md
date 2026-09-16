@@ -64,7 +64,7 @@ This file provides guidance to AI coding agents working with this repository.
 
 - A CVE / GHSA is filed against aiohttp.
 - The parser configuration changes (llhttp lenient flags, size limits, version regex).
-- Any default referenced in the document changes (`client_max_size`, `keepalive_timeout`, `max_redirects`, `limit`, `limit_per_host`, etc.).
+- Any default referenced in the document changes (`client_max_size`, `client_max_fields`, `keepalive_timeout`, `max_redirects`, `limit`, `limit_per_host`, etc.).
 - The vendored llhttp version is bumped.
 - A public API surface is added or removed in `client.py` / `web_*.py` / `multipart.py`.
 
