@@ -1208,6 +1208,13 @@ async def test_urlencoded_form_within_field_limit(
     assert len(result) == count
 
 
+async def test_urlencoded_form_empty_body(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"")
+    req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
+    result = await req.post()
+    assert len(result) == 0
+
+
 async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
     payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9")
     req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)

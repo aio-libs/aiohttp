@@ -885,29 +885,27 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
                     )
+        elif not (data := await self.read()):
+            out = MultiDict()
         else:
-            data = await self.read()
-            if not data:
-                out = MultiDict()
-            else:
-                charset = self.charset or "utf-8"
-                bytes_query = data.rstrip()
-                try:
-                    query = bytes_query.decode(charset)
-                except (LookupError, UnicodeDecodeError):
-                    raise HTTPUnsupportedMediaType()
-                max_fields = self._client_max_fields
-                try:
-                    out = MultiDict(
-                        query_to_pairs(
-                            query, max_fields=max_fields or None, encoding=charset
-                        )
+            charset = self.charset or "utf-8"
+            bytes_query = data.rstrip()
+            try:
+                query = bytes_query.decode(charset)
+            except (LookupError, UnicodeDecodeError):
+                raise HTTPUnsupportedMediaType()
+            max_fields = self._client_max_fields
+            try:
+                out = MultiDict(
+                    query_to_pairs(
+                        query, max_fields=max_fields or None, encoding=charset
                     )
-                except ValueError:
-                    raise HTTPRequestEntityTooLarge(
-                        max_fields,
-                        text=f"Maximum number of form fields {max_fields} exceeded.",
-                    ) from None
+                )
+            except ValueError:
+                raise HTTPRequestEntityTooLarge(
+                    max_fields,
+                    text=f"Maximum number of form fields {max_fields} exceeded.",
+                ) from None
 
         self._post = MultiDictProxy(out)
         return self._post
