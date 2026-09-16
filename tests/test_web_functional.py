@@ -7,8 +7,9 @@ import pathlib
 import socket
 import sys
 import zlib
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from contextlib import suppress
+from functools import partial
 from typing import Any, NoReturn
 from unittest import mock
 
@@ -2357,6 +2358,62 @@ async def test_app_max_client_size(aiohttp_client) -> None:
     assert "Maximum request body size 1048576 exceeded" in resp_text
 
     resp.release()
+
+
+def _multipart_form(count: int) -> aiohttp.FormData:
+    form = aiohttp.FormData(default_to_multipart=True)
+    for i in range(count):
+        form.add_field(f"f{i}", "v")
+    return form
+
+
+@pytest.mark.parametrize(
+    ("make_app", "make_data", "expected_status", "expected_text"),
+    [
+        (
+            partial(web.Application, client_max_fields=2),
+            partial(dict, a="1", b="2", c="3"),
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=2),
+            partial(_multipart_form, 3),
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=0),
+            partial(dict, {f"f{i}": "v" for i in range(5)}),
+            200,
+            "5",
+        ),
+        (
+            web.Application,
+            partial(dict, {f"f{i}": "v" for i in range(1001)}),
+            413,
+            "1000 exceeded",
+        ),
+    ],
+)
+async def test_app_max_client_fields(
+    aiohttp_client: AiohttpClient,
+    make_app: Callable[[], web.Application],
+    make_data: Callable[[], object],
+    expected_status: int,
+    expected_text: str,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        form = await request.post()
+        return web.Response(text=str(len(form)))
+
+    app = make_app()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", data=make_data()) as resp:
+        assert resp.status == expected_status
+        assert expected_text in await resp.text()
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:

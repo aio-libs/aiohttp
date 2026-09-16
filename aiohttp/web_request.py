@@ -10,7 +10,6 @@ from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
-from urllib.parse import parse_qsl
 
 import attr
 from multidict import (
@@ -20,7 +19,7 @@ from multidict import (
     MultiDictProxy,
     MultiMapping,
 )
-from yarl import URL
+from yarl import URL, query_to_pairs
 
 from . import hdrs
 from ._cookie_helpers import parse_cookie_header
@@ -135,6 +134,12 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 ############################################################
 
 
+def _too_many_fields(max_fields: int) -> HTTPRequestEntityTooLarge:
+    return HTTPRequestEntityTooLarge(
+        max_fields, text=f"Maximum number of form fields {max_fields} exceeded."
+    )
+
+
 class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     POST_METHODS = {
         hdrs.METH_PATCH,
@@ -160,6 +165,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             "_cache",
             "_task",
             "_client_max_size",
+            "_client_max_fields",
             "_loop",
             "_transport_sslcontext",
             "_transport_peername",
@@ -180,6 +186,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         *,
         client_max_size: int = 1024**2,
+        client_max_fields: int = 1000,
         state: dict[RequestKey[Any] | str, Any] | None = None,
         scheme: str | None = None,
         host: str | None = None,
@@ -217,6 +224,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
+        self._client_max_fields = client_max_fields
         self._loop = loop
 
         self._transport_sslcontext = protocol.ssl_context
@@ -236,6 +244,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -272,6 +281,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             kwargs["remote"] = remote
         if client_max_size is sentinel:
             client_max_size = self._client_max_size
+        if client_max_fields is sentinel:
+            client_max_fields = self._client_max_fields
 
         return self.__class__(
             message,
@@ -281,6 +292,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._task,
             self._loop,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
             state=self._state.copy(),
             **kwargs,
         )
@@ -306,6 +318,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     @property
     def client_max_size(self) -> int:
         return self._client_max_size
+
+    @property
+    def client_max_fields(self) -> int:
+        return self._client_max_fields
 
     @reify
     def message(self) -> RawRequestMessage:
@@ -799,11 +815,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[_Post] = MultiDict()
+        out: MultiDict[_Post]
 
         if content_type == "multipart/form-data":
+            out = MultiDict()
             multipart = await self.multipart()
             max_size = self._client_max_size
+            max_fields = self._client_max_fields
 
             payload = self._payload
             while (field := await multipart.next()) is not None:
@@ -811,6 +829,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 # overhead without entering the loop and the check below.
                 if 0 < max_size < payload.total_bytes:
                     raise HTTPRequestEntityTooLarge(max_size)
+                if 0 < max_fields <= len(out):
+                    raise _too_many_fields(max_fields)
 
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
@@ -886,17 +906,22 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
                     )
+        elif not (data := await self.read()):
+            out = MultiDict()
         else:
-            data = await self.read()
-            if data:
-                charset = self.charset or "utf-8"
-                out.extend(
-                    parse_qsl(
-                        data.rstrip().decode(charset),
-                        keep_blank_values=True,
+            charset = self.charset or "utf-8"
+            query = data.rstrip().decode(charset)
+            max_fields = self._client_max_fields
+            try:
+                out = MultiDict(
+                    query_to_pairs(
+                        query,
+                        max_fields=max_fields if max_fields > 0 else None,
                         encoding=charset,
                     )
                 )
+            except ValueError:
+                raise _too_many_fields(max_fields) from None
 
         self._post = MultiDictProxy(out)
         return self._post
@@ -969,6 +994,7 @@ class Request(BaseRequest):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -978,6 +1004,7 @@ class Request(BaseRequest):
             host=host,
             remote=remote,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info
