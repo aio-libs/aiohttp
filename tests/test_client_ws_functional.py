@@ -26,7 +26,6 @@ from aiohttp import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
-from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
@@ -1900,9 +1899,8 @@ async def test_data_discarded_after_protocol_error(
 
             assert protocol._payload_parser_failed, "the error was never seen"
             await asyncio.sleep(0.2)
-            # A read already in flight when the error landed is still buffered,
-            # but nothing after it is.
-            assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
+            # Nothing the peer sent after the error was kept.
+            assert protocol._tail == b""
             assert protocol.should_close
             # The transport stays open so queued messages can still be
             # answered and the peer's FIN is still delivered.

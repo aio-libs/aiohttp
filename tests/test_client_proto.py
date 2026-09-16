@@ -632,3 +632,29 @@ async def test_empty_read_does_not_pause_on_empty_tail() -> None:
 
     assert not proto._tail_paused
     transport.pause_reading.assert_not_called()
+
+
+async def test_parser_error_after_tail_pause_resumes_reading() -> None:
+    """A parser failure must lift a tail pause taken before it.
+
+    A peer can push past ``read_bufsize`` before ``set_parser()`` installs the
+    reader and then send a bad frame. Staying paused would leave the transport
+    never reading, so the discard branch could not run and the peer's FIN would
+    never arrive: an fd leak in place of the memory one.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (True, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert proto._payload_parser_failed
+    assert not proto._tail_paused
+    transport.resume_reading.assert_called_once_with()
+
+    # Reading is back on, and what arrives now is dropped rather than buffered.
+    proto.data_received(b"z" * 65536)
+    assert proto._tail == b""

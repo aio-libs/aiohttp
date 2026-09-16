@@ -218,10 +218,15 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def _resume_tail_reading(self) -> None:
         if not self._tail_paused:
             return
-        if self._upgraded and self._payload_parser is None:
-            # Nothing will drain _tail: the parser either errored on what was
-            # just drained or has not been installed yet. Stay paused, or the
-            # peer simply refills the buffer we paused for.
+        if (
+            self._upgraded
+            and self._payload_parser is None
+            and not self._payload_parser_failed
+        ):
+            # No parser yet, so nothing would drain _tail: stay paused, or the
+            # peer simply refills the buffer we paused for. Once the parser has
+            # failed the discard branch keeps _tail empty, so reading resumes
+            # and the peer's FIN still arrives.
             return
         self._tail_paused = False
         self._resume_reading_for_buffer()

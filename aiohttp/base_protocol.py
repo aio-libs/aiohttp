@@ -69,13 +69,7 @@ class BaseProtocol(asyncio.Protocol):
         if not self._upgraded:
             assert self._parser is not None
             self._parser.pause_reading()
-        if self.transport is not None:
-            try:
-                self.transport.pause_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to pause. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
+        self._pause_reading_for_buffer()
 
     def _reading_paused_for_buffer(self) -> bool:
         """Keep the transport paused for protocol-specific reasons (overridden)."""
