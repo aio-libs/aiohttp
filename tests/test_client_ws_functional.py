@@ -26,6 +26,7 @@ from aiohttp import (
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.client_ws import ClientWSTimeout
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
@@ -1839,3 +1840,78 @@ async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
     assert resp._parser is not None
     await resp.close()
     assert resp._parser is None
+
+
+async def test_tail_bounded_after_protocol_error(
+    unused_port_socket: socket.socket,
+) -> None:
+    """A peer cannot grow the client's tail without bound after a frame error.
+
+    ``WebSocketReader.feed_data()`` only reports EOF for a protocol error, and
+    the connection stays upgraded with no parser installed afterwards, so every
+    later byte lands in ``ResponseHandler._tail``. An application that never
+    calls ``receive()`` never closes the connection, so the peer could stream
+    until the client ran out of memory.
+    """
+    pushed = 0
+    writers: list[asyncio.StreamWriter] = []
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        nonlocal pushed
+        writers.append(writer)
+        request = await reader.readuntil(b"\r\n\r\n")
+        key = next(
+            line.split(b":", 1)[1].strip()
+            for line in request.split(b"\r\n")
+            if line.lower().startswith(b"sec-websocket-key")
+        )
+        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+        writer.write(
+            b"HTTP/1.1 101 Switching Protocols\r\n"
+            b"Upgrade: websocket\r\n"
+            b"Connection: Upgrade\r\n"
+            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+            # RSV1 set without permessage-deflate: a protocol error.
+            + b"\x41\x01x"
+        )
+        await writer.drain()
+        blob = b"A" * 65536
+        with contextlib.suppress(Exception):
+            for _ in range(512):  # 32 MiB
+                writer.write(blob)
+                pushed += len(blob)
+                await writer.drain()
+
+    server = await asyncio.start_server(raw_server, sock=unused_port_socket)
+    port = unused_port_socket.getsockname()[1]
+    try:
+        async with aiohttp.ClientSession() as session:
+            # No receive() call: the long-lived idle client of the report.
+            ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
+            connection = ws._conn
+            assert connection is not None
+            protocol = connection.protocol
+            assert protocol is not None
+            for _ in range(1000):  # pragma: no branch
+                if protocol._tail_paused:
+                    break
+                await asyncio.sleep(0.01)
+
+            assert protocol._tail_paused, "reading was never paused"
+            # A socket read already in flight when the pause lands is still
+            # delivered, so the tail holds at most one of those rather than
+            # everything the peer wanted to send.
+            assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
+            assert protocol.should_close
+            await ws.close()
+    finally:
+        for writer in writers:
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+        server.close()
+        await server.wait_closed()
+
+    assert pushed < 32 * 1024 * 1024, "the paused transport never applied backpressure"

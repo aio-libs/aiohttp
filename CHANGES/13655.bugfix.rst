@@ -1,0 +1,7 @@
+Bounded the data buffered on an upgraded client connection while no parser is
+installed to drain it. A WebSocket protocol error leaves the connection
+upgraded with the reader detached, so a peer could stream unlimited data into
+the connection's internal tail buffer when the application never called
+:meth:`~aiohttp.ClientWebSocketResponse.receive`. Reading is now paused once
+the buffer reaches ``read_bufsize``, matching the server side
+-- by :user:`bdraco`.

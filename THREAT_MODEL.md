@@ -538,6 +538,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
 | 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
 | 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
+| 3.16 | Post-error buffering on an upgraded connection | D | `WebSocketReader.feed_data` reports EOF only for a protocol error, and the connection stays upgraded with the reader detached. Every later byte is buffered by the protocol with nothing left to drain it, so a peer that keeps streaming after a deliberate frame error exhausts memory on a peer that never reads. | Medium |
 
 **Mitigations.**
 
@@ -556,6 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
+| 3.16 | Post-error buffering bound | Both sides pause the transport once the buffer they cannot drain reaches `read_bufsize` (default 256 KiB): `web_protocol.py:_pause_msg_queue_reading` for `_message_tail`, `client_proto.py:_pause_tail_reading` for `_tail`. The client additionally pauses the moment the reader reports EOF, since a protocol error means nothing will parse the connection again. | **User**: set `heartbeat` on long-lived client sessions so a wedged connection is torn down rather than left idle; it bounds how long a peer can push, not how fast. |
 
 **Past advisories / hardening (recap).**
 
@@ -597,6 +599,12 @@ client-side, the writer adds masks to outgoing frames.
   them once when the frame completes; if a frame arrives in more than
   `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
   a single `bytearray` and cleared.
+- **Issue #13655** — the client had no equivalent of the server's
+  `_message_tail` bound, so a protocol error (which detaches the reader but
+  leaves the connection upgraded) let a peer stream unbounded data into
+  `ResponseHandler._tail`: 32 MiB pushed at a client that never called
+  `receive()` produced 32 MiB of `_tail`, and `heartbeat` bounded only how
+  long the peer had, not how fast. Bounded as described in threat 3.16.
 
 ---
 

@@ -3,7 +3,7 @@ from contextlib import suppress
 from typing import Callable, Protocol
 
 from ._websocket.reader import WebSocketDataQueue
-from .base_protocol import BaseProtocol
+from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
     ClientOSError,
@@ -45,6 +45,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._timer = None
         self._tail = b""
+        self._tail_paused = False
+        self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
@@ -201,6 +203,40 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused:
             self._reschedule_timeout()
 
+    def _reading_paused_for_msg_queue(self) -> bool:
+        return self._tail_paused
+
+    def _pause_tail_reading(self) -> None:
+        self._tail_paused = True
+        if self.transport is not None:
+            try:
+                self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
+
+    def _resume_tail_reading(self) -> None:
+        if not self._tail_paused:
+            return
+        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
+        if self._tail and len(self._tail) >= self._read_bufsize:
+            return
+        self._tail_paused = False
+        if not self._reading_paused and self.transport is not None:
+            try:
+                self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
+
+    def _drain_tail(self) -> None:
+        if self._tail:
+            data, self._tail = self._tail, b""
+            self.data_received(data)
+        self._resume_tail_reading()
+
     def set_exception(
         self,
         exc: type[BaseException] | BaseException,
@@ -222,9 +258,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._drop_timeout()
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def set_response_params(
         self,
@@ -242,6 +276,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     ) -> None:
         self._skip_payload = skip_payload
 
+        self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
@@ -260,9 +295,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             max_headers=max_headers,
         )
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def _drop_timeout(self) -> None:
         if self._read_timeout_handle is not None:
@@ -312,6 +345,11 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if eof:
                 self._payload = None
                 self._payload_parser = None
+                # EOF here is always a WebSocket protocol error, already
+                # stored on the queue; nothing will parse this connection
+                # again, so stop reading rather than buffer what follows.
+                self._should_close = True
+                self._pause_tail_reading()
 
                 if tail:
                     self.data_received(tail)
@@ -320,6 +358,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet
             self._tail += data
+            # Nothing drains _tail until a parser is installed, so stop reading
+            # rather than letting the peer grow it without bound.
+            if not self._tail_paused and len(self._tail) >= self._read_bufsize:
+                self._pause_tail_reading()
             return
 
         # parse http messages
