@@ -77,9 +77,29 @@ class BaseProtocol(asyncio.Protocol):
                 # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
 
-    def _reading_paused_for_msg_queue(self) -> bool:
+    def _reading_paused_for_buffer(self) -> bool:
         """Keep the transport paused for protocol-specific reasons (overridden)."""
         return False
+
+    def _pause_reading_for_buffer(self) -> None:
+        """Pause the transport for a buffer the base class knows nothing about."""
+        if self.transport is not None:
+            try:
+                self.transport.pause_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
+
+    def _resume_reading_for_buffer(self) -> None:
+        """Resume unless the transport is also paused for its own reasons."""
+        if not self._reading_paused and self.transport is not None:
+            try:
+                self.transport.resume_reading()
+            except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
+                pass
 
     def resume_reading(self, resume_parser: bool = True) -> None:
         self._reading_paused = False
@@ -92,7 +112,7 @@ class BaseProtocol(asyncio.Protocol):
         # compressed data still pending.
         if (
             not self._reading_paused
-            and not self._reading_paused_for_msg_queue()
+            and not self._reading_paused_for_buffer()
             and self.transport is not None
         ):
             try:

@@ -16,7 +16,7 @@ from multidict import CIMultiDict
 from propcache import under_cached_property
 
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
-from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
+from .base_protocol import BaseProtocol
 from .helpers import (
     DEFAULT_CHUNK_SIZE,
     HeadersDictProxy,
@@ -528,18 +528,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if eof:
                 self.close()
 
-    def _reading_paused_for_msg_queue(self) -> bool:
+    def _reading_paused_for_buffer(self) -> bool:
         return self._msg_queue_paused
 
     def _pause_msg_queue_reading(self) -> None:
         self._msg_queue_paused = True
-        if self.transport is not None:
-            try:
-                self.transport.pause_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to pause. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
+        self._pause_reading_for_buffer()
 
     def _resume_msg_queue_reading(self) -> None:
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
@@ -554,13 +548,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if len(self._messages) >= self._max_msg_queue_size:
                 return
         self._msg_queue_paused = False
-        if not self._reading_paused and self.transport is not None:
-            try:
-                self.transport.resume_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to resume. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
+        self._resume_reading_for_buffer()
 
     def _replay_message_tail(self) -> None:
         """Re-feed the bytes buffered behind a rejected upgrade.

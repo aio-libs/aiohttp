@@ -3,7 +3,7 @@ from contextlib import suppress
 from typing import Callable, Protocol
 
 from ._websocket.reader import WebSocketDataQueue
-from .base_protocol import PAUSE_RESUME_READING_ERRORS, BaseProtocol
+from .base_protocol import BaseProtocol
 from .client_exceptions import (
     ClientConnectionError,
     ClientOSError,
@@ -203,7 +203,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused:
             self._reschedule_timeout()
 
-    def _reading_paused_for_msg_queue(self) -> bool:
+    def _reading_paused_for_buffer(self) -> bool:
         """Override: a WebSocketDataQueue drain must not lift the tail pause.
 
         Nothing would re-arm it; the bound in data_received() checks _tail_paused.
@@ -212,13 +212,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def _pause_tail_reading(self) -> None:
         self._tail_paused = True
-        if self.transport is not None:
-            try:
-                self.transport.pause_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to pause. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
+        self._pause_reading_for_buffer()
 
     def _resume_tail_reading(self) -> None:
         if not self._tail_paused:
@@ -229,13 +223,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # peer simply refills the buffer we paused for.
             return
         self._tail_paused = False
-        if not self._reading_paused and self.transport is not None:
-            try:
-                self.transport.resume_reading()
-            except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to resume. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
-                pass
+        self._resume_reading_for_buffer()
 
     def _drain_tail(self) -> None:
         if self._tail:
