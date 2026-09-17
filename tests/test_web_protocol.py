@@ -64,7 +64,7 @@ def test_pause_reading_for_buffer_without_transport(
     assert handler._buffer_paused is True
 
 
-def test_resume_msg_queue_reading_after_upgrade_skips_reparse(
+def test_resume_reading_if_drained_after_upgrade_skips_reparse(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -77,14 +77,14 @@ def test_resume_msg_queue_reading_after_upgrade_skips_reparse(
     handler._reading_paused = False
 
     with mock.patch.object(RequestHandler, "data_received") as data_received:
-        handler._resume_msg_queue_reading()
+        handler._resume_reading_if_drained()
 
     data_received.assert_not_called()
     assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
-def test_resume_msg_queue_reading_without_transport(
+def test_resume_reading_if_drained_without_transport(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -94,12 +94,12 @@ def test_resume_msg_queue_reading_without_transport(
     handler._upgraded = True  # skip the reparse branch
     handler._buffer_paused = True
 
-    handler._resume_msg_queue_reading()
+    handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
 
 
-def test_resume_msg_queue_reading_stays_paused_for_full_tail(
+def test_resume_reading_if_drained_stays_paused_for_full_tail(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -115,13 +115,13 @@ def test_resume_msg_queue_reading_stays_paused_for_full_tail(
     handler._buffer_paused = True
     handler._message_tail = b"x" * 1024
 
-    handler._resume_msg_queue_reading()
+    handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is True
     transport.resume_reading.assert_not_called()
 
 
-def test_resume_msg_queue_reading_with_room_left_in_tail(
+def test_resume_reading_if_drained_with_room_left_in_tail(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -133,13 +133,13 @@ def test_resume_msg_queue_reading_with_room_left_in_tail(
     handler._buffer_paused = True
     handler._message_tail = b"x" * 1023
 
-    handler._resume_msg_queue_reading()
+    handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
-def test_resume_msg_queue_reading_with_zero_read_bufsize(
+def test_resume_reading_if_drained_with_zero_read_bufsize(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -154,7 +154,7 @@ def test_resume_msg_queue_reading_with_zero_read_bufsize(
     handler._upgraded = True
     handler._buffer_paused = True
 
-    handler._resume_msg_queue_reading()
+    handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
@@ -210,7 +210,7 @@ def test_pause_reading_for_buffer_ignores_unsupported_transport(
     assert handler._buffer_paused is True
 
 
-def test_resume_msg_queue_reading_ignores_unsupported_transport(
+def test_resume_reading_if_drained_ignores_unsupported_transport(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -221,6 +221,6 @@ def test_resume_msg_queue_reading_ignores_unsupported_transport(
     handler._upgraded = True  # skip the reparse branch
     handler._buffer_paused = True
 
-    handler._resume_msg_queue_reading()
+    handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False

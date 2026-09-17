@@ -1805,13 +1805,13 @@ async def test_http1_pipelined_queue_resumes_after_drain(
     handled: list[str] = []
     all_handled = asyncio.Event()
 
-    resume = RequestHandler._resume_msg_queue_reading
+    resume = RequestHandler._resume_reading_if_drained
 
     def observe_resume(self: RequestHandler[web.Request]) -> None:
         resume(self)
         resumed.set()
 
-    monkeypatch.setattr(RequestHandler, "_resume_msg_queue_reading", observe_resume)
+    monkeypatch.setattr(RequestHandler, "_resume_reading_if_drained", observe_resume)
 
     async def handler(request: web.Request) -> web.Response:
         if request.path == "/first":

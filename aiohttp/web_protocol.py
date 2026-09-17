@@ -465,7 +465,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._message_tail = b""
 
         if self._buffer_paused:
-            self._resume_msg_queue_reading()
+            self._resume_reading_if_drained()
 
     def eof_received(self) -> None:
         pass
@@ -524,7 +524,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if eof:
                 self.close()
 
-    def _resume_msg_queue_reading(self) -> None:
+    def _resume_reading_if_drained(self) -> None:
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
         if self._message_tail and len(self._message_tail) >= self._read_bufsize:
             return
@@ -593,7 +593,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._pause_reading_for_buffer()
         elif self._buffer_paused:
             # Resume reading now the tail has been parsed.
-            self._resume_msg_queue_reading()
+            self._resume_reading_if_drained()
 
         # This shouldn't be possible. If a future refactor results in this
         # failing, then the code may need to be updated to set the waiter.
@@ -745,7 +745,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 self._buffer_paused
                 and len(self._messages) <= self._msg_queue_resume_size
             ):
-                self._resume_msg_queue_reading()
+                self._resume_reading_if_drained()
 
             # time is only fetched if logging is enabled as otherwise
             # its thrown away and never used.
