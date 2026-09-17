@@ -55,7 +55,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
-                         read_bufsize=2**16, \
+                         read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
                          max_headers=128, \
@@ -253,7 +253,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            256 KiB by default. On a WebSocket connection it
+                            also bounds what is buffered between the handshake
+                            and the reader being installed.
 
       .. versionadded:: 3.7
 
