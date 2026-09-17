@@ -1805,13 +1805,13 @@ async def test_http1_pipelined_queue_resumes_after_drain(
     handled: list[str] = []
     all_handled = asyncio.Event()
 
-    resume = RequestHandler._resume_msg_queue_reading
+    resume = RequestHandler._resume_reading_if_drained
 
     def observe_resume(self: RequestHandler[web.Request]) -> None:
         resume(self)
         resumed.set()
 
-    monkeypatch.setattr(RequestHandler, "_resume_msg_queue_reading", observe_resume)
+    monkeypatch.setattr(RequestHandler, "_resume_reading_if_drained", observe_resume)
 
     async def handler(request: web.Request) -> web.Response:
         if request.path == "/first":
@@ -1930,7 +1930,7 @@ async def test_upgrade_tail_is_byte_limited(
         data_received(self, data)
         if self._message_tail:
             max_tail = max(max_tail, len(self._message_tail))
-            if self._msg_queue_paused:
+            if self._buffer_paused:
                 reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
@@ -2006,7 +2006,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
 
     def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
         data_received(self, data)
-        if self._msg_queue_paused:
+        if self._buffer_paused:
             reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)

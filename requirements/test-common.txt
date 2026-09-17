@@ -10,7 +10,7 @@ aiosignal==1.4.0
     # via aiohttp
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.11.1
+ast-serialize==0.11.2
     # via mypy
 async-timeout==5.0.1
     # via aiohttp
@@ -22,7 +22,7 @@ blockbuster==1.5.27
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
-coverage==7.16.0
+coverage==7.16.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
