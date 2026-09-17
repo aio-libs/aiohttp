@@ -186,7 +186,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._parser = None
         self._payload = None
         self._payload_parser = None
+        self._payload_parser_failed = False
         self._reading_paused = False
+        self._tail_paused = False
 
         super().connection_lost(reraised_exc)
 
@@ -232,6 +234,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self.data_received(data)
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
         if self._tail and len(self._tail) >= self._read_bufsize:
+            # The drain restarted sock_read; the pause above is still ours.
+            self._drop_timeout()
             return
         if self._tail_paused:
             self._resume_tail_reading()

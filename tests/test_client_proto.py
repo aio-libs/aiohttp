@@ -588,6 +588,7 @@ async def test_drain_that_refills_the_tail_stays_paused() -> None:
     """
     transport = mock.Mock()
     proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
+    proto.read_timeout = 30
     proto.data_received(b"x" * 2048)
     transport.pause_reading.assert_called_once_with()
 
@@ -597,3 +598,5 @@ async def test_drain_that_refills_the_tail_stays_paused() -> None:
     assert proto._tail == b"x" * 2048
     assert proto._tail_paused
     transport.resume_reading.assert_not_called()
+    # The drain restarted sock_read on the way through; the pause is ours.
+    assert proto._read_timeout_handle is None
