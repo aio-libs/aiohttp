@@ -31,6 +31,11 @@ try:
 except ImportError:
     ssl = None  # type: ignore[assignment]
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
+
 
 class _Sender(Protocol):
     def __call__(
@@ -73,21 +78,32 @@ async def sender(request: SubRequest) -> AsyncIterator[_Sender]:
     sendfile_mock = None
 
     def maker(path: PathLike, chunk_size: int = 256 * 1024) -> web.FileResponse:
-        ret = web.FileResponse(path, chunk_size=chunk_size)
-        rloop = asyncio.get_running_loop()
-        is_patched = rloop.sendfile is sendfile_mock
-        assert is_patched if request.param == "no_sendfile" else not is_patched
-        return ret
+        if request.param == "no_sendfile":
+            if aiofastnet is None:
+                assert asyncio.get_running_loop().sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
+            else:
+                assert aiofastnet.sendfile is sendfile_mock  # type: ignore[unreachable, unused-ignore]
+        return web.FileResponse(path, chunk_size=chunk_size)
 
     if request.param == "no_sendfile":
-        with mock.patch.object(
-            asyncio.get_running_loop(),
-            "sendfile",
-            autospec=True,
-            spec_set=True,
-            side_effect=NotImplementedError,
-        ) as sendfile_mock:
-            yield maker
+        if aiofastnet is None:
+            with mock.patch.object(  # type: ignore[unreachable, unused-ignore]
+                asyncio.get_running_loop(),
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
+        else:
+            with mock.patch.object(  # type: ignore[unreachable, unused-ignore]
+                aiofastnet,
+                "sendfile",
+                autospec=True,
+                spec_set=True,
+                side_effect=NotImplementedError,
+            ) as sendfile_mock:
+                yield maker
     else:
         yield maker
 
@@ -243,6 +259,122 @@ async def test_static_file_with_content_type(
     resp.close()
     resp.release()
     await client.close()
+
+
+@pytest.mark.parametrize(
+    ("filename", "charset", "expected_type"),
+    (
+        ("hello.txt", "utf-8", "text/plain; charset=utf-8"),
+        ("hello.html", "UTF-8", "text/html; charset=utf-8"),
+        ("hello.txt", "koi8-r", "text/plain; charset=koi8-r"),
+    ),
+)
+async def test_static_file_charset(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    filename: str,
+    charset: str,
+    expected_type: str,
+) -> None:
+    """Test that the charset is appended to guessed text/* content types."""
+    file_path = tmp_path / filename
+    file_path.write_bytes(b"Hello")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, text_charset=charset)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == expected_type
+
+
+@pytest.mark.parametrize(
+    ("filename", "expected_type"),
+    (
+        ("data.bin", "application/octet-stream"),
+        ("data.json", "application/json"),
+    ),
+)
+async def test_static_file_charset_not_applied_to_non_text(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    filename: str,
+    expected_type: str,
+) -> None:
+    """Test that the charset is not appended to non-text content types."""
+    file_path = tmp_path / filename
+    file_path.write_bytes(b"data")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(file_path, text_charset="utf-8")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == expected_type
+
+
+async def test_static_file_charset_keeps_explicit_content_type(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that the charset never modifies a user-supplied Content-Type header."""
+    file_path = tmp_path / "hello.txt"
+    file_path.write_bytes(b"Hello")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(
+            file_path,
+            headers={"Content-Type": "text/plain; charset=latin-1"},
+            text_charset="utf-8",
+        )
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "text/plain; charset=latin-1"
+
+
+async def test_static_route_charset(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """Test that add_static passes the charset through to file responses."""
+    (tmp_path / "hello.txt").write_bytes(b"Hello")
+    (tmp_path / "data.bin").write_bytes(b"\x00\x01\x02")
+
+    app = web.Application()
+    app.router.add_static("/static", tmp_path, text_charset="utf-8")
+    client = await aiohttp_client(app)
+
+    async with client.get("/static/hello.txt") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "text/plain; charset=utf-8"
+
+    async with client.get("/static/data.bin") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Type"] == "application/octet-stream"
+
+
+def test_static_file_text_charset_empty() -> None:
+    """Test that an empty text_charset is rejected at construction time."""
+    with pytest.raises(ValueError, match="text_charset"):
+        web.FileResponse(pathlib.Path("hello.txt"), text_charset="")
+
+
+def test_static_route_text_charset_empty(tmp_path: pathlib.Path) -> None:
+    """Test that an empty text_charset is rejected when the route is set up."""
+    app = web.Application()
+    with pytest.raises(ValueError, match="text_charset"):
+        app.router.add_static("/static", tmp_path, text_charset="")
 
 
 @pytest.mark.parametrize("hello_txt", ["gzip", "br"], indirect=True)
@@ -953,21 +1085,73 @@ async def test_static_file_if_range_past_with_range(
     await client.close()
 
 
-async def test_static_file_if_range_future_with_range(
+async def test_static_file_if_range_matching_date_with_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
     client = await aiohttp_client(app_with_static_route)
 
-    lastmod = "Fri, 31 Dec 9999 23:59:59 GMT"
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        last_modified = resp.headers["Last-Modified"]
 
-    resp = await client.get("/", headers={"If-Range": lastmod, "Range": "bytes=2-"})
-    assert 206 == resp.status
-    assert resp.headers["Content-Range"] == "bytes 2-12/13"
-    assert resp.headers["Content-Length"] == "11"
-    resp.close()
+    async with client.get(
+        "/", headers={"If-Range": last_modified, "Range": "bytes=2-"}
+    ) as resp:
+        assert 206 == resp.status
+        assert resp.headers["Content-Range"] == "bytes 2-12/13"
+        assert resp.headers["Content-Length"] == "11"
 
-    resp.release()
-    await client.close()
+
+async def test_static_file_if_range_etag_match_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        etag = resp.headers["ETag"]
+
+    async with client.get("/", headers={"If-Range": etag, "Range": "bytes=2-"}) as resp:
+        assert 206 == resp.status
+        assert resp.headers["Content-Range"] == "bytes 2-12/13"
+        assert resp.headers["Content-Length"] == "11"
+
+
+async def test_static_file_if_range_stale_etag_with_range(
+    aiohttp_client: AiohttpClient, app_with_static_route: web.Application
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get(
+        "/", headers={"If-Range": '"stale-etag"', "Range": "bytes=2-"}
+    ) as resp:
+        assert 200 == resp.status
+        assert resp.headers["Content-Length"] == "13"
+        assert "Content-Range" not in resp.headers
+
+
+@pytest.mark.parametrize(
+    "if_range",
+    ("{etag}", '"{etag}', '"{etag}", "{etag}"', "not a valid HTTP-date"),
+    ids=("unquoted", "unterminated", "list", "date"),
+)
+async def test_static_file_if_range_malformed_with_range(
+    aiohttp_client: AiohttpClient,
+    app_with_static_route: web.Application,
+    if_range: str,
+) -> None:
+    client = await aiohttp_client(app_with_static_route)
+
+    async with client.get("/") as resp:
+        assert 200 == resp.status
+        etag = resp.headers["ETag"].strip('"')
+
+    async with client.get(
+        "/", headers={"If-Range": if_range.format(etag=etag), "Range": "bytes=2-"}
+    ) as resp:
+        assert 200 == resp.status
+        assert resp.headers["Content-Length"] == "13"
+        assert "Content-Range" not in resp.headers
 
 
 async def test_static_file_if_unmodified_since_past_without_range(

@@ -50,11 +50,12 @@ The client session supports the context manager protocol for self closing.
                          raise_for_status=False, \
                          timeout=sentinel, \
                          auto_decompress=True, \
+                         ssl=True, \
                          trust_env=False, \
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
-                         read_bufsize=2**16, \
+                         read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
                          max_headers=128, \
@@ -173,6 +174,18 @@ The client session supports the context manager protocol for self closing.
 
       .. versionadded:: 2.3
 
+   :param ssl: Default SSL validation mode for requests made through this
+      session. ``True`` for default SSL check
+      (:func:`ssl.create_default_context` is used),
+      ``False`` for skip SSL certificate validation,
+      :class:`aiohttp.Fingerprint` for fingerprint
+      validation, :class:`ssl.SSLContext` for custom SSL
+      certificate validation (``True`` by default).
+
+      A per-request ``ssl`` argument overrides this value.
+
+      .. versionadded:: 3.15
+
    :param bool trust_env: Trust environment settings for proxy configuration if the parameter
       is ``True`` (``False`` by default). See :ref:`aiohttp-client-proxy-support` for
       more information.
@@ -217,7 +230,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            256 KiB by default. On a WebSocket connection it
+                            also bounds what is buffered between the handshake
+                            and the reader being installed.
 
       .. versionadded:: 3.7
 
@@ -465,6 +480,8 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_redirects: Maximum number of redirects to follow.
          :exc:`TooManyRedirects` is raised if the number is exceeded.
+         ``0`` means no limit, redirects are followed until the request
+         times out. Use ``allow_redirects=False`` to not follow redirects at all.
          Ignored when ``allow_redirects=False``.
          ``10`` by default.
 
@@ -516,7 +533,14 @@ The client session supports the context manager protocol for self closing.
                   Supersedes *verify_ssl*, *ssl_context* and
                   *fingerprint* parameters.
 
+                  When not given, the session's ``ssl`` value is used
+                  (``True`` unless set).
+
          .. versionadded:: 3.0
+
+         .. versionchanged:: 3.15
+
+            Defaults to the session's ``ssl`` value.
 
       :param str server_hostname: Sets or overrides the host name that the
          target server's certificate will be matched against.
@@ -772,7 +796,14 @@ The client session supports the context manager protocol for self closing.
                   Supersedes *verify_ssl*, *ssl_context* and
                   *fingerprint* parameters.
 
+                  When not given, the session's ``ssl`` value is used
+                  (``True`` unless set).
+
          .. versionadded:: 3.0
+
+         .. versionchanged:: 3.15
+
+            Defaults to the session's ``ssl`` value.
 
       :param bool verify_ssl: Perform SSL certificate validation for
          *HTTPS* requests (enabled by default). May be disabled to
@@ -943,6 +974,8 @@ certification chaining.
 
    :param int max_redirects: Maximum number of redirects to follow.
       :exc:`TooManyRedirects` is raised if the number is exceeded.
+      ``0`` means no limit, redirects are followed until the request
+      times out. Use ``allow_redirects=False`` to not follow redirects at all.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
@@ -2079,6 +2112,16 @@ ClientRequest
       - :class:`ssl.SSLContext`: Custom SSL context
       - :class:`Fingerprint`: Verify specific certificate fingerprint
 
+   .. attribute:: timeout
+      :type: ClientTimeout
+
+      The timeout configuration this request runs under (read-only): the
+      per-request timeout when one was passed to the request method, the
+      session's default otherwise. Useful in middleware to bound waits or
+      retries by the caller's time budget.
+
+      .. versionadded:: 3.15
+
    .. attribute:: url
       :type: yarl.URL
 
@@ -2515,10 +2558,16 @@ Utilities
 
    .. attribute:: host_only_cookies
 
-      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
-      cookies are host-only (not sent to subdomains).
+      A :class:`frozenset` of ``(domain, path, name)`` tuples indicating
+      which cookies are host-only (not sent to subdomains).
 
       .. versionadded:: 3.14
+
+      .. versionchanged:: 3.14.4
+
+         The tuples gained the *path* element; host-only state is tracked
+         per ``(domain, path, name)`` cookie identity so that same-named
+         cookies on other paths cannot affect it.
 
 
 .. class:: DummyCookieJar(*, loop=None)
@@ -2849,6 +2898,12 @@ Connection errors
    Connector related exceptions.
 
    Derived from :exc:`ClientOSError`
+
+   .. attribute:: ssl
+
+      The value passed as the ``ssl`` parameter of the request: an
+      :class:`ssl.SSLContext`, a :class:`bool`, or a
+      :class:`~aiohttp.Fingerprint`.
 
 .. class:: ClientConnectorDNSError
    :canonical: aiohttp.client_exceptions.ClientConnectorDNSError

@@ -464,7 +464,9 @@ def test_add_static_append_version_non_exists_file_without_slash(
 
 
 def test_add_static_append_version_follow_symlink(
-    router: web.UrlDispatcher, tmp_path: pathlib.Path
+    router: web.UrlDispatcher,
+    tmp_path: pathlib.Path,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / "append_version_symlink"
@@ -486,7 +488,9 @@ def test_add_static_append_version_follow_symlink(
 
 
 def test_add_static_append_version_not_follow_symlink(
-    router: web.UrlDispatcher, tmp_path: pathlib.Path
+    router: web.UrlDispatcher,
+    tmp_path: pathlib.Path,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
 

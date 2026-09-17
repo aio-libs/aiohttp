@@ -1,0 +1,1 @@
+Fixed event loop state possibly being corrupted on Python 3.12+ -- by :user:`Dreamsorcerer`.

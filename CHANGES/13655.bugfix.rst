@@ -1,0 +1,8 @@
+Fixed unbounded memory growth on a client WebSocket connection. A frame
+protocol error detaches the reader but leaves the connection upgraded, so a
+peer could stream unlimited data into an internal buffer when the application
+never called :meth:`~aiohttp.ClientWebSocketResponse.receive`; that data is
+now discarded, since nothing can parse it. Data arriving before the reader is
+installed is bounded by ``read_bufsize``, which now applies to this buffer as
+well as to :attr:`~aiohttp.ClientResponse.content`
+-- by :user:`bdraco`.

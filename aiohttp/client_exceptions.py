@@ -382,13 +382,10 @@ class ClientConnectorCertificateError(*cert_errors_bases):  # type: ignore[misc]
     def port(self) -> int | None:
         return self._conn_key.port
 
-    @property
-    def ssl(self) -> bool:
-        return self._conn_key.is_ssl
-
     def __str__(self) -> str:
         return (
-            f"Cannot connect to host {self.host}:{self.port} ssl:{self.ssl} "
+            f"Cannot connect to host {self.host}:{self.port} "
+            f"ssl:{'default' if self.ssl is True else self.ssl} "
             f"[{self.certificate_error.__class__.__name__}: "
             f"{self.certificate_error.args}]"
         )

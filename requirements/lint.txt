@@ -6,41 +6,45 @@
 #
 aiodns==4.0.4
     # via -r requirements/lint.in
-aiohappyeyeballs==2.6.2
+aiofastnet==1.1.0
+    # via -r requirements/lint.in
+aiohappyeyeballs==2.7.1
     # via aiohttp
 aiosignal==1.4.0
     # via aiohttp
-annotated-types==0.7.0
+annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.5.0
+ast-serialize==0.11.2
     # via mypy
 async-timeout==5.0.1
     # via
     #   aiohttp
     #   valkey
+atheris==3.0.0
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
 backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via -r requirements/lint.in
-blockbuster==1.5.26
+blockbuster==1.5.27
     # via -r requirements/lint.in
-cffi==2.0.0
+cffi==2.1.1
     # via
     #   cryptography
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-click==8.4.2
-    # via slotscheck
-cryptography==49.0.0
+cryptography==50.0.1
     # via trustme
 distlib==0.4.3
     # via virtualenv
 exceptiongroup==1.3.1
-    # via pytest
-filelock==3.29.4
+    # via
+    #   aiofastnet
+    #   pytest
+filelock==3.32.6
     # via
     #   python-discovery
     #   virtualenv
@@ -54,7 +58,7 @@ frozenlist==1.8.0
     #   aiosignal
 identify==2.6.19
     # via pre-commit
-idna==3.18
+idna==3.19
     # via
     #   trustme
     #   yarl
@@ -62,13 +66,13 @@ iniconfig==2.3.0
     # via pytest
 isal==1.8.0
     # via -r requirements/lint.in
-librt==0.11.0
+librt==0.15.0
     # via mypy
 markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.7.1
+multidict==6.8.0
     # via
     #   aiohttp
     #   yarl
@@ -78,19 +82,17 @@ mypy-extensions==1.1.0
     # via mypy
 nodeenv==1.10.0
     # via pre-commit
-packaging==26.2
+packaging==26.3
     # via pytest
 pathspec==1.1.1
     # via mypy
-platformdirs==4.10.0
-    # via
-    #   python-discovery
-    #   virtualenv
+platformdirs==4.11.8
+    # via virtualenv
 pluggy==1.6.0
     # via pytest
-pre-commit==4.6.0
+pre-commit==4.6.2
     # via -r requirements/lint.in
-propcache==0.5.2
+propcache==0.5.4
     # via
     #   aiohttp
     #   yarl
@@ -100,11 +102,11 @@ pycares==5.0.1
     # via aiodns
 pycparser==3.0
     # via cffi
-pydantic==2.13.4
+pydantic==2.13.5
     # via python-on-whales
-pydantic-core==2.46.4
+pydantic-core==2.46.5
     # via pydantic
-pygments==2.20.0
+pygments==2.21.0
     # via
     #   pytest
     #   rich
@@ -125,7 +127,7 @@ pytest-mock==3.15.1
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.4.2
+python-discovery==1.6.0
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
@@ -135,7 +137,7 @@ rich==15.0.0
     # via pytest-codspeed
 six==1.17.0
     # via python-dateutil
-slotscheck==0.20.0
+slotscheck==0.21.0
     # via -r requirements/lint.in
 tomli==2.4.1
     # via
@@ -144,7 +146,7 @@ tomli==2.4.1
     #   slotscheck
 trustme==1.2.1
     # via -r requirements/lint.in
-typing-extensions==4.15.0
+typing-extensions==4.16.0
     # via
     #   aiohttp
     #   aiosignal
@@ -158,15 +160,15 @@ typing-extensions==4.15.0
     #   python-on-whales
     #   typing-inspection
     #   virtualenv
-typing-inspection==0.4.2
+typing-inspection==0.4.4
     # via pydantic
 uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.5.1
+virtualenv==21.7.9
     # via pre-commit
-yarl==1.24.2
+yarl==1.25.1
     # via aiohttp
 zlib-ng==1.0.0
     # via -r requirements/lint.in

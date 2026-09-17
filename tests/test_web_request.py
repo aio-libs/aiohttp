@@ -220,6 +220,41 @@ def test_absolute_url() -> None:
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
 
 
+def test_absolute_form_raw_path() -> None:
+    # An absolute-form target (RFC 9112 3.2.2) must not leak the scheme/host
+    # into raw_path. The path, query and fragment are kept byte-for-byte, the
+    # same raw form an origin-form target yields.
+    req = make_mocked_request("GET", "https://example.com/path/to?a=1#frag")
+    assert req.raw_path == "/path/to?a=1#frag"
+    assert req.raw_path == make_mocked_request("GET", "/path/to?a=1#frag").raw_path
+
+
+def test_connect_authority_form_raw_path() -> None:
+    # Authority-form is only used by CONNECT (RFC 9112 3.2.3); its target is a
+    # bare host:port with no scheme prefix, so raw_path returns it unchanged.
+    message = RawRequestMessage(
+        "CONNECT",
+        "example.com:443",
+        HttpVersion(1, 1),
+        HeadersDictProxy(CIMultiDict()),
+        (),
+        False,
+        None,
+        False,
+        False,
+        URL.build(authority="example.com:443", encoded=True),
+    )
+    protocol = mock.Mock()
+    protocol.ssl_context = None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 80)
+    req = web.BaseRequest(
+        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
+    )
+    assert req._message.url.absolute
+    assert req.raw_path == "example.com:443"
+
+
 def test_clone_absolute_scheme() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
     assert req.scheme == "https"
@@ -279,6 +314,15 @@ def test_range_non_ascii() -> None:
     req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=4-५")]))
     with pytest.raises(ValueError, match="range not in acceptable format"):
         req.http_range
+
+
+def test_range_to_slice_uppercase_unit() -> None:
+    # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", "Bytes=0-499")])
+    )
+    assert isinstance(req.http_range, slice)
+    assert req.http_range.start == 0 and req.http_range.stop == 500
 
 
 def test_non_keepalive_on_http10() -> None:
@@ -757,6 +801,23 @@ def test_single_forwarded_header_injection2() -> None:
     assert req.forwarded[1]["for"] == "_real"
 
 
+@pytest.mark.parametrize(
+    "header, expected",
+    [
+        ("a", {}),
+        ("; a", {}),
+        ("for=1.2.3.4; a", {"for": "1.2.3.4"}),
+        ("for=_real; x", {"for": "_real"}),
+        ("bad; for=_real", {}),
+    ],
+)
+def test_single_forwarded_header_trailing_bad_value(
+    header: str, expected: dict[str, str]
+) -> None:
+    req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
+    assert dict(req.forwarded[0]) == expected
+
+
 def test_single_forwarded_header_long_quoted_string() -> None:
     header = 'for="' + "\\\\" * 5000 + '"'
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
@@ -851,6 +912,30 @@ def test_clone_override_client_max_size() -> None:
     assert req2.client_max_size == 2048
 
 
+def test_client_max_fields_default() -> None:
+    req = make_mocked_request("GET", "/path")
+    assert req.client_max_fields == 1000
+
+
+def test_clone_client_max_fields() -> None:
+    req = make_mocked_request("GET", "/path", client_max_fields=5)
+    req2 = req.clone()
+    assert req2.client_max_fields == 5
+
+
+def test_clone_override_client_max_fields() -> None:
+    req = make_mocked_request("GET", "/path", client_max_fields=5)
+    req2 = req.clone(client_max_fields=10)
+    assert req2.client_max_fields == 10
+
+
+def test_clone_preserves_pre_handler_error() -> None:
+    req = make_mocked_request("GET", "/path")
+    err = web.HTTPBadRequest(text="bad")
+    req._pre_handler_error = err
+    assert req.clone().pre_handler_error is err
+
+
 def test_clone_method() -> None:
     req = make_mocked_request("GET", "/path")
     req2 = req.clone(method="POST")
@@ -923,6 +1008,22 @@ async def test_request_with_wrong_content_type_encoding(protocol: BaseProtocol) 
     assert err.value.status_code == 415
 
 
+async def test_request_text_with_invalid_default_encoding(
+    protocol: BaseProtocol,
+) -> None:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(b"\xff")
+    payload.feed_eof()
+    headers = {"Content-Type": "text/html"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.text()
+    assert err.value.status_code == 415
+
+
 async def test_make_too_big_request_same_size_to_max(protocol: BaseProtocol) -> None:
     payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
     large_file = 1024**2 * b"x"
@@ -968,6 +1069,184 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     )
     result = await req.post()
     assert dict(result) == {"a": "b", "c": "d"}
+
+
+def _multipart_form_payload(protocol: BaseProtocol, count: int) -> StreamReader:
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(
+        b"".join(
+            b"-----------------------------326931944431359\r\n"
+            b'Content-Disposition: form-data; name="f%d"\r\n'
+            b"\r\n"
+            b"v\r\n" % i
+            for i in range(count)
+        )
+        + b"-----------------------------326931944431359--\r\n"
+    )
+    payload.feed_eof()
+    return payload
+
+
+_MULTIPART_CONTENT_TYPE = (
+    "multipart/form-data; boundary=---------------------------326931944431359"
+)
+
+
+async def test_multipart_formdata_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _multipart_form_payload(protocol, 3)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
+        payload=payload,
+        client_max_fields=2,
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
+async def test_multipart_formdata_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
+) -> None:
+    payload = _multipart_form_payload(protocol, count)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
+        payload=payload,
+        client_max_fields=client_max_fields,
+    )
+    result = await req.post()
+    assert len(result) == count
+
+
+@pytest.mark.parametrize(
+    ("part_charset", "part_body"),
+    (
+        ("not-a-real-codec", b"hello"),
+        ("utf-8", b"\xff\xfe"),
+    ),
+)
+async def test_multipart_formdata_field_bad_charset(
+    protocol: BaseProtocol, part_charset: str, part_body: bytes
+) -> None:
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(
+        b"-----------------------------326931944431359\r\n"
+        b'Content-Disposition: form-data; name="a"\r\n'
+        b"Content-Type: text/plain; charset=" + part_charset.encode() + b"\r\n"
+        b"\r\n" + part_body + b"\r\n"
+        b"-----------------------------326931944431359--\r\n"
+    )
+    content_type = (
+        "multipart/form-data; boundary=---------------------------326931944431359"
+    )
+    payload.feed_eof()
+    req = make_mocked_request(
+        "POST", "/", headers={"CONTENT-TYPE": content_type}, payload=payload
+    )
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.post()
+    assert err.value.status_code == 415
+
+
+async def test_urlencoded_form_with_invalid_default_encoding(
+    protocol: BaseProtocol,
+) -> None:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(b"a=1&b=\xff")
+    payload.feed_eof()
+    headers = {
+        "Content-Type": "application/x-www-form-urlencoded",
+    }
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+
+    with pytest.raises(web.HTTPUnsupportedMediaType) as err:
+        await req.post()
+    assert err.value.status_code == 415
+
+
+def _urlencoded_payload(protocol: BaseProtocol, body: bytes) -> StreamReader:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(body)
+    payload.feed_eof()
+    return payload
+
+
+_URLENCODED_HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+
+
+async def test_urlencoded_form_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&b=2&c=3")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+async def test_urlencoded_form_empty_segments_count(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&&b=2")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge):
+        await req.post()
+
+
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
+async def test_urlencoded_form_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
+) -> None:
+    body = "&".join(f"f{i}=v" for i in range(count)).encode()
+    payload = _urlencoded_payload(protocol, body)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        payload=payload,
+        headers=_URLENCODED_HEADERS,
+        client_max_fields=client_max_fields,
+    )
+    result = await req.post()
+    assert len(result) == count
+
+
+async def test_urlencoded_form_empty_body(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"")
+    req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
+    result = await req.post()
+    assert len(result) == 0
+
+
+async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9&f=%FF")
+    req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
+    result = await req.post()
+    assert list(result.items()) == [
+        ("a", "1 2"),
+        ("b", ""),
+        ("c", ""),
+        ("d", "%zz"),
+        ("e", "\u00e9"),
+        ("f", "\ufffd"),
+    ]
+
+
+async def test_urlencoded_form_with_non_utf8_charset(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=%E9&b=\xe9")
+    headers = {"Content-Type": "application/x-www-form-urlencoded; charset=latin-1"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+    result = await req.post()
+    assert list(result.items()) == [("a", "\u00e9"), ("b", "\u00e9")]
 
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:

@@ -59,7 +59,7 @@ To get something from the web:
   async def main():
 
       async with aiohttp.ClientSession() as session:
-          async with session.get('http://python.org') as response:
+          async with session.get('https://python.org') as response:
 
               print("Status:", response.status)
               print("Content-type:", response.headers['content-type'])
@@ -134,11 +134,11 @@ External links
 ==============
 
 * `Third party libraries
-  <http://aiohttp.readthedocs.io/en/latest/third_party.html>`_
+  <https://aiohttp.readthedocs.io/en/latest/third_party.html>`_
 * `Built with aiohttp
-  <http://aiohttp.readthedocs.io/en/latest/built_with.html>`_
+  <https://aiohttp.readthedocs.io/en/latest/built_with.html>`_
 * `Powered by aiohttp
-  <http://aiohttp.readthedocs.io/en/latest/powered_by.html>`_
+  <https://aiohttp.readthedocs.io/en/latest/powered_by.html>`_
 
 Feel free to make a Pull Request for adding your link to these pages!
 

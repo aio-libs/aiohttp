@@ -167,6 +167,33 @@ and :ref:`aiohttp-web-signals` handlers.
 
       Read-only :class:`int` property.
 
+   .. attribute:: client_max_fields
+
+      The maximum number of form fields accepted by :meth:`~BaseRequest.post`,
+      ``0`` disables the limit.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
+      .. versionadded:: 3.14.4
+
+   .. attribute:: pre_handler_error
+
+      An :exc:`HTTPBadRequest` set by the protocol when the parser
+      could not parse the incoming bytes, otherwise ``None``. The
+      original parser exception is available as ``__cause__``.
+
+      Users of the low-level :class:`aiohttp.web.Server` (without an
+      :class:`Application`) must inspect this attribute and emit
+      the error response themselves. :class:`Application` users
+      receive the error via the middleware chain and do not need
+      to read this directly.
+
+      Read-only :exc:`HTTPBadRequest` or ``None`` property.
+
+      .. versionadded:: 4.0
+
    .. attribute:: path_qs
 
       The URL including PATH_INFO and the query string. e.g.,
@@ -358,14 +385,19 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: if_range
 
-      Read-only property that returns the date specified in the
+      Read-only property that returns the value specified in the
       *If-Range* header.
 
-      Returns :class:`datetime.datetime` or ``None`` if
-      *If-Range* header is absent or is not a valid
-      HTTP date.
+      Returns :class:`datetime.datetime` for the HTTP-date form, an
+      :class:`~aiohttp.ETag` for the entity-tag form, or ``None`` if the
+      *If-Range* header is absent or malformed.
 
       .. versionadded:: 3.1
+
+      .. versionchanged:: 4.0
+
+         The entity-tag form is now parsed and returned as an
+         :class:`~aiohttp.ETag`.
 
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
@@ -481,6 +513,10 @@ and :ref:`aiohttp-web-signals` handlers.
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
+
+      Raises :exc:`HTTPRequestEntityTooLarge` if the body exceeds
+      :attr:`client_max_size` or the form has more than
+      :attr:`client_max_fields` fields.
 
       .. note::
 
@@ -925,7 +961,7 @@ and :ref:`aiohttp-web-signals` handlers::
       :attr:`~aiohttp.StreamResponse.body`, represented as :class:`str`.
 
 
-.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None)
+.. class:: FileResponse(*, path, chunk_size=256*1024, status=200, reason=None, headers=None, text_charset=None)
    :canonical: aiohttp.web_fileresponse.FileResponse
 
    The response class used to send files, inherited from :class:`StreamResponse`.
@@ -950,11 +986,24 @@ and :ref:`aiohttp-web-signals` handlers::
                            response's ones. The ``Content-Type`` response header
                            will be overridden if provided.
 
+   :param str text_charset: charset to advertise for text files,
+                            e.g. ``"utf-8"``. When the ``Content-Type``
+                            header is guessed from the file extension and
+                            the guessed type is ``text/*``, a ``charset``
+                            parameter with this value is appended to it
+                            (e.g. ``text/plain; charset=utf-8``). Other
+                            media types never take the charset, and an
+                            explicit ``Content-Type`` supplied via *headers*
+                            is never modified. By default (``None``) no
+                            charset is added.
+
+                            .. versionadded:: 3.15
+
 
 .. class:: WebSocketResponse(*, timeout=10.0, receive_timeout=None, \
                              autoclose=True, autoping=True, heartbeat=None, \
                              protocols=(), compress=True, max_msg_size=4194304, \
-                             writer_limit=65536, decode_text=True)
+                             writer_limit=262144, decode_text=True)
    :canonical: aiohttp.web_ws.WebSocketResponse
 
    Class for handling server-side websockets, inherited from
@@ -968,7 +1017,6 @@ and :ref:`aiohttp-web-signals` handlers::
    To enable back-pressure from slow websocket clients treat methods
    :meth:`ping`, :meth:`pong`, :meth:`send_str`,
    :meth:`send_bytes`, :meth:`send_json`, :meth:`send_frame` as coroutines.
-   By default write buffer size is set to 64k.
 
    :param bool autoping: Automatically send
                          :const:`~aiohttp.WSMsgType.PONG` on
@@ -1013,7 +1061,7 @@ and :ref:`aiohttp-web-signals` handlers::
                            ``request.transport.close()`` to avoid
                            leaking resources.
 
-   :param int writer_limit: maximum size of write buffer, 64 KB by default.
+   :param int writer_limit: maximum size of write buffer, 256 KiB by default.
                             Once the buffer is full, the websocket will pause
                             to drain the buffer.
 
@@ -1449,7 +1497,7 @@ Application and Router
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       debug=...)
+                       client_max_fields=1000, debug=...)
    :canonical: aiohttp.web_app.Application
 
    Application is a synonym for web-server.
@@ -1493,6 +1541,18 @@ Application and Router
                            bytes.  If a POST request exceeds this
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
+
+   :param client_max_fields: maximum number of form fields accepted by
+                             :meth:`BaseRequest.post`, counting both
+                             urlencoded pairs and multipart parts.  For
+                             urlencoded bodies every ``&``-separated
+                             segment counts, including empty ones, so the
+                             check runs before any field is decoded.  If a
+                             POST request exceeds this value, it raises an
+                             `HTTPRequestEntityTooLarge` exception.
+                             ``0`` disables the limit.  Default is ``1000``.
+
+                             .. versionadded:: 3.14.4
 
    :param debug: Switches debug mode.
 
@@ -1880,6 +1940,7 @@ Application and Router
 
    .. method:: add_static(prefix, path, *, name=None, expect_handler=None, \
                           chunk_size=256*1024, \
+                          text_charset=None, \
                           show_index=False, \
                           break_symlink_sandbox=False, \
                           append_version=False)
@@ -1923,6 +1984,14 @@ Application and Router
                              Increasing *chunk_size* parameter to,
                              say, 1Mb may increase file downloading
                              speed but consumes more memory.
+
+      :param str text_charset: charset appended to the guessed
+                               ``Content-Type`` of ``text/*`` files,
+                               e.g. ``"utf-8"``; passed to
+                               :class:`~aiohttp.web.FileResponse`. By
+                               default (``None``) no charset is added.
+
+                               .. versionadded:: 3.15
 
       :param bool show_index: flag for allowing to show indexes of a directory,
                               by default it's not allowed and HTTP/403 will
@@ -2523,6 +2592,7 @@ The definition is created by functions like :func:`get` or
 
 .. function:: static(prefix, path, *, name=None, expect_handler=None, \
                      chunk_size=256*1024, \
+                     text_charset=None, \
                      show_index=False, break_symlink_sandbox=False, \
                      append_version=False)
    :canonical: aiohttp.web_routedef.static
@@ -2636,6 +2706,7 @@ A routes table definition used for describing routes by decorators
 
    .. method:: static(prefix, path, *, name=None, expect_handler=None, \
                       chunk_size=256*1024, \
+                      text_charset=None, \
                       show_index=False, break_symlink_sandbox=False, \
                       append_version=False)
 

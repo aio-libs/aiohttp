@@ -1,0 +1,3 @@
+Corrected the documented default for :class:`~aiohttp.web.WebSocketResponse`'s
+``writer_limit`` parameter, which is ``262144`` (256 KiB) rather than the
+``65536`` (64 KiB) that was previously documented -- by :user:`LALITH0110`.

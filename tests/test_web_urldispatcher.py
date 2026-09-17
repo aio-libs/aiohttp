@@ -199,7 +199,9 @@ async def test_access_root_of_static_handler_xss(
 
 
 async def test_follow_symlink(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a symlink, in static folder
     data = "hello world"
@@ -257,7 +259,9 @@ async def test_follow_symlink_directory_traversal(
 
 
 async def test_follow_symlink_directory_traversal_after_normalization(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    symlinks_supported: None,
 ) -> None:
     # Tests that break_symlink_sandbox does not allow directory transversal
     # after normalization
@@ -518,7 +522,9 @@ async def test_static_file_with_mock_permission_error(
 
 
 async def test_access_symlink_loop(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a looped symlink, which could not be resolved.
     my_dir_path = tmp_path / "my_symlink"
@@ -536,7 +542,9 @@ async def test_access_symlink_loop(
 
 
 async def test_access_compressed_file_as_symlink(
-    tmp_path: pathlib.Path, aiohttp_client: AiohttpClient
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    symlinks_supported: None,
 ) -> None:
     """Test that compressed file variants as symlinks are ignored."""
     private_file = tmp_path / "private.txt"

@@ -16,6 +16,7 @@ METH_OPTIONS: Final[str] = "OPTIONS"
 METH_PATCH: Final[str] = "PATCH"
 METH_POST: Final[str] = "POST"
 METH_PUT: Final[str] = "PUT"
+METH_QUERY: Final[str] = "QUERY"
 METH_TRACE: Final[str] = "TRACE"
 
 METH_ALL: Final[set[str]] = {

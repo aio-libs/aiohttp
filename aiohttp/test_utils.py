@@ -60,6 +60,7 @@ else:
 
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
+_ServerRequest = TypeVar("_ServerRequest", bound=BaseRequest)
 
 REUSE_ADDRESS = os.name == "posix" and sys.platform != "cygwin"
 
@@ -237,8 +238,8 @@ class TestClient(Generic[_Request, _ApplicationNone]):
     ) -> None: ...
     @overload
     def __init__(
-        self: "TestClient[_Request, None]",
-        server: BaseTestServer[_Request],
+        self: "TestClient[_ServerRequest, None]",
+        server: BaseTestServer[_ServerRequest],
         *,
         cookie_jar: AbstractCookieJar | None = None,
         **kwargs: Any,
@@ -574,6 +575,7 @@ def make_mocked_request(
     payload: StreamReader = EMPTY_PAYLOAD,
     sslcontext: SSLContext | None = None,
     client_max_size: int = 1024**2,
+    client_max_fields: int = 1000,
     loop: Any = ...,
 ) -> Request:
     """Creates mocked web.Request testing purposes.
@@ -653,7 +655,14 @@ def make_mocked_request(
     protocol.transport = transport
 
     req = Request(
-        message, payload, protocol, writer, task, loop, client_max_size=client_max_size
+        message,
+        payload,
+        protocol,
+        writer,
+        task,
+        loop,
+        client_max_size=client_max_size,
+        client_max_fields=client_max_fields,
     )
 
     match_info = UrlMappingMatchInfo(
