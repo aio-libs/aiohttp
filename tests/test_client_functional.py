@@ -2967,6 +2967,40 @@ async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
     assert cookie_names == {"c1", "c2"}
 
 
+async def test_cookie_expired_at_epoch_is_not_sent(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def set_cookie(request: web.Request) -> web.Response:
+        response = web.Response()
+        response.set_cookie("demo", "previous")
+        response.set_cookie("control", "retained")
+        return response
+
+    async def expire_cookie(request: web.Request) -> web.Response:
+        assert request.cookies["demo"] == "previous"
+        return web.Response(
+            headers={
+                "Set-Cookie": "demo=expired; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+            }
+        )
+
+    async def echo_cookies(request: web.Request) -> web.Response:
+        return web.json_response(dict(request.cookies))
+
+    app = web.Application()
+    app.router.add_get("/set", set_cookie)
+    app.router.add_get("/expire", expire_cookie)
+    app.router.add_get("/echo", echo_cookies)
+    client = await aiohttp_client(app)
+
+    async with client.get("/set") as response:
+        assert response.status == 200
+    async with client.get("/expire") as response:
+        assert response.status == 200
+    async with client.get("/echo") as response:
+        assert await response.json() == {"control": "retained"}
+
+
 async def test_set_cookies_max_age(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
