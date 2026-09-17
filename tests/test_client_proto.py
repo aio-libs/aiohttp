@@ -578,3 +578,22 @@ async def test_tail_resume_leaves_the_timeout_stopped_for_another_pause() -> Non
     assert proto._reading_paused
     assert proto._read_timeout_handle is None
     transport.resume_reading.assert_not_called()
+
+
+async def test_drain_that_refills_the_tail_stays_paused() -> None:
+    """A drain that cannot empty the buffer must leave the bound in force.
+
+    ``set_response_params()`` drains through ``data_received()``, which can
+    hand an upgraded tail straight back to the buffer it came from.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    # No parser is installed, so the drain feeds the tail back to itself.
+    proto._drain_tail()
+
+    assert proto._tail == b"x" * 2048
+    assert proto._tail_paused
+    transport.resume_reading.assert_not_called()

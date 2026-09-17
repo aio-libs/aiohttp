@@ -230,8 +230,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._tail:
             data, self._tail = self._tail, b""
             self.data_received(data)
+        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
+        if self._tail and len(self._tail) >= self._read_bufsize:
+            return
         if self._tail_paused:
-            # Safe whatever the drain did: what follows is parsed or discarded.
             self._resume_tail_reading()
 
     def set_exception(
