@@ -212,15 +212,13 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             data, self._tail = self._tail, b""
             self.data_received(data)
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
-        if self._tail and len(self._tail) >= self._read_bufsize:
-            # The drain restarted sock_read; the pause above is still ours.
-            self._drop_timeout()
-            return
-        if self._buffer_paused:
+        still_bound = bool(self._tail) and len(self._tail) >= self._read_bufsize
+        if self._buffer_paused and not still_bound:
             self._resume_reading_for_buffer()
-            if self._reading_paused:
-                # Still held elsewhere, so undo the clock the drain restarted.
-                self._drop_timeout()
+        if self._reading_paused or self._buffer_paused:
+            # The drain restarted sock_read through data_received(); anything
+            # still holding the transport means it stays stopped.
+            self._drop_timeout()
 
     def set_exception(
         self,

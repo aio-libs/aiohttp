@@ -626,3 +626,23 @@ async def test_drain_that_completes_a_response_leaves_the_clock_stopped() -> Non
     proto.set_response_params(read_timeout=30)
 
     assert proto._read_timeout_handle is None
+
+
+async def test_drain_leaves_the_clock_stopped_for_a_flow_control_pause() -> None:
+    """The drain restarts sock_read; any hold on the transport must stop it.
+
+    The tail bound is not the only reason reading can be held, so the rule is
+    about the transport rather than about which pause the drain just lifted.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    proto.read_timeout = 30
+    proto._tail = b"frames"
+    # Held by flow control rather than the bound, so nothing here lifts it.
+    proto._reading_paused = True
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert proto._read_timeout_handle is None
