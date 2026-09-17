@@ -94,6 +94,8 @@ class BaseProtocol(asyncio.Protocol):
             try:
                 self.transport.pause_reading()
             except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to pause. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
 
     def _resume_transport_reading(self) -> None:
@@ -101,6 +103,8 @@ class BaseProtocol(asyncio.Protocol):
             try:
                 self.transport.resume_reading()
             except PAUSE_RESUME_READING_ERRORS:
+                # Transport lacks flow control; nothing to resume. Intentionally
+                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
 
     def resume_reading(self, resume_parser: bool = True) -> None:
