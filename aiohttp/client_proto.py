@@ -39,6 +39,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._timer = None
         self._tail = b""
+        self._payload_parser_failed = False
+        self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
@@ -177,7 +179,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._parser = None
         self._payload = None
         self._payload_parser = None
+        self._payload_parser_failed = False
         self._reading_paused = False
+        self._buffer_paused = False
 
         super().connection_lost(reraised_exc)
 
@@ -192,8 +196,23 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def resume_reading(self, resume_parser: bool = True) -> None:
         was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        if was_paused:
+        # sock_read measures the peer, so it stays stopped while the tail
+        # bound is still holding the transport.
+        if was_paused and not self._buffer_paused:
             self._reschedule_timeout()
+
+    def _drain_tail(self) -> None:
+        if self._tail:
+            data, self._tail = self._tail, b""
+            self.data_received(data)
+        # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
+        still_bound = bool(self._tail) and len(self._tail) >= self._read_bufsize
+        if self._buffer_paused and not still_bound:
+            self._resume_reading_for_buffer()
+        if self._reading_paused or self._buffer_paused:
+            # The drain restarted sock_read through data_received(); anything
+            # still holding the transport means it stays stopped.
+            self._drop_timeout()
 
     def set_exception(
         self,
@@ -221,9 +240,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._drop_timeout()
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def set_response_params(
         self,
@@ -241,6 +258,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     ) -> None:
         self._skip_payload = skip_payload
 
+        self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
 
         self._timeout_ceil_threshold = timeout_ceil_threshold
@@ -259,9 +277,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             max_headers=max_headers,
         )
 
-        if self._tail:
-            data, self._tail = self._tail, b""
-            self.data_received(data)
+        self._drain_tail()
 
     def _drop_timeout(self) -> None:
         if self._read_timeout_handle is not None:
@@ -298,6 +314,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             set_exception(self._payload, exc)
 
     def data_received(self, data: bytes) -> None:
+        if self._payload_parser_failed:
+            # Dropped, not closed on, so queued messages stay answerable and
+            # the peer's FIN still arrives. Discarded bytes are not progress,
+            # so they must not hold off sock_read either.
+            return
+
         # If no data, then we are resuming decompression. We haven't received
         # data from the socket, so we can avoid the reschedule overhead.
         if data:
@@ -307,18 +329,29 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._payload_parser is not None:
             if self._data_received_cb is not None:
                 self._data_received_cb()
-            eof, tail = self._payload_parser.feed_data(data)
-            if eof:
+            # WebSocketReader signals EOF only for a protocol error, never
+            # for a clean close, and has already put the error on the queue.
+            protocol_error, _ = self._payload_parser.feed_data(data)
+            if protocol_error:
                 self._payload = None
                 self._payload_parser = None
-
-                if tail:
-                    self.data_received(tail)
+                self._payload_parser_failed = True
             return
 
         if self._upgraded or self._parser is None:
             # i.e. websocket connection, websocket parser is not set yet
             self._tail += data
+            # Nothing drains this until set_parser() runs, and an await
+            # after the 101 can hold that off; stop reading instead.
+            # Tested non-empty so a read_bufsize of 0 cannot pause on nothing.
+            if (
+                not self._buffer_paused
+                and self._tail
+                and len(self._tail) >= self._read_bufsize
+            ):
+                self._pause_reading_for_buffer()
+                # sock_read measures the peer; this pause is ours.
+                self._drop_timeout()
             return
 
         # parse http messages
