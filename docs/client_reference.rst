@@ -230,7 +230,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            64 KiB by default. On a WebSocket connection it also
+                            bounds what is buffered between the handshake and the
+                            reader being installed.
 
       .. versionadded:: 3.7
 

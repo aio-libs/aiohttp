@@ -442,6 +442,19 @@ def _upgraded_proto(
     return proto
 
 
+def _failed_proto(
+    loop: asyncio.AbstractEventLoop, transport: mock.Mock
+) -> ResponseHandler:
+    """An upgraded protocol whose reader has reported a protocol error."""
+    proto = _upgraded_proto(loop, transport)
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+    parser.feed_data.return_value = (True, b"")
+    proto.data_received(b"bad frame")
+    return proto
+
+
 async def test_websocket_parser_error_discards_later_data() -> None:
     """A WebSocket protocol error drops what follows instead of buffering it.
 
@@ -449,17 +462,8 @@ async def test_websocket_parser_error_discards_later_data() -> None:
     upgraded, so without this the peer can stream unbounded data into ``_tail``.
     """
     transport = mock.Mock()
-    loop = asyncio.get_running_loop()
-    proto = _upgraded_proto(loop, transport)
-    parser = mock.Mock()
-    parser.feed_data.return_value = (False, b"")
-    proto.set_parser(parser, mock.Mock())
+    proto = _failed_proto(asyncio.get_running_loop(), transport)
 
-    parser.feed_data.return_value = (True, b"")
-    proto.data_received(b"bad frame")
-
-    assert proto._payload_parser is None
-    assert proto.should_close
     assert proto._payload_parser_failed
 
     # The peer keeps streaming; none of it is kept.

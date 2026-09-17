@@ -51,7 +51,7 @@ def test_data_received_calls_data_received_cb(
     dummy_reader[1].feed_data.assert_called_once_with(b"x")
 
 
-def test_pause_msg_queue_reading_without_transport(
+def test_pause_reading_for_buffer_without_transport(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -59,7 +59,7 @@ def test_pause_msg_queue_reading_without_transport(
     handler = RequestHandler(dummy_manager, loop=event_loop)
     handler.transport = None
 
-    handler._pause_msg_queue_reading()
+    handler._pause_reading_for_buffer()
 
     assert handler._buffer_paused is True
 
@@ -196,7 +196,7 @@ def test_resume_reading_stays_paused_for_msg_queue(
     transport.resume_reading.assert_not_called()
 
 
-def test_pause_msg_queue_reading_ignores_unsupported_transport(
+def test_pause_reading_for_buffer_ignores_unsupported_transport(
     event_loop: asyncio.AbstractEventLoop,
     dummy_manager: Server[BaseRequest],
 ) -> None:
@@ -205,7 +205,7 @@ def test_pause_msg_queue_reading_ignores_unsupported_transport(
     # Bare asyncio.Transport.pause_reading() raises NotImplementedError.
     handler.transport = asyncio.Transport()
 
-    handler._pause_msg_queue_reading()
+    handler._pause_reading_for_buffer()
 
     assert handler._buffer_paused is True
 

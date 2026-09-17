@@ -74,7 +74,12 @@ class BaseProtocol(asyncio.Protocol):
         self._pause_transport_reading()
 
     def _pause_reading_for_buffer(self) -> None:
-        """Hold the transport for a buffer this protocol cannot drain yet."""
+        """Hold the transport for a buffer this protocol cannot drain yet.
+
+        One flag covers every buffer a protocol owns; the server already
+        multiplexes its message queue and its tail through it. Re-check the
+        conditions on resume rather than adding another flag.
+        """
         self._buffer_paused = True
         self._pause_transport_reading()
 
@@ -89,8 +94,6 @@ class BaseProtocol(asyncio.Protocol):
             try:
                 self.transport.pause_reading()
             except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to pause. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
 
     def _resume_transport_reading(self) -> None:
@@ -98,8 +101,6 @@ class BaseProtocol(asyncio.Protocol):
             try:
                 self.transport.resume_reading()
             except PAUSE_RESUME_READING_ERRORS:
-                # Transport lacks flow control; nothing to resume. Intentionally
-                # ignored (see PAUSE_RESUME_READING_ERRORS; do not use suppress).
                 pass
 
     def resume_reading(self, resume_parser: bool = True) -> None:
