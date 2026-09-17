@@ -1858,6 +1858,7 @@ async def test_data_discarded_after_protocol_error(
     the client ran out of memory.
     """
     flooded = asyncio.Event()
+    drain_error: list[BaseException] = []
     writers: list[asyncio.StreamWriter] = []
 
     async def raw_server(
@@ -1884,8 +1885,11 @@ async def test_data_discarded_after_protocol_error(
         await writer.drain()
         # 2 MiB in one write; buffering any of it would be obvious.
         writer.write(b"A" * (2 * 1024 * 1024))
-        with contextlib.suppress(Exception):
+        try:
             await writer.drain()
+        except Exception as exc:  # pragma: no cover
+            drain_error.append(exc)
+        finally:
             flooded.set()
 
     server = await asyncio.start_server(raw_server, sock=unused_port_socket)
@@ -1902,6 +1906,7 @@ async def test_data_discarded_after_protocol_error(
             # The drain only completes if the client read it all.
             async with async_timeout.timeout(10):
                 await flooded.wait()
+            assert not drain_error, drain_error[0]
 
             assert protocol._payload_parser_failed, "the error was never seen"
             # Nothing the peer sent after the error was kept.
@@ -1934,12 +1939,17 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
     window open for as long as it takes.
     """
     paused = asyncio.Event()
+    tail_at_pause: list[int] = []
     writers: list[asyncio.StreamWriter] = []
     pause_reading = ResponseHandler._pause_transport_reading
 
     def spy(self: ResponseHandler) -> None:
         pause_reading(self)
-        paused.set()
+        # The queue pauses through here too, so look for the tail bound
+        # specifically; set_parser() drains _tail moments later.
+        if self._tail_paused:
+            tail_at_pause.append(len(self._tail))
+            paused.set()
 
     async def raw_server(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
@@ -1970,10 +1980,12 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
         context: SimpleNamespace,
         params: aiohttp.TraceRequestEndParams,
     ) -> None:
-        # A handler shipping a metric, say. An unbounded buffer never
-        # pauses, so that case waits out the timeout instead.
-        async with async_timeout.timeout(10):
-            await paused.wait()
+        # A handler shipping a metric, say. Hold the window open until the
+        # bound fires; an unbounded buffer never pauses, so let that case fall
+        # through to the assertion below rather than raising from here.
+        with contextlib.suppress(asyncio.TimeoutError):
+            async with async_timeout.timeout(5):
+                await paused.wait()
 
     trace.on_request_end.append(on_request_end)
 
@@ -1987,13 +1999,10 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
                     max_msg_size=0,
                     # This peer never answers a close frame; do not wait for it.
                     timeout=ClientWSTimeout(ws_close=0.1),
-                ) as ws:
-                    connection = ws._conn
-                    assert connection is not None
-                    protocol = connection.protocol
-                    assert protocol is not None
+                ):
+                    assert tail_at_pause, "the buffer was never bounded"
                     # One read may already be in flight when the pause lands.
-                    assert len(protocol._tail) <= 2 * DEFAULT_CHUNK_SIZE
+                    assert tail_at_pause[0] <= 2 * DEFAULT_CHUNK_SIZE
     finally:
         for writer in writers:
             # Abort: a paused peer never drains what is still queued.
