@@ -219,6 +219,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # Unconditional: what follows is now either parsed or discarded.
             self._tail_paused = False
             self._resume_transport_reading()
+            self._reschedule_timeout()
 
     def set_exception(
         self,
@@ -352,6 +353,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             ):
                 self._tail_paused = True
                 self._pause_transport_reading()
+                # sock_read measures the peer; this pause is ours, so stop
+                # the clock as pause_reading() does.
+                self._drop_timeout()
             return
 
         # parse http messages

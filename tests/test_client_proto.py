@@ -538,3 +538,25 @@ async def test_drain_elsewhere_does_not_lift_the_tail_pause() -> None:
 
     assert proto._tail_paused
     transport.resume_reading.assert_not_called()
+
+
+async def test_discarded_data_does_not_hold_off_the_read_timeout() -> None:
+    """Bytes dropped after a protocol error are not progress.
+
+    Rescheduling on them would let a peer flood a dead connection forever
+    without ``sock_read`` ever reaping it.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport)
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+    parser.feed_data.return_value = (True, b"")
+    proto.data_received(b"bad frame")
+    assert proto._payload_parser_failed
+
+    proto.read_timeout = 10
+    with mock.patch.object(proto, "_reschedule_timeout") as reschedule:
+        proto.data_received(b"x" * 65536)
+
+    reschedule.assert_not_called()
