@@ -1,3 +1,4 @@
 mode: enforce
 allow:
   - raw.githubusercontent.com
+  - releases.astral.sh
