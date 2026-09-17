@@ -604,3 +604,25 @@ async def test_drain_that_refills_the_tail_stays_paused() -> None:
     transport.resume_reading.assert_not_called()
     # The drain restarted sock_read on the way through; the pause is ours.
     assert proto._read_timeout_handle is None
+
+
+async def test_drain_that_completes_a_response_leaves_the_clock_stopped() -> None:
+    """Resuming must not revive a timeout the drain deliberately dropped.
+
+    ``data_received()`` owns the read clock: it stops it when a response
+    completes with no body. Re-arming here would leave ``sock_read`` running
+    against a connection with nothing outstanding.
+    """
+    transport = mock.Mock()
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(transport)
+    # A peer that speaks before the request fills the tail past the bound.
+    proto._read_bufsize = 64
+    proto.data_received(b"z" * 128)
+    assert proto._buffer_paused
+
+    # The drain then parses a complete, body-less response out of that tail.
+    proto._tail = b"HTTP/1.1 204 No Content\r\n\r\n"
+    proto.set_response_params(read_timeout=30)
+
+    assert proto._read_timeout_handle is None

@@ -1946,10 +1946,11 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
     """
     paused = asyncio.Event()
     tail_at_pause: list[int] = []
-    pause_tail = ResponseHandler._pause_tail_reading
+    pause_for_buffer = ResponseHandler._pause_reading_for_buffer
 
     def spy(self: ResponseHandler) -> None:
-        pause_tail(self)
+        # The tail bound is this protocol's only buffer pause.
+        pause_for_buffer(self)
         # set_parser() drains _tail moments later, so record it here.
         tail_at_pause.append(len(self._tail))
         paused.set()
@@ -1980,7 +1981,7 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
     trace.on_request_end.append(on_request_end)
 
     async with _raw_ws_server(raw_server, unused_port_socket) as port:
-        with mock.patch.object(ResponseHandler, "_pause_tail_reading", spy):
+        with mock.patch.object(ResponseHandler, "_pause_reading_for_buffer", spy):
             async with aiohttp.ClientSession(trace_configs=[trace]) as session:
                 async with session.ws_connect(
                     f"http://127.0.0.1:{port}/",

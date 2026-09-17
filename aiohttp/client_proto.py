@@ -207,20 +207,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if was_paused and not self._buffer_paused:
             self._reschedule_timeout()
 
-    def _pause_tail_reading(self) -> None:
-        self._pause_reading_for_buffer()
-        # sock_read measures the peer; this pause is ours.
-        self._drop_timeout()
-
-    def _resume_tail_reading(self) -> None:
-        self._resume_reading_for_buffer()
-        # The drain above restarts sock_read through data_received(), which is
-        # wrong if something else is still holding the transport paused.
-        if self._reading_paused:
-            self._drop_timeout()
-        else:
-            self._reschedule_timeout()
-
     def _drain_tail(self) -> None:
         if self._tail:
             data, self._tail = self._tail, b""
@@ -231,7 +217,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self._drop_timeout()
             return
         if self._buffer_paused:
-            self._resume_tail_reading()
+            self._resume_reading_for_buffer()
+            if self._reading_paused:
+                # Still held elsewhere, so undo the clock the drain restarted.
+                self._drop_timeout()
 
     def set_exception(
         self,
@@ -363,7 +352,9 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 and self._tail
                 and len(self._tail) >= self._read_bufsize
             ):
-                self._pause_tail_reading()
+                self._pause_reading_for_buffer()
+                # sock_read measures the peer; this pause is ours.
+                self._drop_timeout()
             return
 
         # parse http messages
