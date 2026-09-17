@@ -538,6 +538,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
 | 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
 | 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
+| 3.16 | Post-error buffering on an upgraded connection | D | `WebSocketReader.feed_data` reports EOF only for a protocol error, and the connection stays upgraded with the reader detached. Were every later byte still buffered with nothing left to drain it, a peer that kept streaming after a deliberate frame error would exhaust memory on a client that never reads. | Medium |
 
 **Mitigations.**
 
@@ -556,6 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
+| 3.16 | Post-error buffering bound | After a reader EOF, which only ever means a protocol error, `client_proto.py:data_received` discards what follows; the server closes instead (`web_protocol.py:data_received`). Bytes buffered *before* `set_parser()` are real frames the reader is entitled to, so they are bounded by pausing the transport at `read_bufsize` (default 256 KiB), resumed where the buffer is drained. An upgraded response that never installs a reader keeps that pause, and a paused transport is not told the peer hung up, so it is reclaimed when the response is closed or collected rather than when the peer goes away. | Discarded rather than paused or closed on; see the recap below for what each alternative cost. **User**: set `heartbeat` on long-lived sessions; a peer can keep the client reading and dropping bytes, and `heartbeat` is what reaps such a connection. |
 
 **Past advisories / hardening (recap).**
 
@@ -597,6 +599,18 @@ client-side, the writer adds masks to outgoing frames.
   them once when the frame completes; if a frame arrives in more than
   `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
   a single `bytearray` and cleared.
+- **Issue #13655** — a protocol error detaches the reader but leaves the
+  connection upgraded, so a peer could stream unbounded data into
+  `ResponseHandler._tail`: 32 MiB pushed at a client that never called
+  `receive()` produced 32 MiB of `_tail`. Fixed by discarding what arrives
+  after the reader's EOF (threat 3.16). Two alternatives were measured and
+  rejected: pausing hides the peer's FIN, so sockets accumulate instead of
+  memory; closing makes the transport unwritable, so a message queued before
+  the error cannot be answered, which broke the Autobahn client runner. The
+  pre-parser buffer is bounded by backpressure instead of discarded, since
+  those are frames the reader will want; it looked self-limiting, but the
+  window opens inside `resp.start()` and a `TraceConfig.on_request_end` doing
+  I/O held it open for 32 MiB.
 
 ---
 
