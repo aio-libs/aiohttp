@@ -18,11 +18,13 @@ from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.client_reqrep import (
+    _MAX_UPLOAD_CHECKPOINTS,
     ClientRequest,
     ClientRequestArgs,
     ClientResponse,
     ClientTimeout,
     Fingerprint,
+    UploadTracker,
     _gen_default_accept_encoding,
 )
 from aiohttp.compression_utils import ZLibBackend
@@ -50,6 +52,29 @@ class WriterMock(mock.AsyncMock):
 
     def remove_done_callback(self, cb: Callable[[], None]) -> None:
         """Dummy method."""
+
+
+class _ProbeTransport:
+    """Transport stub with a controllable unsent-buffer size."""
+
+    def __init__(self) -> None:
+        self.buffer = 0
+        self.closing = False
+
+    def is_closing(self) -> bool:
+        return self.closing
+
+    def get_write_buffer_size(self) -> int:
+        return self.buffer
+
+
+class _ProbeWriter(WriterMock):
+    """Writer stub with a controllable transport flush state."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.output_size = 0
+        self.transport = _ProbeTransport()
 
 
 ALL_METHODS = frozenset(
@@ -2327,3 +2352,369 @@ async def test_empty_body_isolation_after_update(
 
     assert ClientRequest._EMPTY_BODY.consumed is False
     assert ClientRequest._EMPTY_BODY.size == 0
+
+
+async def test_upload_tracker_stale_attempt_events_ignored() -> None:
+    """Events from a superseded attempt must not affect the current one."""
+    tracker = UploadTracker()
+    stale = tracker._attempt_started()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 10
+    tracker._add_bytes(gen, 10, 10)
+    tracker._add_bytes(stale, 100, 100)
+    assert tracker.bytes_written == 10
+
+    tracker._attempt_failed(stale, RuntimeError("stale"))
+    tracker._attempt_failed(stale, None)
+    tracker._attempt_finished(stale)
+    assert not tracker.upload_complete.done()
+
+    tracker._finalize()
+    # The final attempt is still writing; its own completion settles.
+    assert not tracker.upload_complete.done()
+    tracker._attempt_finished(gen)
+    assert tracker.upload_complete.result() is None
+    assert tracker.attempts == 2
+
+
+async def test_upload_tracker_failed_attempt_superseded_by_resend() -> None:
+    """Only the final attempt's outcome is reported after a resend."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, RuntimeError("first try"))
+    assert not tracker.upload_complete.done()
+
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_cancelled_attempt_superseded_by_resend() -> None:
+    """A cancelled non-final attempt leaves the future pending for a resend."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, None)
+    assert not tracker.upload_complete.done()
+
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_externally_cancelled_future() -> None:
+    """User code cancelling upload_complete must not break settling."""
+    tracker = UploadTracker()
+    tracker.upload_complete.cancel()
+    gen = tracker._attempt_started()
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.upload_complete.cancelled()
+
+
+async def test_oserror_on_write_bytes_with_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A write failure is recorded on the request's UploadTracker."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    await req.update_body(b"test data")
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
+
+    writer = _ProbeWriter()
+    writer.write.side_effect = OSError
+
+    await req._write_bytes(writer, conn, None)
+
+    tracker._finalize()
+    assert tracker.attempts == 1
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.ClientOSError)
+
+
+@pytest.mark.parametrize("with_tracker", (True, False))
+async def test_preamble_failure_reported_to_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker, with_tracker: bool
+) -> None:
+    """A failure before the body write (100-continue preamble) is recorded."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+    tracker = UploadTracker() if with_tracker else None
+    req._upload_tracker = tracker
+    if tracker is not None:
+        req._upload_gen = tracker._attempt_started()
+
+    writer = _ProbeWriter()
+    writer.send_headers = mock.Mock()
+    writer.drain.side_effect = RuntimeError("preamble boom")
+
+    with pytest.raises(RuntimeError, match="preamble boom"):
+        await req._write_bytes(writer, conn, None)
+
+    # The body was never sent on a connection with headers on the wire.
+    assert conn.close.called
+    if tracker is not None:
+        tracker._finalize()
+        assert tracker.attempts == 1
+        assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+@pytest.mark.skipif(
+    sys.version_info < (3, 11), reason="TimeoutError is OSError only on 3.11+"
+)
+async def test_timeout_on_write_bytes_not_wrapped(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """An asyncio.TimeoutError from the write is not wrapped in ClientOSError."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    await req.update_body(b"test data")
+
+    writer = WriterMock()
+    writer.write.side_effect = asyncio.TimeoutError
+
+    await req._write_bytes(writer, conn, None)
+
+    assert conn.protocol.set_exception.called
+    exc = conn.protocol.set_exception.call_args[0][0]
+    assert type(exc) is asyncio.TimeoutError
+
+
+async def test_upload_tracker_unretrieved_error_not_logged() -> None:
+    """A settled upload error must not log 'Future exception was never retrieved'."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    tracker._attempt_failed(gen, RuntimeError("boom"))
+    tracker._finalize()
+
+    # The documented pattern only polls done(), so the settle itself must
+    # have consumed the log; the error stays retrievable.
+    assert tracker.upload_complete._log_traceback is False
+    assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+async def test_cancel_during_expect100_preamble_closes_connection(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A writer cancelled while waiting for 100-continue closes the connection.
+
+    The request headers are already on the wire at that point, so releasing
+    the connection for reuse would corrupt the next request on it.
+    """
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+
+    writer = WriterMock()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+    assert conn.close.called
+
+
+async def test_conn_close_failure_still_settles_upload_tracker(
+    conn: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """The attempt is recorded before conn.close(), which conceivably raises."""
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
+    )
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
+    conn.close.side_effect = RuntimeError("close boom")
+
+    writer = _ProbeWriter()
+    writer.send_headers = mock.Mock()
+
+    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    # Let the writer park on the 100-continue waiter.
+    await asyncio.sleep(0)
+    task.cancel()
+    with pytest.raises(RuntimeError, match="close boom"):
+        await task
+
+    tracker._finalize()
+    assert tracker.upload_complete.done()
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
+async def test_upload_tracker_dispatched_resend_never_writing() -> None:
+    """A dispatched resend that never starts writing settles as aborted."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+    writer.output_size = 2048
+    tracker._add_bytes(gen, 2048, 2048)
+    tracker._attempt_finished(gen)
+
+    tracker._attempt_started()  # Resend dispatched; never writes.
+    assert tracker.bytes_written == 0
+    # Events from the superseded attempt are ignored; a stale writing
+    # transition must not make _finalize() defer to a dead writer.
+    tracker._attempt_writing(gen, writer)
+    tracker._attempt_finished(gen)
+    tracker._add_bytes(gen, 100, 2148)
+    assert tracker.bytes_written == 0
+
+    tracker._finalize()
+    assert tracker.attempts == 2
+    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
+
+
+async def test_upload_tracker_bytes_written_kernel_gated() -> None:
+    """bytes_written excludes bytes still queued in the transport."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 100_000
+    tracker._add_bytes(gen, 100_000, 100_000)
+    writer.transport.buffer = 60_000
+    # 40_000 wire bytes flushed; linear estimate inside the chunk.
+    assert tracker.bytes_written == 40_000
+    writer.transport.buffer = 10_000
+    assert tracker.bytes_written == 90_000
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 100_000
+
+    tracker._attempt_finished(gen)
+    tracker._finalize()
+    assert tracker.bytes_written == 100_000
+    assert tracker.upload_complete.result() is None
+
+
+async def test_upload_tracker_bytes_written_compressed_estimate() -> None:
+    """The in-chunk estimate scales payload bytes over smaller wire bytes."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    writer.output_size = 100  # Headers already on the wire.
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 110  # 1000 payload bytes compressed to 10.
+    tracker._add_bytes(gen, 1000, 110)
+    writer.transport.buffer = 5
+    assert tracker.bytes_written == 500
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 1000
+
+
+async def test_upload_tracker_bytes_written_frozen_on_teardown() -> None:
+    """A closing transport keeps the last kernel-confirmed value."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    writer.output_size = 4096
+    tracker._add_bytes(gen, 4096, 4096)
+    writer.transport.buffer = 1024
+    assert tracker.bytes_written == 3072
+    # Teardown drops the queued tail; it was never sent.
+    writer.transport.closing = True
+    assert tracker.bytes_written == 3072
+    tracker._attempt_failed(gen, RuntimeError("boom"))
+    assert tracker.bytes_written == 3072
+
+
+async def test_upload_tracker_compressor_buffered_chunk_not_reported() -> None:
+    """A chunk swallowed by the compressor is not reported as sent."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    # The compressor buffers the whole chunk: no wire output yet.
+    tracker._add_bytes(gen, 1000, 0)
+    assert tracker.bytes_written == 0
+
+    # The next chunk makes the compressor emit; both ride the emission.
+    writer.output_size = 40
+    tracker._add_bytes(gen, 1000, 40)
+    writer.transport.buffer = 40
+    assert tracker.bytes_written == 0
+    writer.transport.buffer = 20
+    assert tracker.bytes_written == 1000
+    writer.transport.buffer = 0
+    assert tracker.bytes_written == 2000
+
+
+async def test_upload_tracker_writer_without_transport() -> None:
+    """A writer without a transport reports progress only on completion."""
+
+    class MinimalWriter(AbstractStreamWriter):
+        """Concrete writer relying on the ABC's transport default."""
+
+        async def write(
+            self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+        ) -> None:
+            """Accept and drop."""
+
+        async def write_eof(self, chunk: bytes = b"") -> None:
+            """Accept and drop."""
+
+        async def drain(self) -> None:
+            """No buffering."""
+
+        def enable_compression(
+            self, encoding: str = "deflate", strategy: int | None = None
+        ) -> None:
+            """Unused."""
+
+        def enable_chunking(self) -> None:
+            """Unused."""
+
+        async def write_headers(
+            self, status_line: str, headers: CIMultiDict[str]
+        ) -> None:
+            """Unused."""
+
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = MinimalWriter()
+    assert writer.transport is None
+    tracker._attempt_writing(gen, writer)
+
+    tracker._add_bytes(gen, 1000, 1000)
+    assert tracker.bytes_written == 0
+
+    tracker._attempt_finished(gen)
+    assert tracker.bytes_written == 1000
+
+
+async def test_upload_tracker_checkpoint_queue_bounded() -> None:
+    """Flushed checkpoints are pruned even when nobody polls bytes_written."""
+    tracker = UploadTracker()
+    gen = tracker._attempt_started()
+    writer = _ProbeWriter()
+    tracker._attempt_writing(gen, writer)
+
+    # Everything flushes as soon as it is written (empty buffer), so the
+    # forced refresh prunes the whole backlog once the bound is crossed.
+    for i in range(1, _MAX_UPLOAD_CHECKPOINTS + 2):
+        writer.output_size = i
+        tracker._add_bytes(gen, 1, i)
+
+    # The refresh fired at the bound and pruned the flushed backlog down
+    # to the sentinel; only the post-refresh chunk sits behind it (an
+    # unbounded queue would hold _MAX_UPLOAD_CHECKPOINTS + 2 entries).
+    assert len(tracker._checkpoints) == 2
+    assert tracker.bytes_written == _MAX_UPLOAD_CHECKPOINTS + 1
