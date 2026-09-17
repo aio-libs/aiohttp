@@ -1,1 +1,3 @@
 mode: enforce
+allow:
+  - raw.githubusercontent.com
