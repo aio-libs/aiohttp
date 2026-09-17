@@ -751,6 +751,11 @@ class TextIOPayload(IOBasePayload):
             **kwargs,
         )
 
+    @property
+    def size(self) -> int | None:
+        """Size unknown as file bytes get re-encoded for a text stream."""
+        return None
+
     def _read_and_available_len(
         self, remaining_content_len: int | None
     ) -> tuple[int | None, bytes]:
@@ -784,6 +789,10 @@ class TextIOPayload(IOBasePayload):
                 remaining_content_len or DEFAULT_CHUNK_SIZE,
             )
         )
+        # An empty read means EOF. Encoding "" is not always empty (utf-16/utf-32
+        # emit a BOM), so short-circuit to keep it a genuine end-of-stream marker.
+        if not chunk:
+            return size, b""
         return size, chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def _read(self, remaining_content_len: int | None) -> bytes:
@@ -805,6 +814,10 @@ class TextIOPayload(IOBasePayload):
 
         """
         chunk = self._value.read(remaining_content_len or DEFAULT_CHUNK_SIZE)
+        # See _read_and_available_len: never encode an empty EOF read, or a
+        # BOM-prefixed encoding would keep the write loop from terminating.
+        if not chunk:
+            return b""
         return chunk.encode(self._encoding) if self._encoding else chunk.encode()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
