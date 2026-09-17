@@ -1930,7 +1930,7 @@ async def test_upgrade_tail_is_byte_limited(
         data_received(self, data)
         if self._message_tail:
             max_tail = max(max_tail, len(self._message_tail))
-            if self._msg_queue_paused:
+            if self._buffer_paused:
                 reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
@@ -2006,7 +2006,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
 
     def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
         data_received(self, data)
-        if self._msg_queue_paused:
+        if self._buffer_paused:
             reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)

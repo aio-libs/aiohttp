@@ -24,6 +24,7 @@ class BaseProtocol(asyncio.Protocol):
         "_drain_waiter",
         "_connection_lost",
         "_reading_paused",
+        "_buffer_paused",
         "_upgraded",
         "transport",
     )
@@ -35,6 +36,7 @@ class BaseProtocol(asyncio.Protocol):
         self._paused = False
         self._drain_waiter: asyncio.Future[None] | None = None
         self._reading_paused = False
+        self._buffer_paused = False
         self._parser = parser
         self._upgraded = False
 
@@ -71,9 +73,16 @@ class BaseProtocol(asyncio.Protocol):
             self._parser.pause_reading()
         self._pause_transport_reading()
 
-    def _reading_paused_for_buffer(self) -> bool:
-        """Keep the transport paused for protocol-specific reasons (overridden)."""
-        return False
+    def _pause_reading_for_buffer(self) -> None:
+        """Hold the transport for a buffer this protocol cannot drain yet."""
+        self._buffer_paused = True
+        self._pause_transport_reading()
+
+    def _resume_reading_for_buffer(self) -> None:
+        """Release that hold, unless flow control is still holding it too."""
+        self._buffer_paused = False
+        if not self._reading_paused:
+            self._resume_transport_reading()
 
     def _pause_transport_reading(self) -> None:
         if self.transport is not None:
@@ -85,7 +94,7 @@ class BaseProtocol(asyncio.Protocol):
                 pass
 
     def _resume_transport_reading(self) -> None:
-        if not self._reading_paused and self.transport is not None:
+        if self.transport is not None:
             try:
                 self.transport.resume_reading()
             except PAUSE_RESUME_READING_ERRORS:
@@ -102,8 +111,7 @@ class BaseProtocol(asyncio.Protocol):
 
         # Reading may have been paused again in the above call if there was a lot of
         # compressed data still pending.
-        # _reading_paused is a plain attribute; check it before the call.
-        if not self._reading_paused and not self._reading_paused_for_buffer():
+        if not self._reading_paused and not self._buffer_paused:
             self._resume_transport_reading()
 
     def connection_made(self, transport: asyncio.BaseTransport) -> None:

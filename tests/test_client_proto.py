@@ -510,7 +510,7 @@ async def test_tail_bounded_until_parser_is_installed(parser_eof: bool) -> None:
     parser.feed_data.return_value = (parser_eof, b"")
     proto.set_parser(parser, mock.Mock())
 
-    assert not proto._tail_paused
+    assert not proto._buffer_paused
     transport.resume_reading.assert_called_once_with()
     # Whatever arrives next is parsed or discarded, never accumulated.
     proto.data_received(b"z" * 65536)
@@ -522,7 +522,7 @@ async def test_drain_elsewhere_does_not_lift_the_tail_pause() -> None:
 
     ``WebSocketDataQueue`` and ``StreamReader`` both call ``resume_reading()``
     as they drain. Nothing would re-arm the bound afterwards, since it checks
-    ``_tail_paused``, so the peer could refill the buffer it paused for.
+    ``_buffer_paused``, so the peer could refill the buffer it paused for.
     """
     transport = mock.Mock()
     proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
@@ -531,7 +531,7 @@ async def test_drain_elsewhere_does_not_lift_the_tail_pause() -> None:
 
     proto.resume_reading()
 
-    assert proto._tail_paused
+    assert proto._buffer_paused
     transport.resume_reading.assert_not_called()
 
 
@@ -596,7 +596,7 @@ async def test_drain_that_refills_the_tail_stays_paused() -> None:
     proto._drain_tail()
 
     assert proto._tail == b"x" * 2048
-    assert proto._tail_paused
+    assert proto._buffer_paused
     transport.resume_reading.assert_not_called()
     # The drain restarted sock_read on the way through; the pause is ours.
     assert proto._read_timeout_handle is None

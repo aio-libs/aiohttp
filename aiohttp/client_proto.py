@@ -46,7 +46,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._timer = None
         self._tail = b""
         self._payload_parser_failed = False
-        self._tail_paused = False
         self._read_bufsize = DEFAULT_CHUNK_SIZE
 
         self._read_timeout: float | None = None
@@ -188,7 +187,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._payload_parser = None
         self._payload_parser_failed = False
         self._reading_paused = False
-        self._tail_paused = False
+        self._buffer_paused = False
 
         super().connection_lost(reraised_exc)
 
@@ -205,22 +204,16 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         super().resume_reading(resume_parser)
         # sock_read measures the peer, so it stays stopped while the tail
         # bound is still holding the transport.
-        if was_paused and not self._tail_paused:
+        if was_paused and not self._buffer_paused:
             self._reschedule_timeout()
 
-    def _reading_paused_for_buffer(self) -> bool:
-        """A drain elsewhere must not lift the tail pause; nothing re-arms it."""
-        return self._tail_paused
-
     def _pause_tail_reading(self) -> None:
-        self._tail_paused = True
-        self._pause_transport_reading()
+        self._pause_reading_for_buffer()
         # sock_read measures the peer; this pause is ours.
         self._drop_timeout()
 
     def _resume_tail_reading(self) -> None:
-        self._tail_paused = False
-        self._resume_transport_reading()
+        self._resume_reading_for_buffer()
         # The drain above restarts sock_read through data_received(), which is
         # wrong if something else is still holding the transport paused.
         if self._reading_paused:
@@ -237,7 +230,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # The drain restarted sock_read; the pause above is still ours.
             self._drop_timeout()
             return
-        if self._tail_paused:
+        if self._buffer_paused:
             self._resume_tail_reading()
 
     def set_exception(
@@ -366,7 +359,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             # after the 101 can hold that off; stop reading instead.
             # Tested non-empty so a read_bufsize of 0 cannot pause on nothing.
             if (
-                not self._tail_paused
+                not self._buffer_paused
                 and self._tail
                 and len(self._tail) >= self._read_bufsize
             ):

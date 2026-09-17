@@ -61,7 +61,7 @@ def test_pause_msg_queue_reading_without_transport(
 
     handler._pause_msg_queue_reading()
 
-    assert handler._msg_queue_paused is True
+    assert handler._buffer_paused is True
 
 
 def test_resume_msg_queue_reading_after_upgrade_skips_reparse(
@@ -73,14 +73,14 @@ def test_resume_msg_queue_reading_after_upgrade_skips_reparse(
     transport = mock.Mock()
     handler.transport = transport
     handler._upgraded = True
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
     handler._reading_paused = False
 
     with mock.patch.object(RequestHandler, "data_received") as data_received:
         handler._resume_msg_queue_reading()
 
     data_received.assert_not_called()
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
@@ -92,11 +92,11 @@ def test_resume_msg_queue_reading_without_transport(
     handler = RequestHandler(dummy_manager, loop=event_loop)
     handler.transport = None
     handler._upgraded = True  # skip the reparse branch
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
 
     handler._resume_msg_queue_reading()
 
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False
 
 
 def test_resume_msg_queue_reading_stays_paused_for_full_tail(
@@ -112,12 +112,12 @@ def test_resume_msg_queue_reading_stays_paused_for_full_tail(
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
     handler._message_tail = b"x" * 1024
 
     handler._resume_msg_queue_reading()
 
-    assert handler._msg_queue_paused is True
+    assert handler._buffer_paused is True
     transport.resume_reading.assert_not_called()
 
 
@@ -130,12 +130,12 @@ def test_resume_msg_queue_reading_with_room_left_in_tail(
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
     handler._message_tail = b"x" * 1023
 
     handler._resume_msg_queue_reading()
 
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
@@ -152,11 +152,11 @@ def test_resume_msg_queue_reading_with_zero_read_bufsize(
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
 
     handler._resume_msg_queue_reading()
 
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
@@ -170,14 +170,14 @@ def test_set_parser_resumes_reading_paused_for_tail(
     transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     handler.transport = transport
     handler._upgraded = True
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
     handler._message_tail = b"x" * 1024
 
     handler.set_parser(dummy_reader[0])
 
     dummy_reader[1].feed_data.assert_called_once_with(b"x" * 1024)
     assert handler._message_tail == b""
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False
     transport.resume_reading.assert_called_once_with()
 
 
@@ -189,7 +189,7 @@ def test_resume_reading_stays_paused_for_msg_queue(
     handler = RequestHandler(dummy_manager, loop=event_loop)
     transport = mock.Mock()
     handler.transport = transport
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
 
     handler.resume_reading()
 
@@ -207,7 +207,7 @@ def test_pause_msg_queue_reading_ignores_unsupported_transport(
 
     handler._pause_msg_queue_reading()
 
-    assert handler._msg_queue_paused is True
+    assert handler._buffer_paused is True
 
 
 def test_resume_msg_queue_reading_ignores_unsupported_transport(
@@ -219,8 +219,8 @@ def test_resume_msg_queue_reading_ignores_unsupported_transport(
     # Bare asyncio.Transport.resume_reading() raises NotImplementedError.
     handler.transport = asyncio.Transport()
     handler._upgraded = True  # skip the reparse branch
-    handler._msg_queue_paused = True
+    handler._buffer_paused = True
 
     handler._resume_msg_queue_reading()
 
-    assert handler._msg_queue_paused is False
+    assert handler._buffer_paused is False

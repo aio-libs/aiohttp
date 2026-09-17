@@ -182,7 +182,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_messages",
         "_max_msg_queue_size",
         "_msg_queue_resume_size",
-        "_msg_queue_paused",
         "_message_tail",
         "_read_bufsize",
         "_handler_waiter",
@@ -227,9 +226,6 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # so we refill in batches instead of churning pause/resume per request.
         self._msg_queue_resume_size = MAX_MSG_QUEUE_SIZE // 2
         self._read_bufsize = read_bufsize
-        # Set before super().__init__ so _reading_paused_for_buffer() is safe
-        # if BaseProtocol ever triggers a resume during init.
-        self._msg_queue_paused = False
         parser = HttpRequestParser(
             self,
             loop,
@@ -468,7 +464,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._payload_parser.feed_data(self._message_tail)
             self._message_tail = b""
 
-        if self._msg_queue_paused:
+        if self._buffer_paused:
             self._resume_msg_queue_reading()
 
     def eof_received(self) -> None:
@@ -502,7 +498,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # Queue full: pause the transport (the parser already stopped
             # emitting). start() resumes as it drains the queue.
             if (
-                not self._msg_queue_paused
+                not self._buffer_paused
                 and len(self._messages) >= self._max_msg_queue_size
             ):
                 self._pause_msg_queue_reading()
@@ -515,7 +511,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         elif self._payload_parser is None and self._upgraded and data:
             self._message_tail += data
             if (
-                not self._msg_queue_paused
+                not self._buffer_paused
                 and len(self._message_tail) >= self._read_bufsize
             ):
                 self._pause_msg_queue_reading()
@@ -528,12 +524,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if eof:
                 self.close()
 
-    def _reading_paused_for_buffer(self) -> bool:
-        return self._msg_queue_paused
-
     def _pause_msg_queue_reading(self) -> None:
-        self._msg_queue_paused = True
-        self._pause_transport_reading()
+        self._pause_reading_for_buffer()
 
     def _resume_msg_queue_reading(self) -> None:
         # Tested empty-first so a read_bufsize of 0 cannot wedge the connection.
@@ -547,8 +539,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self.data_received(b"")
             if len(self._messages) >= self._max_msg_queue_size:
                 return
-        self._msg_queue_paused = False
-        self._resume_transport_reading()
+        self._resume_reading_for_buffer()
 
     def _replay_message_tail(self) -> None:
         """Re-feed the bytes buffered behind a rejected upgrade.
@@ -603,7 +594,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         if len(self._messages) >= self._max_msg_queue_size:
             # Pause the transport, like in data_received().
             self._pause_msg_queue_reading()
-        elif self._msg_queue_paused:
+        elif self._buffer_paused:
             # Resume reading now the tail has been parsed.
             self._resume_msg_queue_reading()
 
@@ -754,7 +745,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             if self._parser is not None:
                 self._parser.message_consumed()
             if (
-                self._msg_queue_paused
+                self._buffer_paused
                 and len(self._messages) <= self._msg_queue_resume_size
             ):
                 self._resume_msg_queue_reading()
