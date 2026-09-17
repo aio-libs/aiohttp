@@ -102,6 +102,7 @@ class BaseProtocol(asyncio.Protocol):
 
         # Reading may have been paused again in the above call if there was a lot of
         # compressed data still pending.
+        # _reading_paused is a plain attribute; check it before the call.
         if not self._reading_paused and not self._reading_paused_for_buffer():
             self._resume_transport_reading()
 

@@ -201,34 +201,37 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def resume_reading(self, resume_parser: bool = True) -> None:
         was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        if was_paused:
+        # sock_read measures the peer, so it stays stopped while the tail
+        # bound is still holding the transport.
+        if was_paused and not self._tail_paused:
             self._reschedule_timeout()
 
     def _reading_paused_for_buffer(self) -> bool:
-        """Override: a drain elsewhere must not lift the tail pause.
-
-        Nothing would re-arm it; the bound checks _tail_paused, which stays set.
-        """
+        """A drain elsewhere must not lift the tail pause; nothing re-arms it."""
         return self._tail_paused
 
     def _pause_tail_reading(self) -> None:
         self._tail_paused = True
         self._pause_transport_reading()
-        # sock_read measures the peer; this pause is ours, so stop the clock
-        # as pause_reading() does.
+        # sock_read measures the peer; this pause is ours.
         self._drop_timeout()
 
     def _resume_tail_reading(self) -> None:
         self._tail_paused = False
         self._resume_transport_reading()
-        self._reschedule_timeout()
+        # The drain above restarts sock_read through data_received(), which is
+        # wrong if something else is still holding the transport paused.
+        if self._reading_paused:
+            self._drop_timeout()
+        else:
+            self._reschedule_timeout()
 
     def _drain_tail(self) -> None:
         if self._tail:
             data, self._tail = self._tail, b""
             self.data_received(data)
         if self._tail_paused:
-            # Unconditional: what follows is now either parsed or discarded.
+            # Safe whatever the drain did: what follows is parsed or discarded.
             self._resume_tail_reading()
 
     def set_exception(
@@ -343,7 +346,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 self._data_received_cb()
             # WebSocketReader signals EOF only for a protocol error, never
             # for a clean close, and has already put the error on the queue.
-            # Its unparsed remainder goes the way of everything after it.
             protocol_error, _ = self._payload_parser.feed_data(data)
             if protocol_error:
                 self._payload = None
@@ -356,6 +358,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self._tail += data
             # Nothing drains this until set_parser() runs, and an await
             # after the 101 can hold that off; stop reading instead.
+            # Tested non-empty so a read_bufsize of 0 cannot pause on nothing.
             if (
                 not self._tail_paused
                 and self._tail

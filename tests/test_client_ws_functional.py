@@ -37,6 +37,25 @@ else:
     import async_timeout
 
 
+async def _accept_ws(
+    reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+) -> None:
+    """Complete a raw WebSocket handshake; the caller writes the frames."""
+    request = await reader.readuntil(b"\r\n\r\n")
+    key = next(
+        line.split(b":", 1)[1].strip()
+        for line in request.split(b"\r\n")
+        if line.lower().startswith(b"sec-websocket-key")
+    )
+    accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+    writer.write(
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: Upgrade\r\n"
+        b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+    )
+
+
 class PatchableWebSocketDataQueue(WebSocketDataQueue):
     """A WebSocketDataQueue that can be patched."""
 
@@ -60,20 +79,11 @@ async def test_stashed_frames_survive_connection_loss(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         writers.append(writer)
-        request = await reader.readuntil(b"\r\n\r\n")
-        key = next(
-            line.split(b":", 1)[1].strip()
-            for line in request.split(b"\r\n")
-            if line.lower().startswith(b"sec-websocket-key")
-        )
-        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+        await _accept_ws(reader, writer)
         writer.write(
-            b"HTTP/1.1 101 Switching Protocols\r\n"
-            b"Upgrade: websocket\r\n"
-            b"Connection: Upgrade\r\n"
-            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
             # One oversized read: empty unmasked TEXT frames, 2 bytes each.
-            + b"\x81\x00" * sent
+            b"\x81\x00"
+            * sent
         )
         await writer.drain()
 
@@ -1865,20 +1875,10 @@ async def test_data_discarded_after_protocol_error(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         writers.append(writer)
-        request = await reader.readuntil(b"\r\n\r\n")
-        key = next(
-            line.split(b":", 1)[1].strip()
-            for line in request.split(b"\r\n")
-            if line.lower().startswith(b"sec-websocket-key")
-        )
-        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+        await _accept_ws(reader, writer)
         writer.write(
-            b"HTTP/1.1 101 Switching Protocols\r\n"
-            b"Upgrade: websocket\r\n"
-            b"Connection: Upgrade\r\n"
-            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
             # A valid frame, then a protocol error in the same read.
-            + b"\x81\x04ping"
+            b"\x81\x04ping"
             # RSV1 set without permessage-deflate: a protocol error.
             + b"\x41\x01x"
         )
@@ -1941,34 +1941,23 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
     paused = asyncio.Event()
     tail_at_pause: list[int] = []
     writers: list[asyncio.StreamWriter] = []
-    pause_reading = ResponseHandler._pause_transport_reading
+    pause_tail = ResponseHandler._pause_tail_reading
 
     def spy(self: ResponseHandler) -> None:
-        pause_reading(self)
-        # The queue pauses through here too, so look for the tail bound
-        # specifically; set_parser() drains _tail moments later.
-        if self._tail_paused:
-            tail_at_pause.append(len(self._tail))
-            paused.set()
+        pause_tail(self)
+        # set_parser() drains _tail moments later, so record it here.
+        tail_at_pause.append(len(self._tail))
+        paused.set()
 
     async def raw_server(
         reader: asyncio.StreamReader, writer: asyncio.StreamWriter
     ) -> None:
         writers.append(writer)
-        request = await reader.readuntil(b"\r\n\r\n")
-        key = next(
-            line.split(b":", 1)[1].strip()
-            for line in request.split(b"\r\n")
-            if line.lower().startswith(b"sec-websocket-key")
-        )
-        accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+        await _accept_ws(reader, writer)
         writer.write(
-            b"HTTP/1.1 101 Switching Protocols\r\n"
-            b"Upgrade: websocket\r\n"
-            b"Connection: Upgrade\r\n"
-            b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
             # Valid frames, well past the bound, that only a reader may eat.
-            + (b"\x81\x7e\xff\xff" + b"y" * 65535) * 32
+            (b"\x81\x7e\xff\xff" + b"y" * 65535)
+            * 32
         )
         with contextlib.suppress(Exception):
             await writer.drain()
@@ -1992,11 +1981,10 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
     server = await asyncio.start_server(raw_server, sock=unused_port_socket)
     port = unused_port_socket.getsockname()[1]
     try:
-        with mock.patch.object(ResponseHandler, "_pause_transport_reading", spy):
+        with mock.patch.object(ResponseHandler, "_pause_tail_reading", spy):
             async with aiohttp.ClientSession(trace_configs=[trace]) as session:
                 async with session.ws_connect(
                     f"http://127.0.0.1:{port}/",
-                    max_msg_size=0,
                     # This peer never answers a close frame; do not wait for it.
                     timeout=ClientWSTimeout(ws_close=0.1),
                 ):

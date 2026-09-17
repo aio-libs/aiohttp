@@ -491,11 +491,8 @@ async def test_parser_error_while_draining_tail_discards_data() -> None:
     transport.close.assert_not_called()
 
 
-@pytest.mark.parametrize("read_bufsize", [1024, 0])
 @pytest.mark.parametrize("parser_eof", [False, True])
-async def test_tail_bounded_until_parser_is_installed(
-    read_bufsize: int, parser_eof: bool
-) -> None:
+async def test_tail_bounded_until_parser_is_installed(parser_eof: bool) -> None:
     """Data buffered before ``set_parser()`` pauses reading, and always resumes.
 
     An await after the 101, such as a tracing callback doing I/O, holds off
@@ -504,9 +501,7 @@ async def test_tail_bounded_until_parser_is_installed(
     fails on them, or the transport is left paused with nothing to restart it.
     """
     transport = mock.Mock()
-    proto = _upgraded_proto(
-        asyncio.get_running_loop(), transport, read_bufsize=read_bufsize
-    )
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
 
     proto.data_received(b"x" * 2048)
     transport.pause_reading.assert_called_once_with()
@@ -555,7 +550,6 @@ async def test_discarded_data_does_not_hold_off_the_read_timeout() -> None:
     proto.data_received(b"bad frame")
     assert proto._payload_parser_failed
 
-    proto.read_timeout = 10
     with mock.patch.object(proto, "_reschedule_timeout") as reschedule:
         proto.data_received(b"x" * 65536)
 

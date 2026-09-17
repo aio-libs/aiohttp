@@ -3,5 +3,5 @@ protocol error detaches the reader but leaves the connection upgraded, so a
 peer could stream unlimited data into an internal buffer when the application
 never called :meth:`~aiohttp.ClientWebSocketResponse.receive`; that data is
 now discarded, since nothing can parse it. Data arriving before the reader is
-installed is bounded by pausing the transport
+installed is bounded by pausing the transport.
 -- by :user:`bdraco`.
