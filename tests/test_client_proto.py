@@ -554,3 +554,27 @@ async def test_discarded_data_does_not_hold_off_the_read_timeout() -> None:
         proto.data_received(b"x" * 65536)
 
     reschedule.assert_not_called()
+
+
+async def test_tail_resume_leaves_the_timeout_stopped_for_another_pause() -> None:
+    """Draining the tail must not restart sock_read for someone else's pause.
+
+    The drain runs through ``data_received()``, which reschedules, so the
+    resume has to undo that while the queue still holds the transport.
+    """
+    transport = mock.Mock()
+    proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
+    proto.read_timeout = 30
+    proto.data_received(b"x" * 2048)
+    transport.pause_reading.assert_called_once_with()
+
+    # What WebSocketDataQueue does when it hits its high-water mark.
+    proto.pause_reading()
+
+    parser = mock.Mock()
+    parser.feed_data.return_value = (False, b"")
+    proto.set_parser(parser, mock.Mock())
+
+    assert proto._reading_paused
+    assert proto._read_timeout_handle is None
+    transport.resume_reading.assert_not_called()
