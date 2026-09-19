@@ -58,8 +58,11 @@ sphinx==8.1.3
     # via
     #   -r requirements/doc.in
     #   myst-parser
+    #   sphinx-issues
     #   sphinxcontrib-mermaid
     #   sphinxcontrib-towncrier
+sphinx-issues==6.0.0
+    # via -r requirements/doc.in
 sphinxcontrib-applehelp==2.0.0
     # via sphinx
 sphinxcontrib-devhelp==2.0.0
