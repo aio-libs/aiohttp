@@ -26,6 +26,7 @@ logger = logging.getLogger("aiohttp.http2.stream")
 # the client against them.
 MAX_DECOMPRESS_SIZE = 2**31 - 1
 
+
 # ----------------------------------------------------------------------
 # Stream State Machine (RFC 7540 5.1)
 # ----------------------------------------------------------------------
