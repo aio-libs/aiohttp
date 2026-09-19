@@ -55,7 +55,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
-                         read_bufsize=2**16, \
+                         read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
                          max_headers=128, \
@@ -231,7 +231,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            256 KiB by default. On a WebSocket connection it
+                            also bounds what is buffered between the handshake
+                            and the reader being installed.
 
       .. versionadded:: 3.7
 
@@ -481,6 +483,8 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_redirects: Maximum number of redirects to follow.
          :exc:`TooManyRedirects` is raised if the number is exceeded.
+         ``0`` means no limit, redirects are followed until the request
+         times out. Use ``allow_redirects=False`` to not follow redirects at all.
          Ignored when ``allow_redirects=False``.
          ``10`` by default.
 
@@ -973,6 +977,8 @@ certification chaining.
 
    :param int max_redirects: Maximum number of redirects to follow.
       :exc:`TooManyRedirects` is raised if the number is exceeded.
+      ``0`` means no limit, redirects are followed until the request
+      times out. Use ``allow_redirects=False`` to not follow redirects at all.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
@@ -2555,10 +2561,16 @@ Utilities
 
    .. attribute:: host_only_cookies
 
-      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
-      cookies are host-only (not sent to subdomains).
+      A :class:`frozenset` of ``(domain, path, name)`` tuples indicating
+      which cookies are host-only (not sent to subdomains).
 
       .. versionadded:: 3.14
+
+      .. versionchanged:: 3.14.4
+
+         The tuples gained the *path* element; host-only state is tracked
+         per ``(domain, path, name)`` cookie identity so that same-named
+         cookies on other paths cannot affect it.
 
 
 .. class:: DummyCookieJar(*, loop=None)

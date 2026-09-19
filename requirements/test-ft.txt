@@ -18,7 +18,7 @@ aiosignal==1.4.0
     #   aiohttp
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.8.0
+ast-serialize==0.11.2
     # via mypy
 async-timeout==5.0.1 ; python_version < "3.11"
     # via
@@ -38,7 +38,7 @@ cffi==2.1.1
     # via
     #   cryptography
     #   pycares
-coverage==7.16.0
+coverage==7.16.1
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -75,7 +75,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.7.1
+multidict==6.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -94,7 +94,7 @@ pluggy==1.6.0
     # via
     #   pytest
     #   pytest-cov
-propcache==0.5.2
+propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -170,7 +170,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-yarl==1.24.5
+yarl==1.25.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp

@@ -792,7 +792,7 @@ async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
             return MappingProxyType({})
 
         @property
-        def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
             return frozenset()
 
         def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:

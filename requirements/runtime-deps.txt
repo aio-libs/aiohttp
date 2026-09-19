@@ -28,11 +28,11 @@ frozenlist==1.8.0
     #   aiosignal
 idna==3.19
     # via yarl
-multidict==6.7.1
+multidict==6.8.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-propcache==0.5.2
+propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -46,5 +46,5 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   aiosignal
     #   exceptiongroup
     #   multidict
-yarl==1.24.5
+yarl==1.25.1
     # via -r requirements/runtime-deps.in

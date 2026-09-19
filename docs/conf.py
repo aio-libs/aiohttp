@@ -62,6 +62,7 @@ extensions = [
     "myst_parser",  # renders Markdown sources (e.g. ``THREAT_MODEL.md``)
     "sphinxcontrib.mermaid",  # renders the Mermaid flowcharts in ``THREAT_MODEL.md``
     "sphinxcontrib.towncrier.ext",  # provides `towncrier-draft-entries` directive
+    "sphinx_issues",  # implements `:issue:`, `:pr:` and other GH-related roles
 ]
 
 
@@ -127,7 +128,6 @@ github_repo_org = "aio-libs"
 github_repo_name = "aiohttp"
 github_repo_slug = f"{github_repo_org}/{github_repo_name}"
 github_repo_url = f"{github_url}/{github_repo_slug}"
-github_sponsors_url = f"{github_url}/sponsors"
 
 project = github_repo_name
 copyright = f"{project} contributors"
@@ -186,13 +186,23 @@ highlight_language = "python3"
 # -- Extension configuration -------------------------------------------------
 
 # -- Options for extlinks extension ---------------------------------------
+# `:issue:`, `:pr:`, `:commit:` and `:user:` come from `sphinx-issues` below.
 extlinks = {
-    "issue": (f"{github_repo_url}/issues/%s", "#%s"),
-    "pr": (f"{github_repo_url}/pull/%s", "PR #%s"),
-    "commit": (f"{github_repo_url}/commit/%s", "%s"),
     "gh": (f"{github_url}/%s", "GitHub: %s"),
-    "user": (f"{github_sponsors_url}/%s", "@%s"),
 }
+
+# -- Options for sphinx_issues extension -------------------------------------
+
+# https://github.com/sloria/sphinx-issues#installation-and-configuration
+# The extension's default URL templates already match the ones the replaced
+# `extlinks` entries used -- including `:user:` pointing at GitHub Sponsors --
+# so only the repository slug needs to be configured.
+issues_github_path = github_repo_slug
+
+# The link captions differ slightly from the ones `extlinks` produced: `:pr:`
+# now renders as `#N` rather than `PR #N` and `:commit:` as an `@`-prefixed
+# abbreviated SHA. These are the extension's conventions and it only accepts
+# `#`, `@` or `!` as a prefix, so they are adopted as-is.
 
 # -- Options for HTML output ----------------------------------------------
 
