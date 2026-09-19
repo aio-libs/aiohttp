@@ -49,7 +49,7 @@ def test_zip_bomb_protection(connection: Any, event_loop: Any) -> None:
 
     # Create the stream
     stream = h2_stream.Stream(
-        stream_id=1, conn=conn, loop=event_loop, protocol=protocol
+        stream_id=1, conn=conn, loop=event_loop, protocol=protocol, limit=65535
     )
     stream.state = StreamState.OPEN
 
@@ -58,7 +58,7 @@ def test_zip_bomb_protection(connection: Any, event_loop: Any) -> None:
         (":status", "200"),
         ("content-encoding", "deflate"),
     ]
-    stream.receive_headers(headers, end_stream=False, limit=65535)  # type: ignore[arg-type]
+    stream.receive_headers(headers, end_stream=False)
 
     # Generate a small zip bomb
     bomb = zlib.compress(b"\x00" * (1024 * 1024 * 3))

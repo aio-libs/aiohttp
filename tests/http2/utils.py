@@ -52,7 +52,7 @@ def build_headers_frame(
     end_headers: bool = True,
     end_stream: bool = False,
     priority: Optional[bytes] = None,
-) -> bytes:
+) -> Any:
     encoder = Encoder()
     header_block = encoder.encode(headers)
     flags = 0

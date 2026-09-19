@@ -131,6 +131,7 @@ def stream_setup() -> Generator[Any, None, None]:
 
     stream = Stream(stream_id=1, conn=conn, loop=loop, protocol=protocol)
     stream.body_reader = MagicMock()
+    stream.body_reader.total_bytes = 0
     # Reset mocks after initialization (constructor may have used them)
     conn._send_window_update.reset_mock()
     conn._send_rst_stream.reset_mock()
@@ -727,7 +728,7 @@ class TestStreamStateMachine:
         conn, _ = connection
         stream = await conn.create_stream()
         stream.state = StreamState.HALF_CLOSED_LOCAL
-        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
+        stream.receive_headers([(":status", "200")], end_stream=True)
         assert stream.state == StreamState.CLOSED
         assert stream.stream_id not in conn.streams
 
@@ -740,7 +741,7 @@ class TestStreamStateMachine:
         stream = await conn.create_stream()
         stream.state = StreamState.CLOSED
         with pytest.raises(ProtocolError):
-            stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
+            stream.receive_headers([(":status", "200")], end_stream=True)
 
     @pytest.mark.asyncio
     async def test_data_stream_before_headers(
@@ -753,7 +754,7 @@ class TestStreamStateMachine:
         # double end stream is invalid
         stream.receive_data(b"body", end_stream=False)
         assert not stream.response_future.done()
-        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
+        stream.receive_headers([(":status", "200")], end_stream=True)
         assert stream.response_future.done()
         headers, body = stream.response_future.result()
         assert await body.read() == b"body"
@@ -779,7 +780,7 @@ class TestStreamStateMachine:
         stream = await conn.create_stream()
         stream.state = StreamState.OPEN
         stream.response_future.set_result((stream.stream_id, [], b""))  # type: ignore[arg-type]
-        stream.receive_headers([(":status", "200")], end_stream=True)  # type: ignore[list-item]
+        stream.receive_headers([(":status", "200")], end_stream=True)
 
 
 class TestIncomingResponses:
@@ -960,22 +961,6 @@ class TestConnectionEdgeCases:
         conn.data_received(frame)
 
         assert conn._goaway_sent, "GOAWAY not sent"
-
-    @pytest.mark.asyncio
-    async def test_data_frame_unknown_stream_not_above_last_peer(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
-    ) -> None:
-        """DATA frame for unknown stream_id <= _last_peer_stream_id is ignored."""
-        conn, transport = connection
-        # artificially raise last_peer_stream_id
-        conn._last_peer_stream_id = 10
-        frame = build_data_frame(5, b"x", end_stream=False)
-        conn.data_received(frame)
-        # No RST_STREAM sent
-        assert not any(
-            FrameType.RST_STREAM.to_bytes(1, "big") in call.args[0]
-            for call in transport.write.call_args_list
-        )
 
     @pytest.mark.asyncio
     async def test_send_data_end_stream_when_half_closed_remote(
@@ -1303,9 +1288,10 @@ class TestReceiveData:
 
     async def test_buffer_overflow(self, stream_setup: Any) -> None:
         stream, conn, protocol, _ = stream_setup
+        stream.limit = 1
         data = b"early-data"
 
-        stream.receive_data(data, end_stream=False, limit=1)
+        stream.receive_data(data, end_stream=False)
 
         assert stream._pending_data == b""
         assert stream.conn._send_rst_stream.called is True
@@ -1341,6 +1327,7 @@ class TestReceiveData:
         data = b"compressed"
         mock_deflate = MagicMock()
         stream.decompressor = mock_deflate
+        mock_deflate.feed_data = MagicMock(return_value=False)
 
         stream.receive_data(data, end_stream=False)
 
@@ -1369,6 +1356,7 @@ class TestReceiveData:
         data = b"compressed"
         mock_deflate = MagicMock()
         stream.decompressor = mock_deflate
+        mock_deflate.feed_data = MagicMock(return_value=False)
 
         stream.receive_data(data, end_stream=True)
 
@@ -1385,6 +1373,7 @@ class TestReceiveData:
         mock_deflate = MagicMock()
         mock_deflate.feed_eof.side_effect = ContentEncodingError("bad eof")
         stream.decompressor = mock_deflate
+        mock_deflate.feed_data = MagicMock(return_value=False)
 
         stream.receive_data(data, end_stream=True)
 

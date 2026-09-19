@@ -52,6 +52,7 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http2.connection import HTTP2_ENABLED
 from .http2.synchro import HostProbeSynchronizer
 from .http_protocol import HttpDispatcherProtocol
 from .log import client_logger
@@ -1074,6 +1075,8 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: set[asyncio.Task[list[ResolveResult]]] = set()
         self._socket_factory = socket_factory
         self._ssl_shutdown_timeout: float | None
+        if http2_enabled and not HTTP2_ENABLED:
+            raise ImportError("You must install 'hpack' before enabling HTTP/2")
         self._http2_enabled = http2_enabled
 
         # Handle ssl_shutdown_timeout with warning for Python < 3.11

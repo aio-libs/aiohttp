@@ -13,6 +13,7 @@ data = tomllib.loads(Path("pyproject.toml").read_text())
 reqs = (
     data["project"]["dependencies"]
     + data["project"]["optional-dependencies"]["speedups"]
+    + data["project"]["optional-dependencies"]["http2"]
 )
 reqs = sorted(reqs, key=str.casefold)
 

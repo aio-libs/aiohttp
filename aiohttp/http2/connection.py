@@ -24,9 +24,13 @@ Usage:
 import asyncio
 import logging
 import struct
+import traceback
 from typing import Dict, Iterable, List, Optional, Set
 
-from hpack import Decoder, Encoder
+try:
+    from hpack import Decoder, Encoder
+except ImportError:
+    pass
 from yarl import URL
 
 from ..base_protocol import BaseProtocol
@@ -53,6 +57,11 @@ from .settings import (
     Setting,
 )
 from .stream import Stream, StreamState
+
+# convenience flag
+# If we place this inside the ImportError
+# flake8 complains that "E402 module level import not at top of file"
+HTTP2_ENABLED = "Decoder" in globals()
 
 # ----------------------------------------------------------------------
 # Logging – plaintext wire‑format emission for debugging
@@ -88,8 +97,8 @@ class Http2Connection:
         self._protocol = protocol
 
         # HPACK
-        self.hpack_encoder: Encoder = Encoder()
-        self.hpack_decoder: Decoder = Decoder()
+        self.hpack_encoder = Encoder()
+        self.hpack_decoder = Decoder()
 
         # Settings
         self.remote_settings: Dict[Setting, int] = RFC_DEFAULT_SETTINGS.copy()
@@ -110,9 +119,6 @@ class Http2Connection:
             Setting.MAX_CONCURRENT_STREAMS
         ]
         self._pending_streams: List[asyncio.Future[Stream]] = []
-        self._last_peer_stream_id: int = (
-            0  # highest server‑initiated stream (even, unused for client)
-        )
 
         # Frame buffers
         self._frame_buffer: bytearray = bytearray()
@@ -125,6 +131,12 @@ class Http2Connection:
 
         # Closed streams cleanup
         self._closed_streams: Set[int] = set()
+
+    @property
+    def _last_peer_stream_id(self) -> int:
+        if not self.streams:
+            return 0
+        return max(self.streams)
 
     # -------------------- Transport callbacks --------------------
     def data_received(self, data: bytes) -> None:
@@ -174,9 +186,8 @@ class Http2Connection:
             try:
                 self._dispatch_frame(frame_type_val, flags, stream_id, payload)
             except Exception as exc:
-                # we really don't want to swallow this exception
-                import traceback
-
+                # this should catch any protocol violation
+                # so we really don't want to swallow this exception
                 logger.error("\n".join(traceback.format_exception(exc)))
                 logger.error(
                     "Critical error when dispatching frame: exception=%s. (frame_type=%s, flags=%d, stream_id=%d, payload=%s)",
@@ -196,12 +207,12 @@ class Http2Connection:
     def connection_lost(self, exc: Optional[BaseException]) -> None:
         logger.debug(f"Connection lost: {exc}")
         # Cancel all pending streams (including those in the queue)
+        exc = exc or ConnectionError("Connection lost")
         for stream in list(self.streams.values()):
-            if not stream.response_future.done():
-                stream.response_future.set_exception(ConnectionError("Connection lost"))
+            stream.cancel(exc)
         for fut in self._pending_streams:
             if not fut.done():
-                fut.set_exception(ConnectionError("Connection lost"))
+                fut.set_exception(exc)
         self.streams.clear()
 
     # -------------------- Frame dispatch --------------------
@@ -266,11 +277,15 @@ class Http2Connection:
         # consumes the whole window
         stream = self.streams.get(stream_id)
         if stream is None:
-            if stream_id > self._last_peer_stream_id:
-                self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
+            logger.error(
+                "Invalid stream: %d (last stream: %d)",
+                stream_id,
+                self._last_peer_stream_id,
+            )
+            self._send_rst_stream(stream_id, ErrorCode.PROTOCOL_ERROR)
             return
 
-        stream.receive_data(data, end_stream, payload_len)
+        stream.receive_data(data, end_stream, payload_len=payload_len)
 
     def _handle_headers_frame(self, flags: int, stream_id: int, payload: bytes) -> None:
         if flags & FlagHeaders.PRIORITY:
@@ -344,7 +359,7 @@ class Http2Connection:
             setting = Setting(identifier)
             old_value = self.remote_settings.get(setting, value)
             self.remote_settings[setting] = value
-            logger.info(f"Server SETTINGS: {setting.name} = {value}")
+            logger.debug(f"Server SETTINGS: {setting.name} = {value}")
 
             # React to certain settings
             if setting == Setting.INITIAL_WINDOW_SIZE and value != old_value:
@@ -459,6 +474,12 @@ class Http2Connection:
             self._close_stream(stream, Exception(ErrorCode(error_code)))
 
         payload = struct.pack("!I", error_code)
+
+        logger.info(
+            "RST_STREAM sent: last_stream=%d, error=%d",
+            self._last_stream_id,
+            error_code,
+        )
         self._send_frame(FrameType.RST_STREAM, 0, stream_id, payload)
 
     def _send_window_update(self, stream_id: int, increment: int) -> None:

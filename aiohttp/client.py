@@ -241,7 +241,6 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
         # the rest of the connection requests are done
         # concurrently
         await connector.semaphore.acquire(key)
-
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
 
         connector.semaphore.release(key)

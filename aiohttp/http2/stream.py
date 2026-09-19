@@ -1,9 +1,7 @@
 import asyncio
 import logging
 from enum import IntEnum
-from typing import TYPE_CHECKING, Dict, Iterable, Optional, Set
-
-from hpack import HeaderTuple
+from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set
 
 from ..http_exceptions import ContentEncodingError
 from ..http_parser import DeflateBuffer, RawResponseMessage
@@ -77,6 +75,7 @@ class Stream:
         "_inbound_window_initial",
         "_auto_decompress",
         "closed_event",
+        "limit",
     )
 
     def __init__(
@@ -85,6 +84,7 @@ class Stream:
         conn: "Http2Connection",
         loop: asyncio.AbstractEventLoop,
         protocol: "Http2Protocol",
+        limit: int = MAX_DECOMPRESS_SIZE,
     ) -> None:
         self.stream_id = stream_id
         self.state = StreamState.IDLE
@@ -107,6 +107,7 @@ class Stream:
         self._pending_data: bytearray = bytearray()
         self._headers_received = False
         self._auto_decompress = protocol._auto_decompress
+        self.limit = limit
 
         self.body_reader = StreamReader(
             protocol,
@@ -152,22 +153,16 @@ class Stream:
             self.inbound_window = self._inbound_window_initial
             self.conn._send_window_update(self.stream_id, increment)
 
-    def receive_data(
-        self, data: bytes, end_stream: bool, limit: int = 0, payload_len: int = 0
-    ) -> None:
+    def receive_data(self, data: bytes, end_stream: bool, payload_len: int = 0) -> None:
         """Process incoming DATA frame payload."""
         # len(data) <= payload_len
         self.inbound_window -= max(len(data), payload_len)
-        # the second time we have to pass b"" to the decompressor
-        # to it will end up reading two times `limit`
-        limit = (limit or MAX_DECOMPRESS_SIZE) // 2
-
         # --- stream-level flow control refill ---
         self.maybe_reset_window()
 
         if not self._headers_received:
             # Buffer until we know the content-encoding.
-            if len(self._pending_data) + len(data) > limit:
+            if len(self._pending_data) + len(data) > self.limit:
                 msg = "Received too much data before headers."
                 logging.warning(msg)
                 self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
@@ -178,12 +173,15 @@ class Stream:
             if self.decompressor is not None:
                 try:
                     self.decompressor.feed_data(data)
-                    more = self.decompressor.feed_data(b"")
-                    if more is True:
-                        msg = "Overflow detected when decompressing data"
-                        raise ContentEncodingError(msg)
+                    # decompress whatever is left
+                    # in case we are really unlucky
+                    while self.decompressor.feed_data(b""):
+                        if self.body_reader.total_bytes >= self.limit:
+                            msg = f"Overflow detected when decompressing data: {self.decompressor}"
+                            raise ContentEncodingError(msg)
                 except ContentEncodingError as exc:
                     self.body_reader.set_exception(exc)
+                    logger.error("Content decoding error: %s", str(exc))
                     self.conn._send_rst_stream(self.stream_id, ErrorCode.INTERNAL_ERROR)
                     return
             else:
@@ -194,17 +192,21 @@ class Stream:
 
     def receive_headers(
         self,
-        headers: Iterable[HeaderTuple],
+        headers: Iterable[Any],
         end_stream: bool,
-        limit: int = 0,
     ) -> None:
         """Process incoming HEADERS frame payload."""
         # HeaderTuple can be tuple[str, str] yet the type hint says
         # it's tuple[bytes, bytes]
-        self.response_headers = headers  # type: ignore[assignment]
-        self.response = feed_headers(headers)  # type: ignore[arg-type]
+        self.response_headers = headers
+        self.response = feed_headers(headers)
+        # ignore informational responses
+        if self.response.code >= 100 and self.response.code <= 199:
+            # info, skip
+            # some CDNs (e.g., assets.twitch.tv) send these
+            # so browsers can preload resources
+            return
         self._headers_received = True
-        limit = limit or MAX_DECOMPRESS_SIZE
 
         if self._auto_decompress:
             encoding = self.response.headers.get("content-encoding")
@@ -213,7 +215,7 @@ class Stream:
                 self.decompressor = DeflateBuffer(
                     self.body_reader,
                     encoding=encoding,
-                    max_decompress_size=limit,
+                    max_decompress_size=self.limit,
                 )
                 # Feed any data that arrived before headers.
                 if self._pending_data:
@@ -221,6 +223,7 @@ class Stream:
                         self.decompressor.feed_data(bytes(self._pending_data))
                     except ContentEncodingError as exc:
                         self.body_reader.set_exception(exc)
+                        logger.error("Content decoding error: %s", str(exc))
                         self.conn._send_rst_stream(
                             self.stream_id, ErrorCode.INTERNAL_ERROR
                         )

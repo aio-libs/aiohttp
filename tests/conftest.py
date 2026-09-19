@@ -38,7 +38,11 @@ from aiohttp.client_reqrep import ClientRequest, ClientRequestArgs, ClientRespon
 from aiohttp.compression_utils import ZLibBackend, ZLibBackendProtocol, set_zlib_backend
 from aiohttp.helpers import TimerNoop
 from aiohttp.http import WS_KEY, HttpVersion11
-from aiohttp.http2.connection import Http2Connection, Http2Protocol
+
+try:
+    from aiohttp.http2.connection import Http2Connection, Http2Protocol
+except ImportError:
+    http2 = None
 from aiohttp.test_utils import REUSE_ADDRESS
 
 
