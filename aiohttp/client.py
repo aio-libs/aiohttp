@@ -1103,12 +1103,17 @@ class ClientSession:
         try:
             # check handshake
             if resp.status != 101:
+                # The connection was never upgraded, so this is an ordinary
+                # HTTP response body (unlike the checks below, which run only
+                # after status == 101 and may be mid-upgrade already).
+                body = await resp.read()
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
                     message="Invalid response status",
                     status=resp.status,
                     headers=resp.headers,
+                    body=body,
                 )
 
             if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":

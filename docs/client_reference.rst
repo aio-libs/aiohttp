@@ -2862,6 +2862,13 @@ Response errors
 
    Derived from :exc:`ClientResponseError`
 
+   .. attribute:: body
+
+      Response body (:class:`bytes`) received when the handshake was
+      rejected with a non-101 status, else ``b""``.
+
+      .. versionadded:: 4.0
+
 .. exception:: WSMessageTypeError
    :canonical: aiohttp.client_exceptions.WSMessageTypeError
 
