@@ -26,7 +26,6 @@ logger = logging.getLogger("aiohttp.http2.stream")
 # the client against them.
 MAX_DECOMPRESS_SIZE = 2**31 - 1
 
-
 # ----------------------------------------------------------------------
 # Stream State Machine (RFC 7540 5.1)
 # ----------------------------------------------------------------------
@@ -174,7 +173,8 @@ class Stream:
                 try:
                     self.decompressor.feed_data(data)
                     # decompress whatever is left
-                    # in case we are really unlucky
+                    # in case the decompression ratio is high
+                    # and we couldn't decompress everything in the last call
                     while self.decompressor.feed_data(b""):
                         if self.body_reader.total_bytes >= self.limit:
                             msg = f"Overflow detected when decompressing data: {self.decompressor}"
