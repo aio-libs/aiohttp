@@ -142,6 +142,7 @@ async def test_ws_connect_read_timeout_reset_to_max(
 async def test_ws_connect_with_origin(key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 403
+    resp.read = mock.AsyncMock(return_value=b"")
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -219,6 +220,7 @@ async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
+    resp.read = mock.AsyncMock(return_value=b'{"error": "rejected"}')
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -231,6 +233,7 @@ async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
                 )
 
     assert ctx.value.message == "Invalid response status"
+    assert ctx.value.body == b'{"error": "rejected"}'
 
 
 async def test_ws_connect_err_upgrade(ws_key: str, key_data: bytes) -> None:
@@ -754,6 +757,7 @@ async def test_ws_connect_close_resp_on_err(ws_key: str, key_data: bytes) -> Non
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
+    resp.read = mock.AsyncMock(return_value=b"")
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data

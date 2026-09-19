@@ -1,0 +1,3 @@
+Added a ``body`` attribute to :exc:`~aiohttp.WSServerHandshakeError`, containing
+the response body received when a WebSocket handshake is rejected with a
+non-101 status -- by :user:`eliahu-frusin`.
