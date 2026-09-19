@@ -107,6 +107,25 @@ class ContentTypeError(ClientResponseError):
 class WSServerHandshakeError(ClientResponseError):
     """websocket server handshake error."""
 
+    def __init__(
+        self,
+        request_info: RequestInfo,
+        history: tuple[ClientResponse, ...],
+        *,
+        status: int | None = None,
+        message: str = "",
+        headers: Mapping[str, str] | None = None,
+        body: bytes = b"",
+    ) -> None:
+        super().__init__(
+            request_info,
+            history,
+            status=status,
+            message=message,
+            headers=headers,
+        )
+        self.body = body
+
 
 class ClientHttpProxyError(ClientResponseError):
     """HTTP proxy error.
