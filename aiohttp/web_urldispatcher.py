@@ -804,8 +804,29 @@ class Domain(AbstractRuleMatching):
             return False
         return self.match_domain(host)
 
+    @staticmethod
+    def _normalize_host(host: str) -> str:
+        """Spell a request Host the way validation() stores a domain.
+
+        validation() lowercases the name, drops trailing dots and omits the
+        default port, so ``example.com.`` and ``example.com:80`` both name
+        the origin it stores as ``example.com``. Without the same treatment
+        here they would fail the comparison and fall through to the parent
+        application. Anything else after the colon, a second colon
+        included, is not a port, and the Host is only lowercased.
+        """
+        host = host.lower()
+        name, sep, port = host.partition(":")
+        if sep and port.isascii() and port.isdigit():
+            name = name.rstrip(".")
+            # Canonicalized as text: int() refuses more than 4300 digits,
+            # and a Host header may carry that many.
+            port = port.lstrip("0") or "0"
+            return name if port == "80" else f"{name}:{port}"
+        return host if sep else host.rstrip(".")
+
     def match_domain(self, host: str) -> bool:
-        return host.lower() == self._domain
+        return self._normalize_host(host) == self._domain
 
     def get_info(self) -> _InfoDict:
         return {"domain": self._domain}
@@ -824,7 +845,7 @@ class MaskDomain(Domain):
         return self._mask.pattern
 
     def match_domain(self, host: str) -> bool:
-        return self._mask.fullmatch(host) is not None
+        return self._mask.fullmatch(self._normalize_host(host)) is not None
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
