@@ -813,6 +813,11 @@ class MultipartReader:
                 if len(charset) > 31:
                     raise RuntimeError("Invalid default charset")
                 self._default_charset = charset.strip().decode()
+                await part.release()
+                await self._read_boundary()
+                if self._at_eof:
+                    # https://github.com/python/mypy/issues/17537
+                    return None  # type: ignore[unreachable]
                 part = await self.fetch_next_part()
         self._last_part = part
         return self._last_part
