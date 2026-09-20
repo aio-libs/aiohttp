@@ -786,8 +786,7 @@ class BaseConnector:
             # the keepalive timeout has not been exceeded. keepalive_timeout
             # of None means connections never expire from idling alone.
             if proto.is_connected() and (
-                self._keepalive_timeout is None
-                or t1 - t0 <= self._keepalive_timeout
+                self._keepalive_timeout is None or t1 - t0 <= self._keepalive_timeout
             ):
                 if not conns:
                     # The very last connection was reclaimed: drop the key
