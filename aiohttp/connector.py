@@ -305,7 +305,10 @@ class _TransportPlaceholder:
 class BaseConnector:
     """Base connector class.
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (it is
+        still dropped if the underlying socket disconnects). This is
+        different from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -984,7 +987,10 @@ class TCPConnector(BaseConnector):
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (it is
+        still dropped if the underlying socket disconnects). This is
+        different from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -1695,7 +1701,10 @@ class UnixConnector(BaseConnector):
     """Unix socket connector.
 
     path - Unix socket path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (it is
+        still dropped if the underlying socket disconnects). This is
+        different from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -1751,7 +1760,10 @@ class NamedPipeConnector(BaseConnector):
     See also: https://docs.python.org/3/library/asyncio-eventloop.html
 
     path - Windows named pipe path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (it is
+        still dropped if the underlying socket disconnects). This is
+        different from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
