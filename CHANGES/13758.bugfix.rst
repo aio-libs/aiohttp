@@ -1,5 +1,5 @@
 Fixed a crash in :meth:`~aiohttp.BodyPartReader.read_chunk` on a body part
-with an explicit ``Content-Length: 0``: the part was misrouted to the
+with an explicit ``Content-Length: 0``: the part fell through to the
 streaming read strategy, whose minimum chunk size assertion then failed for
 chunk sizes below the boundary length. Such parts now yield an immediate
 empty chunk, like any other part with a known length
