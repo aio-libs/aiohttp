@@ -200,6 +200,7 @@ class _WSConnectOptions(TypedDict, total=False):
     method: str
     protocols: Collection[str]
     timeout: "ClientWSTimeout | _SENTINEL"
+    request_timeout: "ClientTimeout | None"
     receive_timeout: float | None
     autoclose: bool
     autoping: bool
@@ -942,6 +943,7 @@ class ClientSession:
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
         timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        request_timeout: ClientTimeout | None = None,
         receive_timeout: float | None = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -964,6 +966,7 @@ class ClientSession:
                 method=method,
                 protocols=protocols,
                 timeout=timeout,
+                request_timeout=request_timeout,
                 receive_timeout=receive_timeout,
                 autoclose=autoclose,
                 autoping=autoping,
@@ -1017,6 +1020,7 @@ class ClientSession:
         method: str = hdrs.METH_GET,
         protocols: Collection[str] = (),
         timeout: ClientWSTimeout | _SENTINEL = sentinel,
+        request_timeout: ClientTimeout | None = None,
         receive_timeout: float | None = None,
         autoclose: bool = True,
         autoping: bool = True,
@@ -1088,6 +1092,7 @@ class ClientSession:
             )
 
         # send request
+        # request_timeout=None falls through to session timeout in _request()
         resp = await self.request(
             method,
             url,
@@ -1095,6 +1100,7 @@ class ClientSession:
             headers=real_headers,
             read_until_eof=False,
             proxy=proxy,
+            timeout=request_timeout,
             ssl=ssl,
             server_hostname=server_hostname,
             proxy_headers=proxy_headers,
