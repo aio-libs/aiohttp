@@ -340,6 +340,11 @@ class BaseConnector:
                 raise ValueError(
                     "keepalive_timeout cannot be set if force_close is True"
                 )
+            # Connections are never pooled when force_close is True, so the
+            # value is unused at runtime; normalize it so the attribute has
+            # a consistent float | None type.
+            if keepalive_timeout is sentinel:
+                keepalive_timeout = None
         else:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
@@ -364,7 +369,12 @@ class BaseConnector:
         self._acquired_per_host: defaultdict[ConnectionKey, set[ResponseHandler]] = (
             defaultdict(set)
         )
-        self._keepalive_timeout = cast(float, keepalive_timeout)
+        # `None` means connections are reused regardless of how long they've
+        # been idle (subject only to `proto.is_connected()`); it is distinct
+        # from `force_close=True`, which disables reuse entirely. `_get()`
+        # and `_cleanup()` special-case `None` explicitly instead of relying
+        # on a cast, since comparing a float to `None` raises `TypeError`.
+        self._keepalive_timeout: float | None = keepalive_timeout
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
@@ -466,14 +476,19 @@ class BaseConnector:
 
         now = monotonic()
         timeout = self._keepalive_timeout
+        # timeout is None in practice only when nothing ever schedules this
+        # method (weakref_handle() is a no-op for a None delay), but guard
+        # it explicitly rather than relying on that to hold forever.
+        deadline = None if timeout is None else now - timeout
 
         if self._conns:
             connections = defaultdict(deque)
-            deadline = now - timeout
             for key, conns in self._conns.items():
                 alive: deque[tuple[ResponseHandler, float]] = deque()
                 for proto, use_time in conns:
-                    if proto.is_connected() and use_time - deadline >= 0:
+                    if proto.is_connected() and (
+                        deadline is None or use_time - deadline >= 0
+                    ):
                         alive.append((proto, use_time))
                         continue
                     transport = proto.transport
@@ -768,8 +783,12 @@ class BaseConnector:
         while conns:
             proto, t0 = conns.popleft()
             # We will we reuse the connection if its connected and
-            # the keepalive timeout has not been exceeded
-            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+            # the keepalive timeout has not been exceeded. keepalive_timeout
+            # of None means connections never expire from idling alone.
+            if proto.is_connected() and (
+                self._keepalive_timeout is None
+                or t1 - t0 <= self._keepalive_timeout
+            ):
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
