@@ -20,7 +20,7 @@ docutils==0.21.2
     # via
     #   myst-parser
     #   sphinx
-idna==3.19
+idna==3.20
     # via requests
 imagesize==2.0.1
     # via sphinx
