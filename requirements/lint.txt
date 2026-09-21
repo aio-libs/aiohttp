@@ -58,7 +58,7 @@ frozenlist==1.8.0
     #   aiosignal
 identify==2.6.19
     # via pre-commit
-idna==3.19
+idna==3.20
     # via
     #   trustme
     #   yarl

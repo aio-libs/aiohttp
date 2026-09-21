@@ -51,7 +51,7 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==26.2.0
     # via -r requirements/base-ft.in
-idna==3.19
+idna==3.20
     # via yarl
 iniconfig==2.3.0
     # via pytest
