@@ -45,7 +45,7 @@ backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-blockbuster==1.5.27
+blockbuster==1.5.28
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
