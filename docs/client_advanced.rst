@@ -324,7 +324,7 @@ conform to the :rfc:`2109`, which in turn references the character definitions
 from :rfc:`2068`. They provide a two-way quoting algorithm where any non-text
 character is translated into a 4 character sequence: a forward-slash
 followed by the three-digit octal equivalent of the character.
-Any ``\\`` or ``"`` is quoted with a preceding ``\\`` slash.
+Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
 Because of the way browsers really handle cookies (as opposed to what the RFC
 says) we also encode ``,`` and ``;``.
 
@@ -394,7 +394,6 @@ parameter for the :class:`ClientSession` constructor having as a
 result a client that triggers the different signals supported by the
 :class:`TraceConfig`. By default any instance of
 :class:`ClientSession` class comes with the signals ability
-
 disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
@@ -448,8 +447,8 @@ request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
 
-The ``trace_request_ctx`` param can given at the beginning of the request
-execution, accepted by all of the HTTP verbs,  and will be
+The ``trace_request_ctx`` param can given at the beginning of the
+request execution, accepted by all of the HTTP verbs,  and will be
 passed as a keyword argument for the ``trace_config_ctx_factory``
 factory. This param is useful to pass data that is only available at
 request time, perhaps::
@@ -724,7 +723,7 @@ Proxy support
 aiohttp supports plain HTTP proxies and HTTP proxies that can be
 upgraded to HTTPS via the HTTP CONNECT method. aiohttp has a limited
 support for proxies that must be connected to via ``https://`` — see
- the info box below for more details.
+the info box below for more details.
 To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
