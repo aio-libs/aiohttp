@@ -130,7 +130,7 @@ Creating a middleware
 
 To create a middleware, define an async function (or callable class) that accepts a request object
 and a handler function, and returns a response. Middlewares must follow the
-:type:`ClientMiddlewareType` signature::
+type:`ClientMiddlewareType` signature::
 
     async def auth_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
         req.headers["Authorization"] = get_auth_header()
@@ -324,7 +324,7 @@ conform to the :rfc:`2109`, which in turn references the character definitions
 from :rfc:`2068`. They provide a two-way quoting algorithm where any non-text
 character is translated into a 4 character sequence: a forward-slash
 followed by the three-digit octal equivalent of the character.
-Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
+Any ``\\`` or ``"`` is quoted with a preceding ``\\`` slash.
 Because of the way browsers really handle cookies (as opposed to what the RFC
 says) we also encode ``,`` and ``;``.
 
@@ -392,8 +392,8 @@ listeners coroutines to the signals provided by the
 :class:`TraceConfig` instance, this instance will be used as a
 parameter for the :class:`ClientSession` constructor having as a
 result a client that triggers the different signals supported by the
-:class:`TraceConfig`. By default any instance of
-:class:`ClientSession` class comes with the signals ability
+:class:`TraceConfig`. By default any instance of :class:`ClientSession`
+class comes with the signals ability
 disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
@@ -447,8 +447,8 @@ request flow. However, the factory used to create this object can be
 overwritten using the ``trace_config_ctx_factory`` constructor param of
 the :class:`TraceConfig` class.
 
-The ``trace_request_ctx`` param can given at the beginning of the
-request execution, accepted by all of the HTTP verbs,  and will be
+The ``trace_request_ctx`` param can given at the beginning of the request
+execution, accepted by all of the HTTP verbs,  and will be
 passed as a keyword argument for the ``trace_config_ctx_factory``
 factory. This param is useful to pass data that is only available at
 request time, perhaps::
@@ -549,6 +549,20 @@ If your HTTP server uses UNIX domain sockets you can use
 
   conn = aiohttp.UnixConnector(path='/path/to/socket')
   session = aiohttp.ClientSession(connector=conn)
+
+Request URLs still need an explicit host. The host and port are ignored by the
+connector, but aiohttp's URL parser requires them. For example::
+
+  async with session.get('http://localhost/get') as resp:
+      ...
+
+Relative paths such as ``get`` or ``/get`` raise
+:exc:`~aiohttp.InvalidUrlClientError`. Forms like ``//localhost/get`` and
+``unix://localhost/get`` also work.
+
+When creating a :class:`~aiohttp.ClientSession` with ``base_url``, prefer an
+HTTP form such as ``http://localhost`` (rather than ``unix://localhost``),
+then pass a relative path like ``/get``.
 
 
 Custom socket creation
@@ -709,7 +723,7 @@ Proxy support
 aiohttp supports plain HTTP proxies and HTTP proxies that can be
 upgraded to HTTPS via the HTTP CONNECT method. aiohttp has a limited
 support for proxies that must be connected to via ``https://`` — see
-the info box below for more details.
+ the info box below for more details.
 To connect, use the *proxy* parameter::
 
    async with aiohttp.ClientSession() as session:
@@ -793,8 +807,8 @@ Persistent session
 
 Even though creating a session on demand seems like a tempting idea, we
 advise against it. :class:`aiohttp.ClientSession` maintains a
-connection pool. Contained connections can be reused if necessary to gain some
-performance improvements. If you plan on reusing the session, a.k.a. creating
+connection pool. Contained connections can be reused if necessary to gain
+some performance improvements. If you plan on reusing the session, a.k.a. creating
 **persistent session**, you can use either :ref:`aiohttp-web-signals` or
 :ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
 as it results in more compact code::
@@ -816,7 +830,7 @@ as it results in more compact code::
 
 
 This approach can be successfully used to define numerous sessions given certain
-requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
+requirements. It benefits from having a single location where :class:`ClientSession`
 instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
