@@ -55,7 +55,7 @@ idna==3.20
     # via yarl
 iniconfig==2.3.0
     # via pytest
-multidict==6.8.0
+multidict==6.9.0
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
