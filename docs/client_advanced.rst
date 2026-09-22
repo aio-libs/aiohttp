@@ -130,7 +130,7 @@ Creating a middleware
 
 To create a middleware, define an async function (or callable class) that accepts a request object
 and a handler function, and returns a response. Middlewares must follow the
-type:`ClientMiddlewareType` signature::
+:type:`ClientMiddlewareType` signature::
 
     async def auth_middleware(req: ClientRequest, handler: ClientHandlerType) -> ClientResponse:
         req.headers["Authorization"] = get_auth_header()
@@ -392,8 +392,9 @@ listeners coroutines to the signals provided by the
 :class:`TraceConfig` instance, this instance will be used as a
 parameter for the :class:`ClientSession` constructor having as a
 result a client that triggers the different signals supported by the
-:class:`TraceConfig`. By default any instance of :class:`ClientSession`
-class comes with the signals ability
+:class:`TraceConfig`. By default any instance of
+:class:`ClientSession` class comes with the signals ability
+
 disabled. The following snippet shows how the start and the end
 signals of a request flow can be followed::
 
