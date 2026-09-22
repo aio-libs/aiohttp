@@ -54,7 +54,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.8.0
+multidict==6.9.0
     # via
     #   aiohttp
     #   yarl
