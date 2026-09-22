@@ -1,1 +1,1 @@
-PLACEHOLDER_LOAD_FROM_FILE
+@/workspace/aiohttp-pr13781/docs/client_advanced.rst
