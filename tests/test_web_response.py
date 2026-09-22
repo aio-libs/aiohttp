@@ -334,6 +334,16 @@ def test_last_modified_invalid_type() -> None:
         resp.last_modified = object()  # type: ignore[assignment]
 
 
+def test_last_modified_naive_datetime() -> None:
+    resp = web.StreamResponse()
+
+    with pytest.raises(
+        ValueError,
+        match="last_modified must be a timezone-aware datetime",
+    ):
+        resp.last_modified = datetime.datetime(2026, 9, 22, 12, 0)
+
+
 @pytest.mark.parametrize(
     "header_val",
     (
