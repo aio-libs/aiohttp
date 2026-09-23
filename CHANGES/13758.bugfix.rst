@@ -1,0 +1,8 @@
+Fixed :meth:`aiohttp.BodyPartReader.read_chunk` raising an :exc:`AssertionError`
+on a body part carrying an explicit ``Content-Length: 0`` header -- by
+:user:`nipunhsud`.
+
+The zero length was tested for truthiness rather than for ``None``, so an empty
+part was read through the unknown-length code path, which requires the chunk
+size to be at least the boundary length. Such a part now returns an empty chunk
+for any requested size.
