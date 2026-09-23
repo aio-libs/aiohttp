@@ -205,6 +205,19 @@ class TestPartReader:
         assert c1 + c2 == b"Hello, world!"
         assert c3 == b""
 
+    async def test_read_chunk_with_content_length_zero(self) -> None:
+        """A part with Content-Length: 0 is legal (multipart/mixed, etc.) and
+        should yield an immediate empty chunk instead of routing through the
+        stream path and asserting on the requested chunk size (#13758).
+        """
+        with Stream(b"\r\n--:") as stream:
+            d = HeadersDictProxy(CIMultiDict({"Content-Length": "0"}))
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            assert obj._length == 0
+            result = await obj.read_chunk(4)
+        assert result == b""
+        assert obj.at_eof()
+
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
 
