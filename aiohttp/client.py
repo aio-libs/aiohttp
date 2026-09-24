@@ -1366,7 +1366,7 @@ class ClientSession:
         """
         if not self.closed:
             if self._connector is not None and self._connector_owner:
-                await self._connector.close()
+                await self._connector.aclose()
             self._connector = None
 
     @property

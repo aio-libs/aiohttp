@@ -807,7 +807,7 @@ async def test_ssl_client_shutdown_timeout(
 
     # Now close the connector while the stream is still active
     # This will test the ssl_shutdown_timeout during an active connection
-    await connector.close()
+    await connector.aclose()
 
     # Verify the connection was closed within a reasonable time
     # Should be close to ssl_shutdown_timeout (0.1s) but allow some margin
@@ -868,7 +868,7 @@ async def test_tcp_connector_fingerprint_ok(
     # released before the test loop tears down. Otherwise a slow graceful
     # close can outlive the loop, and the teardown gc.collect() finalises
     # the still-open socket as an unraisable ResourceWarning.
-    await connector.close(abort_ssl=True)
+    await connector.aclose(abort_ssl=True)
 
 
 async def test_tcp_connector_fingerprint_fail(
@@ -4090,7 +4090,7 @@ async def test_server_close_keepalive_connection() -> None:
             r = await session.request("GET", url)
             await r.read()
             assert 0 == len(connector._conns)
-    await connector.close()
+    await connector.aclose()
     server.close()
     await server.wait_closed()
 

@@ -65,7 +65,7 @@ async def connector(
     try:
         yield conn
     finally:
-        await conn.close()
+        await conn.aclose()
 
 
 @pytest.fixture
@@ -344,20 +344,20 @@ async def test_connector(
     create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     connector = TCPConnector()
-    m = mocker.spy(connector, "close")
+    m = mocker.spy(connector, "aclose")
     session = await create_session(connector=connector)
     assert session.connector is connector
 
     await session.close()
     assert m.called
-    await connector.close()
+    await connector.aclose()
 
 
 async def test_create_connector(
     create_session: Callable[..., Awaitable[ClientSession]], mocker: MockerFixture
 ) -> None:
     session = await create_session()
-    m = mocker.spy(session.connector, "close")
+    m = mocker.spy(session.connector, "aclose")
 
     await session.close()
     assert m.called
@@ -468,7 +468,7 @@ def test_connector_loop(event_loop: asyncio.AbstractEventLoop) -> None:
             event_loop.run_until_complete(make_sess())
         expected = "Session and connector have to use same event loop"
         assert str(ctx.value).startswith(expected)
-        another_loop.run_until_complete(connector.close())
+        another_loop.run_until_complete(connector.aclose())
 
 
 def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -> None:
@@ -481,7 +481,7 @@ def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -
         assert session.closed
         assert not conn.closed
     finally:
-        event_loop.run_until_complete(conn.close())
+        event_loop.run_until_complete(conn.aclose())
 
 
 async def test_request_closed_session(session: ClientSession) -> None:
@@ -494,7 +494,7 @@ async def test_close_flag_for_closed_connector(session: ClientSession) -> None:
     conn = session.connector
     assert conn is not None
     assert not session.closed
-    await conn.close()
+    await conn.aclose()
     assert session.closed
 
 

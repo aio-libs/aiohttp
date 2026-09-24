@@ -1,6 +1,8 @@
 aarch
 abc
 ABI
+aclose
+aclosing
 addons
 aiodns
 aioes
@@ -88,6 +90,7 @@ config
 Config
 configs
 conjunction
+contextlib
 contextmanager
 CookieJar
 coroutine
@@ -159,6 +162,7 @@ HTTPException
 HttpProcessingError
 httpretty
 https
+httpx
 hostname
 impl
 incapsulates
@@ -372,6 +376,7 @@ toplevel
 towncrier
 tp
 triages
+trio
 tuples
 UI
 un
