@@ -1,0 +1,5 @@
+mode: enforce
+allow:
+  - pypi.org
+  - raw.githubusercontent.com
+  - releases.astral.sh
