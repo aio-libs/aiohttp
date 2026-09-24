@@ -54,6 +54,9 @@ speedups = [
   "brotlicffi >= 1.2; platform_python_implementation != 'CPython'",
   "backports.zstd; platform_python_implementation == 'CPython' and python_version < '3.14' and sys_platform != 'android' and sys_platform != 'ios'",
 ]
+truststore = [
+  "truststore >= 0.8; sys_platform != 'android' and sys_platform != 'ios'",
+]
 
 [[project.maintainers]]
 name = "aiohttp team"

@@ -60,6 +60,11 @@ try:
 except ImportError:
     aiofastnet = None  # type: ignore[assignment]
 
+try:
+    import truststore
+except ImportError:
+    truststore = None  # type: ignore[assignment]
+
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
@@ -930,7 +935,14 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         # No ssl support
         return None  # type: ignore[unreachable]
     if verified:
-        sslcontext = ssl.create_default_context()
+        if truststore is not None:
+            # Verify against the OS-native trust store instead of the
+            # certifi-derived bundle stdlib ssl ships with, so certs trusted
+            # by the OS (e.g. a corporate MITM proxy's CA) work the same way
+            # they do for other tools on the same machine.
+            sslcontext = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+        else:
+            sslcontext = ssl.create_default_context()
     else:
         sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         sslcontext.options |= ssl.OP_NO_SSLv2

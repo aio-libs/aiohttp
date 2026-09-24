@@ -4654,6 +4654,42 @@ def test_default_ssl_context_creation_without_ssl() -> None:
         assert connector_module._make_ssl_context(True) is None
 
 
+def test_verified_ssl_context_uses_truststore_when_available() -> None:
+    """verified=True must build its context via truststore.SSLContext when installed."""
+    fake_truststore = mock.Mock()
+    sentinel_context = mock.Mock(spec=ssl.SSLContext)
+    fake_truststore.SSLContext.return_value = sentinel_context
+
+    with mock.patch.object(connector_module, "truststore", fake_truststore):
+        result = connector_module._make_ssl_context(True)
+
+    fake_truststore.SSLContext.assert_called_once_with(ssl.PROTOCOL_TLS_CLIENT)
+    assert result is sentinel_context
+    sentinel_context.set_alpn_protocols.assert_called_once_with(("http/1.1",))
+
+
+def test_verified_ssl_context_falls_back_without_truststore() -> None:
+    """verified=True must use stdlib ssl.create_default_context() when truststore is absent."""
+    with mock.patch.object(connector_module, "truststore", None):
+        result = connector_module._make_ssl_context(True)
+
+    assert isinstance(result, ssl.SSLContext)
+    assert not isinstance(result, type(None))
+    assert result.verify_mode == ssl.CERT_REQUIRED
+
+
+def test_unverified_ssl_context_ignores_truststore() -> None:
+    """verified=False must always use plain ssl.SSLContext, truststore or not."""
+    fake_truststore = mock.Mock()
+
+    with mock.patch.object(connector_module, "truststore", fake_truststore):
+        result = connector_module._make_ssl_context(False)
+
+    fake_truststore.SSLContext.assert_not_called()
+    assert isinstance(result, ssl.SSLContext)
+    assert result.verify_mode == ssl.CERT_NONE
+
+
 def _acquired_connection(
     conn: aiohttp.BaseConnector, proto: ResponseHandler, key: ConnectionKey
 ) -> Connection:
