@@ -78,7 +78,7 @@ Reading Attributes and Methods
 
    :return bytes: the given line
 
-.. method:: StreamReader.readuntil(separator="\n")
+.. method:: StreamReader.readuntil(separator=b"\n", *, max_size=None)
       :async:
 
    Read until separator, where `separator` is a sequence of bytes.
@@ -90,6 +90,10 @@ Reading Attributes and Methods
    empty bytes object.
 
    .. versionadded:: 3.8
+
+   :param int max_size: maximum number of bytes to buffer while searching for
+      *separator*; exceeding it raises ``LineTooLong``. ``None``, the default,
+      uses the stream's high-water limit.
 
    :return bytes: the given data
 
