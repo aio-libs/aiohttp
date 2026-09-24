@@ -12,7 +12,7 @@ from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
-from types import TracebackType
+from types import ModuleType, TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiohappyeyeballs
@@ -60,10 +60,11 @@ try:
 except ImportError:
     aiofastnet = None  # type: ignore[assignment]
 
+truststore: ModuleType | None
 try:
     import truststore
 except ImportError:
-    truststore = None  # type: ignore[assignment]
+    truststore = None
 
 
 if sys.version_info >= (3, 12):
@@ -940,7 +941,9 @@ def _make_ssl_context(verified: bool) -> SSLContext:
             # certifi-derived bundle stdlib ssl ships with, so certs trusted
             # by the OS (e.g. a corporate MITM proxy's CA) work the same way
             # they do for other tools on the same machine.
-            sslcontext = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            sslcontext = cast(
+                "SSLContext", truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            )
         else:
             sslcontext = ssl.create_default_context()
     else:

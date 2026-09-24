@@ -4674,7 +4674,6 @@ def test_verified_ssl_context_falls_back_without_truststore() -> None:
         result = connector_module._make_ssl_context(True)
 
     assert isinstance(result, ssl.SSLContext)
-    assert not isinstance(result, type(None))
     assert result.verify_mode == ssl.CERT_REQUIRED
 
 

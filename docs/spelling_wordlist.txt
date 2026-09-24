@@ -63,6 +63,7 @@ canonicalize
 cchardet
 cChardet
 ceil
+certifi
 changelog
 Changelog
 chardet
@@ -336,6 +337,7 @@ ssl
 SSLContext
 startup
 stateful
+stdlib
 storages
 subapplication
 subclassed
@@ -372,6 +374,7 @@ toplevel
 towncrier
 tp
 triages
+truststore
 tuples
 UI
 un
