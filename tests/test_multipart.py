@@ -1909,25 +1909,25 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     part1 = mock.Mock()
     part1.autoclose = False
     part1.consumed = False
-    part1.close = mock.AsyncMock(side_effect=RuntimeError("Part 1 close failed"))
+    part1.aclose = mock.AsyncMock(side_effect=RuntimeError("Part 1 close failed"))
 
     # Second part should still get closed
     part2 = mock.Mock()
     part2.autoclose = False
     part2.consumed = False
-    part2.close = mock.AsyncMock()
+    part2.aclose = mock.AsyncMock()
 
     # Third part with autoclose=True should not be closed
     part3 = mock.Mock()
     part3.autoclose = True
     part3.consumed = False
-    part3.close = mock.AsyncMock()
+    part3.aclose = mock.AsyncMock()
 
     # Fourth part already consumed should not be closed
     part4 = mock.Mock()
     part4.autoclose = False
     part4.consumed = True
-    part4.close = mock.AsyncMock()
+    part4.aclose = mock.AsyncMock()
 
     # Add parts to writer's internal list
     writer._parts = [
@@ -1941,18 +1941,18 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     await writer.close()
 
     # Verify close was called on appropriate parts
-    part1.close.assert_called_once()
-    part2.close.assert_called_once()  # Should still be called despite part1 failing
-    part3.close.assert_not_called()  # autoclose=True
-    part4.close.assert_not_called()  # consumed=True
+    part1.aclose.assert_called_once()
+    part2.aclose.assert_called_once()  # Should still be called despite part1 failing
+    part3.aclose.assert_not_called()  # autoclose=True
+    part4.aclose.assert_not_called()  # consumed=True
 
     # Verify writer is marked as consumed
     assert writer._consumed is True
 
     # Calling close again should do nothing
     await writer.close()
-    assert part1.close.call_count == 1
-    assert part2.close.call_count == 1
+    assert part1.aclose.call_count == 1
+    assert part2.aclose.call_count == 1
 
 
 async def test_multipart_writer_consumed_follows_parts() -> None:

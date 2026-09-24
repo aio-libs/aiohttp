@@ -1234,7 +1234,7 @@ class MultipartWriter(Payload):
         for idx, (part, _, _) in enumerate(self._parts):
             if not part.autoclose and not part.consumed:
                 try:
-                    await part.close()
+                    await part.aclose()
                 except Exception as exc:
                     internal_logger.error(
                         "Failed to close multipart part %d: %s", idx, exc, exc_info=True

@@ -3,6 +3,7 @@ import asyncio
 import io
 import json
 import unittest.mock
+import warnings
 from collections.abc import AsyncIterator, Iterator
 from io import StringIO
 from pathlib import Path
@@ -992,12 +993,12 @@ async def test_async_iterable_payload_consumed_on_interrupted_write() -> None:
 
 
 async def test_bytes_io_payload_close_does_not_close_io() -> None:
-    """Test that BytesIOPayload close() does not close the underlying BytesIO."""
+    """Test that BytesIOPayload aclose() does not close the underlying BytesIO."""
     bytes_io = io.BytesIO(b"data")
     bytes_io_payload = payload.BytesIOPayload(bytes_io)
 
     # Close the payload
-    await bytes_io_payload.close()
+    await bytes_io_payload.aclose()
 
     # BytesIO should NOT be closed
     assert not bytes_io.closed
@@ -1006,6 +1007,12 @@ async def test_bytes_io_payload_close_does_not_close_io() -> None:
     writer = MockStreamWriter()
     await bytes_io_payload.write_with_length(writer, None)
     assert writer.get_written_bytes() == b"data"
+
+
+async def test_bytes_io_payload_close_is_deprecated_alias_for_aclose() -> None:
+    bytes_io_payload = payload.BytesIOPayload(io.BytesIO(b"data"))
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        await bytes_io_payload.close()
 
 
 async def test_custom_payload_backwards_compat_as_bytes() -> None:
@@ -1075,17 +1082,51 @@ async def test_custom_payload_with_encoding_backwards_compat() -> None:
 
 
 async def test_iobase_payload_close_idempotent() -> None:
-    """Test that IOBasePayload.close() is idempotent and covers the _consumed check."""
+    """Test that IOBasePayload.aclose() is idempotent and covers the _consumed check."""
     file_like = io.BytesIO(b"test data")
     p = payload.IOBasePayload(file_like)
 
     # First close should set _consumed to True
-    await p.close()
+    await p.aclose()
     assert p._consumed is True
 
     # Second close should be a no-op due to _consumed check (line 621)
-    await p.close()
+    await p.aclose()
     assert p._consumed is True
+
+
+async def test_iobase_payload_close_is_deprecated_alias_for_aclose() -> None:
+    p = payload.IOBasePayload(io.BytesIO(b"test data"))
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        await p.close()
+    assert p._consumed is True
+
+
+async def test_payload_aclose_forwards_to_close_for_old_style_subclass() -> None:
+    """A Payload subclass only overriding close() must still work via aclose().
+
+    This is the whole point of Payload.aclose()'s default implementation,
+    third-party payloads written before this rename only override
+    close(), and must keep working without any changes on their end.
+    """
+    closed = False
+
+    class OldStylePayload(payload.Payload):
+        async def write(self, writer: AbstractStreamWriter) -> None:
+            pass
+
+        def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
+            return ""
+
+        async def close(self) -> None:
+            nonlocal closed
+            closed = True
+
+    p = OldStylePayload(b"data")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        await p.aclose()
+    assert closed
 
 
 def test_iobase_payload_decode() -> None:

@@ -1368,7 +1368,7 @@ class ClientRequest(ClientRequestBase):
         """
         # Close existing payload if it exists and needs closing
         if self._body is not None:
-            await self._body.close()
+            await self._body.aclose()
         self._update_body(body)
 
     def _update_expect_continue(self, expect: bool = False) -> None:
