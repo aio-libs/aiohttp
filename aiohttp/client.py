@@ -715,6 +715,7 @@ class ClientSession:
                         proxy_headers=resolved_proxy_headers,
                         traces=traces,
                         trust_env=self.trust_env,
+                        allow_redirects=allow_redirects,
                     )
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware

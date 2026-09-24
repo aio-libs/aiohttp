@@ -54,9 +54,11 @@ class StubJsResponse:
         statusText: str = "OK",
         headers: Union[StubHeaders, None] = None,
         body: bytes = b"",
+        type: str = "basic",
     ) -> None:
         self.status = status
         self.statusText = statusText
+        self.type = type
         self.headers = headers if headers is not None else StubHeaders([])
         self._body = body
 
@@ -212,6 +214,52 @@ async def test_head_request() -> None:
             assert resp.status == 200
             assert await resp.read() == b""
     assert fetch.last_options["method"] == "HEAD"
+
+
+async def test_redirects_left_to_fetch_by_default() -> None:
+    fetch = StubFetch()
+    async with aiohttp.ClientSession(connector=FetchConnector(fetch=fetch)) as session:
+        await session.get("http://example.com/")
+
+    assert "redirect" not in fetch.last_options
+
+
+async def test_allow_redirects_false_returns_redirect() -> None:
+    """Node.js answers redirect: "manual" with the redirect response itself."""
+    fetch = StubFetch(
+        StubJsResponse(
+            status=302,
+            statusText="Found",
+            headers=StubHeaders([("location", "/elsewhere")]),
+        )
+    )
+    async with aiohttp.ClientSession(connector=FetchConnector(fetch=fetch)) as session:
+        async with session.get("http://example.com/", allow_redirects=False) as resp:
+            assert resp.status == 302
+            assert resp.headers["Location"] == "/elsewhere"
+        async with session.head("http://example.com/") as resp:
+            assert resp.status == 302
+
+    assert [options["redirect"] for _, options in fetch.calls] == ["manual", "manual"]
+
+
+async def test_opaque_redirect_raises() -> None:
+    """Browsers answer redirect: "manual" with an opaque, status 0 response."""
+    fetch = StubFetch(StubJsResponse(status=0, statusText="", type="opaqueredirect"))
+    async with aiohttp.ClientSession(connector=FetchConnector(fetch=fetch)) as session:
+        with pytest.raises(
+            aiohttp.ClientConnectionError, match="allow_redirects=False"
+        ):
+            await session.get("http://example.com/", allow_redirects=False)
+
+
+async def test_fetch_options_override_redirect_mode() -> None:
+    fetch = StubFetch()
+    connector = FetchConnector(fetch=fetch, fetch_options={"redirect": "error"})
+    async with aiohttp.ClientSession(connector=connector) as session:
+        await session.get("http://example.com/", allow_redirects=False)
+
+    assert fetch.last_options["redirect"] == "error"
 
 
 async def test_fetch_failure_raises_client_error() -> None:

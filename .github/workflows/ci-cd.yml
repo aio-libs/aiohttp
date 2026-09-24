@@ -456,7 +456,7 @@ jobs:
         enable-cache: true
     - name: Install build tooling and cython
       run: |
-        uv pip install -U pip wheel setuptools build twine -r requirements/cython.in -c requirements/cython.txt
+        uv pip install -U pip -r requirements/cython.in -c requirements/cython.txt
     - name: Restore llhttp generated files
       uses: actions/download-artifact@v8
       with:

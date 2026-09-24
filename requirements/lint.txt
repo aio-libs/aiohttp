@@ -110,6 +110,8 @@ pygments==2.21.0
     # via
     #   pytest
     #   rich
+pyodide-py==0.25.1
+    # via -r requirements/lint.in
 pytest==9.1.1
     # via
     #   -r requirements/lint.in

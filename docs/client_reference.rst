@@ -1453,10 +1453,17 @@ is controlled by *force_close* constructor's parameter).
 
    Because the JavaScript runtime manages the network, some aiohttp
    features do not apply: proxies and connection upgrades (WebSockets)
-   raise :exc:`ClientConnectionError`, redirects are followed
-   transparently by ``fetch()`` before aiohttp sees the final response,
-   ``ssl`` arguments are ignored (the runtime's trust store applies), and
-   in browsers, cookies and CORS are enforced by the browser itself.
+   raise :exc:`ClientConnectionError`, redirects are followed by
+   ``fetch()`` before aiohttp sees the final response (so ``max_redirects``
+   and :attr:`ClientResponse.history` do not apply), ``ssl`` arguments are
+   ignored (the runtime's trust store applies), and in browsers, cookies
+   and CORS are enforced by the browser itself.
+
+   With ``allow_redirects=False``, which is the default for
+   :meth:`ClientSession.head`, the request is sent with
+   ``redirect: "manual"``.  Node.js returns the redirect response as usual.
+   Browsers do not expose redirect responses to scripts, so there a
+   request that is redirected raises :exc:`ClientConnectionError`.
 
    :param fetch: the ``fetch()`` implementation to use.  Defaults to the
       global JavaScript ``fetch``; mainly useful for testing or wrapping

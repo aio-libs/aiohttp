@@ -32,6 +32,8 @@ DEPENDENCIES = [
     "multidict",
     "propcache",
     "yarl",
+    # For pytest.raises inside the runtime.
+    "pytest",
 ]
 
 
@@ -130,95 +132,91 @@ def selenium_with_aiohttp(
 
 
 @run_in_pyodide
-async def _get_json(selenium: Any, base_url: str) -> None:
+async def test_get_json(selenium_with_aiohttp: Any, echo_server_url: str) -> None:
     import aiohttp
     from aiohttp.pyodide import FetchConnector
 
     async with aiohttp.ClientSession() as session:
         assert isinstance(session.connector, FetchConnector)
-        async with session.get(base_url + "/json") as resp:
+        async with session.get(echo_server_url + "/json") as resp:
             assert resp.status == 200
             assert resp.headers["Content-Type"] == "application/json"
             assert await resp.json() == {"hello": "world"}
 
 
 @run_in_pyodide
-async def _post_bodies(selenium: Any, base_url: str) -> None:
+async def test_post_bodies(selenium_with_aiohttp: Any, echo_server_url: str) -> None:
     from collections.abc import AsyncIterator
 
     import aiohttp
 
     async with aiohttp.ClientSession() as session:
-        async with session.post(base_url + "/echo", data=b"raw-bytes") as resp:
+        async with session.post(echo_server_url + "/echo", data=b"raw-bytes") as resp:
             assert await resp.read() == b"raw-bytes"
             assert resp.headers["X-Request-Method"] == "POST"
 
-        async with session.post(base_url + "/echo", json={"a": [1, 2]}) as resp:
+        async with session.post(echo_server_url + "/echo", json={"a": [1, 2]}) as resp:
             assert await resp.json() == {"a": [1, 2]}
 
         async def gen() -> AsyncIterator[bytes]:
             yield b"chunk1-"
             yield b"chunk2"
 
-        async with session.post(base_url + "/echo", data=gen()) as resp:
+        async with session.post(echo_server_url + "/echo", data=gen()) as resp:
             assert await resp.read() == b"chunk1-chunk2"
 
-        async with session.put(base_url + "/echo", data=b"put-data") as resp:
+        async with session.put(echo_server_url + "/echo", data=b"put-data") as resp:
             assert await resp.read() == b"put-data"
             assert resp.headers["X-Request-Method"] == "PUT"
 
 
 @run_in_pyodide
-async def _redirects_cookies_errors(selenium: Any, base_url: str) -> None:
+async def test_redirects(selenium_with_aiohttp: Any, echo_server_url: str) -> None:
+    import aiohttp
+
+    async with aiohttp.ClientSession() as session:
+        # fetch() follows the redirect itself.
+        async with session.get(echo_server_url + "/redirect") as resp:
+            assert resp.status == 200
+            assert await resp.json() == {"hello": "world"}
+
+        # Node.js answers redirect: "manual" with the redirect response.
+        async with session.get(
+            echo_server_url + "/redirect", allow_redirects=False
+        ) as resp:
+            assert resp.status == 302
+            assert resp.headers["Location"] == "/json"
+
+
+@run_in_pyodide
+async def test_cookies_and_errors(
+    selenium_with_aiohttp: Any, echo_server_url: str
+) -> None:
     import asyncio
+
+    import pytest
 
     import aiohttp
 
     async with aiohttp.ClientSession() as session:
-        # fetch() follows the redirect transparently.
-        async with session.get(base_url + "/redirect") as resp:
-            assert resp.status == 200
-            assert await resp.json() == {"hello": "world"}
-
-        async with session.get(base_url + "/cookies") as resp:
+        async with session.get(echo_server_url + "/cookies") as resp:
             assert list(resp.headers.getall("Set-Cookie")) == [
                 "first=1; Path=/",
                 "second=2; Path=/",
             ]
 
-        async with session.get(base_url + "/missing") as resp:
+        async with session.get(echo_server_url + "/missing") as resp:
             assert resp.status == 404
-        try:
-            await session.get(base_url + "/missing", raise_for_status=True)
-        except aiohttp.ClientResponseError as e:
-            assert e.status == 404
-        else:
-            raise AssertionError("expected ClientResponseError")
+        with pytest.raises(aiohttp.ClientResponseError) as exc_info:
+            await session.get(echo_server_url + "/missing", raise_for_status=True)
+        assert exc_info.value.status == 404
 
         results = await asyncio.gather(
-            *(session.get(base_url + "/json") for _ in range(5))
+            *(session.get(echo_server_url + "/json") for _ in range(5))
         )
         for r in results:
             assert await r.json() == {"hello": "world"}
             r.release()
 
-        try:
+        with pytest.raises(aiohttp.ClientConnectionError):
             await session.get("http://127.0.0.1:2/")
-        except aiohttp.ClientConnectionError:
-            pass
-        else:
-            raise AssertionError("expected ClientConnectionError")
-
-
-def test_get_json(selenium_with_aiohttp: Any, echo_server_url: str) -> None:
-    _get_json(selenium_with_aiohttp, echo_server_url)
-
-
-def test_post_bodies(selenium_with_aiohttp: Any, echo_server_url: str) -> None:
-    _post_bodies(selenium_with_aiohttp, echo_server_url)
-
-
-def test_redirects_cookies_errors(
-    selenium_with_aiohttp: Any, echo_server_url: str
-) -> None:
-    _redirects_cookies_errors(selenium_with_aiohttp, echo_server_url)

@@ -16,8 +16,13 @@ keeps ``ClientSession`` itself completely unaware of the platform.
 Limitations imposed by ``fetch()``:
 
 * No proxies, no ``CONNECT``, no connection upgrades (WebSockets).
-* Redirects are followed transparently by the browser; aiohttp only sees
-  the final response and cannot report redirect history.
+* Redirects are followed by the JavaScript runtime, so aiohttp only sees
+  the final response, cannot report redirect history and cannot enforce
+  ``max_redirects``.
+* With ``allow_redirects=False`` (the default for ``head()``) the request is
+  sent with ``redirect: "manual"``.  Node.js then returns the redirect
+  response itself, but browsers hide it from scripts, so there the request
+  fails with :exc:`~aiohttp.ClientConnectionError` instead.
 * The trust store, cookies (in browsers) and CORS policy are managed by the
   JavaScript runtime, not by aiohttp; ``ssl`` arguments are ignored.
 * ``Expect: 100-continue`` is answered locally instead of by the server.
@@ -166,8 +171,7 @@ class FetchClientProtocol(ResponseHandler):
             self._abort_controller = None
         if self._fetch_task is not None and not self._fetch_task.done():
             self._fetch_task.cancel()
-        if not self._connection_lost_called:
-            self._loop.call_soon(self.connection_lost, None)
+        self._loop.call_soon(self.connection_lost, None)
 
     def _make_fetch_arguments(
         self, message: RawRequestMessage, body: bytes
@@ -180,6 +184,8 @@ class FetchClientProtocol(ResponseHandler):
         options: dict[str, Any] = {"method": message.method, "headers": headers}
         if body:
             options["body"] = body
+        if not self._request._allow_redirects:
+            options["redirect"] = "manual"
         options.update(self._fetch_options)
         if IS_EMSCRIPTEN:  # pragma: no cover
             from js import AbortController  # noqa: I900
@@ -200,6 +206,18 @@ class FetchClientProtocol(ResponseHandler):
             body = await payload.read()
             options = self._make_fetch_arguments(message, body)
             jsresp = await self._js_fetch(str(self._request.url), **options)
+            if jsresp.type == "opaqueredirect":
+                # A browser answering redirect: "manual" withholds the status
+                # and Location of the redirect, so it cannot be returned.
+                set_exception(
+                    self,
+                    ClientConnectionError(
+                        f"{self._request.url} redirected, and the browser does "
+                        "not expose redirect responses to scripts, so "
+                        "allow_redirects=False cannot be honored"
+                    ),
+                )
+                return
             self.data_received(await self._serialize_response(message, jsresp))
         except asyncio.CancelledError:
             raise

@@ -1093,6 +1093,7 @@ class ClientRequest(ClientRequestBase):
         traces: list["Trace"],
         trust_env: bool,
         server_hostname: str | None,
+        allow_redirects: bool = True,
         **kwargs: object,
     ):
         # kwargs exists so authors of subclasses should expect to pass through unknown
@@ -1108,6 +1109,9 @@ class ClientRequest(ClientRequestBase):
         if proxy is not None:
             assert type(proxy) is URL, proxy
         self._session = session
+        # Only read by connectors that cannot leave redirects to the session,
+        # such as FetchConnector, where fetch() decides whether to follow them.
+        self._allow_redirects = allow_redirects
         self.chunked = chunked
         self.response_class = response_class
         self._response_params = response_params
