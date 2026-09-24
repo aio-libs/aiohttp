@@ -1,0 +1,6 @@
+``StreamResponse.last_modified`` now rejects naive ``datetime.datetime`` objects
+with a ``ValueError`` instead of silently treating them as UTC, which could
+produce an incorrect ``Last-Modified`` header. Existing code that sets
+``last_modified`` with a naive datetime (e.g. from ``datetime.now()``) must
+switch to a timezone-aware one, e.g. ``datetime.now(timezone.utc)``
+-- by :user:`eliahu-frusin`.

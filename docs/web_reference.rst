@@ -851,6 +851,15 @@ and :ref:`aiohttp-web-signals` handlers::
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+      A :class:`datetime.datetime` value must be timezone-aware;
+      a naive one raises :exc:`ValueError`.
+
+      .. versionchanged:: 4.0
+
+         Naive :class:`datetime.datetime` values are no longer accepted
+         and now raise :exc:`ValueError` instead of being silently
+         treated as UTC.
+
    .. attribute:: etag
 
       *ETag* header for outgoing response.
