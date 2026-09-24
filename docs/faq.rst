@@ -187,7 +187,7 @@ and call :meth:`aiohttp.web.WebSocketResponse.close` on all of them in
 
         user_id = authenticate_user(request)
 
-        ws_closers = [ws.close()
+        ws_closers = [ws.aclose()
                       for ws in request.app[websockets_key][user_id]
                       if not ws.closed]
 

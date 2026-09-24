@@ -374,16 +374,49 @@ async def test_close(ws_key: str, key_data: bytes) -> None:
 
                 resp._reader.feed_data(WSMessageClose(data=0, size=0, extra=""))
 
-                res = await resp.close()
+                res = await resp.aclose()
                 writer.close.assert_called_with(1000, b"")
                 assert resp.closed
                 assert res  # type: ignore[unreachable]
                 assert resp.exception() is None
 
                 # idempotent
-                res = await resp.close()
+                res = await resp.aclose()
                 assert not res
                 assert writer.close.call_count == 1
+
+                await session.close()
+
+
+async def test_close_is_deprecated_alias_for_aclose(
+    ws_key: str, key_data: bytes
+) -> None:
+    mresp = mock.Mock()
+    mresp.status = 101
+    mresp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    mresp.connection.protocol.read_timeout = None
+    with mock.patch("aiohttp.client.WebSocketWriter") as WebSocketWriter:
+        with mock.patch("aiohttp.client.os") as m_os:
+            with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+                m_os.urandom.return_value = key_data
+                m_req.return_value = asyncio.get_running_loop().create_future()
+                m_req.return_value.set_result(mresp)
+                writer = mock.create_autospec(
+                    RealWebSocketWriter, instance=True, spec_set=True
+                )
+                WebSocketWriter.return_value = writer
+
+                session = aiohttp.ClientSession()
+                resp = await session.ws_connect("http://test.org")
+                resp._reader.feed_data(WSMessageClose(data=0, size=0, extra=""))
+
+                with pytest.warns(DeprecationWarning, match="aclose"):
+                    await resp.close()
+                assert resp.closed
 
                 await session.close()
 
@@ -479,7 +512,7 @@ async def test_close_exc(ws_key: str, key_data: bytes) -> None:
                 exc = ValueError()
                 resp._reader.set_exception(exc)
 
-                await resp.close()
+                await resp.aclose()
                 assert resp.closed
                 assert resp.exception() is exc  # type: ignore[unreachable]
 
@@ -509,14 +542,14 @@ async def test_close_exc2(ws_key: str, key_data: bytes) -> None:
                 exc = ValueError()
                 writer.close.side_effect = exc
 
-                await resp.close()
+                await resp.aclose()
                 assert resp.closed
                 assert resp.exception() is exc  # type: ignore[unreachable]
 
                 resp._closed = False
                 writer.close.side_effect = asyncio.CancelledError()
                 with pytest.raises(asyncio.CancelledError):
-                    await resp.close()
+                    await resp.aclose()
 
 
 @pytest.mark.parametrize("exc", (ClientConnectionResetError, ConnectionResetError))

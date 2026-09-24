@@ -48,7 +48,7 @@ async def wshandler(request: web.Request) -> web.WebSocketResponse | web.Respons
 
 async def on_shutdown(app: web.Application) -> None:
     for ws in app[sockets]:
-        await ws.close()
+        await ws.aclose()
 
 
 def init() -> web.Application:

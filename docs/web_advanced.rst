@@ -353,7 +353,7 @@ Reading from the same task in WebSockets
 Reading from the *WebSocket* (``await ws.receive()``) **must only** be
 done inside the request handler *task*; however, writing
 (``ws.send_str(...)``) to the *WebSocket*, closing (``await
-ws.close()``) and canceling the handler task may be delegated to other
+ws.aclose()``) and canceling the handler task may be delegated to other
 tasks. See also :ref:`FAQ section
 <aiohttp_faq_terminating_websockets>`.
 
@@ -1147,7 +1147,7 @@ Then the signal handler may look like::
 
     async def on_shutdown(app):
         for ws in set(app[websockets]):
-            await ws.close(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
+            await ws.aclose(code=WSCloseCode.GOING_AWAY, message="Server shutdown")
 
     app.on_shutdown.append(on_shutdown)
 

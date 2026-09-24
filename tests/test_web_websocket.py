@@ -111,7 +111,7 @@ async def test_nonstarted_send_json() -> None:
 async def test_nonstarted_close() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
-        await ws.close()
+        await ws.aclose()
 
 
 async def test_nonstarted_receive_str() -> None:
@@ -206,7 +206,7 @@ async def test_send_json_bytes_nonjson(make_request: _RequestMaker) -> None:
 
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
 
 async def test_write_non_prepared() -> None:
@@ -330,7 +330,7 @@ async def test_raise_writer_limit(make_request: _RequestMaker) -> None:
     assert ws._writer is not None
     assert ws._writer._limit == 1234567
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
 
 async def test_send_str_closed(make_request: _RequestMaker) -> None:
@@ -339,7 +339,7 @@ async def test_send_str_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
     assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
@@ -353,7 +353,7 @@ async def test_recv_str_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(
         WSMessageTypeError,
@@ -368,7 +368,7 @@ async def test_send_bytes_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.send_bytes(b"bytes")
@@ -380,7 +380,7 @@ async def test_recv_bytes_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(
         WSMessageTypeError,
@@ -395,7 +395,7 @@ async def test_send_json_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.send_json({"type": "json"})
@@ -407,7 +407,7 @@ async def test_send_json_bytes_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.send_json_bytes(
@@ -421,7 +421,7 @@ async def test_send_frame_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.send_frame(b'{"type": "json"}', WSMsgType.TEXT)
@@ -433,7 +433,7 @@ async def test_ping_closed(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.ping()
@@ -445,7 +445,7 @@ async def test_pong_closed(make_request: _RequestMaker, mocker: MockerFixture) -
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     with pytest.raises(ConnectionError):
         await ws.pong()
@@ -457,14 +457,29 @@ async def test_close_idempotent(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    close_code = await ws.close(code=1, message=b"message1")
+    close_code = await ws.aclose(code=1, message=b"message1")
     assert close_code == 1
     assert ws.closed
     assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
-    close_code = await ws.close(code=2, message=b"message2")
+    close_code = await ws.aclose(code=2, message=b"message2")
     assert close_code == 0
+
+
+async def test_close_is_deprecated_alias_for_aclose(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse()
+    await ws.prepare(req)
+    assert ws._reader is not None
+    ws._reader.feed_data(WS_CLOSED_MESSAGE)
+
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        close_code = await ws.close(code=1, message=b"message1")
+    assert close_code == 1
+    assert ws.closed
 
 
 async def test_prepare_post_method_ok(make_request: _RequestMaker) -> None:
@@ -484,7 +499,7 @@ async def test_prepare_without_upgrade(make_request: _RequestMaker) -> None:
 async def test_wait_closed_before_start() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
-        await ws.close()
+        await ws.aclose()
 
 
 async def test_write_eof_not_started() -> None:
@@ -502,7 +517,7 @@ async def test_write_eof_idempotent(make_request: _RequestMaker) -> None:
 
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     await ws.write_eof()
     await ws.write_eof()
@@ -614,7 +629,7 @@ async def test_close_after_closing(make_request: _RequestMaker) -> None:
     assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
-    await ws.close()
+    await ws.aclose()
     assert ws.closed
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[unreachable]
 
@@ -644,7 +659,7 @@ async def test_multiple_receive_on_close_connection(
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    await ws.close()
+    await ws.aclose()
 
     await ws.receive()
     await ws.receive()
@@ -675,7 +690,7 @@ async def test_close_exc(make_request: _RequestMaker) -> None:
     exc = ValueError()
     ws._writer = mock.Mock()
     ws._writer.close.side_effect = exc
-    await ws.close()
+    await ws.aclose()
     assert ws.closed
     assert ws.exception() is exc
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
@@ -683,7 +698,7 @@ async def test_close_exc(make_request: _RequestMaker) -> None:
     ws._closed = False
     ws._writer.close.side_effect = asyncio.CancelledError()
     with pytest.raises(asyncio.CancelledError):
-        await ws.close()
+        await ws.aclose()
 
 
 async def test_prepare_twice_idempotent(make_request: _RequestMaker) -> None:

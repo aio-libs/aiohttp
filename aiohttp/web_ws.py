@@ -4,6 +4,7 @@ import binascii
 import hashlib
 import json
 import sys
+import warnings
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable
 from typing import Any, Final, Generic, Literal, Union, overload
@@ -514,10 +515,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._payload_writer is None:
             raise RuntimeError("Response has not been started")
 
-        await self.close()
+        await self.aclose()
         self._eof_sent = True
 
-    async def close(
+    async def aclose(
         self, *, code: int = WSCloseCode.OK, message: bytes = b"", drain: bool = True
     ) -> bool:
         """Close websocket connection."""
@@ -576,6 +577,22 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             # Once closed the response can no longer be drained; release the
             # parser and the stash it retains.
             self._parser = None
+
+    async def close(
+        self, *, code: int = WSCloseCode.OK, message: bytes = b"", drain: bool = True
+    ) -> bool:
+        """Close websocket connection.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.aclose(code=code, message=message, drain=drain)
 
     def _set_closing(self, code: int) -> None:
         """Set the close code and mark the connection as closing."""
@@ -647,16 +664,16 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
-                await self.close()
+                await self.aclose()
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
-                await self.close(code=exc.code)
+                await self.aclose(code=exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing(WSCloseCode.ABNORMAL_CLOSURE)
-                await self.close()
+                await self.aclose()
                 return WSMessageError(data=exc)
 
             if msg.type not in _INTERNAL_RECEIVE_TYPES:
@@ -672,7 +689,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                     # connection out from under us so we do not
                     # want to drain any pending writes as it will
                     # likely result writing to a broken pipe.
-                    await self.close(drain=False)
+                    await self.aclose(drain=False)
             elif msg.type is WSMsgType.CLOSING:
                 self._set_closing(WSCloseCode.OK)
             elif msg.type is WSMsgType.PING and self._autoping:

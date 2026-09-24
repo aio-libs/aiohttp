@@ -1452,7 +1452,7 @@ class TestShutdown:
 
         async def close_websockets(app: web.Application) -> None:
             for ws in app[WS]:
-                await ws.close(code=WSCloseCode.GOING_AWAY)
+                await ws.aclose(code=WSCloseCode.GOING_AWAY)
 
         async def test() -> None:
             await server_ready.wait()

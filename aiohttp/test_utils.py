@@ -473,7 +473,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
             for resp in self._responses:
                 resp.close()
             for ws in self._websockets:
-                await ws.close()
+                await ws.aclose()
             await self._session.close()
             await self._server.close()
             self._closed = True
