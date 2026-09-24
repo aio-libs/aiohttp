@@ -19,7 +19,6 @@ from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
 from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.multipart import BadContentDispositionHeader
-from aiohttp.tracing import Trace
 
 
 class WriterMock(mock.AsyncMock):
@@ -1383,49 +1382,6 @@ def test_redirect_history_in_exception() -> None:
     with pytest.raises(aiohttp.ClientResponseError) as cm:
         response.raise_for_status()
     assert (hist_response,) == cm.value.history
-
-
-async def test_response_read_triggers_callback(session: ClientSession) -> None:
-    loop = asyncio.get_running_loop()
-    trace = mock.create_autospec(Trace, instance=True, spec_set=True)
-    response_method = "get"
-    response_url = URL("http://def-cl-resp.org")
-    response_body = b"This is response"
-
-    response = ClientResponse(
-        response_method,
-        response_url,
-        writer=WriterMock(),
-        continue100=None,
-        timer=TimerNoop(),
-        loop=loop,
-        session=session,
-        traces=[trace],
-        request_headers=CIMultiDict[str](),
-        original_url=response_url,
-        stream_writer=mock.create_autospec(
-            AbstractStreamWriter, spec_set=True, instance=True
-        ),
-    )
-
-    def side_effect(*args: object, **kwargs: object) -> "asyncio.Future[bytes]":
-        fut = loop.create_future()
-        fut.set_result(response_body)
-        return fut
-
-    h = {"Content-Type": "application/json;charset=cp1251"}
-    response._headers = HeadersDictProxy(CIMultiDict(h))
-    content = response.content = mock.Mock()
-    content.read.side_effect = side_effect
-
-    res = await response.read()
-    assert res == response_body
-    assert response._connection is None
-
-    assert trace.send_response_chunk_received.called
-    assert trace.send_response_chunk_received.call_args == mock.call(
-        response_method, response_url, response_body
-    )
 
 
 def test_response_cookies(

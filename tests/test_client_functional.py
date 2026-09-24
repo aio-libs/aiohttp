@@ -15,7 +15,7 @@ import tarfile
 import time
 import zipfile
 import zlib
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import suppress
 from typing import TYPE_CHECKING, Any, NoReturn
 from unittest import mock
@@ -37,7 +37,7 @@ except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
 import pytest
-from multidict import MultiDict
+from multidict import CIMultiDict, MultiDict
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from pytest_mock import MockerFixture
 from yarl import URL, Query
@@ -3019,6 +3019,50 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
             assert int(cookie["max-age"]) == int(overflow)
 
 
+async def test_connection_released_when_cookie_processing_fails(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    class EvilJar(aiohttp.CookieJar):
+        def update_cookies_from_headers(
+            self, headers: Sequence[str], response_url: URL
+        ) -> None:
+            raise RuntimeError("boom")
+
+    hold = asyncio.Event()
+
+    async def hostile(request: web.Request) -> web.StreamResponse:
+        ret = web.StreamResponse()
+        ret.content_length = 2
+        ret.set_cookie("sid", "x")
+        await ret.prepare(request)
+        await ret.write(b"x")
+        await hold.wait()
+        assert False
+
+    async def clean(request: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/hostile", hostile)
+    app.router.add_get("/clean", clean)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector, cookie_jar=EvilJar())
+
+    try:
+        for _ in range(2):
+            with pytest.raises(RuntimeError, match="boom") as excinfo:
+                await client.get("/hostile")
+            assert not connector._acquired
+            del excinfo
+
+        # The single connector slot is free again: an unaffected request
+        # succeeds instead of waiting forever for a connection.
+        async with client.get("/clean") as resp:
+            assert resp.status == 200
+    finally:
+        hold.set()
+
+
 async def test_request_conn_error() -> None:
     async with aiohttp.ClientSession() as client:
         with pytest.raises(aiohttp.ClientConnectionError):
@@ -3576,6 +3620,51 @@ async def test_drop_auth_on_redirect_to_other_host(
             assert resp.status == 200
 
 
+async def test_drop_duplicate_auth_headers_on_redirect_to_other_host(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """Every copy of a credential header is dropped, not just the first one."""
+
+    async def srv_from(request: web.Request) -> NoReturn:
+        assert list(request.headers.getall("Authorization")) == [
+            "Basic first",
+            "Basic second",
+        ]
+        raise web.HTTPFound(server_to.make_url("/path2"))
+
+    async def srv_to(request: web.Request) -> web.Response:
+        assert "Authorization" not in request.headers, "Header wasn't dropped"
+        assert "Proxy-Authorization" not in request.headers
+        assert "Cookie" not in request.headers
+        return web.Response()
+
+    app_from = web.Application()
+    app_from.router.add_get("/path1", srv_from)
+    server_from = await aiohttp_server(app_from)
+
+    app_to = web.Application()
+    app_to.router.add_get("/path2", srv_to)
+    server_to = await aiohttp_server(app_to)
+
+    # Two servers on the same host but different ports are different origins,
+    # so following the redirect must strip the credential headers.
+    headers = CIMultiDict(
+        (
+            ("Authorization", "Basic first"),
+            ("Authorization", "Basic second"),
+            ("Proxy-Authorization", "Basic first"),
+            ("Proxy-Authorization", "Basic second"),
+            ("Cookie", "a=b"),
+            ("Cookie", "c=d"),
+        )
+    )
+
+    url = server_from.make_url("/path1")
+    async with aiohttp.ClientSession() as client:
+        async with client.get(url, headers=headers) as resp:
+            assert resp.status == 200
+
+
 async def test_drop_session_authorization_header_on_redirect_to_other_host(
     create_server_for_url_and_handler: Callable[[URL, Handler], Awaitable[TestServer]],
 ) -> None:
@@ -3965,7 +4054,7 @@ async def test_dont_close_explicit_connector(aiohttp_client: AiohttpClient) -> N
     assert 1 == len(client.session.connector._conns)
 
 
-async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
+async def test_server_close_keepalive_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -3990,7 +4079,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4006,7 +4095,7 @@ async def test_server_close_keepalive_connection(unused_tcp_port: int) -> None:
     await server.wait_closed()
 
 
-async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> None:
+async def test_handle_keepalive_on_closed_connection() -> None:
     loop = asyncio.get_running_loop()
 
     class Proto(asyncio.Protocol):
@@ -4025,7 +4114,7 @@ async def test_handle_keepalive_on_closed_connection(unused_tcp_port: int) -> No
         def connection_lost(self, exc: BaseException | None) -> None:
             self.transp = None
 
-    server = await loop.create_server(Proto, "127.0.0.1", unused_tcp_port)
+    server = await loop.create_server(Proto, "127.0.0.1", 0)
 
     addr = server.sockets[0].getsockname()
 
@@ -4281,14 +4370,12 @@ async def test_socket_timeout(aiohttp_client: AiohttpClient) -> None:
 
 
 async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> None:
-    request_count = 0
+    slow = True
 
     async def handler(request: web.Request) -> web.Response:
-        nonlocal request_count
-        request_count += 1
-        if request_count < 3:
+        if slow:
             await asyncio.sleep(0.5)
-        return web.Response(body=f"request:{request_count}")
+        return web.Response(body=b"done")
 
     app = web.Application()
     app.add_routes([web.get("/", handler)])
@@ -4307,8 +4394,13 @@ async def test_read_timeout_closes_connection(aiohttp_client: AiohttpClient) -> 
 
     # Make sure its really closed
     assert not client.session.connector._conns
-    async with client.get("/") as result:
-        assert await result.read() == b"request:3"
+    # A client-side timeout doesn't guarantee the handler ever ran (the
+    # timeout can fire before the request is dispatched on a slow CI run),
+    # so switch behaviour with the flag instead of counting invocations, and
+    # override the tight session timeout so the round trip can't flake either.
+    slow = False
+    async with client.get("/", timeout=aiohttp.ClientTimeout(total=10)) as result:
+        assert await result.read() == b"done"
 
     # Make sure its not closed
     assert client.session.connector._conns
@@ -5430,6 +5522,62 @@ async def test_invalid_redirect_origin_closes_payload(
     ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
 
 
+async def test_request_body_closed_on_server_disconnect() -> None:
+    async def drop(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        # Slam the connection shut without sending a response.
+        writer.close()
+
+    server = await asyncio.start_server(drop, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    payload = MockedBytesPayload(b"x" * 1024)
+    try:
+        async with aiohttp.ClientSession() as session:
+            with pytest.raises(aiohttp.ClientError):
+                await session.post(f"http://127.0.0.1:{port}/", data=payload)
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert (
+        payload.close_called
+    ), "Payload.close() was not called after a mid-upload disconnect"
+
+
+async def test_request_body_closed_on_cancellation() -> None:
+    accepted = asyncio.Event()
+
+    async def stall(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        accepted.set()
+        try:
+            await reader.read()  # wait for client EOF; never respond
+        finally:
+            writer.close()
+
+    server = await asyncio.start_server(stall, "127.0.0.1", 0)
+    port = server.sockets[0].getsockname()[1]
+    payload = MockedBytesPayload(b"y" * 1024)
+    try:
+        async with aiohttp.ClientSession() as session:
+            task = asyncio.create_task(
+                session.post(f"http://127.0.0.1:{port}/", data=payload)
+            )
+            await accepted.wait()
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+    finally:
+        server.close()
+        await server.wait_closed()
+
+    assert payload.close_called, "Payload.close() was not called after cancellation"
+
+
+async def test_request_error_before_body_created_does_not_mask() -> None:
+    async with aiohttp.ClientSession() as session:
+        with pytest.raises(InvalidUrlClientError):
+            await session.get("http:///path")
+
+
 async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
     """Test real-world cookie scenario similar to Amazon."""
 
@@ -5792,6 +5940,74 @@ async def test_file_upload_307_302_redirect_chain(
 
     finally:
         await asyncio.to_thread(f.close)
+
+
+async def test_file_upload_retry_persistent_connection(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    """A retried request must resend the whole file, not the unread remainder."""
+    received_bodies: list[bytes] = []
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        if num_requests == 1:
+            assert request.transport is not None
+            request.transport.close()
+            return web.Response()
+
+        received_bodies.append(await request.read())
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_put("/upload", handler)
+
+    client = await aiohttp_client(app)
+    client.session._retry_connection = True
+
+    test_file = tmp_path / "test_retry_upload.txt"
+    content = b"This is test file content for a retried upload."
+    await asyncio.to_thread(test_file.write_bytes, content)
+
+    f = await asyncio.to_thread(open, test_file, "rb")
+    try:
+        async with client.put("/upload", data=f) as resp:
+            assert resp.status == 200
+    finally:
+        await asyncio.to_thread(f.close)
+
+    assert num_requests == 2
+    assert received_bodies == [content]
+
+
+async def test_upload_retry_persistent_connection_unseekable_body(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """An unreplayable body must not be silently resent truncated on retry."""
+    num_requests = 0
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        assert request.transport is not None
+        request.transport.close()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_put("/upload", handler)
+
+    client = await aiohttp_client(app)
+    client.session._retry_connection = True
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"
+        yield b"chunk2"
+
+    with pytest.raises((aiohttp.ServerDisconnectedError, aiohttp.ClientOSError)):
+        await client.put("/upload", data=gen())
+
+    assert num_requests == 1
 
 
 async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> None:

@@ -1,0 +1,3 @@
+Stripped the trailing whitespace from header values in the C HTTP parser,
+so that it matches the pure-Python parser and :rfc:`9110#section-5.5`
+-- by :user:`LuShadowX`.

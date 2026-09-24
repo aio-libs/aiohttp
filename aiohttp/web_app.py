@@ -33,9 +33,11 @@ from .web_urldispatcher import (
     Domain,
     MaskDomain,
     MatchedSubAppResource,
+    MatchInfoError,
     PrefixedSubAppResource,
     SystemRoute,
     UrlDispatcher,
+    UrlMappingMatchInfo,
 )
 
 __all__ = ("Application", "CleanupError")
@@ -86,6 +88,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         "_on_shutdown",
         "_on_cleanup",
         "_client_max_size",
+        "_client_max_fields",
         "_cleanup_ctx",
     )
 
@@ -96,6 +99,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         middlewares: Iterable[Middleware] = (),
         handler_args: Mapping[str, Any] | None = None,
         client_max_size: int = 1024**2,
+        client_max_fields: int = 1000,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
         if debug is not ...:
@@ -128,6 +132,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         self._on_startup.append(self._cleanup_ctx._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
+        self._client_max_fields = client_max_fields
 
     def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
@@ -364,7 +369,11 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         yield _fix_request_current_app(self)
 
     async def _handle(self, request: Request) -> StreamResponse:
-        match_info = await self._router.resolve(request)
+        match_info: UrlMappingMatchInfo
+        if (err := request._pre_handler_error) is not None:
+            match_info = MatchInfoError(err)
+        else:
+            match_info = await self._router.resolve(request)
         match_info.add_app(self)
         match_info.freeze()
 

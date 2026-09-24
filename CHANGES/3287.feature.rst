@@ -1,0 +1,1 @@
+Bad request responses caused by parser errors now pass through the application's middleware chain, allowing middleware (and ``on_response_prepare`` handlers) to modify them -- by :user:`Dreamsorcerer`.

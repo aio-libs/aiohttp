@@ -3,6 +3,7 @@ import contextlib
 import gc
 import io
 import json
+import ssl
 import sys
 import warnings
 from collections import deque
@@ -791,7 +792,7 @@ async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
             return MappingProxyType({})
 
         @property
-        def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
             return frozenset()
 
         def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
@@ -946,6 +947,71 @@ async def test_default_proxy() -> None:
     await session.close()
 
 
+async def test_default_ssl() -> None:
+    ssl_ctx = ssl.create_default_context()
+
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(ssl=ssl_ctx, request_class=request_class_mock)
+
+    assert session._default_ssl is ssl_ctx, "`ClientSession._default_ssl` not set"
+
+    with pytest.raises(OnCall):
+        await session.get("http://example.com")
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is ssl_ctx
+    ), "`ClientSession._request` does not use the session default ssl"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get("http://example.com", ssl=False)
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is False
+    ), "`ClientSession._request` uses session default ssl not the per-request one"
+
+    request_class_mock.reset_mock()
+    with pytest.raises(OnCall):
+        await session.get("http://example.com", ssl=True)
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is True
+    ), "explicit `ssl=True` should not be replaced by the session default"
+
+    await session.close()
+
+
+async def test_default_ssl_not_set() -> None:
+    class OnCall(Exception):
+        pass
+
+    request_class_mock = mock.Mock(side_effect=OnCall())
+    session = ClientSession(request_class=request_class_mock)
+
+    with pytest.raises(OnCall):
+        await session.get("http://example.com")
+
+    assert request_class_mock.called, "request class not called"
+    assert (
+        request_class_mock.call_args[1].get("ssl") is True
+    ), "the default ssl mode should stay `True` when not configured"
+
+    await session.close()
+
+
+async def test_default_ssl_invalid_type() -> None:
+    with pytest.raises(
+        TypeError, match="ssl should be SSLContext, Fingerprint, or bool"
+    ):
+        ClientSession(ssl="/some/cert.pem")  # type: ignore[arg-type]
+
+
 async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.json_response({"ok": True})
@@ -1048,6 +1114,107 @@ async def test_request_tracing(aiohttp_client: AiohttpClient) -> None:
                 "utf8"
             )
             assert gathered_req_headers["Custom-Header"] == "Custom value"
+
+
+async def test_response_chunk_received_via_content(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    body = b"x" * 4096
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.content_length = len(body)
+        await resp.prepare(request)
+        await resp.write(body)
+        return resp
+
+    chunks: list[bytes] = []
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        chunks.append(params.chunk)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    async with client.get("/") as resp:
+        async for _ in resp.content.iter_chunked(512):
+            pass
+        # Hook must fire per chunk delivered to the caller; together they
+        # must concatenate to the full body.
+        assert chunks
+        assert b"".join(chunks) == body
+
+
+async def test_response_chunk_received_hook_cleared_on_release(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"x" * 256)
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        assert False
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    resp = await client.get("/")
+    assert resp.content._on_chunk_received is not None
+    resp.release()
+    assert resp.content._on_chunk_received is None
+
+    resp = await client.get("/")  # type: ignore[unreachable]
+    assert resp.content._on_chunk_received is not None
+    resp.close()
+    assert resp.content._on_chunk_received is None
+
+
+async def test_response_chunk_received_trace_failure_closes_response(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A raising trace handler must tear down the response from .content too."""
+    body = b"x" * 4096
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.content_length = len(body)
+        await resp.prepare(request)
+        await resp.write(body)
+        return resp
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        raise RuntimeError("boom")
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    async with client.get("/") as resp:
+        with pytest.raises(RuntimeError, match="boom"):
+            await resp.content.readany()
+        assert resp.closed
 
 
 async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:
@@ -1175,7 +1342,8 @@ async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None
             assert to_trace_urls(on_request_end) == [to_url("/?x=0")]
             assert to_trace_urls(on_request_exception) == []
             assert to_trace_urls(on_request_chunk_sent) == []
-            assert to_trace_urls(on_response_chunk_received) == [to_url("/?x=0")]
+            # Empty response body: no chunks are delivered to the caller.
+            assert to_trace_urls(on_response_chunk_received) == []
             assert to_trace_urls(on_request_headers_sent) == [to_url("/?x=0")]
 
     # Redirect
@@ -1191,7 +1359,7 @@ async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None
             assert to_trace_urls(on_request_end) == [to_url("/")]
             assert to_trace_urls(on_request_exception) == []
             assert to_trace_urls(on_request_chunk_sent) == []
-            assert to_trace_urls(on_response_chunk_received) == [to_url("/")]
+            assert to_trace_urls(on_response_chunk_received) == []
             assert to_trace_urls(on_request_headers_sent) == [
                 to_url("/redirect?x=0"),
                 to_url("/"),

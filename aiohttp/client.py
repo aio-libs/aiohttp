@@ -184,7 +184,7 @@ class _RequestOptions(TypedDict, total=False):
     read_until_eof: bool
     proxy: StrOrURL | None
     timeout: "ClientTimeout | _SENTINEL | None"
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     trace_request_ctx: object
@@ -208,7 +208,7 @@ class _WSConnectOptions(TypedDict, total=False):
     params: Query
     headers: LooseHeaders | None
     proxy: StrOrURL | None
-    ssl: SSLContext | bool | Fingerprint
+    ssl: SSLContext | bool | Fingerprint | _SENTINEL
     server_hostname: str | None
     proxy_headers: LooseHeaders | None
     compress: int
@@ -216,7 +216,10 @@ class _WSConnectOptions(TypedDict, total=False):
 
 
 # https://www.rfc-editor.org/rfc/rfc9110#section-9.2.2
-IDEMPOTENT_METHODS = frozenset({"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE"})
+# https://www.rfc-editor.org/info/rfc10008/#section-1-12
+IDEMPOTENT_METHODS = frozenset(
+    {"GET", "HEAD", "OPTIONS", "TRACE", "PUT", "DELETE", "QUERY"}
+)
 
 _RetType_co = TypeVar(
     "_RetType_co",
@@ -283,6 +286,7 @@ class ClientSession:
         "_max_headers",
         "_resolve_charset",
         "_default_proxy",
+        "_default_ssl",
         "_retry_connection",
         "_middlewares",
     )
@@ -295,6 +299,7 @@ class ClientSession:
         cookies: LooseCookies | None = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
+        ssl: SSLContext | bool | Fingerprint = True,
         skip_auto_headers: Iterable[str] | None = None,
         json_serialize: JSONEncoder = json.dumps,
         json_serialize_bytes: JSONBytesEncoder | None = None,
@@ -330,6 +335,12 @@ class ClientSession:
             assert self._base_url.absolute, "Only absolute URLs are supported"
         if self._base_url is not None and not self._base_url.path.endswith("/"):
             raise ValueError("base_url must have a trailing '/'")
+
+        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+            raise TypeError(
+                "ssl should be SSLContext, Fingerprint, or bool, "
+                f"got {ssl!r} instead."
+            )
 
         loop = asyncio.get_running_loop()
 
@@ -413,6 +424,7 @@ class ClientSession:
         self._resolve_charset = fallback_charset_resolver
 
         self._default_proxy = proxy
+        self._default_ssl = ssl
         self._retry_connection: bool = True
         self._middlewares = tuple(middlewares)
 
@@ -478,7 +490,7 @@ class ClientSession:
         read_until_eof: bool = True,
         proxy: StrOrURL | None = None,
         timeout: ClientTimeout | _SENTINEL | None = sentinel,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         trace_request_ctx: object = None,
@@ -498,6 +510,8 @@ class ClientSession:
 
         method = method.upper()
 
+        if ssl is sentinel:
+            ssl = self._default_ssl
         if not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
@@ -593,6 +607,8 @@ class ClientSession:
             await trace.send_request_start(method, url.update_query(params), headers)
 
         timer = tm.timer()
+        req: ClientRequest | None = None
+        resp: ClientResponse | None = None
         try:
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
@@ -724,10 +740,18 @@ class ClientSession:
                     ):
                         raise
                     except (ClientOSError, ServerDisconnectedError):
-                        if retry_persistent_connection:
-                            retry_persistent_connection = False
-                            continue
-                        raise
+                        if not retry_persistent_connection:
+                            raise
+                        retry_persistent_connection = False
+                        if data is not None:
+                            # Rebuilding from `data` would resend only the unread
+                            # remainder of a file object; reuse the payload, which
+                            # rewinds itself once the cancelled writer has settled.
+                            await req._close()
+                            if req._body.consumed:
+                                raise
+                            data = req._body
+                        continue
                     except ClientError:
                         raise
                     except OSError as exc:
@@ -831,9 +855,9 @@ class ClientSession:
 
                         if url.origin() != redirect_origin:
                             cookies = None
-                            headers.pop(hdrs.AUTHORIZATION, None)
-                            headers.pop(hdrs.COOKIE, None)
-                            headers.pop(hdrs.PROXY_AUTHORIZATION, None)
+                            headers.popall(hdrs.AUTHORIZATION, None)
+                            headers.popall(hdrs.COOKIE, None)
+                            headers.popall(hdrs.PROXY_AUTHORIZATION, None)
 
                         url = parsed_redirect_url
                         params = {}
@@ -874,6 +898,13 @@ class ClientSession:
             if handle:
                 handle.cancel()
                 handle = None
+
+            if resp is not None:
+                # A failure occurred after the response was received.
+                resp.close()
+
+            if req is not None and req._body is not None:
+                await req._body.close()
 
             for trace in traces:
                 await trace.send_request_exception(
@@ -925,7 +956,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1000,7 +1031,7 @@ class ClientSession:
         params: Query = None,
         headers: LooseHeaders | None = None,
         proxy: StrOrURL | None = None,
-        ssl: SSLContext | bool | Fingerprint = True,
+        ssl: SSLContext | bool | Fingerprint | _SENTINEL = sentinel,
         server_hostname: str | None = None,
         proxy_headers: LooseHeaders | None = None,
         compress: int = 0,
@@ -1056,7 +1087,7 @@ class ClientSession:
             extstr = ws_ext_gen(compress=compress)
             real_headers[hdrs.SEC_WEBSOCKET_EXTENSIONS] = extstr
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
+        if ssl is not sentinel and not isinstance(ssl, SSL_ALLOWED_TYPES):
             raise TypeError(
                 "ssl should be SSLContext, Fingerprint, or bool, "
                 f"got {ssl!r} instead."
@@ -1190,14 +1221,14 @@ class ClientSession:
                 compress=compress,
                 client_notakeover=notakeover,
             )
-            parser = WebSocketReader(
+            ws_resp._parser = WebSocketReader(
                 reader,
                 max_msg_size,
                 compress=bool(compress),
                 decode_text=decode_text,
             )
             cb = None if heartbeat is None else ws_resp._on_data_received
-            conn_proto.set_parser(parser, reader, data_received_cb=cb)
+            conn_proto.set_parser(ws_resp._parser, reader, data_received_cb=cb)
             return ws_resp
 
     def _prepare_headers(self, headers: LooseHeaders | None) -> "CIMultiDict[str]":

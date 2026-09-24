@@ -1,26 +1,81 @@
-[run]
-branch = true
-# NOTE: `ctrace` tracing method is needed because the `sysmon` tracer
-# NOTE: which is default on Python 3.14, causes unprecedented slow-down
-# NOTE: of the test runs.
-# Ref: https://github.com/coveragepy/coveragepy/issues/2099
-core = 'ctrace'
-source = [
-  'aiohttp',
-  'tests',
-]
-omit = [
-  'site-packages',
+[html]
+show_contexts = true
+skip_covered = false
+
+[paths]
+_site-packages-to-src-mapping = [
+  '.',
+  '*/lib/pypy*/site-packages',
+  '*/lib/python*/site-packages',
+  '*\Lib\site-packages',
 ]
 
 [report]
-partial_also = [
-  'if not TYPE_CHECKING',
-]
 exclude_also = [
   'if TYPE_CHECKING',
   'assert False',
   ': \.\.\.(\s*#.*)?$',
   '^ +\.\.\.$',
-  'pytest.fail\('
+  'pytest.fail\(',
+  # '^\s*@pytest\.mark\.xfail',  # important for Dreamsorcerer
+]
+# fail_under = 100
+partial_also = [
+  'if not TYPE_CHECKING',
+]
+show_missing = true
+skip_covered = true
+skip_empty = true
+
+[run]
+branch = true
+# NOTE: `ctrace` tracing method is needed because the `sysmon` tracer
+# NOTE: which is default on Python 3.14, causes unprecedented slow-down
+# NOTE: of the test runs. Also, Cython the `Cython.Coverage` plugin does
+# NOTE: not support `sysmon`.
+# Ref: https://github.com/coveragepy/coveragepy/issues/2099
+core = 'ctrace'
+cover_pylib = false
+# NOTE: `disable_warnings` is needed when `pytest-cov` runs in tandem
+# NOTE: with `pytest-xdist`. These warnings are false negative in this
+# NOTE: context.
+#
+# NOTE: It's `coveragepy` that emits the warnings and previously they
+# NOTE: wouldn't get on the radar of `pytest`'s `filterwarnings`
+# NOTE: mechanism. This changed, however, with `pytest >= 8.4`. And
+# NOTE: since we set `filterwarnings = error`, those warnings are being
+# NOTE: raised as exceptions, cascading into `pytest`'s internals and
+# NOTE: causing tracebacks and crashes of the test sessions.
+#
+# Ref:
+# * https://github.com/pytest-dev/pytest-cov/issues/693
+# * https://github.com/pytest-dev/pytest-cov/pull/695
+# * https://github.com/pytest-dev/pytest-cov/pull/696
+disable_warnings = [
+  'module-not-measured',
+]
+# https://coverage.rtfd.io/en/latest/contexts.html#dynamic-contexts
+# dynamic_context = 'test_function'  # conflicts with `pytest-cov` if set here
+omit = [
+  'setup.py',
+]
+# NOTE: tests/autobahn/test_autobahn.py::test_{client,server}
+# NOTE: pass `-a|--append` to `coverage run` wich conflicts
+# NOTE: with `-p|--parallel-mode`. We cannot override it on
+# NOTE: the CLI level, but instead define an environment
+# NOTE: variable to implement this.
+#
+# Refs:
+# * https://discord.com/channels/267624335836053506/1253355750684753950/1537906072474488973
+# * https://discord.com/channels/267624335836053506/1253355750684753950/1537914331629486130
+parallel = '${COVERAGE_PARALLEL_MODE-true}'
+# plugins = [
+#   'covdefaults',
+# ]
+relative_files = true
+source = [
+  '.',
+]
+source_pkgs = [
+  'aiohttp',
 ]

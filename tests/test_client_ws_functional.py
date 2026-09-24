@@ -1,9 +1,15 @@
 import asyncio
+import base64
+import contextlib
+import gc
+import hashlib
 import json
+import socket
 import struct
 import sys
 import zlib
-from contextlib import suppress
+from collections.abc import AsyncIterator, Awaitable, Callable
+from types import SimpleNamespace
 from typing import Literal, NoReturn
 from unittest import mock
 
@@ -21,8 +27,10 @@ from aiohttp import (
 )
 from aiohttp._websocket.models import WS_DEFLATE_TRAILING, WSMessageBinary
 from aiohttp._websocket.reader import WebSocketDataQueue
+from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_ws import ClientWSTimeout
-from aiohttp.http import WebSocketError, WSCloseCode
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -30,8 +38,125 @@ else:
     import async_timeout
 
 
+@contextlib.asynccontextmanager
+async def _raw_ws_server(
+    handler: Callable[[asyncio.StreamReader, asyncio.StreamWriter], Awaitable[None]],
+    sock: socket.socket,
+) -> AsyncIterator[int]:
+    """Serve one raw WebSocket peer and tear it down without waiting on it."""
+    writers: list[asyncio.StreamWriter] = []
+
+    async def serve(reader: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
+        writers.append(writer)
+        await handler(reader, writer)
+
+    server = await asyncio.start_server(serve, sock=sock)
+    try:
+        yield sock.getsockname()[1]
+    finally:
+        for writer in writers:
+            # Abort: a paused peer never drains what is still queued.
+            writer.transport.abort()
+        server.close()
+        await server.wait_closed()
+
+
+async def _accept_ws(
+    reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+) -> None:
+    """Complete a raw WebSocket handshake; the caller writes the frames."""
+    request = await reader.readuntil(b"\r\n\r\n")
+    key = next(
+        line.split(b":", 1)[1].strip()
+        for line in request.split(b"\r\n")
+        if line.lower().startswith(b"sec-websocket-key")
+    )
+    accept = base64.b64encode(hashlib.sha1(key + WS_KEY).digest())
+    writer.write(
+        b"HTTP/1.1 101 Switching Protocols\r\n"
+        b"Upgrade: websocket\r\n"
+        b"Connection: Upgrade\r\n"
+        b"Sec-WebSocket-Accept: " + accept + b"\r\n\r\n"
+    )
+
+
 class PatchableWebSocketDataQueue(WebSocketDataQueue):
     """A WebSocketDataQueue that can be patched."""
+
+
+async def test_stashed_frames_survive_connection_loss(
+    unused_port_socket: socket.socket,
+) -> None:
+    """Frames stashed by receive-queue backpressure outlive the connection.
+
+    Mirror of the server-side test: a peer can pack more complete frames into
+    one read than the queue's high-water mark allows, so the parser stalls
+    with the rest in its tail. ``connection_lost()`` drops the protocol's
+    reference to the parser, so only ``ClientWebSocketResponse._parser`` keeps
+    it alive; without that the queue's weak link dies and the stash is lost.
+    """
+    sent = 8000
+
+    writers: list[asyncio.StreamWriter] = []
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        writers.append(writer)
+        await _accept_ws(reader, writer)
+        writer.write(
+            # One oversized read: empty unmasked TEXT frames, 2 bytes each.
+            b"\x81\x00"
+            * sent
+        )
+        await writer.drain()
+
+    server = await asyncio.start_server(raw_server, sock=unused_port_socket)
+    port = unused_port_socket.getsockname()[1]
+    try:
+        async with aiohttp.ClientSession() as session:
+            ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
+            queue = ws._reader
+            # Usually the whole burst rides along with the 101 response and
+            # is parsed before ws_connect() returns, so the wait is a
+            # fallback for split reads only.
+            for _ in range(1000):  # pragma: no cover
+                if queue._stalled_reader is not None:
+                    break
+                await asyncio.sleep(0.01)
+            assert queue._stalled_reader is not None, "parser never stalled"
+            stalled = len(queue._buffer)
+
+            # Tear the connection down for real: closing the transport is what
+            # drives connection_lost(), which drops the protocol's reference to
+            # the parser. A paused transport never sees the peer's FIN, so this
+            # cannot be triggered by the peer going away.
+            connection = ws._conn
+            assert connection is not None
+            protocol = connection.protocol
+            assert protocol is not None
+            assert protocol.transport is not None
+            protocol.transport.close()
+            for _ in range(1000):  # pragma: no branch
+                if protocol._payload_parser is None:
+                    break
+                await asyncio.sleep(0)
+            assert protocol._payload_parser is None, "connection_lost never ran"
+
+            count = 0
+            while (msg := await ws.receive()).type is WSMsgType.TEXT:
+                count += 1
+            # A clean drain ends with the queue's close, not an error.
+            assert msg.type is WSMsgType.CLOSED
+    finally:
+        for writer in writers:
+            writer.close()
+            with contextlib.suppress(Exception):
+                await writer.wait_closed()
+        server.close()
+        await server.wait_closed()
+
+    assert stalled < count <= sent
 
 
 async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
@@ -699,6 +824,9 @@ async def test_recv_protocol_error(aiohttp_client: AiohttpClient) -> None:
     assert msg.data.code == aiohttp.WSCloseCode.PROTOCOL_ERROR
     assert str(msg.data) == "Received frame with non-zero reserved bits"
     assert msg.extra is None
+    # Still writable when the error surfaces, so this is 1002, not 1006.
+    assert resp.close_code == aiohttp.WSCloseCode.PROTOCOL_ERROR
+    assert resp.exception() is None
     await resp.close()
 
 
@@ -898,24 +1026,8 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
         # surface as a timeout/closure on the client side.
         ws = web.WebSocketResponse(autoping=False)
         await ws.prepare(request)
-
-        assert ws._writer is not None
-        transport = ws._writer.transport
-
-        # Server-to-client frames are not masked.
-        length = len(payload)  # payload is fixed length of 2048 bytes
-        header = bytes((0x82, 126)) + struct.pack("!H", length)
-
-        frame = header + payload
-        for i in range(0, len(frame), chunk_size):
-            transport.write(frame[i : i + chunk_size])
-            await asyncio.sleep(delay)
-
-        # Ensure the server side is cleaned up.
-        with suppress(asyncio.TimeoutError):
-            await ws.receive(timeout=1.0)
-        with suppress(Exception):
-            await ws.close()
+        # Keep the connection open until the client tears it down.
+        await ws.receive()
         return ws
 
     app = web.Application()
@@ -923,15 +1035,43 @@ async def test_heartbeat_does_not_timeout_while_receiving_large_frame(
     client = await aiohttp_client(app)
 
     async with client.ws_connect("/", heartbeat=heartbeat) as resp:
-        # If heartbeat were not reset on incoming bytes, the client would send
-        # a PING while this frame is still being streamed.
-        with mock.patch.object(
-            resp._writer, "send_frame", wraps=resp._writer.send_frame
-        ) as sf:
-            msg = await resp.receive()
+        assert resp._conn is not None
+        protocol = resp._conn.protocol
+        assert protocol is not None
+
+        # A server->client BINARY frame (unmasked, 16-bit length form).
+        header = bytes((0x82, 126)) + struct.pack("!H", len(payload))
+        frame = header + payload
+
+        loop = asyncio.get_running_loop()
+        now = loop.time()
+        # Drive the clock so the result cannot depend on wall-clock scheduling.
+        with (
+            mock.patch.object(loop, "time") as loop_time,
+            mock.patch.object(
+                resp._writer, "send_frame", wraps=resp._writer.send_frame
+            ) as sf,
+        ):
+            loop_time.return_value = now
+            # If heartbeat were not reset on incoming bytes, the client would
+            # send a PING while this frame is still being streamed.
+            for i in range(0, len(frame), chunk_size):
+                # Deliver a chunk via the real receive path, then advance the
+                # clock by less than the heartbeat so the reset stays ahead.
+                protocol.data_received(frame[i : i + chunk_size])
+                now += delay
+                loop_time.return_value = now
+                # Two ticks: run the coalesced reset, then let the heartbeat
+                # timer re-evaluate its deadline against the advanced clock.
+                await asyncio.sleep(0)
+                await asyncio.sleep(0)
+
             assert (
                 sf.call_args_list.count(mock.call(b"", WSMsgType.PING)) == 0
             ), "Heartbeat PING sent while data was still being received"
+
+        # Clock restored: the fully-received frame arrives as one BINARY message.
+        msg = await resp.receive()
         assert msg.type is WSMsgType.BINARY
         assert msg.data == payload
         assert not resp.closed
@@ -1667,3 +1807,187 @@ async def test_client_rejects_compressed_frame_without_negotiation(
     assert msg.type is WSMsgType.ERROR, msg
     assert isinstance(msg.data, WebSocketError)
     assert msg.data.code == WSCloseCode.PROTOCOL_ERROR
+
+
+async def test_stalled_parser_outlives_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Frames the parser stopped short of are delivered after the peer vanishes.
+
+    Once the queue is over its high-water mark the parser stops mid-read and
+    parks the rest of the read on itself, reachable from the queue only through
+    a weak reference. Connection loss releases the protocol's reference to the
+    parser, so the response has to be the owner or those frames are collected
+    and the application silently sees a short stream.
+    """
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        # Hold the connection open. TestServer cancels the handler on
+        # connection loss; swallow it so the handler exits normally.
+        with contextlib.suppress(asyncio.CancelledError):
+            await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    ws = await client.ws_connect("/")
+
+    # Empty server->client TEXT frames: two bytes on the wire, but each one is
+    # charged MSG_SIZE_OVERHEAD in the queue, so a single read crosses the
+    # high-water mark and the parser stalls part way through it.
+    sent = 8000
+    assert ws._conn is not None
+    protocol = ws._conn.protocol
+    assert protocol is not None
+    transport = protocol.transport
+    assert transport is not None
+    protocol.data_received(b"\x81\x00" * sent)
+    assert ws._reader._stalled_reader is not None, "parser never stalled"
+
+    # Simulate the peer vanishing: the socket is gone and the protocol drops
+    # its reference to the parser, exactly as the event loop would do it.
+    transport.abort()
+    protocol.connection_lost(None)
+    for _ in range(3):  # PyPy can need more than one pass
+        gc.collect()
+
+    count = 0
+    while (await ws.receive()).type is not WSMsgType.CLOSED:
+        count += 1
+    assert count == sent
+    # Exhausting the queue releases the parser and the stash it retains.
+    assert ws._parser is None
+
+
+async def test_close_releases_parser(aiohttp_client: AiohttpClient) -> None:
+    """A normal close handshake releases the parser and the state it holds."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()  # the peer's CLOSE
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    assert resp._parser is not None
+    await resp.close()
+    assert resp._parser is None
+
+
+async def test_data_discarded_after_protocol_error(
+    unused_port_socket: socket.socket,
+) -> None:
+    """A frame error drops what follows instead of buffering it.
+
+    The connection stays upgraded with no parser installed, so every later byte
+    used to land in ``ResponseHandler._tail``; an application that never called
+    ``receive()`` never closed the connection, so the peer could stream until
+    the client ran out of memory.
+    """
+    flooded = asyncio.Event()
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        await _accept_ws(reader, writer)
+        writer.write(
+            # A valid frame, then a protocol error in the same read.
+            b"\x81\x04ping"
+            # RSV1 set without permessage-deflate: a protocol error.
+            + b"\x41\x01x"
+        )
+        await writer.drain()
+        # 2 MiB in one write; buffering any of it would be obvious.
+        writer.write(b"A" * (2 * 1024 * 1024))
+        with contextlib.suppress(Exception):
+            await writer.drain()
+        flooded.set()
+
+    async with _raw_ws_server(raw_server, unused_port_socket) as port:
+        async with aiohttp.ClientSession() as session:
+            # No receive() call: the long-lived idle client of the report.
+            ws = await session.ws_connect(f"http://127.0.0.1:{port}/")
+            connection = ws._conn
+            assert connection is not None
+            protocol = connection.protocol
+            assert protocol is not None
+
+            # The drain only completes if the client read it all.
+            async with async_timeout.timeout(10):
+                await flooded.wait()
+
+            # Nothing the peer sent after the error was kept.
+            assert protocol._tail == b""
+            # Still open and reading, so the peer's FIN still arrives, and a
+            # frame queued before the error can still be answered.
+            assert protocol.transport is not None
+            msg = await ws.receive()
+            assert msg.type is WSMsgType.TEXT and msg.data == "ping"
+            await ws.send_str(msg.data)
+            await ws.close()
+
+
+async def test_tail_bounded_while_a_trace_callback_suspends(
+    unused_port_socket: socket.socket,
+) -> None:
+    """A tracing callback must not let the peer fill the pre-parser buffer.
+
+    ``_tail`` starts filling when the 101 is parsed, inside ``resp.start()``,
+    and nothing drains it until ``set_parser()`` runs. ``on_request_end`` is
+    public API and runs in between, so a handler doing any real I/O holds that
+    window open for as long as it takes.
+    """
+    paused = asyncio.Event()
+    tail_at_pause: list[int] = []
+    pause_for_buffer = ResponseHandler._pause_reading_for_buffer
+
+    def spy(self: ResponseHandler) -> None:
+        # The tail bound is this protocol's only buffer pause.
+        pause_for_buffer(self)
+        # set_parser() drains _tail moments later, so record it here.
+        tail_at_pause.append(len(self._tail))
+        paused.set()
+
+    async def raw_server(
+        reader: asyncio.StreamReader, writer: asyncio.StreamWriter
+    ) -> None:
+        await _accept_ws(reader, writer)
+        # Valid frames, well past the bound, that only a reader may eat.
+        writer.write((b"\x81\x7e\xff\xff" + b"y" * 65535) * 32)
+        with contextlib.suppress(Exception):
+            await writer.drain()
+
+    trace = aiohttp.TraceConfig()
+
+    async def on_request_end(
+        session: aiohttp.ClientSession,
+        context: SimpleNamespace,
+        params: aiohttp.TraceRequestEndParams,
+    ) -> None:
+        # A handler shipping a metric, say. Hold the window open until the
+        # bound fires; an unbounded buffer never pauses, so let that case fall
+        # through to the assertion below rather than raising from here.
+        with contextlib.suppress(asyncio.TimeoutError):
+            async with async_timeout.timeout(5):
+                await paused.wait()
+
+    trace.on_request_end.append(on_request_end)
+
+    async with _raw_ws_server(raw_server, unused_port_socket) as port:
+        with mock.patch.object(ResponseHandler, "_pause_reading_for_buffer", spy):
+            async with aiohttp.ClientSession(trace_configs=[trace]) as session:
+                async with session.ws_connect(
+                    f"http://127.0.0.1:{port}/",
+                    # This peer never answers a close frame; do not wait for it.
+                    timeout=ClientWSTimeout(ws_close=0.1),
+                ):
+                    assert tail_at_pause, "the buffer was never bounded"
+                    # One read may already be in flight when the pause lands.
+                    assert tail_at_pause[0] <= 2 * DEFAULT_CHUNK_SIZE

@@ -1,0 +1,4 @@
+Rejected WebSocket ``CLOSE`` frames carrying a status code above the
+valid range (greater than ``4999``) with a protocol error, matching the
+existing handling of out-of-range low codes, per :rfc:`6455#section-7.4.1`
+-- by :user:`dxbjavid`.

@@ -1,0 +1,1 @@
+Fixed a limit on message tail after an upgrade request -- by :user:`Dreamsorcerer`.

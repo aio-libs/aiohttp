@@ -1,0 +1,1 @@
+Capped reflected payload in parser errors to ~100 bytes -- by :user:`Dreamsorcerer`.

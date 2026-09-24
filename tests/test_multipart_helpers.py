@@ -30,6 +30,16 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
+    def test_ows_before_separator(self) -> None:
+        # https://github.com/aio-libs/aiohttp/issues/13002
+        # Optional whitespace before the ";" separator (RFC 9110 §5.6.6) must
+        # not make the quoted-value repair heuristic swallow the next param.
+        disptype, params = parse_content_disposition(
+            'attachment; filename="test.txt" ; name="field"'
+        )
+        assert disptype == "attachment"
+        assert params == {"filename": "test.txt", "name": "field"}
+
     def test_inlwithasciifilename(self) -> None:
         disptype, params = parse_content_disposition('inline; filename="foo.html"')
         assert "inline" == disptype
@@ -525,6 +535,22 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {} == params
 
+    @pytest.mark.parametrize(
+        "header",
+        (
+            # An unknown charset name is attacker-controlled and makes
+            # urllib.parse.unquote raise the builtin LookupError.
+            "attachment; filename*=unknown-8bit''foo-%c3%a4.html",
+            # Undecodable octets raise UnicodeDecodeError.
+            "attachment; filename*=UTF-8''%ff.html",
+        ),
+    )
+    def test_attwithfn2231baddecode(self, header: str) -> None:
+        with pytest.warns(aiohttp.BadContentDispositionParam):
+            disptype, params = parse_content_disposition(header)
+        assert "attachment" == disptype
+        assert {} == params
+
     def test_attwithfn2231dpct(self) -> None:
         disptype, params = parse_content_disposition(
             "attachment; filename*=UTF-8''A-%2541.html"
@@ -537,7 +563,23 @@ class TestParseContentDisposition:
             "attachment; filename*=UTF-8''%5cfoo.html"
         )
         assert "attachment" == disptype
-        assert {"filename*": "\\foo.html"} == params
+        assert {"filename*": "foo.html"} == params
+
+    def test_attwithfn2231abspath(self) -> None:
+        disptype, params = parse_content_disposition(
+            "attachment; filename*=UTF-8''%2Ffoo.html"
+        )
+        assert "attachment" == disptype
+        assert {"filename*": "foo.html"} == params
+
+    def test_attfncontabspath(self) -> None:
+        # The continuation parts are normalised once they are joined, so the
+        # separator survives parsing.
+        disptype, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "attachment" == disptype
+        assert {"filename*0": "/foo.", "filename*1": "html"} == params
 
     def test_attfncont(self) -> None:
         disptype, params = parse_content_disposition(
@@ -685,25 +727,136 @@ class TestContentDispositionFilename:
         params = {"filename*": "файл.html"}
         assert "файл.html" == content_disposition_filename(params)
 
+    def test_filename_ext_abspath(self) -> None:
+        _, params = parse_content_disposition(
+            'form-data; name="f"; filename="/etc/evil"; filename*=UTF-8\'\'%2Fetc%2Fevil'
+        )
+        assert "etc/evil" == content_disposition_filename(params)
+
     def test_attfncont(self) -> None:
         params = {"filename*0": "foo.", "filename*1": "html"}
         assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontabspath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="/foo."; filename*1="html"'
+        )
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncontinnerpath(self) -> None:
+        _, params = parse_content_disposition(
+            'attachment; filename*0="dir"; filename*1="/foo.html"'
+        )
+        assert "dir/foo.html" == content_disposition_filename(params)
 
     def test_attfncontqs(self) -> None:
         params = {"filename*0": "foo", "filename*1": "bar.html"}
         assert "foobar.html" == content_disposition_filename(params)
 
+    def test_attfncont_single_section(self) -> None:
+        params = {"filename*0": "foo.html"}
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncont_many_sections(self) -> None:
+        # https://www.rfc-editor.org/info/rfc2231/#section-3
+        # Must be numeric ordering; "filename*10" must sort after "filename*2".
+        params = {f"filename*{i}": f"seg{i}-" for i in range(11)}
+        expected = "".join(f"seg{i}-" for i in range(11))
+        assert expected == content_disposition_filename(params)
+
+    def test_attfncont_many_sections_enc(self) -> None:
+        # https://www.rfc-editor.org/info/rfc2231/#section-4.1
+        params: dict[str, str] = {"filename*0*": "UTF-8''foo-"}
+        params.update({f"filename*{i}": f"s{i}-" for i in range(1, 10)})
+        params["filename*10*"] = "%c3%a4.html"
+        expected = "foo-" + "".join(f"s{i}-" for i in range(1, 10)) + "ä.html"
+        assert expected == content_disposition_filename(params)
+
+    def test_attfncont_encoded_after_quoted(self) -> None:
+        # https://www.rfc-editor.org/info/rfc2231/#section-4.1
+        params = {"filename*0": "foo", "filename*1*": "%20bar.html"}
+        assert "foo bar.html" == content_disposition_filename(params)
+
+    def test_attfncont_split_multibyte(self) -> None:
+        # A multibyte character may straddle a section boundary, so the
+        # octets have to be joined before they are decoded.
+        params = {"filename*0*": "UTF-8''%c3", "filename*1*": "%a4.html"}
+        assert "ä.html" == content_disposition_filename(params)
+
+    def test_attfncont_split_multibyte_over_three_sections(self) -> None:
+        # The three octets of a single character may even land in three
+        # different sections.
+        params = {
+            "filename*0*": "UTF-8''%e2",
+            "filename*1*": "%82",
+            "filename*2*": "%ac.html",
+        }
+        assert "€.html" == content_disposition_filename(params)
+
+    def test_attfncont_non_numeric_section(self) -> None:
+        # Only numbered sections take part in the continuation; a section
+        # with a non-numeric index is not a continuation at all.
+        params = {"filename*0": "foo", "filename*x": "bar", "filename*1": ".html"}
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncont_absurd_section_index(self) -> None:
+        # A section index long enough to trip CPython's int-to-str limit must
+        # not raise; the over-long key is simply ignored as a non-continuation.
+        params = {"filename*0": "foo.html", "filename*" + "0" * 4400: "x"}
+        assert "foo.html" == content_disposition_filename(params)
+
+    def test_attfncont_undecodable_octets(self) -> None:
+        # Octets that are still invalid once the sections are joined are
+        # rejected rather than decoded with replacement characters.
+        params = {"filename*0*": "UTF-8''%ff", "filename*1*": "%fe.html"}
+        assert content_disposition_filename(params) is None
+
+    def test_attfncont_unknown_charset(self) -> None:
+        params = {"filename*0*": "bogus-charset''foo", "filename*1*": "%c3%a4"}
+        assert content_disposition_filename(params) is None
+
+    def test_attfncontqs_apostrophe(self) -> None:
+        # Apostrophes in quoted sections are plain characters, not an
+        # RFC 5987 charset'language' prefix.
+        params = {"filename*0": "it's", "filename*1": ".html"}
+        assert "it's.html" == content_disposition_filename(params)
+        params = {"filename*0": "a'b'c.html"}
+        assert "a'b'c.html" == content_disposition_filename(params)
+
     def test_attfncontenc(self) -> None:
         params = {"filename*0*": "UTF-8''foo-%c3%a4", "filename*1": ".html"}
         assert "foo-ä.html" == content_disposition_filename(params)
 
+    @pytest.mark.parametrize(
+        "params",
+        (
+            {"filename*0*": "UTF-8''%2Ffoo-%c3%a4", "filename*1": ".html"},
+            {"filename*0*": "UTF-8''%5cfoo-%c3%a4", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontencabspath(self, params: dict[str, str]) -> None:
+        assert "foo-ä.html" == content_disposition_filename(params)
+
+    @pytest.mark.parametrize(
+        "params",
+        (
+            # Unknown charset name raises the builtin LookupError.
+            {"filename*0*": "unknown-8bit''foo-%c3%a4", "filename*1": ".html"},
+            # Undecodable octets raise UnicodeDecodeError.
+            {"filename*0*": "UTF-8''%ff", "filename*1": ".html"},
+        ),
+    )
+    def test_attfncontenc_baddecode(self, params: dict[str, str]) -> None:
+        assert content_disposition_filename(params) is None
+
     def test_attfncontlz(self) -> None:
+        # A malformed section sequence is rejected rather than truncated.
         params = {"filename*0": "foo", "filename*01": "bar"}
-        assert "foo" == content_disposition_filename(params)
+        assert content_disposition_filename(params) is None
 
     def test_attfncontnc(self) -> None:
         params = {"filename*0": "foo", "filename*2": "bar"}
-        assert "foo" == content_disposition_filename(params)
+        assert content_disposition_filename(params) is None
 
     def test_attfnconts1(self) -> None:
         params = {"filename*1": "foo", "filename*2": "bar"}

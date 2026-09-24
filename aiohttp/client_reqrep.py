@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable, Sequence
 from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie, SimpleCookie
@@ -58,7 +59,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .streams import StreamReader
+from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
 try:
@@ -81,6 +82,7 @@ if TYPE_CHECKING:
 _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
+_LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
 
 
 @frozen_dataclass_decorator
@@ -497,12 +499,12 @@ class ClientResponse(HeadersMixin):
             link: MultiDict[str | URL] = MultiDict()
 
             for param in params:
-                match = re.match(r"^\s*(\S*)\s*=\s*(['\"]?)(.*?)(\2)\s*$", param, re.M)
+                match = _LINK_PARAM_RE.match(param.strip())
                 if match is None:  # Malformed param
                     continue
-                key, _, value, _ = match.groups()
+                key, _, value_quoted, value_unquoted = match.groups()
 
-                link.add(key, value)
+                link.add(key, value_unquoted if value_quoted is None else value_quoted)
 
             key = link.get("rel", url)
 
@@ -555,6 +557,9 @@ class ClientResponse(HeadersMixin):
 
         # payload
         self.content = payload
+
+        if self._traces and payload is not EMPTY_PAYLOAD:
+            payload._on_chunk_received = self._on_chunk_response_received
 
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
@@ -660,8 +665,14 @@ class ClientResponse(HeadersMixin):
     def _notify_content(self) -> None:
         content = self.content
         # content can be None here, but the types are cheated elsewhere.
-        if content and content.exception() is None:  # type: ignore[truthy-bool]
-            set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+        if content:  # type: ignore[truthy-bool]
+            if content.exception() is None:
+                set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+            # The bound method installed in start() captures self, creating a
+            # response→payload→method→self cycle. Clear it eagerly so the
+            # response is reclaimable without waiting for cycle GC.
+            if content._on_chunk_received is not None:
+                content._on_chunk_received = None
         self._released = True
 
     async def wait_for_close(self) -> None:
@@ -677,15 +688,19 @@ class ClientResponse(HeadersMixin):
                     raise
         self.release()
 
+    async def _on_chunk_response_received(self, chunk: bytes) -> None:
+        try:
+            for trace in self._traces:
+                await trace.send_response_chunk_received(self.method, self.url, chunk)
+        except BaseException:
+            self.close()
+            raise
+
     async def read(self) -> bytes:
         """Read response payload."""
         if self._body is None:
             try:
                 self._body = await self.content.read()
-                for trace in self._traces:
-                    await trace.send_response_chunk_received(
-                        self.method, self.url, self._body
-                    )
             except BaseException:
                 self.close()
                 raise
@@ -895,7 +910,7 @@ class ClientRequestBase:
         # host_port_subcomponent is None when the URL is a relative URL.
         # but we know we do not have a relative URL here.
         assert host is not None
-        self.headers[hdrs.HOST] = headers.pop(hdrs.HOST, host)
+        self.headers[hdrs.HOST] = headers.popall(hdrs.HOST, (host,))[0]
         self.headers.extend(headers)
 
     def _create_response(
@@ -969,13 +984,20 @@ class ClientRequestBase:
         task: asyncio.Task[None] | None
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
-            if sys.version_info >= (3, 12):
-                # Optimization for Python 3.12, try to write
-                # bytes immediately to avoid having to schedule
+            if sys.version_info >= (3, 14):
+                # Try to write bytes immediately to avoid having to schedule
                 # the task on the event loop.
-                task = asyncio.Task(coro, loop=self.loop, eager_start=True)
+                loop = asyncio.get_running_loop()
+                if isinstance(loop, BaseEventLoop):
+                    task = asyncio.create_task(coro, eager_start=True)
+                else:
+                    task = asyncio.Task(coro, loop=loop, eager_start=True)
+            elif sys.version_info >= (3, 12):
+                task = asyncio.Task(
+                    coro, loop=asyncio.get_running_loop(), eager_start=True
+                )
             else:
-                task = self.loop.create_task(coro)
+                task = asyncio.create_task(coro)
             if task.done():
                 task = None
             else:
@@ -1112,6 +1134,11 @@ class ClientRequest(ClientRequestBase):
     @property
     def skip_auto_headers(self) -> CIMultiDict[None]:
         return self._skip_auto_headers or CIMultiDict()
+
+    @property
+    def timeout(self) -> ClientTimeout:
+        """The timeout configuration this request runs under (read-only)."""
+        return self._timeout
 
     @property
     def connection_key(self) -> ConnectionKey:

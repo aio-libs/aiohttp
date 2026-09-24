@@ -1,0 +1,5 @@
+Fixed Cython 3.3.0 failing to compile the WebSocket reader: dropped the
+``Final[...]`` annotation from ``ALLOWED_CLOSE_CODES`` and the ``int``
+annotation from the local ``start_pos`` in ``WebSocketReader._feed_data``,
+both of which conflicted with declarations in ``reader_c.pxd`` under
+Cython 3.3.0 -- by :user:`Georgefifth`.

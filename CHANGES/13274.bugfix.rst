@@ -1,0 +1,1 @@
+Fixed the WebSocket reader rejecting a compressed data frame with close code 1002 when a control frame arrived before the first data frame (regression in 3.14.2) -- by :user:`Dreamsorcerer`.

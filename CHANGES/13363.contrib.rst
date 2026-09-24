@@ -1,0 +1,13 @@
+CI now builds the ``sdist`` (and a pure-Python wheel) once, in a new
+``build-pure-python-dists`` job, and shares that build across ``test``,
+``autobahn``, ``benchmark``, ``build-wheels``, ``test-mobile`` and the
+``sdist``-based half of linting, instead of every one of those jobs
+checking out the repository and running ``make cythonize`` on its own
+-- by :user:`webknjaz`.
+
+Linting is also now split into ``lint-from-git`` (the
+:file:`requirements/runtime-deps.in` sync check and docs spell-checking,
+which need real Git history) and ``lint-from-sdist`` (``mypy``,
+``slotscheck``, the changelog fragment check, and ``twine check``, which
+build from the shared artifact instead), since an ``sdist`` tarball never
+contains :file:`.git`.

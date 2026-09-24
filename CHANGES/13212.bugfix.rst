@@ -1,0 +1,3 @@
+Rejected control characters in the request target in the pure-Python HTTP parser,
+matching the llhttp-backed parser, which already refuses them
+-- by :user:`arshsmith1`.
