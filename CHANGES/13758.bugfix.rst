@@ -1,0 +1,6 @@
+Fixed a regression where :py:meth:`~aiohttp.BodyPartReader.read_chunk` raised
+an ``AssertionError`` on a multipart body part with ``Content-Length: 0``
+instead of returning an empty chunk. The empty length is no longer routed
+through the stream-based reader; the length-based reader returns ``b""`` and
+the part is marked at EOF, matching the behaviour of any other
+zero-length :rfc:`7230` body -- by :user:`qianbkk`.
