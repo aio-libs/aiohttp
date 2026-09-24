@@ -217,6 +217,22 @@ Abstract Resolver
 
       Release resolver.
 
+      Custom resolvers still implement this method, it stays the
+      required abstract method on this class so existing
+      implementations keep working unchanged.
+
+   .. method:: aclose()
+      :async:
+
+      Release resolver.
+
+      Callers should prefer this over :meth:`close`. The default
+      implementation just calls :meth:`close`, so any resolver that
+      only implements :meth:`close` keeps working through
+      :meth:`aclose` with no changes needed on its end.
+
+      .. versionadded:: 4.0
+
 .. class:: ResolveResult
 
    Result of host name resolution.

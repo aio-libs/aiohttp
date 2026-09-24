@@ -1547,7 +1547,7 @@ async def test_tcp_connector_cancel_dns_error_captured(
             use_dns_cache=False,
         )
         m_resolver().resolve.return_value = dns_response_error()
-        m_resolver().close = mock.AsyncMock()
+        m_resolver().aclose = mock.AsyncMock()
         f = loop.create_task(conn._create_direct_connection(req, [], ClientTimeout()))
 
         await asyncio.sleep(0)
@@ -1585,7 +1585,7 @@ async def test_tcp_connector_dns_tracing(
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
 
         m_resolver().resolve.return_value = dns_response()
-        m_resolver().close = mock.AsyncMock()
+        m_resolver().aclose = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
         on_dns_resolvehost_start.assert_called_once_with(
@@ -1629,7 +1629,7 @@ async def test_tcp_connector_dns_tracing_cache_disabled(
         conn = aiohttp.TCPConnector(use_dns_cache=False)
 
         m_resolver().resolve.side_effect = [dns_response(), dns_response()]
-        m_resolver().close = mock.AsyncMock()
+        m_resolver().aclose = mock.AsyncMock()
 
         await conn._resolve_host("localhost", 8080, traces=traces)
 
@@ -1687,7 +1687,7 @@ async def test_tcp_connector_dns_tracing_throttle_requests(
     with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         m_resolver().resolve.return_value = dns_response()
-        m_resolver().close = mock.AsyncMock()
+        m_resolver().aclose = mock.AsyncMock()
         t = loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         t1 = loop.create_task(conn._resolve_host("localhost", 8080, traces=traces))
         await asyncio.sleep(0)
@@ -1711,7 +1711,7 @@ async def test_tcp_connector_close_resolver() -> None:
     with mock.patch("aiohttp.connector.DefaultResolver", return_value=m_resolver):
         conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
         await conn.close()
-        m_resolver.close.assert_awaited_once()
+        m_resolver.aclose.assert_awaited_once()
 
 
 async def test_dns_error(make_client_request: _RequestMaker) -> None:

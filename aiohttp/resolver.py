@@ -1,6 +1,7 @@
 import asyncio
 import socket
 import sys
+import warnings
 import weakref
 from typing import Any, Optional
 
@@ -95,8 +96,22 @@ class ThreadedResolver(AbstractResolver):
 
         return hosts
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         pass
+
+    async def close(self) -> None:
+        """Release resolver.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose()
 
 
 class AsyncResolver(AbstractResolver):
@@ -179,7 +194,7 @@ class AsyncResolver(AbstractResolver):
 
         return hosts
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         if self._manager:
             # Release the resolver from the manager if using the shared resolver
             self._manager.release_resolver(self, self._loop)
@@ -190,6 +205,20 @@ class AsyncResolver(AbstractResolver):
         if self._resolver is not None:
             self._resolver.cancel()
         self._resolver = None  # type: ignore[assignment] # Clear reference
+
+    async def close(self) -> None:
+        """Release resolver.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose()
 
 
 class _DNSResolverManager:

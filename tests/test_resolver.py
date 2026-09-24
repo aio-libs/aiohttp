@@ -2,6 +2,7 @@ import asyncio
 import gc
 import ipaddress
 import socket
+import warnings
 from collections.abc import Awaitable, Callable, Collection, Generator
 from ipaddress import ip_address
 from typing import Any, NamedTuple
@@ -181,7 +182,7 @@ async def test_async_resolver_positive_ipv4_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -205,7 +206,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             type=socket.SOCK_STREAM,
         )
         mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -218,7 +219,7 @@ async def test_async_resolver_multiple_replies() -> None:
         real = await resolver.resolve("www.google.com")
         ipaddrs = [ipaddress.ip_address(x["host"]) for x in real]
         assert len(ipaddrs) > 3, "Expecting multiple addresses"
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -229,7 +230,7 @@ async def test_async_resolver_negative_lookup() -> None:
         resolver = AsyncResolver()
         with pytest.raises(OSError):
             await resolver.resolve("doesnotexist.bla")
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -247,7 +248,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
         try:
             real = await resolver.resolve("localhost", family=socket.AF_UNSPEC)
         finally:
-            await resolver.close()
+            await resolver.aclose()
 
         assert real[0]["host"] == "127.0.0.1"
         mock().getaddrinfo.assert_has_calls(
@@ -278,7 +279,7 @@ async def test_async_resolver_no_hosts_in_getaddrinfo() -> None:
         resolver = AsyncResolver()
         with pytest.raises(OSError):
             await resolver.resolve("doesnotexist.bla")
-        await resolver.close()
+        await resolver.aclose()
 
 
 async def test_threaded_resolver_positive_lookup() -> None:
@@ -440,14 +441,62 @@ async def test_threaded_negative_lookup_with_unknown_result() -> None:
 
 async def test_close_for_threaded_resolver() -> None:
     resolver = ThreadedResolver()
-    await resolver.close()
+    await resolver.aclose()
 
 
 @pytest.mark.skipif(aiodns is None, reason="aiodns required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_close_for_async_resolver() -> None:
     resolver = AsyncResolver()
-    await resolver.close()
+    await resolver.aclose()
+
+
+async def test_threaded_resolver_close_is_deprecated_alias_for_aclose() -> None:
+    resolver = ThreadedResolver()
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        await resolver.close()
+
+
+@pytest.mark.skipif(aiodns is None, reason="aiodns required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_close_is_deprecated_alias_for_aclose() -> None:
+    resolver = AsyncResolver()
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        await resolver.close()
+
+
+async def test_abstract_resolver_aclose_forwards_to_close_for_old_style_subclass() -> (
+    None
+):
+    """A resolver only implementing the old close() must still work via aclose().
+
+    This is the whole point of AbstractResolver.aclose()'s default
+    implementation, third-party resolvers written before this rename
+    only override close(), and must keep working without any changes
+    on their end.
+    """
+    from aiohttp.abc import AbstractResolver, ResolveResult
+
+    closed = False
+
+    class OldStyleResolver(AbstractResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            return []
+
+        async def close(self) -> None:
+            nonlocal closed
+            closed = True
+
+    resolver = OldStyleResolver()
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        await resolver.aclose()
+    assert closed
 
 
 async def test_default_loop_for_threaded_resolver() -> None:
@@ -471,7 +520,7 @@ async def test_async_resolver_ipv6_positive_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -485,7 +534,7 @@ async def test_async_resolver_error_messages_passed() -> None:
             await resolver.resolve("x.org")
 
         assert excinfo.value.strerror == "Test error message"
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -499,7 +548,7 @@ async def test_async_resolver_error_messages_passed_no_hosts() -> None:
             await resolver.resolve("x.org")
 
         assert excinfo.value.strerror == "DNS lookup failed"
-        await resolver.close()
+        await resolver.aclose()
 
 
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
@@ -536,9 +585,9 @@ async def test_dns_resolver_manager_sharing(
     assert resolver1._resolver is not resolver3._resolver
 
     # Cleanup
-    await resolver1.close()
-    await resolver2.close()
-    await resolver3.close()
+    await resolver1.aclose()
+    await resolver2.aclose()
+    await resolver3.aclose()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -603,7 +652,7 @@ async def test_dns_resolver_manager_client_registration(
         assert len(client_set) == 2
 
         # Close one resolver
-        await resolver1.close()
+        await resolver1.aclose()
         _, client_set = manager._loop_data[loop]
         assert len(client_set) == 1
 
@@ -611,7 +660,7 @@ async def test_dns_resolver_manager_client_registration(
         assert manager._loop_data  # Not empty
 
         # Close the second resolver
-        await resolver2.close()
+        await resolver2.aclose()
         assert not manager._loop_data  # Should be empty after closing all clients
 
         # Now all resolvers should be canceled and removed
@@ -697,7 +746,7 @@ async def test_dns_resolver_manager_weakref_garbage_collection() -> None:
         manager._loop_data[loop] = (None, manager._loop_data[loop][1])  # type: ignore[assignment]
 
         # This should not raise an AttributeError: 'NoneType' object has no attribute 'cancel'
-        await resolver.close()
+        await resolver.aclose()
 
         # Verify no exception was raised and the loop data was cleaned up properly
         # Since we set resolver to None and there was one client, the entry should be removed
@@ -718,7 +767,7 @@ async def test_dns_resolver_manager_missing_loop_data() -> None:
         manager._loop_data.clear()
 
         # This should not raise a KeyError
-        await resolver.close()
+        await resolver.aclose()
 
         # Verify no exception was raised
         assert loop not in manager._loop_data
@@ -727,7 +776,7 @@ async def test_dns_resolver_manager_missing_loop_data() -> None:
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_close_multiple_times() -> None:
-    """Test that AsyncResolver.close() can be called multiple times without error."""
+    """Test that AsyncResolver.aclose() can be called multiple times without error."""
     with patch("aiodns.DNSResolver") as mock_dns_resolver:
         mock_resolver = Mock()
         mock_resolver.cancel = Mock()
@@ -737,11 +786,11 @@ async def test_async_resolver_close_multiple_times() -> None:
         resolver = AsyncResolver(nameservers=["8.8.8.8"])
 
         # Close it once
-        await resolver.close()
+        await resolver.aclose()
         mock_resolver.cancel.assert_called_once()
 
         # Close it again - should not raise AttributeError
-        await resolver.close()
+        await resolver.aclose()
         # cancel should still only be called once
         mock_resolver.cancel.assert_called_once()
 
@@ -749,7 +798,7 @@ async def test_async_resolver_close_multiple_times() -> None:
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
 async def test_async_resolver_close_with_none_resolver() -> None:
-    """Test that AsyncResolver.close() handles None resolver gracefully."""
+    """Test that AsyncResolver.aclose() handles None resolver gracefully."""
     with patch("aiodns.DNSResolver"):
         # Create a resolver with custom args (dedicated resolver)
         resolver = AsyncResolver(nameservers=["8.8.8.8"])
@@ -758,4 +807,4 @@ async def test_async_resolver_close_with_none_resolver() -> None:
         resolver._resolver = None  # type: ignore[assignment]
 
         # This should not raise AttributeError
-        await resolver.close()
+        await resolver.aclose()
