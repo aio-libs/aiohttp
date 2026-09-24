@@ -482,7 +482,7 @@ jobs:
     - name: Install test dependencies
       # aiohttp itself is needed on the host because tests/conftest.py
       # imports it; the pure-Python build is sufficient.
-      run: AIOHTTP_NO_EXTENSIONS=1 uv pip install -e . pytest-pyodide==0.59.2 pytest pytest-aiohttp pytest-timeout coverage
+      run: AIOHTTP_NO_EXTENSIONS=1 uv pip install -e . pytest-pyodide pytest pytest-aiohttp pytest-timeout coverage
     - name: Run tests in Pyodide (Node.js)
       run: python -m pytest tests/test_pyodide.py --rt node --dist-dir=./pyodide-dist
 
