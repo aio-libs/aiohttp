@@ -324,7 +324,7 @@ conform to the :rfc:`2109`, which in turn references the character definitions
 from :rfc:`2068`. They provide a two-way quoting algorithm where any non-text
 character is translated into a 4 character sequence: a forward-slash
 followed by the three-digit octal equivalent of the character.
-Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
+Any ``\\`` or ``"`` is quoted with a preceding ``\\`` slash.
 Because of the way browsers really handle cookies (as opposed to what the RFC
 says) we also encode ``,`` and ``;``.
 
@@ -807,8 +807,8 @@ Persistent session
 
 Even though creating a session on demand seems like a tempting idea, we
 advise against it. :class:`aiohttp.ClientSession` maintains a
-connection pool. Contained connections can be reused if necessary to gain
-some performance improvements. If you plan on reusing the session, a.k.a. creating
+connection pool. Contained connections can be reused if necessary to gain some
+performance improvements. If you plan on reusing the session, a.k.a. creating
 **persistent session**, you can use either :ref:`aiohttp-web-signals` or
 :ref:`aiohttp-web-cleanup-ctx`. If possible we advise using :ref:`aiohttp-web-cleanup-ctx`,
 as it results in more compact code::
@@ -830,7 +830,7 @@ as it results in more compact code::
 
 
 This approach can be successfully used to define numerous sessions given certain
-requirements. It benefits from having a single location where :class:`ClientSession`
+requirements. It benefits from having a single location where :class:`aiohttp.ClientSession`
 instances are created and where artifacts such as :class:`aiohttp.BaseConnector`
 can be safely shared between sessions if needed.
 
@@ -840,7 +840,6 @@ In the end all you have to do is to close all sessions after the `yield` stateme
        app[persistent_session_1] = session_1 = aiohttp.ClientSession()
        app[persistent_session_2] = session_2 = aiohttp.ClientSession()
        app[persistent_session_3] = session_3 = aiohttp.ClientSession()
-
        yield
 
        await asyncio.gather(
