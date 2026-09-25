@@ -88,7 +88,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
         await ws.prepare(request)
         for _ in range(message_count):
             await ws.send_str("answer")
-        await ws.close()
+        await ws.aclose()
         return ws
 
     app = web.Application()
@@ -99,7 +99,7 @@ def test_one_thousand_round_trip_websocket_text_messages(
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
-        await resp.close()
+        await resp.aclose()
 
     @benchmark
     def _run() -> None:
@@ -123,7 +123,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
         await ws.prepare(request)
         for _ in range(message_count):
             await ws.send_bytes(raw_message)
-        await ws.close()
+        await ws.aclose()
         return ws
 
     app = web.Application()
@@ -134,7 +134,7 @@ def test_one_thousand_round_trip_websocket_binary_messages(
         resp = await client.ws_connect("/", **conn_type.c_kwargs)
         for _ in range(message_count):
             await resp.receive()
-        await resp.close()
+        await resp.aclose()
 
     @benchmark
     def _run() -> None:
@@ -155,7 +155,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
         await ws.prepare(request)
         for _ in range(message_count):
             await ws.send_str(raw_message)
-        await ws.close()
+        await ws.aclose()
         return ws
 
     app = web.Application()
@@ -166,7 +166,7 @@ def test_one_thousand_large_round_trip_websocket_text_messages(
         resp = await client.ws_connect("/")
         for _ in range(message_count):
             await resp.receive()
-        await resp.close()
+        await resp.aclose()
 
     @benchmark
     def _run() -> None:
@@ -188,7 +188,7 @@ def test_client_send_large_websocket_compressed_messages(
         await ws.prepare(request)
         for _ in range(message_count):
             await ws.receive()
-        await ws.close()
+        await ws.aclose()
         return ws
 
     app = web.Application()
@@ -199,7 +199,7 @@ def test_client_send_large_websocket_compressed_messages(
         resp = await client.ws_connect("/", compress=15)
         for _ in range(message_count):
             await resp.send_bytes(raw_message)
-        await resp.close()
+        await resp.aclose()
 
     @benchmark
     def _run() -> None:
@@ -221,7 +221,7 @@ def test_client_receive_large_websocket_compressed_messages(
         await ws.prepare(request)
         for _ in range(message_count):
             await ws.send_bytes(raw_message)
-        await ws.close()
+        await ws.aclose()
         return ws
 
     app = web.Application()
@@ -232,7 +232,7 @@ def test_client_receive_large_websocket_compressed_messages(
         resp = await client.ws_connect("/", compress=15)
         for _ in range(message_count):
             await resp.receive()
-        await resp.close()
+        await resp.aclose()
 
     @benchmark
     def _run() -> None:
