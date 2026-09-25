@@ -8,4 +8,5 @@ pytest-xdist
 pytest_codspeed
 python-on-whales
 trustme; platform_machine != "i686" # no 32-bit wheels
+truststore >= 0.8; sys_platform != "android" and sys_platform != "ios"
 zlib_ng
