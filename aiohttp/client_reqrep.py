@@ -1447,7 +1447,12 @@ class ClientRequest(ClientRequestBase):
         if self.compress:
             writer.enable_compression(self.compress)
 
-        if self.chunked is not None:
+        # A GET-like request without a body gets no Transfer-Encoding header
+        # even with chunked=True, so the header must be checked too.
+        if (
+            self.chunked
+            and "chunked" in self.headers.get(hdrs.TRANSFER_ENCODING, "").lower()
+        ):
             writer.enable_chunking()
         return writer
 
