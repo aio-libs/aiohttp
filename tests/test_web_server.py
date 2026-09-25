@@ -419,3 +419,82 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
         loop.set_exception_handler(original_handler)
 
     assert not exc_handler_calls
+
+
+async def test_idle_connection_closed_before_first_request(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A connection that never sends a request must not be held open forever."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert False
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # The server must close the connection once keepalive_timeout
+        # expires without a complete request having arrived.
+        assert await asyncio.wait_for(reader.read(), timeout=5) == b""
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+async def test_trickled_headers_closed_at_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """Partial header bytes must not extend the first-request deadline."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert False
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.4)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+
+    async def trickle() -> None:
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Slow: ")
+        with suppress(ConnectionError):
+            while True:
+                await writer.drain()
+                await asyncio.sleep(0.05)
+                writer.write(b"a")
+
+    trickle_task = asyncio.create_task(trickle())
+    try:
+        try:
+            data = await asyncio.wait_for(reader.read(), timeout=5)
+        except ConnectionResetError:
+            data = b""
+        # Closed without a response despite the steady trickle of bytes.
+        assert data == b""
+    finally:
+        trickle_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await trickle_task
+        writer.close()
+        with suppress(ConnectionResetError):
+            await writer.wait_closed()
+
+
+async def test_handler_slower_than_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A parsed request being handled is not subject to the idle deadline."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        await asyncio.sleep(0.4)  # Longer than keepalive_timeout.
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert head.startswith(b"HTTP/1.1 200 ")
+    finally:
+        writer.close()
+        await writer.wait_closed()

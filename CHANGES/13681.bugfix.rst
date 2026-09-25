@@ -1,0 +1,1 @@
+Fixed idle connections not being closed if no request was received -- by :user:`Dreamsorcerer`.
