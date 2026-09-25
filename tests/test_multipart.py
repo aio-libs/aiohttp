@@ -205,6 +205,15 @@ class TestPartReader:
         assert c1 + c2 == b"Hello, world!"
         assert c3 == b""
 
+    async def test_read_chunk_with_zero_content_length(self) -> None:
+        with Stream(b"\r\n--:--\r\n") as stream:
+            d = HeadersDictProxy(CIMultiDict({"Content-Length": "0"}))
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read_chunk(4)
+            at_eof = obj.at_eof()
+        assert b"" == result
+        assert at_eof
+
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
 
