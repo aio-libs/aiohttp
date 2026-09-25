@@ -82,6 +82,7 @@ codebase
 codec
 codspeed
 Codings
+compat
 committer
 committers
 Conda
@@ -341,6 +342,7 @@ storages
 subapplication
 subclassed
 subclasses
+subclassing
 subdirectory
 submodules
 subpackage
