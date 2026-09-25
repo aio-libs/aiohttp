@@ -2841,7 +2841,7 @@ async def test_response_context_manager(aiohttp_server: AiohttpServer) -> None:
         assert resp.status == 200
     assert resp.connection is None
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> None:
@@ -2867,7 +2867,7 @@ async def test_response_context_manager_error(aiohttp_server: AiohttpServer) -> 
     assert session._connector is not None
     assert len(session._connector._conns) == 1
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_client_api_context_manager(aiohttp_server: AiohttpServer) -> None:
@@ -3010,7 +3010,7 @@ async def test_request_tracing(aiohttp_server: AiohttpServer) -> None:
     assert on_connection_create_end.called
 
     resp.release()
-    await client.close()
+    await client.aclose()
 
 
 async def test_raise_http_exception(aiohttp_client: AiohttpClient) -> None:

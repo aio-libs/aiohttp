@@ -79,7 +79,7 @@ async def create_session() -> AsyncIterator[Callable[..., Awaitable[ClientSessio
 
     yield maker
     if session is not None:
-        await session.close()
+        await session.aclose()
 
 
 @pytest.fixture
@@ -120,7 +120,26 @@ async def test_close_coro(
     create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:
     session = await create_session()
-    await session.close()
+    await session.aclose()
+
+
+async def test_close_is_deprecated_alias_for_aclose(
+    create_session: Callable[..., Awaitable[ClientSession]],
+) -> None:
+    session = await create_session()
+    with pytest.warns(DeprecationWarning, match="aclose"):
+        await session.close()
+    assert session.closed
+
+
+async def test_close_context_manager_does_not_warn(
+    create_session: Callable[..., Awaitable[ClientSession]],
+) -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        async with aiohttp.ClientSession() as session:
+            pass
+    assert session.closed
 
 
 async def test_init_headers_simple_dict(
@@ -329,14 +348,14 @@ async def test_close(
 ) -> None:
     session = await create_session(connector=connector)
 
-    await session.close()
+    await session.aclose()
     assert session.connector is None
     assert connector.closed
 
 
 async def test_closed(session: ClientSession) -> None:
     assert not session.closed
-    await session.close()
+    await session.aclose()
     assert session.closed
 
 
@@ -348,7 +367,7 @@ async def test_connector(
     session = await create_session(connector=connector)
     assert session.connector is connector
 
-    await session.close()
+    await session.aclose()
     assert m.called
     await connector.close()
 
@@ -359,7 +378,7 @@ async def test_create_connector(
     session = await create_session()
     m = mocker.spy(session.connector, "close")
 
-    await session.close()
+    await session.aclose()
     assert m.called
 
 
@@ -485,7 +504,7 @@ def test_detach(event_loop: asyncio.AbstractEventLoop, session: ClientSession) -
 
 
 async def test_request_closed_session(session: ClientSession) -> None:
-    await session.close()
+    await session.aclose()
     with pytest.raises(RuntimeError):
         await session.request("get", "/")
 
@@ -503,9 +522,9 @@ async def test_double_close(
 ) -> None:
     session = await create_session(connector=connector)
 
-    await session.close()
+    await session.aclose()
     assert session.connector is None
-    await session.close()
+    await session.aclose()
     assert session.closed
     assert connector.closed
 
@@ -700,7 +719,7 @@ async def test_ws_connect_allowed_protocols(  # type: ignore[misc]
         c.close()
         c.__del__()
 
-    await session.close()
+    await session.aclose()
 
 
 @pytest.mark.parametrize("protocol", ["http", "https", "ws", "wss", "unix"])
@@ -765,7 +784,7 @@ async def test_ws_connect_unix_socket_allowed_protocols(  # type: ignore[misc]
         c.close()
         c.__del__()
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
@@ -900,7 +919,7 @@ async def test_cookies_with_unsafe_cookie_jar(
 async def test_session_default_version() -> None:
     session = aiohttp.ClientSession()
     assert session.version == aiohttp.HttpVersion11
-    await session.close()
+    await session.aclose()
 
 
 async def test_proxy_str(session: ClientSession, params: _Params) -> None:
@@ -944,7 +963,7 @@ async def test_default_proxy() -> None:
         request_class_mock.call_args[1].get("proxy") == proxy_url2
     ), "`ClientSession._request` uses per-request proxy not session default"
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_default_ssl() -> None:
@@ -984,7 +1003,7 @@ async def test_default_ssl() -> None:
         request_class_mock.call_args[1].get("ssl") is True
     ), "explicit `ssl=True` should not be replaced by the session default"
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_default_ssl_not_set() -> None:
@@ -1002,7 +1021,7 @@ async def test_default_ssl_not_set() -> None:
         request_class_mock.call_args[1].get("ssl") is True
     ), "the default ssl mode should stay `True` when not configured"
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_default_ssl_invalid_type() -> None:
@@ -1413,7 +1432,7 @@ async def test_request_tracing_exception() -> None:
         )
         assert not on_request_end.called
 
-    await session.close()
+    await session.aclose()
 
 
 async def test_request_tracing_interpose_headers(aiohttp_client: AiohttpClient) -> None:
@@ -1458,13 +1477,13 @@ async def test_client_session_custom_attr() -> None:
     session = ClientSession()
     with pytest.raises(AttributeError):
         session.custom = None  # type: ignore[attr-defined]
-    await session.close()
+    await session.aclose()
 
 
 async def test_client_session_timeout_default_args() -> None:
     session1 = ClientSession()
     assert session1.timeout == client.ClientTimeout(total=5 * 60)
-    await session1.close()
+    await session1.aclose()
 
 
 def test_client_timeout_default_total() -> None:
@@ -1539,13 +1558,13 @@ async def test_client_session_timeout_bad_argument() -> None:
 async def test_requote_redirect_url_default() -> None:
     session = ClientSession()
     assert session.requote_redirect_url
-    await session.close()
+    await session.aclose()
 
 
 async def test_requote_redirect_url_default_disable() -> None:
     session = ClientSession(requote_redirect_url=False)
     assert not session.requote_redirect_url
-    await session.close()
+    await session.aclose()
 
 
 @pytest.mark.parametrize(

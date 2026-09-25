@@ -275,7 +275,7 @@ async def test_test_server_context_manager() -> None:
         resp = await client.head(server.make_url("/"))
         assert resp.status == 200
         resp.close()
-        await client.close()
+        await client.aclose()
 
 
 def test_client_unsupported_arg() -> None:

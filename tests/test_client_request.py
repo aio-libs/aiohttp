@@ -1706,7 +1706,7 @@ async def test_custom_req_rep(create_mocked_conn: mock.Mock) -> None:
         assert isinstance(resp, CustomResponse)
         assert called
         resp.close()
-        await session.close()
+        await session.aclose()
         assert conn is not None
         conn.close()
 

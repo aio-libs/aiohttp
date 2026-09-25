@@ -1359,15 +1359,33 @@ class ClientSession:
                 self._request(hdrs.METH_DELETE, url, **kwargs)
             )
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         """Close underlying connector.
 
         Release all acquired resources.
+
+        .. versionadded:: 4.0
         """
         if not self.closed:
             if self._connector is not None and self._connector_owner:
                 await self._connector.close()
             self._connector = None
+
+    async def close(self) -> None:
+        """Close underlying connector.
+
+        Release all acquired resources.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose()
 
     @property
     def closed(self) -> bool:
@@ -1465,7 +1483,7 @@ class ClientSession:
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        await self.close()
+        await self.aclose()
 
 
 class _BaseRequestContextManager(
@@ -1525,7 +1543,7 @@ class _SessionRequestContextManager:
         try:
             self._resp = await self._coro
         except BaseException:
-            await self._session.close()
+            await self._session.aclose()
             raise
         else:
             return self._resp
@@ -1538,7 +1556,7 @@ class _SessionRequestContextManager:
     ) -> None:
         assert self._resp is not None
         self._resp.close()
-        await self._session.close()
+        await self._session.aclose()
 
 
 if sys.version_info >= (3, 11) and TYPE_CHECKING:

@@ -385,7 +385,7 @@ async def test_close(ws_key: str, key_data: bytes) -> None:
                 assert not res
                 assert writer.close.call_count == 1
 
-                await session.close()
+                await session.aclose()
 
 
 async def test_close_eofstream(ws_key: str, key_data: bytes) -> None:
@@ -416,7 +416,7 @@ async def test_close_eofstream(ws_key: str, key_data: bytes) -> None:
                 writer.close.assert_called_with(1000, b"")
                 assert resp.closed
 
-                await session.close()  # type: ignore[unreachable]
+                await session.aclose()  # type: ignore[unreachable]
 
 
 async def test_close_connection_lost(ws_key: str, key_data: bytes) -> None:
@@ -449,7 +449,7 @@ async def test_close_connection_lost(ws_key: str, key_data: bytes) -> None:
         assert msg.type is aiohttp.WSMsgType.CLOSED
         assert resp.closed
 
-        await session.close()  # type: ignore[unreachable]
+        await session.aclose()  # type: ignore[unreachable]
 
 
 async def test_close_exc(ws_key: str, key_data: bytes) -> None:
@@ -483,7 +483,7 @@ async def test_close_exc(ws_key: str, key_data: bytes) -> None:
                 assert resp.closed
                 assert resp.exception() is exc  # type: ignore[unreachable]
 
-                await session.close()
+                await session.aclose()
 
 
 async def test_close_exc2(ws_key: str, key_data: bytes) -> None:
@@ -610,7 +610,7 @@ async def test_reader_read_exception(ws_key: str, key_data: bytes) -> None:
                 assert msg.type == aiohttp.WSMsgType.ERROR
                 assert resp.exception() is exc
 
-                await session.close()
+                await session.aclose()
 
 
 async def test_receive_runtime_err() -> None:
@@ -888,7 +888,7 @@ async def test_ws_connect_deflate_per_message(ws_key: str, key_data: bytes) -> N
                     b"[{}]", aiohttp.WSMsgType.TEXT, -9
                 )
 
-                await session.close()
+                await session.aclose()
 
 
 async def test_ws_connect_deflate_server_not_support(
