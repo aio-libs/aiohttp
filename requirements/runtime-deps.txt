@@ -28,7 +28,7 @@ frozenlist==1.8.0
     #   aiosignal
 idna==3.20
     # via yarl
-multidict==6.9.0
+multidict==6.9.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl

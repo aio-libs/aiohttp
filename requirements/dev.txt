@@ -136,7 +136,7 @@ mdit-py-plugins==0.6.1
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.9.0
+multidict==6.9.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
