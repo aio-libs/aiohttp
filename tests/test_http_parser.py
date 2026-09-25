@@ -6,7 +6,7 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -20,6 +20,7 @@ import aiohttp
 from aiohttp import http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
+from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
     DeflateBuffer,
@@ -1146,6 +1147,58 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     assert msg.compression is None
 
 
+def test_compression_case_insensitive(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/info/rfc9110/#section-8.4.1-3
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: GZip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip"
+
+
+def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: deflate, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "deflate,gzip"
+
+
+def test_compression_repeated_headers(parser: HttpRequestParser) -> None:
+    # Repeated Content-Encoding headers are one comma-joined list.
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\n"
+        b"content-encoding: deflate\r\ncontent-encoding: gzip\r\n\r\n"
+    )
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "deflate,gzip"
+
+
+def test_compression_multiple_codings_identity(parser: HttpRequestParser) -> None:
+    # "identity" is a synonym for no encoding and drops out of the chain.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: identity, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip"
+
+
+def test_compression_multiple_codings_unknown(parser: HttpRequestParser) -> None:
+    # An unsupported coding anywhere in the chain disables decoding.
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: compress, gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression is None
+
+
+def test_compression_too_many_codings(parser: HttpRequestParser) -> None:
+    # Refused outright: nesting multiplies decompression amplification.
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip, gzip, gzip\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        parser.feed_data(text)
+
+
 def test_url_connect(parser: HttpRequestParser) -> None:
     text = b"CONNECT www.google.com HTTP/1.1\r\nHost: a\r\ncontent-length: 0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
@@ -1504,6 +1557,61 @@ async def test_compressed_zlib_64kb(response_cls: type[HttpResponseParser]) -> N
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+async def test_compressed_multiple_codings(response: HttpResponseParser) -> None:
+    """A Content-Encoding chain is decoded in reverse order of application.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13364:
+    a body compressed with deflate and then gzip must be gunzipped first
+    and inflated second, including across flow-control pauses.
+    """
+    # Must be large enough to exceed high water mark.
+    original = b"C" * 1024 * 1024
+    compressed = gzip.compress(zlib.compress(original))
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate, gzip\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    result = await payload.read()
+    assert len(result) == len(original)
+    assert result == original
+
+
+async def test_too_many_codings_without_auto_decompress(
+    response_cls: type[HttpResponseParser],
+) -> None:
+    """With auto-decompression off, a long chain passes through untouched."""
+    loop = asyncio.get_running_loop()
+    protocol = ResponseHandler(loop)
+    response = response_cls(
+        protocol,
+        loop,
+        2**16,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+        auto_decompress=False,
+    )
+    protocol._parser = response
+
+    body = b"not really compressed"
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+        b"Content-Encoding: gzip, gzip, gzip\r\n"
+        b"\r\n"
+    ) + body
+
+    msgs, upgrade, tail = response.feed_data(text)
+    msg, payload = msgs[0]
+    assert msg.compression is None
+    assert await payload.read() == body
 
 
 async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> None:
@@ -2574,6 +2682,34 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
     # TODO: Add assertion of trailers when API added.
 
 
+async def test_trailer_not_leaked_into_next_message(
+    parser: HttpRequestParser,
+) -> None:
+    """Trailers of one message must not become headers of the next one.
+
+    Regression test for the C parser leaving the trailer section's last
+    field/value pair (and the Content-Encoding capture) pending across
+    messages: it was processed into the next message's header set, so a
+    trailer could inject a header — including a Content-Encoding that
+    switched decompression on for an unencoded body.
+    """
+    msg1 = (
+        b"POST /a HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"3\r\nabc\r\n0\r\nContent-Encoding: gzip\r\nX-Trailer: leaked\r\n\r\n"
+    )
+    msg2 = b"POST /b HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\nhello"
+
+    messages, upgraded, tail = parser.feed_data(msg1)
+    assert messages[0][0].compression is None
+
+    messages, upgraded, tail = parser.feed_data(msg2)
+    msg, payload = messages[0]
+    assert msg.compression is None
+    assert "Content-Encoding" not in msg.headers
+    assert "X-Trailer" not in msg.headers
+    assert await payload.read() == b"hello"
+
+
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
@@ -3513,58 +3649,61 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert buf._eof
 
-    async def test_feed_eof_err_deflate(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "deflate")
+    @pytest.mark.parametrize(
+        ("encoding", "make_body"),
+        (
+            ("deflate", lambda data: zlib.compress(data)[:-4]),
+            ("gzip", lambda data: gzip.compress(data)[:-8]),
+            ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data))[:-8]),
+            ("gzip,gzip", lambda data: gzip.compress(gzip.compress(data)[:-8])),
+            ("deflate,gzip", lambda data: gzip.compress(zlib.compress(data)[:-4])),
+            pytest.param(
+                "br",
+                lambda data: brotli.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    brotli is None, reason="brotli is not installed"
+                ),
+            ),
+            pytest.param(
+                "zstd",
+                lambda data: zstandard.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    zstandard is None, reason="zstandard is not installed"
+                ),
+            ),
+        ),
+        ids=(
+            "single-deflate",
+            "single-gzip",
+            "chain-outer",
+            "chain-inner",
+            "mixed-inner-deflate",
+            "single-brotli",
+            "single-zstd",
+        ),
+    )
+    async def test_feed_eof_truncated_stream(
+        self,
+        protocol: BaseProtocol,
+        encoding: str,
+        make_body: Callable[[bytes], bytes],
+    ) -> None:
+        """A stream cut short of its trailer must raise, not pass silently.
 
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-        dbuf.size = 1  # Simulate that data was previously fed
+        A gzip stream missing its final 8 bytes (CRC32 + ISIZE) still
+        inflates completely, so without the completeness check the consumer
+        would receive the full plaintext with no error. Each case truncates
+        exactly one stage of the chain.
+        """
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, encoding)
+
+        chunk = make_body(b"payload " * 4096)
+        while dbuf.feed_data(chunk):
+            chunk = b""
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
-
-    async def test_feed_eof_no_err_gzip(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "gzip")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
-
-    @pytest.mark.skipif(
-        sys.platform in ("android", "ios"), reason="brotli not available"
-    )
-    async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "br")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
-
-    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
-    async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "zstd")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
 
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(
@@ -3608,6 +3747,46 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
 
         # Read all decompressed data
+        result = b"".join(buf._buffer)
+        assert len(result) == len(original)
+        assert result == original
+
+    async def test_streaming_decompress_multiple_codings(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Chained codings keep every stage's intermediate buffering bounded."""
+        max_length = 2048
+        original = b"A" * (16 * 2**20)
+        middle = gzip.compress(original)
+        # Sanity: middle must dwarf one delivery, or this test cannot
+        # distinguish the walk order.
+        assert len(middle) > 4 * max_length
+        compressed = gzip.compress(middle)
+
+        buf = aiohttp.StreamReader(
+            protocol, max_length, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, "gzip,gzip", max_decompress_size=max_length)
+        outer = dbuf._stages[0].decompressor
+        inner = dbuf._stages[1].decompressor
+        assert isinstance(outer, ZLibDecompressor)
+        assert isinstance(inner, ZLibDecompressor)
+
+        def backlog(d: ZLibDecompressor) -> int:
+            pending = d._pending_unused_data or b""
+            return len(d._decompressor.unconsumed_tail) + len(pending)
+
+        for i in range(0, len(compressed), 1024):  # pragma: no branch
+            chunk = compressed[i : i + 1024]
+            while dbuf.feed_data(chunk):
+                chunk = b""
+                assert backlog(outer) <= max_length
+                assert backlog(inner) <= max_length
+            assert backlog(outer) <= max_length
+            assert backlog(inner) <= max_length
+
+        dbuf.feed_eof()
+
         result = b"".join(buf._buffer)
         assert len(result) == len(original)
         assert result == original
