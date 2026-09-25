@@ -15,4 +15,5 @@ jobs:
       - name: AgentScan
         uses: MatteoGabriele/agentscan-action@v2.5.0
         with:
+          allowed-users: "aiolibsbot"
           mode: labels
