@@ -296,7 +296,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   virtualenv
 typing-inspection==0.4.4
     # via pydantic
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests
 uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
