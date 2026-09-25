@@ -18,7 +18,7 @@ attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
-blockbuster==1.5.27
+blockbuster==1.5.28
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
@@ -40,7 +40,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-idna==3.19
+idna==3.20
     # via
     #   trustme
     #   yarl
@@ -54,7 +54,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.8.0
+multidict==6.9.0
     # via
     #   aiohttp
     #   yarl

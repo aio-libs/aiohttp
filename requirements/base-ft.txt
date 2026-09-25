@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiofastnet==1.1.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==1.1.1 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.7.1
     # via -r requirements/runtime-deps.in
@@ -28,9 +28,9 @@ frozenlist==1.8.0
     #   aiosignal
 gunicorn==26.2.0
     # via -r requirements/base-ft.in
-idna==3.19
+idna==3.20
     # via yarl
-multidict==6.8.0
+multidict==6.9.0
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
