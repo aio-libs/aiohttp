@@ -434,6 +434,20 @@ async def test_ignore_domain_ending_with_dot() -> None:
     assert cookies_sent.output(header="Cookie:") == ""
 
 
+async def test_domain_attribute_is_lowercased() -> None:
+    # RFC 6265 §5.2.3: the Domain attribute value must be lower-cased by
+    # the user agent before it's used for domain-matching / storage.
+    jar = CookieJar(unsafe=True)
+    jar.update_cookies(
+        SimpleCookie("cookie=val; Domain=Example.COM;"), URL("http://example.com")
+    )
+    cookies_sent = jar.filter_cookies(URL("http://example.com/"))
+    assert cookies_sent.output(header="Cookie:") == "Cookie: cookie=val"
+    # subdomain match should also still work, same as a lower-case Domain
+    cookies_sent = jar.filter_cookies(URL("http://www.example.com/"))
+    assert cookies_sent.output(header="Cookie:") == "Cookie: cookie=val"
+
+
 class TestCookieJarSafe:
     @pytest.fixture(autouse=True)
     def setup_cookies(
