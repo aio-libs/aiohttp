@@ -403,6 +403,44 @@ async def test_static_file_custom_content_type(
 
 
 @pytest.mark.parametrize(
+    "accept_encoding",
+    [
+        "gzip;q=0",
+        "gzip;q=0, deflate",
+        "identity",
+        # a token that merely contains "gzip" as a substring must not match
+        "x-gzip-not",
+    ],
+)
+async def test_static_file_respects_qvalue_zero(
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    accept_encoding: str,
+) -> None:
+    """A gzip sibling must not be sent to a client that refused gzip (q=0)."""
+    txt = tmp_path / "hello.txt"
+    txt.write_bytes(HELLO_AIOHTTP)
+    txt.with_suffix(f"{txt.suffix}.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(txt)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/", headers={"Accept-Encoding": accept_encoding}, auto_decompress=False
+    )
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert await resp.read() == HELLO_AIOHTTP
+    resp.close()
+    resp.release()
+    await client.close()
+
+
+@pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
     [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )

@@ -68,3 +68,4 @@ virtualenv.py
 
 # Claude Code per-checkout overrides
 CLAUDE.local.md
+.venv-test/
