@@ -1,0 +1,4 @@
+Added a new optional ``truststore`` extra (``pip install
+aiohttp[truststore]``). It pulls in the :pypi:`truststore` package,
+used for client SSL verification against the OS-native trust store
+when installed -- by :user:`ishan-1010`.

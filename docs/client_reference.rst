@@ -177,7 +177,7 @@ The client session supports the context manager protocol for self closing.
    :param ssl: Default SSL validation mode for requests made through this
       session. ``True`` for default SSL check
       (:func:`ssl.create_default_context` is used, or
-      ``truststore.SSLContext`` when :term:`truststore` is installed,
+      ``truststore.SSLContext`` when ``truststore`` is installed,
       see :class:`TCPConnector`'s *ssl* parameter),
       ``False`` for skip SSL certificate validation,
       :class:`aiohttp.Fingerprint` for fingerprint
@@ -527,7 +527,7 @@ The client session supports the context manager protocol for self closing.
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used, or
-                  ``truststore.SSLContext`` when :term:`truststore` is
+                  ``truststore.SSLContext`` when ``truststore`` is
                   installed, see :class:`TCPConnector`'s *ssl* parameter),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
@@ -792,7 +792,7 @@ The client session supports the context manager protocol for self closing.
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used, or
-                  ``truststore.SSLContext`` when :term:`truststore` is
+                  ``truststore.SSLContext`` when ``truststore`` is
                   installed, see :class:`TCPConnector`'s *ssl* parameter),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
@@ -1023,7 +1023,7 @@ certification chaining.
 
    :param ssl: SSL validation mode. ``True`` for default SSL check
                (:func:`ssl.create_default_context` is used, or
-               ``truststore.SSLContext`` when :term:`truststore` is
+               ``truststore.SSLContext`` when ``truststore`` is
                installed, see :class:`TCPConnector`'s *ssl* parameter),
                ``False`` for skip SSL certificate validation,
                :class:`aiohttp.Fingerprint` for fingerprint
@@ -1242,7 +1242,7 @@ is controlled by *force_close* constructor's parameter).
       :param ssl: SSL validation mode. ``True`` for default SSL check
                   (:func:`ssl.create_default_context` is used, or
                   ``truststore.SSLContext`` when the optional
-                  :term:`truststore` package is installed, see below),
+                  ``truststore`` package is installed, see below),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1253,10 +1253,11 @@ is controlled by *force_close* constructor's parameter).
 
          .. versionadded:: 3.0
 
-         .. versionchanged:: 4.0
+         .. versionchanged:: 3.15
 
-            When :term:`truststore` is installed (``pip install
-            aiohttp[truststore]``), the default SSL check verifies
+            When ``truststore`` is installed
+            (:command:`pip install aiohttp[truststore]`), the default
+            SSL check verifies
             against the OS-native trust store instead of the
             certifi-derived bundle stdlib :mod:`ssl` uses, matching
             certificate trust decisions made by other tools on the

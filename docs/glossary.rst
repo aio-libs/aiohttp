@@ -131,13 +131,6 @@
 
        A part of :term:`resource`, resource's *path* coupled with HTTP method.
 
-   truststore
-
-      A library that verifies certificates using the operating
-      system's native trust store instead of a bundled CA list.
-
-      https://pypi.org/project/truststore/
-
    web-handler
 
        An endpoint that returns HTTP response.

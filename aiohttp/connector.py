@@ -936,16 +936,17 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         # No ssl support
         return None  # type: ignore[unreachable]
     if verified:
-        if truststore is not None:
+        sslcontext: SSLContext
+        if truststore is None:
+            sslcontext = ssl.create_default_context()
+        else:
             # Verify against the OS-native trust store instead of the
             # certifi-derived bundle stdlib ssl ships with, so certs trusted
             # by the OS (e.g. a corporate MITM proxy's CA) work the same way
-            # they do for other tools on the same machine.
-            sslcontext = cast(
-                "SSLContext", truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-            )
-        else:
-            sslcontext = ssl.create_default_context()
+            # they do for other tools on the same machine. truststore.SSLContext
+            # is a real ssl.SSLContext subclass at runtime, no cast needed once
+            # mypy is told the declared type up front.
+            sslcontext = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     else:
         sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         sslcontext.options |= ssl.OP_NO_SSLv2

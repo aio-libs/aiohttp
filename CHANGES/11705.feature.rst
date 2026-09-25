@@ -1,1 +1,4 @@
-Client SSL verification now prefers the OS-native trust store via the optional ``truststore`` package when it is installed, falling back to stdlib :mod:`ssl` otherwise. Install with ``pip install aiohttp[truststore]`` -- by :user:`ishan-1010`.
+Client SSL verification now prefers the OS-native trust store via the
+optional :pypi:`truststore` package when it is installed, falling back
+to stdlib :mod:`ssl` otherwise. Install with ``pip install
+aiohttp[truststore]`` -- by :user:`ishan-1010`.

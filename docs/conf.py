@@ -185,7 +185,7 @@ highlight_language = "python3"
 # -- Extension configuration -------------------------------------------------
 
 # -- Options for extlinks extension ---------------------------------------
-# `:issue:`, `:pr:`, `:commit:` and `:user:` come from `sphinx-issues` below.
+# `:issue:`, `:pr:`, `:commit:`, `:user:` and `:pypi:` come from `sphinx-issues` below.
 extlinks = {
     "gh": (f"{github_url}/%s", "GitHub: %s"),
 }
