@@ -361,7 +361,13 @@ class ClientSession:
             )
 
         if connector is None:
-            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+            if sys.platform == "emscripten":
+                # WebAssembly has no sockets; requests go through fetch().
+                from .pyodide import FetchConnector
+
+                connector = FetchConnector()
+            else:
+                connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -709,6 +715,7 @@ class ClientSession:
                         proxy_headers=resolved_proxy_headers,
                         traces=traces,
                         trust_env=self.trust_env,
+                        allow_redirects=allow_redirects,
                     )
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware

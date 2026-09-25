@@ -66,6 +66,7 @@ Austin Scola
 Bai Haoran
 Ben Bader
 Ben Beasley
+Ben Dichter
 Ben Greiner
 Ben Kallus
 Ben Timby
@@ -172,6 +173,7 @@ Hans Adema
 Harmon Y.
 Harry Liu
 Hiroshi Ogawa
+Hood Chatham
 Hrishikesh Paranjape
 Hu Bo
 Hugh Young
