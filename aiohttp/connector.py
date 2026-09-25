@@ -62,7 +62,7 @@ except ImportError:
 
 truststore: ModuleType | None
 try:
-    import truststore
+    import truststore  # noqa: I900
 except ImportError:
     truststore = None
 
