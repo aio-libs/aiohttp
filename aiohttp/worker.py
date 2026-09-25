@@ -109,6 +109,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 runner,
                 sock,
                 ssl_context=ctx,
+                backlog=self.cfg.backlog,
             )
             await site.start()
 
