@@ -316,6 +316,14 @@ def test_range_non_ascii() -> None:
         req.http_range
 
 
+def test_range_zero_suffix_length_unsatisfiable() -> None:
+    # RFC 9110 §14.1.2: a suffix-length of 0 is unsatisfiable -- "-0" must
+    # not be treated the same as "0-" (the whole representation).
+    req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=-0")]))
+    with pytest.raises(ValueError, match="suffix-length must be > 0"):
+        req.http_range
+
+
 def test_range_to_slice_uppercase_unit() -> None:
     # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
     req = make_mocked_request(
