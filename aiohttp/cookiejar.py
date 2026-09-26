@@ -359,6 +359,15 @@ class CookieJar(AbstractCookieJar):
 
             domain = cookie["domain"]
 
+            # RFC 6265 §5.2.3: the user agent must lower-case the Domain
+            # attribute value before storing it. hostname (raw_host) is
+            # already lower-case, so without this a mixed-case Domain from
+            # the server (e.g. "Example.COM") would never domain-match and
+            # the cookie would be silently dropped below.
+            if domain:
+                domain = domain.lower()
+                cookie["domain"] = domain
+
             # ignore domains with trailing dots
             if domain and domain[-1] == ".":
                 domain = ""

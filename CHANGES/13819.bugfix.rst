@@ -1,0 +1,5 @@
+Fixed static file responses ignoring ``Accept-Encoding`` ``q=0`` and matching
+coding names by substring, ``Range: bytes=-0`` returning ``206`` with the
+whole file instead of ``416``, and cookie ``Domain`` attributes being
+compared case-sensitively so a mixed-case ``Domain`` from the server was
+silently dropped -- by :user:`not-ekalabya`.

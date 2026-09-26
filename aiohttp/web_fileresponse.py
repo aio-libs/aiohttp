@@ -49,6 +49,42 @@ ENCODING_EXTENSIONS = MappingProxyType(
     {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
 )
 
+
+def _parse_accept_encoding_qvalues(accept_encoding: str) -> dict[str, float]:
+    """Parse an Accept-Encoding header value into {coding: qvalue}.
+
+    Per RFC 9110 §12.5.3, each comma-separated member is a coding token
+    optionally followed by ``;q=<value>`` (default 1.0 when omitted). A
+    qvalue of 0 means the coding is explicitly not acceptable.
+    """
+    qvalues: dict[str, float] = {}
+    for part in accept_encoding.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        coding, _, params = part.partition(";")
+        coding = coding.strip().lower()
+        if not coding:
+            continue
+        qvalue = 1.0
+        for param in params.split(";"):
+            param = param.strip()
+            if param.startswith("q="):
+                with suppress(ValueError):
+                    qvalue = float(param[2:].strip())
+        # A later duplicate entry for the same coding overrides an earlier
+        # one, matching how most HTTP implementations handle this header.
+        qvalues[coding] = qvalue
+    return qvalues
+
+
+def _encoding_is_acceptable(file_encoding: str, qvalues: dict[str, float]) -> bool:
+    if file_encoding in qvalues:
+        return qvalues[file_encoding] > 0
+    # No entry for this exact coding: fall back to the wildcard, if any.
+    return qvalues.get("*", 0.0) > 0
+
+
 FALLBACK_CONTENT_TYPE = "application/octet-stream"
 
 # Provide additional MIME type/extension pairs to be recognized.
@@ -238,8 +274,9 @@ class FileResponse(StreamResponse):
         self, accept_encoding: str
     ) -> tuple[pathlib.Path | None, os.stat_result, str | None]:
         file_path = self._path
+        qvalues = _parse_accept_encoding_qvalues(accept_encoding)
         for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
-            if file_encoding not in accept_encoding:
+            if not _encoding_is_acceptable(file_encoding, qvalues):
                 continue
 
             compressed_path = file_path.with_suffix(file_path.suffix + file_extension)

@@ -16,7 +16,11 @@ import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
-from aiohttp.web_fileresponse import NOSENDFILE
+from aiohttp.web_fileresponse import (
+    NOSENDFILE,
+    _encoding_is_acceptable,
+    _parse_accept_encoding_qvalues,
+)
 
 try:
     import brotlicffi as brotli
@@ -397,6 +401,76 @@ async def test_static_file_custom_content_type(
     assert resp.headers.get("Content-Encoding") is None
     assert resp.headers["Content-Type"] == "application/pdf"
     assert await resp.read() == hello_txt.read_bytes()
+    resp.close()
+    resp.release()
+    await client.close()
+
+
+def test_parse_accept_encoding_qvalues() -> None:
+    # Basic cases: default qvalue, explicit qvalue, q=0 means unacceptable.
+    assert _parse_accept_encoding_qvalues("gzip") == {"gzip": 1.0}
+    assert _parse_accept_encoding_qvalues("gzip;q=0.5") == {"gzip": 0.5}
+    assert _parse_accept_encoding_qvalues("gzip;q=0") == {"gzip": 0.0}
+    # Empty segments (stray/trailing commas) are skipped, not an error.
+    assert _parse_accept_encoding_qvalues(",gzip,,identity,") == {
+        "gzip": 1.0,
+        "identity": 1.0,
+    }
+    # A segment with no coding name before ';' contributes nothing.
+    assert _parse_accept_encoding_qvalues(";q=0.5,gzip") == {"gzip": 1.0}
+    # An unparseable q-value is ignored, leaving the default of 1.0 rather
+    # than raising -- a malformed header shouldn't crash static serving.
+    assert _parse_accept_encoding_qvalues("gzip;q=not-a-number") == {"gzip": 1.0}
+    # A later duplicate entry overrides an earlier one.
+    assert _parse_accept_encoding_qvalues("gzip;q=0, gzip;q=1") == {"gzip": 1.0}
+
+
+def test_encoding_is_acceptable() -> None:
+    assert _encoding_is_acceptable("gzip", {"gzip": 1.0}) is True
+    assert _encoding_is_acceptable("gzip", {"gzip": 0.0}) is False
+    # No entry at all for this coding, and no wildcard: not acceptable.
+    assert _encoding_is_acceptable("gzip", {}) is False
+    assert _encoding_is_acceptable("gzip", {"br": 1.0}) is False
+    # Wildcard fallback.
+    assert _encoding_is_acceptable("gzip", {"*": 1.0}) is True
+    assert _encoding_is_acceptable("gzip", {"*": 0.0}) is False
+    # An explicit q=0 for this exact coding wins over an acceptable wildcard.
+    assert _encoding_is_acceptable("gzip", {"gzip": 0.0, "*": 1.0}) is False
+
+
+@pytest.mark.parametrize(
+    "accept_encoding",
+    [
+        "gzip;q=0",
+        "gzip;q=0, deflate",
+        "identity",
+        # a token that merely contains "gzip" as a substring must not match
+        "x-gzip-not",
+    ],
+)
+async def test_static_file_respects_qvalue_zero(
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    accept_encoding: str,
+) -> None:
+    """A gzip sibling must not be sent to a client that refused gzip (q=0)."""
+    txt = tmp_path / "hello.txt"
+    txt.write_bytes(HELLO_AIOHTTP)
+    txt.with_suffix(f"{txt.suffix}.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(txt)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/", headers={"Accept-Encoding": accept_encoding}, auto_decompress=False
+    )
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") is None
+    assert await resp.read() == HELLO_AIOHTTP
     resp.close()
     resp.release()
     await client.close()
