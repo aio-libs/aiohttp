@@ -300,18 +300,19 @@ Cookie Jar
 Cookie Safety
 ^^^^^^^^^^^^^
 
-By default :class:`~aiohttp.ClientSession` uses strict version of
-:class:`aiohttp.CookieJar`. :rfc:`2109` explicitly forbids cookie
-accepting from URLs with IP address instead of DNS name
-(e.g. ``http://127.0.0.1:80/cookie``).
+:class:`aiohttp.CookieJar` follows :rfc:`6265`, which allows cookies on an
+origin addressed by IP rather than by DNS name
+(e.g. ``http://127.0.0.1:80/cookie``). Such cookies are always *host-only*:
+an address has no domain hierarchy, so a ``Domain`` attribute is only accepted
+when it names that same address, and the cookie is never sent anywhere else.
+In particular ``http://a.1.2.3.4/`` is a suffix match for ``1.2.3.4`` but is a
+different origin, and neither host can set or read the other's cookies.
 
-It's good but sometimes for testing we need to enable support for such
-cookies. It should be done by passing ``unsafe=True`` to
-:class:`aiohttp.CookieJar` constructor::
+.. versionchanged:: 4.0
 
-
-   jar = aiohttp.CookieJar(unsafe=True)
-   session = aiohttp.ClientSession(cookie_jar=jar)
+   Such cookies used to be dropped unless the jar was constructed with
+   ``unsafe=True``; :rfc:`2109`, which forbade them, has been obsoleted by
+   :rfc:`6265`. ``unsafe`` is still accepted and no longer changes behaviour.
 
 
 .. _aiohttp-client-cookie-quoting-routine:
