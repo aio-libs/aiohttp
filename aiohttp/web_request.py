@@ -194,10 +194,14 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._cache: dict[str, Any] = {}
         url = message.url
         if url.absolute:
-            if scheme is None:
+            if scheme is None and url.scheme:
                 # Absolute URL is peer-controlled, use the protocol.
                 scheme = "https" if protocol.ssl_context else "http"
-            url = url.with_scheme(scheme)
+            if scheme is not None:
+                # Authority-form (CONNECT) has no scheme: leave the target
+                # unchanged unless clone(scheme=...) overrides it.
+                url = url.with_scheme(scheme)
+                self._cache["scheme"] = scheme
             if host is not None:
                 url = url.with_host(host)
             # absolute URL is given,
@@ -205,7 +209,6 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             # all other properties should be good
             self._cache["url"] = url
             self._cache["host"] = url.host
-            self._cache["scheme"] = scheme
             self._rel_url = url.relative()
         else:
             self._rel_url = url

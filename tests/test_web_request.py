@@ -15,18 +15,33 @@ from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import _FORWARDED_PAIR_RE
 
 
 @pytest.fixture
 def protocol() -> mock.Mock:
     return mock.Mock(_reading_paused=False)
+
+
+def make_base_request(
+    message: RawRequestMessage, protocol: RequestHandler[web.BaseRequest]
+) -> web.BaseRequest:
+    return web.BaseRequest(
+        message,
+        mock.create_autospec(StreamReader, spec_set=True, instance=True),
+        protocol,
+        mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.Task, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True),
+    )
 
 
 def test_base_ctor() -> None:
@@ -43,13 +58,11 @@ def test_base_ctor() -> None:
         URL("/path/to?a=1&b=2"),
     )
 
-    protocol = mock.Mock()
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
     protocol.ssl_context = None
     protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
-    req = web.BaseRequest(
-        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
-    )
+    req = make_base_request(message, protocol)
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
@@ -260,15 +273,43 @@ def test_connect_authority_form_raw_path() -> None:
         False,
         URL.build(authority="example.com:443", encoded=True),
     )
-    protocol = mock.Mock()
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
     protocol.ssl_context = None
     protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
-    req = web.BaseRequest(
-        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
-    )
+    req = make_base_request(message, protocol)
     assert req._message.url.absolute
     assert req.raw_path == "example.com:443"
+
+
+@pytest.mark.parametrize("secure", (False, True))
+def test_connect_authority_form_url_untouched(secure: bool) -> None:
+    # A CONNECT target has no scheme; the transport scheme must not be glued
+    # onto request.url (yarl would also elide a default port, e.g.
+    # "https://example.com:443" serializes without the ":443").
+    message = RawRequestMessage(
+        "CONNECT",
+        "example.com:443",
+        HttpVersion(1, 1),
+        HeadersDictProxy(CIMultiDict()),
+        (),
+        False,
+        None,
+        False,
+        False,
+        URL.build(authority="example.com:443", encoded=True),
+    )
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
+    protocol.ssl_context = ssl.create_default_context() if secure else None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 8080)
+    req = make_base_request(message, protocol)
+    assert str(req.url) == "//example.com:443"
+    assert req.url.scheme == ""
+    assert req.url.port == 443
+    assert req.host == "example.com"
+    assert req.scheme == ("https" if secure else "http")
+    assert req.secure is secure
 
 
 def test_clone_absolute_scheme() -> None:
