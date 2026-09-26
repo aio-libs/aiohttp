@@ -550,6 +550,15 @@ If your HTTP server uses UNIX domain sockets you can use
   conn = aiohttp.UnixConnector(path='/path/to/socket')
   session = aiohttp.ClientSession(connector=conn)
 
+Request URLs continue to work much the same as any other connector.
+The protocol is still HTTP, therefore the ``http://`` scheme should still be used.
+While the connector always routes to the socket, the domain/port in the URL is
+still used to create the ``Host`` header and must be included.
+For example::
+
+  async with session.get('http://localhost/get') as resp:
+      ...
+
 
 Custom socket creation
 ^^^^^^^^^^^^^^^^^^^^^^
