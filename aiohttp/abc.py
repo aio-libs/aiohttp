@@ -147,6 +147,18 @@ class AbstractResolver(ABC):
     async def close(self) -> None:
         """Release resolver"""
 
+    async def aclose(self) -> None:
+        """Release resolver.
+
+        The default implementation forwards to :meth:`close` so that
+        third-party resolvers only implementing the older abstract
+        method still work. Built-in resolvers override this directly
+        instead of going through :meth:`close`.
+
+        .. versionadded:: 4.0
+        """
+        await self.close()
+
 
 ClearCookiePredicate = Callable[[Morsel[str]], bool]
 

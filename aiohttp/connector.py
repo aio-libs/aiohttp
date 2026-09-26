@@ -1087,7 +1087,7 @@ class TCPConnector(BaseConnector):
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
         await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
         if self._resolver_owner:
-            await self._resolver.close()
+            await self._resolver.aclose()
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
         for fut in chain.from_iterable(self._throttle_dns_futures.values()):
