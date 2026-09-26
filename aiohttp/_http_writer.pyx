@@ -4,8 +4,14 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
 from cpython.object cimport PyObject_Str
 from libc.stdint cimport uint8_t, uint64_t
 from libc.string cimport memcpy
+from multidict cimport (
+    IStr_CheckExact,
+    MultiDict_CAPI,
+    MultiDict_Check,
+    MultiDict_ForEachAll,
+    MultiDict_GetCAPI,
+)
 
-from multidict cimport MultiDict_CAPI, MultiDict_GetCAPI, IStr_CheckExact, MultiDict_ForEachAll, MultiDict_Check
 
 cdef MultiDict_CAPI* MultiDictAPI = MultiDict_GetCAPI()
 
@@ -154,7 +160,7 @@ def _serialize_headers(str status_line, headers):
             raise
         if _write_byte(&writer, b'\n') < 0:
             raise
-        
+
         if MultiDict_Check(MultiDictAPI, headers):
             MultiDict_ForEachAll(MultiDictAPI, headers, _write_pair, <void*>&writer)
         else:
