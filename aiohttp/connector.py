@@ -12,7 +12,7 @@ from contextlib import suppress
 from http import HTTPStatus
 from itertools import chain, cycle, islice
 from time import monotonic
-from types import TracebackType
+from types import ModuleType, TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
 
 import aiohappyeyeballs
@@ -59,6 +59,12 @@ try:
     import aiofastnet
 except ImportError:
     aiofastnet = None  # type: ignore[assignment]
+
+truststore: ModuleType | None
+try:
+    import truststore  # noqa: I900
+except ImportError:
+    truststore = None
 
 
 if sys.version_info >= (3, 12):
@@ -930,7 +936,17 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         # No ssl support
         return None  # type: ignore[unreachable]
     if verified:
-        sslcontext = ssl.create_default_context()
+        sslcontext: SSLContext
+        if truststore is None:
+            sslcontext = ssl.create_default_context()
+        else:
+            # Verify against the OS-native trust store instead of the
+            # certifi-derived bundle stdlib ssl ships with, so certs trusted
+            # by the OS (e.g. a corporate MITM proxy's CA) work the same way
+            # they do for other tools on the same machine. truststore.SSLContext
+            # is a real ssl.SSLContext subclass at runtime, no cast needed once
+            # mypy is told the declared type up front.
+            sslcontext = truststore.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     else:
         sslcontext = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
         sslcontext.options |= ssl.OP_NO_SSLv2
