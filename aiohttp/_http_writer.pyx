@@ -131,15 +131,15 @@ cdef int _write_pair(object identity, Py_hash_t _hash, object key, object value,
     cdef Writer* writer = <Writer*>data
     if _write_str_raise_on_nlcr(writer, key) < 0:
         return -1
-    if _write_byte(&writer, b':') < 0:
+    if _write_byte(writer, b':') < 0:
         return -1
-    if _write_byte(&writer, b' ') < 0:
+    if _write_byte(writer, b' ') < 0:
         return -1
     if _write_str_raise_on_nlcr(writer, value) < 0:
         return -1
-    if _write_byte(&writer, b'\r') < 0:
+    if _write_byte(writer, b'\r') < 0:
         return -1
-    if _write_byte(&writer, b'\n') < 0:
+    if _write_byte(writer, b'\n') < 0:
         return -1
     return 0
 
