@@ -16,7 +16,11 @@ import aiohttp
 from aiohttp import web
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.typedefs import PathLike
-from aiohttp.web_fileresponse import NOSENDFILE
+from aiohttp.web_fileresponse import (
+    NOSENDFILE,
+    _encoding_is_acceptable,
+    _parse_accept_encoding_qvalues,
+)
 
 try:
     import brotlicffi as brotli
@@ -400,6 +404,38 @@ async def test_static_file_custom_content_type(
     resp.close()
     resp.release()
     await client.close()
+
+
+def test_parse_accept_encoding_qvalues() -> None:
+    # Basic cases: default qvalue, explicit qvalue, q=0 means unacceptable.
+    assert _parse_accept_encoding_qvalues("gzip") == {"gzip": 1.0}
+    assert _parse_accept_encoding_qvalues("gzip;q=0.5") == {"gzip": 0.5}
+    assert _parse_accept_encoding_qvalues("gzip;q=0") == {"gzip": 0.0}
+    # Empty segments (stray/trailing commas) are skipped, not an error.
+    assert _parse_accept_encoding_qvalues(",gzip,,identity,") == {
+        "gzip": 1.0,
+        "identity": 1.0,
+    }
+    # A segment with no coding name before ';' contributes nothing.
+    assert _parse_accept_encoding_qvalues(";q=0.5,gzip") == {"gzip": 1.0}
+    # An unparseable q-value is ignored, leaving the default of 1.0 rather
+    # than raising -- a malformed header shouldn't crash static serving.
+    assert _parse_accept_encoding_qvalues("gzip;q=not-a-number") == {"gzip": 1.0}
+    # A later duplicate entry overrides an earlier one.
+    assert _parse_accept_encoding_qvalues("gzip;q=0, gzip;q=1") == {"gzip": 1.0}
+
+
+def test_encoding_is_acceptable() -> None:
+    assert _encoding_is_acceptable("gzip", {"gzip": 1.0}) is True
+    assert _encoding_is_acceptable("gzip", {"gzip": 0.0}) is False
+    # No entry at all for this coding, and no wildcard: not acceptable.
+    assert _encoding_is_acceptable("gzip", {}) is False
+    assert _encoding_is_acceptable("gzip", {"br": 1.0}) is False
+    # Wildcard fallback.
+    assert _encoding_is_acceptable("gzip", {"*": 1.0}) is True
+    assert _encoding_is_acceptable("gzip", {"*": 0.0}) is False
+    # An explicit q=0 for this exact coding wins over an acceptable wildcard.
+    assert _encoding_is_acceptable("gzip", {"gzip": 0.0, "*": 1.0}) is False
 
 
 @pytest.mark.parametrize(
