@@ -1199,6 +1199,23 @@ def test_url_absolute_form_empty_host_rejected(
         parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
 
 
+def test_url_absolute_form_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    # yarl raises ValueError for an out-of-range port; that must surface as
+    # a 400, not escape the parser as a bare ValueError.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET http://example.com:65536/x HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT example.com:65536 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_empty_host_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT :80 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 def test_url_origin_form_bare_slash(parser: HttpRequestParser) -> None:
     messages, upgrade, tail = parser.feed_data(b"GET / HTTP/1.1\r\nHost: a\r\n\r\n")
     assert messages[0][0].url == URL("/")

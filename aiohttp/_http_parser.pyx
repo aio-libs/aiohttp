@@ -746,7 +746,16 @@ cdef class HttpRequestParser(HttpParser):
             if self._cparser.method == cparser.HTTP_CONNECT:
                 # authority-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-                self._url = URL.build(authority=self._path, encoded=True)
+                try:
+                    self._url = URL.build(authority=self._path, encoded=True)
+                    host = self._url.raw_host
+                except ValueError:
+                    host = None
+                if host is None:
+                    raise InvalidURLError(
+                        self._path.encode(errors="surrogateescape")
+                        .decode("latin1")
+                    )
             elif self._path[0] == '/':
                 # origin-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -784,9 +793,13 @@ cdef class HttpRequestParser(HttpParser):
             else:
                 # absolute-form for proxy maybe,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-                self._url = URL(self._path, encoded=True)
+                try:
+                    self._url = URL(self._path, encoded=True)
+                    host = self._url.raw_host
+                except ValueError:
+                    host = None
                 # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
-                if self._url.raw_host is None:
+                if host is None:
                     raise InvalidURLError(
                         self._path.encode(errors="surrogateescape")
                         .decode("latin1")

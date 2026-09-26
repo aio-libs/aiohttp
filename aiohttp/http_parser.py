@@ -685,7 +685,15 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if method == "CONNECT":
             # authority-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-            url = URL.build(authority=path, encoded=True)
+            try:
+                url = URL.build(authority=path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                host = None
+            if host is None:
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
         elif path.startswith("/"):
             # origin-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -708,9 +716,13 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-            url = URL(path, encoded=True)
+            try:
+                url = URL(path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                host = None
             # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
-            if url.raw_host is None:
+            if host is None:
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
                 )
