@@ -93,7 +93,7 @@ async def test_connect(  # type: ignore[misc]
             )
 
             conn.close()
-    await connector.close()
+    await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -154,7 +154,7 @@ async def test_proxy_headers(  # type: ignore[misc]
             )
 
             conn.close()
-    await connector.close()
+    await connector.aclose()
 
 
 @mock.patch(
@@ -184,7 +184,7 @@ async def test_proxy_dns_error(  # type: ignore[misc]
             await connector.connect(req, [], aiohttp.ClientTimeout())
         assert req.url.path == "/"
         assert dict(req.headers) == expected_headers
-    await connector.close()
+    await connector.aclose()
 
 
 @mock.patch(
@@ -220,7 +220,7 @@ async def test_proxy_connection_error(  # type: ignore[misc]
             )
             with pytest.raises(aiohttp.ClientProxyConnectionError):
                 await connector.connect(req, [], aiohttp.ClientTimeout())
-    await connector.close()
+    await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -306,7 +306,7 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
 
                         proxy_resp.close()
                         await req._close()
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -392,7 +392,7 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
 
                         proxy_resp.close()
                         await req._close()
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -592,7 +592,7 @@ async def test_https_connect(  # type: ignore[misc]
 
                         proxy_resp.close()
                         await req._close()
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -673,7 +673,7 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
                             await connector._create_connection(
                                 req, [], aiohttp.ClientTimeout()
                             )
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -754,7 +754,7 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
                             await connector._create_connection(
                                 req, [], aiohttp.ClientTimeout()
                             )
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -835,7 +835,7 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
 
                     proxy_resp.close()
                     await req._close()
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -910,7 +910,7 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
                         await connector._create_connection(
                             req, [], aiohttp.ClientTimeout()
                         )
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequest")
@@ -957,7 +957,7 @@ async def test_request_port(  # type: ignore[misc]
             )
             await connector._create_connection(req, [], aiohttp.ClientTimeout())
             assert req.url == URL("http://localhost:1234/path")
-    await connector.close()
+    await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -1052,7 +1052,7 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
 
                         proxy_resp.close()
                         await req._close()
-            await connector.close()
+            await connector.aclose()
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")
@@ -1149,4 +1149,4 @@ async def test_https_auth(  # type: ignore[misc]
 
                         proxy_resp.close()
                         await req._close()
-            await connector.close()
+            await connector.aclose()

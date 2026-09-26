@@ -1160,10 +1160,22 @@ is controlled by *force_close* constructor's parameter).
 
       Read-only property.
 
-   .. method:: close()
+   .. method:: aclose()
       :async:
 
       Close all opened connections.
+
+      .. versionadded:: 4.0
+
+   .. method:: close()
+      :async:
+
+      Alias for :meth:`aclose`.
+
+      .. deprecated:: 4.0
+
+         Use :meth:`aclose` instead. ``close()`` will be removed in
+         aiohttp 5.0.
 
    .. method:: connect(request)
       :async:

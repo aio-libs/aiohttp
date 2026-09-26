@@ -798,7 +798,7 @@ async def test_client_middleware_exception_closes_connection(
     # If connections were properly closed, _conns should be empty
     assert len(connector._conns) == 0
 
-    await connector.close()
+    await connector.aclose()
 
 
 async def test_client_middleware_blocks_connection_before_established(
@@ -864,7 +864,7 @@ async def test_client_middleware_blocks_connection_before_established(
     # Check that no connections were leaked
     assert len(connector._conns) == 0
 
-    await connector.close()
+    await connector.aclose()
 
 
 async def test_client_middleware_blocks_connection_without_dns_lookup(
@@ -927,7 +927,7 @@ async def test_client_middleware_blocks_connection_without_dns_lookup(
         assert "blocked.domain.tld" not in dns_lookups_made
 
     # Clean up
-    await connector.close()
+    await connector.aclose()
 
 
 async def test_client_middleware_retry_reuses_connection(
@@ -991,7 +991,7 @@ async def test_client_middleware_retry_reuses_connection(
     # Should have created only 1 connection (reused on retry)
     assert connector.connection_attempts == 1
 
-    await connector.close()
+    await connector.aclose()
 
 
 async def test_middleware_uses_session_avoids_recursion_with_path_check(

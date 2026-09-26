@@ -431,7 +431,7 @@ class BaseConnector:
         exc_value: BaseException | None = None,
         exc_traceback: TracebackType | None = None,
     ) -> None:
-        await self.close()
+        await self.aclose()
 
     @property
     def force_close(self) -> bool:
@@ -518,7 +518,7 @@ class BaseConnector:
                 timeout_ceil_threshold=self._timeout_ceil_threshold,
             )
 
-    async def close(self, *, abort_ssl: bool = False) -> None:
+    async def aclose(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports.
 
         :param abort_ssl: If True, SSL connections will be aborted immediately
@@ -532,6 +532,20 @@ class BaseConnector:
                 if isinstance(res, Exception):
                     err_msg = "Error while closing connector: " + repr(res)
                     client_logger.debug(err_msg)
+
+    async def close(self, *, abort_ssl: bool = False) -> None:
+        """Close all opened transports.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose(abort_ssl=abort_ssl)
 
     def _close_immediately(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
         waiters: list[Awaitable[object]] = []
@@ -1075,7 +1089,7 @@ class TCPConnector(BaseConnector):
                 )
             self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
-    async def close(self, *, abort_ssl: bool = False) -> None:
+    async def aclose(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports.
 
         :param abort_ssl: If True, SSL connections will be aborted immediately
@@ -1085,7 +1099,7 @@ class TCPConnector(BaseConnector):
                          - If ssl_shutdown_timeout>0: graceful shutdown is performed
         """
         # Use abort_ssl param if explicitly set, otherwise use ssl_shutdown_timeout default
-        await super().close(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
+        await super().aclose(abort_ssl=abort_ssl or self._ssl_shutdown_timeout == 0)
         if self._resolver_owner:
             await self._resolver.close()
 

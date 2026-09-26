@@ -158,7 +158,7 @@ async def test_secure_https_proxy_absolute_path(
         assert await response.text() == web_server_endpoint_payload
 
     await sess.close()
-    await conn.close()
+    await conn.aclose()
     await asyncio.sleep(0.1)
 
 
@@ -234,7 +234,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
 
     await sess.close()
-    await conn.close()
+    await conn.aclose()
 
     await asyncio.sleep(0.1)
 
@@ -284,7 +284,7 @@ async def test_uvloop_secure_https_proxy(
                 assert await response.text() == payload
     finally:
         await sess.close()
-        await conn.close()
+        await conn.aclose()
         await server.close()
         await asyncio.sleep(0)
         await asyncio.sleep(0.1)
@@ -486,7 +486,7 @@ async def test_proxy_http_acquired_cleanup(
     assert 0 == len(conn._acquired)
 
     await sess.close()
-    await conn.close()
+    await conn.aclose()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -510,7 +510,7 @@ async def test_proxy_http_acquired_cleanup_force(
     assert 0 == len(conn._acquired)
 
     await sess.close()
-    await conn.close()
+    await conn.aclose()
 
 
 @pytest.mark.skip("we need to reconsider how we test this")
@@ -544,7 +544,7 @@ async def test_proxy_http_multi_conn_limit(
     assert {resp.status for resp in responses} == {200}
 
     await sess.close()
-    await conn.close()
+    await conn.aclose()
 
 
 @pytest.mark.xfail
@@ -715,7 +715,7 @@ async def test_proxy_https_acquired_cleanup(
         assert 0 == len(conn._acquired)
     finally:
         await sess.close()
-        await conn.close()
+        await conn.aclose()
 
 
 @pytest.mark.xfail
@@ -740,7 +740,7 @@ async def test_proxy_https_acquired_cleanup_force(
         assert 0 == len(conn._acquired)
     finally:
         await sess.close()
-        await conn.close()
+        await conn.aclose()
 
 
 @pytest.mark.xfail
@@ -777,7 +777,7 @@ async def test_proxy_https_multi_conn_limit(
         assert {resp.status for resp in actual_responses} == {200}
     finally:
         await sess.close()
-        await conn.close()
+        await conn.aclose()
 
 
 def _patch_ssl_transport(monkeypatch: pytest.MonkeyPatch) -> None:
