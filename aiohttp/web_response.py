@@ -694,7 +694,7 @@ class Response(StreamResponse):
             try:
                 await self._body.write(self._payload_writer)
             finally:
-                await self._body.close()
+                await self._body.aclose()
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))

@@ -1992,7 +1992,7 @@ async def test_update_body_closes_previous_payload(
     await req.update_body(b"new body data")
 
     # Verify the previous payload was closed
-    mock_payload.close.assert_called_once()
+    mock_payload.aclose.assert_called_once()
 
     # Verify new body is set (it's a BytesPayload now)
     assert isinstance(req.body, payload.BytesPayload)

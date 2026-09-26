@@ -331,10 +331,20 @@ class Payload(ABC):
         IMPORTANT: This method must not await anything that might not finish
         immediately, as it may be called during cleanup/cancellation. Schedule
         any long-running operations without awaiting them.
-
-        In the future, this will be the only close method supported.
         """
         self._close()
+
+    async def aclose(self) -> None:
+        """
+        Close the payload if it holds any resources.
+
+        The default implementation forwards to :meth:`close`, so a
+        subclass that only overrides :meth:`close` keeps working
+        correctly through this method with no changes needed.
+
+        .. versionadded:: 4.0
+        """
+        await self.close()
 
 
 class BytesPayload(Payload):
@@ -684,15 +694,32 @@ class IOBasePayload(Payload):
         _CLOSE_FUTURES.add(close_future)
         close_future.add_done_callback(_CLOSE_FUTURES.remove)
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         """
         Close the payload if it holds any resources.
 
         IMPORTANT: This method must not await anything that might not finish
         immediately, as it may be called during cleanup/cancellation. Schedule
         any long-running operations without awaiting them.
+
+        .. versionadded:: 4.0
         """
         self._close()
+
+    async def close(self) -> None:
+        """
+        Close the payload if it holds any resources.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose()
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         """
@@ -914,12 +941,29 @@ class BytesIOPayload(IOBasePayload):
         self._set_or_restore_start_position()
         return self._value.read()
 
-    async def close(self) -> None:
+    async def aclose(self) -> None:
         """
         Close the BytesIO payload.
 
         This does nothing since BytesIO is in-memory and does not require explicit closing.
+
+        .. versionadded:: 4.0
         """
+
+    async def close(self) -> None:
+        """
+        Close the BytesIO payload.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        await self.aclose()
 
 
 class BufferedReaderPayload(IOBasePayload):
