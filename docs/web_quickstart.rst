@@ -619,10 +619,10 @@ with the peer::
 
         async for msg in ws:
             # ws.__next__() automatically terminates the loop
-            # after ws.close() or ws.exception() is called
+            # after ws.aclose() or ws.exception() is called
             if msg.type == aiohttp.WSMsgType.TEXT:
                 if msg.data == 'close':
-                    await ws.close()
+                    await ws.aclose()
                 else:
                     await ws.send_str(msg.data + '/answer')
             elif msg.type == aiohttp.WSMsgType.ERROR:

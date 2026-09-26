@@ -1316,13 +1316,13 @@ and :ref:`aiohttp-web-signals` handlers::
 
       .. versionadded:: 3.11
 
-   .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
+   .. method:: aclose(*, code=WSCloseCode.OK, message=b'', drain=True)
       :async:
 
       A :ref:`coroutine<coroutine>` that initiates closing
       handshake by sending :const:`~aiohttp.WSMsgType.CLOSE` message.
 
-      It is safe to call `close()` from different task.
+      It is safe to call `aclose()` from different task.
 
       :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
@@ -1333,6 +1333,18 @@ and :ref:`aiohttp-web-signals` handlers::
       :param bool drain: drain outgoing buffer before closing connection.
 
       :raise RuntimeError: if connection is not started
+
+      .. versionadded:: 4.0
+
+   .. method:: close(*, code=WSCloseCode.OK, message=b'', drain=True)
+      :async:
+
+      Alias for :meth:`aclose`.
+
+      .. deprecated:: 4.0
+
+         Use :meth:`aclose` instead. ``close()`` will be removed in
+         aiohttp 5.0.
 
    .. method:: receive(timeout=None)
       :async:

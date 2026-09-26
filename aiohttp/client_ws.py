@@ -2,6 +2,7 @@
 
 import asyncio
 import sys
+import warnings
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable
 from types import TracebackType
@@ -328,7 +329,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         """
         await self.send_bytes(dumps(data), compress=compress)
 
-    async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
+    async def aclose(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
         # we need to break `receive()` cycle first,
         # `close()` may be called from different task
         if self._waiting and not self._closing:
@@ -382,6 +383,20 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
             # parser and the stash it retains.
             self._parser = None
 
+    async def close(self, *, code: int = WSCloseCode.OK, message: bytes = b"") -> bool:
+        """Close the websocket connection.
+
+        .. deprecated:: 4.0
+
+            Use :meth:`aclose` instead.
+        """
+        warnings.warn(
+            "close() is deprecated and will be removed in aiohttp 5.0, use aclose() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return await self.aclose(code=code, message=message)
+
     @overload
     async def receive(
         self: "ClientWebSocketResponse[Literal[True]]", timeout: float | None = None
@@ -409,7 +424,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
             if self._closed:
                 return WS_CLOSED_MESSAGE
             elif self._closing:
-                await self.close()
+                await self.aclose()
                 return WS_CLOSED_MESSAGE
 
             try:
@@ -433,7 +448,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK
-                await self.close()
+                await self.aclose()
                 return WS_CLOSED_MESSAGE
             except ClientError:
                 # Likely ServerDisconnectedError when connection is lost.
@@ -445,13 +460,13 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 return WS_CLOSED_MESSAGE
             except WebSocketError as exc:
                 self._close_code = exc.code
-                await self.close(code=exc.code)
+                await self.aclose(code=exc.code)
                 return WSMessageError(data=exc)
             except Exception as exc:
                 self._exception = exc
                 self._set_closing()
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
-                await self.close()
+                await self.aclose()
                 return WSMessageError(data=exc)
 
             if msg.type not in _INTERNAL_RECEIVE_TYPES:
@@ -464,7 +479,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                 self._close_code = msg.data
                 # Could be closed elsewhere while awaiting reader
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
-                    await self.close()
+                    await self.aclose()
             elif msg.type is WSMsgType.CLOSING:
                 self._set_closing()
             elif msg.type is WSMsgType.PING and self._autoping:
@@ -576,4 +591,4 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
     ) -> None:
-        await self.close()
+        await self.aclose()

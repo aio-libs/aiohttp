@@ -1915,18 +1915,30 @@ manually.
 
       .. versionadded:: 3.11
 
-   .. method:: close(*, code=WSCloseCode.OK, message=b'')
+   .. method:: aclose(*, code=WSCloseCode.OK, message=b'')
       :async:
 
       A :ref:`coroutine<coroutine>` that initiates closing handshake by sending
       :const:`~aiohttp.WSMsgType.CLOSE` message. It waits for
-      close response from server. To add a timeout to `close()` call
+      close response from server. To add a timeout to `aclose()` call
       just wrap the call with `asyncio.wait()` or `asyncio.wait_for()`.
 
       :param int code: closing code. See also :class:`~aiohttp.WSCloseCode`.
 
       :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
+
+      .. versionadded:: 4.0
+
+   .. method:: close(*, code=WSCloseCode.OK, message=b'')
+      :async:
+
+      Alias for :meth:`aclose`.
+
+      .. deprecated:: 4.0
+
+         Use :meth:`aclose` instead. ``close()`` will be removed in
+         aiohttp 5.0.
 
    .. method:: receive()
       :async:

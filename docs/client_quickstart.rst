@@ -404,7 +404,7 @@ methods::
        async for msg in ws:
            if msg.type == aiohttp.WSMsgType.TEXT:
                if msg.data == 'close cmd':
-                   await ws.close()
+                   await ws.aclose()
                    break
                else:
                    await ws.send_str(msg.data + '/answer')

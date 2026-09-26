@@ -26,7 +26,7 @@ async def start_client(url: str) -> None:
                 print("Pong received")
             else:
                 if msg.type is aiohttp.WSMsgType.CLOSE:
-                    await ws.close()
+                    await ws.aclose()
                 elif msg.type is aiohttp.WSMsgType.ERROR:
                     print("Error during receive %s" % ws.exception())
                 elif msg.type is aiohttp.WSMsgType.CLOSED:
