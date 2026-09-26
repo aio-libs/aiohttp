@@ -214,10 +214,26 @@ def test_non_ascii_raw_path() -> None:
 
 def test_absolute_url() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.url == URL("https://example.com/path/to?a=1")
-    assert req.scheme == "https"
+    assert req.url == URL("http://example.com/path/to?a=1")
+    # The scheme of an absolute-form target is peer-controlled and must not
+    # override the transport-derived scheme.
+    assert req.scheme == "http"
+    assert not req.secure
     assert req.host == "example.com"
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
+
+
+def test_absolute_url_with_tls_transport() -> None:
+    sslcontext = ssl.create_default_context()
+    req = make_mocked_request(
+        "GET", "http://example.com/path/to?a=1", sslcontext=sslcontext
+    )
+    assert req.url == URL("https://example.com/path/to?a=1")
+    # Over a TLS transport the effective scheme is https even when the
+    # absolute-form target claims plain http.
+    assert req.scheme == "https"
+    assert req.secure
+    assert req.host == "example.com"
 
 
 def test_absolute_form_raw_path() -> None:
@@ -257,10 +273,13 @@ def test_connect_authority_form_raw_path() -> None:
 
 def test_clone_absolute_scheme() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.scheme == "https"
-    req2 = req.clone(scheme="http")
-    assert req2.scheme == "http"
-    assert req2.url.scheme == "http"
+    assert req.scheme == "http"
+    req2 = req.clone(scheme="https")
+    assert req2.scheme == "https"
+    assert req2.url.scheme == "https"
+    req3 = req2.clone(scheme="http")
+    assert req3.scheme == "http"
+    assert req3.url.scheme == "http"
 
 
 def test_clone_absolute_host() -> None:
