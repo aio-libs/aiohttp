@@ -689,7 +689,10 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
                 url = URL.build(authority=path, encoded=True)
                 host = url.raw_host
             except ValueError:
-                host = None
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
             if host is None:
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
