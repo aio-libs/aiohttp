@@ -550,19 +550,14 @@ If your HTTP server uses UNIX domain sockets you can use
   conn = aiohttp.UnixConnector(path='/path/to/socket')
   session = aiohttp.ClientSession(connector=conn)
 
-Request URLs still need an explicit host. The host and port are ignored by the
-connector, but aiohttp's URL parser requires them. For example::
+Request URLs continue to work much the same as any other connector.
+The protocol is still HTTP, therefore the ``http://`` scheme should still be used.
+While the connector always routes to the socket, the domain/port in the URL is
+still used to create the ``Host`` header and must be included.
+For example::
 
   async with session.get('http://localhost/get') as resp:
       ...
-
-Relative paths such as ``get`` or ``/get`` raise
-:exc:`~aiohttp.InvalidUrlClientError`. Forms like ``//localhost/get`` and
-``unix://localhost/get`` also work.
-
-When creating a :class:`~aiohttp.ClientSession` with ``base_url``, prefer an
-HTTP form such as ``http://localhost`` (rather than ``unix://localhost``),
-then pass a relative path like ``/get``.
 
 
 Custom socket creation
