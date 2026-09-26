@@ -157,7 +157,7 @@ async def test_secure_https_proxy_absolute_path(
         assert response.status == 200
         assert await response.text() == web_server_endpoint_payload
 
-    await sess.close()
+    await sess.aclose()
     await conn.close()
     await asyncio.sleep(0.1)
 
@@ -233,7 +233,7 @@ async def test_https_proxy_unsupported_tls_in_tls(
     assert isinstance(conn_err.value.__cause__, TypeError)
     assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
 
-    await sess.close()
+    await sess.aclose()
     await conn.close()
 
     await asyncio.sleep(0.1)
@@ -283,7 +283,7 @@ async def test_uvloop_secure_https_proxy(
                 assert response.status == 200
                 assert await response.text() == payload
     finally:
-        await sess.close()
+        await sess.aclose()
         await conn.close()
         await server.close()
         await asyncio.sleep(0)
@@ -485,7 +485,7 @@ async def test_proxy_http_acquired_cleanup(
 
     assert 0 == len(conn._acquired)
 
-    await sess.close()
+    await sess.aclose()
     await conn.close()
 
 
@@ -509,7 +509,7 @@ async def test_proxy_http_acquired_cleanup_force(
 
     assert 0 == len(conn._acquired)
 
-    await sess.close()
+    await sess.aclose()
     await conn.close()
 
 
@@ -543,7 +543,7 @@ async def test_proxy_http_multi_conn_limit(
     assert len(responses) == multi_conn_num
     assert {resp.status for resp in responses} == {200}
 
-    await sess.close()
+    await sess.aclose()
     await conn.close()
 
 
@@ -598,7 +598,7 @@ async def test_proxy_https_send_body(
 
         assert body == b"1" * (2**20)
     finally:
-        await sess.close()
+        await sess.aclose()
 
 
 @pytest.mark.xfail
@@ -714,7 +714,7 @@ async def test_proxy_https_acquired_cleanup(
 
         assert 0 == len(conn._acquired)
     finally:
-        await sess.close()
+        await sess.aclose()
         await conn.close()
 
 
@@ -739,7 +739,7 @@ async def test_proxy_https_acquired_cleanup_force(
 
         assert 0 == len(conn._acquired)
     finally:
-        await sess.close()
+        await sess.aclose()
         await conn.close()
 
 
@@ -776,7 +776,7 @@ async def test_proxy_https_multi_conn_limit(
         assert len(actual_responses) == multi_conn_num
         assert {resp.status for resp in actual_responses} == {200}
     finally:
-        await sess.close()
+        await sess.aclose()
         await conn.close()
 
 
@@ -1057,4 +1057,4 @@ async def test_https_proxy_connect_tunnel_session_close_no_hang(
 
     finally:
         # Clean close
-        await session.close()
+        await session.aclose()

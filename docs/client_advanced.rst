@@ -814,7 +814,7 @@ as it results in more compact code::
     async def persistent_session(app):
        app[persistent_session] = session = aiohttp.ClientSession()
        yield
-       await session.close()
+       await session.aclose()
 
     async def my_request_handler(request):
        sess = request.app[session]

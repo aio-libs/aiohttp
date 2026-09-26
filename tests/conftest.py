@@ -506,7 +506,7 @@ async def make_client_request() -> AsyncIterator[_RequestMaker]:
 
     await asyncio.gather(
         *(request._close() for request in requests),
-        *(session.close() for session in sessions),
+        *(session.aclose() for session in sessions),
     )
 
 

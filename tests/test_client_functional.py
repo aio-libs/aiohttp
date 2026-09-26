@@ -908,7 +908,7 @@ async def test_format_task_get(aiohttp_server: AiohttpServer) -> None:
     assert f"{task}".startswith("<Task pending")
     resp = await task
     resp.close()
-    await client.close()
+    await client.aclose()
 
 
 async def test_str_params(aiohttp_client: AiohttpClient) -> None:
@@ -3741,7 +3741,7 @@ async def test_async_with_session() -> None:
 
 async def test_session_close_awaitable() -> None:
     session = aiohttp.ClientSession()
-    await session.close()
+    await session.aclose()
 
     assert session.closed
 

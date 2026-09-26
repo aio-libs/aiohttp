@@ -4068,7 +4068,7 @@ async def test_tcp_connector_raise_connector_ssl_error(
     assert isinstance(ctx.value, aiohttp.ClientConnectorCertificateError)
     assert isinstance(ctx.value.certificate_error, ssl.SSLError)
 
-    await session.close()
+    await session.aclose()
 
     await conn.close()
 
@@ -4140,7 +4140,7 @@ async def test_tcp_connector_do_not_raise_connector_ssl_error(
         assert _sslcontext is client_ssl_ctx
         r.close()
 
-        await session.close()
+        await session.aclose()
         await conn.close()
 
 
@@ -4168,7 +4168,7 @@ async def test_tcp_connector_uses_provided_local_addr(
     sockname = first_conn.transport.get_extra_info("sockname")
     assert sockname == ("127.0.0.1", port)
     r.close()
-    await session.close()
+    await session.aclose()
     await conn.close()
 
 
@@ -4199,7 +4199,7 @@ async def test_unix_connector(
     r = await session.get(url)
     assert r.status == 200
     r.close()
-    await session.close()
+    await session.aclose()
 
 
 @pytest.mark.skipif(
@@ -4234,7 +4234,7 @@ async def test_named_pipe_connector(
     r = await session.get(url)
     assert r.status == 200
     r.close()
-    await session.close()
+    await session.aclose()
 
 
 class TestDNSCacheTable:

@@ -81,13 +81,13 @@ endpoints of ``http://httpbin.org`` can be used the following code::
    in :ref:`aiohttp-persistent-session`.
 
 A session context manager usage is not mandatory
-but ``await session.close()`` method
+but ``await session.aclose()`` method
 should be called in this case, e.g.::
 
     session = aiohttp.ClientSession()
     async with session.get('...'):
         # ...
-    await session.close()
+    await session.aclose()
 
 
 Passing Parameters In URLs

@@ -1,6 +1,7 @@
 aarch
 abc
 ABI
+aclose
 addons
 aiodns
 aioes
@@ -81,6 +82,7 @@ codebase
 codec
 codspeed
 Codings
+compat
 committer
 committers
 Conda

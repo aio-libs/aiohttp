@@ -871,12 +871,24 @@ The client session supports the context manager protocol for self closing.
          .. versionadded:: 3.14
 
 
-   .. method:: close()
+   .. method:: aclose()
       :async:
 
       Close underlying connector.
 
       Release all acquired resources.
+
+      .. versionadded:: 4.0
+
+   .. method:: close()
+      :async:
+
+      Alias for :meth:`aclose`.
+
+      .. deprecated:: 4.0
+
+         Use :meth:`aclose` instead. ``close()`` will be removed in
+         aiohttp 5.0.
 
    .. method:: detach()
 
