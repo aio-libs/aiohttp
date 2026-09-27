@@ -1181,6 +1181,59 @@ def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
         parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
 
 
+@pytest.mark.parametrize(
+    "target",
+    (
+        b"https:///protected",
+        b"https:////protected",
+        b"https://:80/protected",
+        b"https://user@/protected",
+    ),
+    ids=("empty-host", "empty-host-extra-slash", "port-only", "userinfo-only"),
+)
+def test_url_absolute_form_empty_host_rejected(
+    parser: HttpRequestParser, target: bytes
+) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.2-4
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_absolute_form_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    # yarl raises ValueError for an out-of-range port; that must surface as
+    # a 400, not escape the parser as a bare ValueError.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET http://example.com:65536/x HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT example.com:65536 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_empty_host_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT :80 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_origin_form_bare_slash(parser: HttpRequestParser) -> None:
+    messages, upgrade, tail = parser.feed_data(b"GET / HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("/")
+
+
+def test_url_asterisk_form_options(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2.4
+    messages, upgrade, tail = parser.feed_data(b"OPTIONS * HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("*")
+
+
+def test_url_asterisk_form_only_options(parser: HttpRequestParser) -> None:
+    # asterisk-form is only valid for OPTIONS; for other methods "*" is
+    # neither origin-form nor a valid absolute-form target.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET * HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
 def test_headers_old_websocket_key1(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nSEC-WEBSOCKET-KEY1: line\r\n\r\n"
 
@@ -2502,6 +2555,31 @@ def test_http_request_chunked_payload_and_next_message(
     assert msg2.method == "POST"
     assert msg2.chunked
     assert not payload2.is_eof()
+
+
+def test_http_request_parser_head_with_content_length_payload(
+    parser: HttpRequestParser,
+) -> None:
+    smuggled = b"GET /smuggled HTTP/1.1\r\nHost: a\r\n\r\n"
+    text = (
+        b"HEAD /test HTTP/1.1\r\nHost: a\r\nContent-Length: %d\r\n\r\n" % len(smuggled)
+        + smuggled
+        + b"POST /next HTTP/1.1\r\nHost: a\r\nContent-Length: 0\r\n\r\n"
+    )
+    messages, upgraded, tail = parser.feed_data(text)
+
+    assert len(messages) == 2
+    msg, payload = messages[0]
+    assert msg.method == "HEAD"
+    assert b"".join(payload._buffer) == smuggled
+    assert payload.is_eof()
+
+    msg2, payload2 = messages[1]
+    assert msg2.method == "POST"
+    assert msg2.path == "/next"
+    assert payload2.is_eof()
+    assert not upgraded
+    assert not tail
 
 
 def test_http_request_chunked_payload_chunks(parser: HttpRequestParser) -> None:

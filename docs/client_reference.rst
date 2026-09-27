@@ -55,7 +55,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
-                         read_bufsize=2**16, \
+                         read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
                          max_headers=128, \
@@ -230,7 +230,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            256 KiB by default. On a WebSocket connection it
+                            also bounds what is buffered between the handshake
+                            and the reader being installed.
 
       .. versionadded:: 3.7
 
@@ -478,6 +480,8 @@ The client session supports the context manager protocol for self closing.
 
       :param int max_redirects: Maximum number of redirects to follow.
          :exc:`TooManyRedirects` is raised if the number is exceeded.
+         ``0`` means no limit, redirects are followed until the request
+         times out. Use ``allow_redirects=False`` to not follow redirects at all.
          Ignored when ``allow_redirects=False``.
          ``10`` by default.
 
@@ -970,6 +974,8 @@ certification chaining.
 
    :param int max_redirects: Maximum number of redirects to follow.
       :exc:`TooManyRedirects` is raised if the number is exceeded.
+      ``0`` means no limit, redirects are followed until the request
+      times out. Use ``allow_redirects=False`` to not follow redirects at all.
       Ignored when ``allow_redirects=False``.
       ``10`` by default.
 
@@ -1225,8 +1231,8 @@ is controlled by *force_close* constructor's parameter).
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-      :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
+      :param ssl: **(DEPRECATED)** SSL validation mode. ``True`` for default
+                  SSL check (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1236,6 +1242,12 @@ is controlled by *force_close* constructor's parameter).
                   *fingerprint* parameters.
 
          .. versionadded:: 3.0
+
+         .. deprecated:: 4.0
+
+            Scheduled for removal in 5.0. Pass *ssl* to
+            :class:`ClientSession` for a session-wide default, or to
+            :meth:`ClientSession.get` and others per request.
 
    :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
@@ -2552,10 +2564,16 @@ Utilities
 
    .. attribute:: host_only_cookies
 
-      A :class:`frozenset` of ``(domain, name)`` tuples indicating which
-      cookies are host-only (not sent to subdomains).
+      A :class:`frozenset` of ``(domain, path, name)`` tuples indicating
+      which cookies are host-only (not sent to subdomains).
 
       .. versionadded:: 3.14
+
+      .. versionchanged:: 3.14.4
+
+         The tuples gained the *path* element; host-only state is tracked
+         per ``(domain, path, name)`` cookie identity so that same-named
+         cookies on other paths cannot affect it.
 
 
 .. class:: DummyCookieJar(*, loop=None)

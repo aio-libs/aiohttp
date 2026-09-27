@@ -1,0 +1,1 @@
+Documented that ``max_redirects=0`` means no limit and that ``allow_redirects=False`` disables redirects -- by :user:`monasco`.

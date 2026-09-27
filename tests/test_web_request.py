@@ -15,18 +15,33 @@ from pytest_aiohttp import AiohttpClient
 from yarl import URL
 
 from aiohttp import ETag, HttpVersion, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
+from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import _FORWARDED_PAIR_RE
 
 
 @pytest.fixture
 def protocol() -> mock.Mock:
     return mock.Mock(_reading_paused=False)
+
+
+def make_base_request(
+    message: RawRequestMessage, protocol: RequestHandler[web.BaseRequest]
+) -> web.BaseRequest:
+    return web.BaseRequest(
+        message,
+        mock.create_autospec(StreamReader, spec_set=True, instance=True),
+        protocol,
+        mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.Task, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True),
+    )
 
 
 def test_base_ctor() -> None:
@@ -43,13 +58,11 @@ def test_base_ctor() -> None:
         URL("/path/to?a=1&b=2"),
     )
 
-    protocol = mock.Mock()
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
     protocol.ssl_context = None
     protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
-    req = web.BaseRequest(
-        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
-    )
+    req = make_base_request(message, protocol)
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
@@ -214,10 +227,26 @@ def test_non_ascii_raw_path() -> None:
 
 def test_absolute_url() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.url == URL("https://example.com/path/to?a=1")
-    assert req.scheme == "https"
+    assert req.url == URL("http://example.com/path/to?a=1")
+    # The scheme of an absolute-form target is peer-controlled and must not
+    # override the transport-derived scheme.
+    assert req.scheme == "http"
+    assert not req.secure
     assert req.host == "example.com"
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
+
+
+def test_absolute_url_with_tls_transport() -> None:
+    sslcontext = ssl.create_default_context()
+    req = make_mocked_request(
+        "GET", "http://example.com/path/to?a=1", sslcontext=sslcontext
+    )
+    assert req.url == URL("https://example.com/path/to?a=1")
+    # Over a TLS transport the effective scheme is https even when the
+    # absolute-form target claims plain http.
+    assert req.scheme == "https"
+    assert req.secure
+    assert req.host == "example.com"
 
 
 def test_absolute_form_raw_path() -> None:
@@ -244,23 +273,54 @@ def test_connect_authority_form_raw_path() -> None:
         False,
         URL.build(authority="example.com:443", encoded=True),
     )
-    protocol = mock.Mock()
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
     protocol.ssl_context = None
     protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
-    req = web.BaseRequest(
-        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
-    )
+    req = make_base_request(message, protocol)
     assert req._message.url.absolute
     assert req.raw_path == "example.com:443"
 
 
+@pytest.mark.parametrize("secure", (False, True))
+def test_connect_authority_form_url_untouched(secure: bool) -> None:
+    # A CONNECT target has no scheme; the transport scheme must not be glued
+    # onto request.url (yarl would also elide a default port, e.g.
+    # "https://example.com:443" serializes without the ":443").
+    message = RawRequestMessage(
+        "CONNECT",
+        "example.com:443",
+        HttpVersion(1, 1),
+        HeadersDictProxy(CIMultiDict()),
+        (),
+        False,
+        None,
+        False,
+        False,
+        URL.build(authority="example.com:443", encoded=True),
+    )
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
+    protocol.ssl_context = ssl.create_default_context() if secure else None
+    protocol.peername = None
+    protocol.sockname = ("127.0.0.1", 8080)
+    req = make_base_request(message, protocol)
+    assert str(req.url) == "//example.com:443"
+    assert req.url.scheme == ""
+    assert req.url.port == 443
+    assert req.host == "example.com"
+    assert req.scheme == ("https" if secure else "http")
+    assert req.secure is secure
+
+
 def test_clone_absolute_scheme() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.scheme == "https"
-    req2 = req.clone(scheme="http")
-    assert req2.scheme == "http"
-    assert req2.url.scheme == "http"
+    assert req.scheme == "http"
+    req2 = req.clone(scheme="https")
+    assert req2.scheme == "https"
+    assert req2.url.scheme == "https"
+    req3 = req2.clone(scheme="http")
+    assert req3.scheme == "http"
+    assert req3.url.scheme == "http"
 
 
 def test_clone_absolute_host() -> None:
@@ -912,6 +972,23 @@ def test_clone_override_client_max_size() -> None:
     assert req2.client_max_size == 2048
 
 
+def test_client_max_fields_default() -> None:
+    req = make_mocked_request("GET", "/path")
+    assert req.client_max_fields == 1000
+
+
+def test_clone_client_max_fields() -> None:
+    req = make_mocked_request("GET", "/path", client_max_fields=5)
+    req2 = req.clone()
+    assert req2.client_max_fields == 5
+
+
+def test_clone_override_client_max_fields() -> None:
+    req = make_mocked_request("GET", "/path", client_max_fields=5)
+    req2 = req.clone(client_max_fields=10)
+    assert req2.client_max_fields == 10
+
+
 def test_clone_preserves_pre_handler_error() -> None:
     req = make_mocked_request("GET", "/path")
     err = web.HTTPBadRequest(text="bad")
@@ -1054,6 +1131,58 @@ async def test_multipart_formdata(protocol: BaseProtocol) -> None:
     assert dict(result) == {"a": "b", "c": "d"}
 
 
+def _multipart_form_payload(protocol: BaseProtocol, count: int) -> StreamReader:
+    payload = StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+    payload.feed_data(
+        b"".join(
+            b"-----------------------------326931944431359\r\n"
+            b'Content-Disposition: form-data; name="f%d"\r\n'
+            b"\r\n"
+            b"v\r\n" % i
+            for i in range(count)
+        )
+        + b"-----------------------------326931944431359--\r\n"
+    )
+    payload.feed_eof()
+    return payload
+
+
+_MULTIPART_CONTENT_TYPE = (
+    "multipart/form-data; boundary=---------------------------326931944431359"
+)
+
+
+async def test_multipart_formdata_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _multipart_form_payload(protocol, 3)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
+        payload=payload,
+        client_max_fields=2,
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
+async def test_multipart_formdata_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
+) -> None:
+    payload = _multipart_form_payload(protocol, count)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        headers={"CONTENT-TYPE": _MULTIPART_CONTENT_TYPE},
+        payload=payload,
+        client_max_fields=client_max_fields,
+    )
+    result = await req.post()
+    assert len(result) == count
+
+
 @pytest.mark.parametrize(
     ("part_charset", "part_body"),
     (
@@ -1100,6 +1229,84 @@ async def test_urlencoded_form_with_invalid_default_encoding(
     with pytest.raises(web.HTTPUnsupportedMediaType) as err:
         await req.post()
     assert err.value.status_code == 415
+
+
+def _urlencoded_payload(protocol: BaseProtocol, body: bytes) -> StreamReader:
+    payload = StreamReader(
+        protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+    )
+    payload.feed_data(body)
+    payload.feed_eof()
+    return payload
+
+
+_URLENCODED_HEADERS = {"Content-Type": "application/x-www-form-urlencoded"}
+
+
+async def test_urlencoded_form_too_many_fields(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&b=2&c=3")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge) as err:
+        await req.post()
+    assert err.value.status_code == 413
+    assert err.value.text == "Maximum number of form fields 2 exceeded."
+
+
+async def test_urlencoded_form_empty_segments_count(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&&b=2")
+    req = make_mocked_request(
+        "POST", "/", payload=payload, headers=_URLENCODED_HEADERS, client_max_fields=2
+    )
+    with pytest.raises(web.HTTPRequestEntityTooLarge):
+        await req.post()
+
+
+@pytest.mark.parametrize(("client_max_fields", "count"), [(2, 2), (0, 5), (-1, 5)])
+async def test_urlencoded_form_within_field_limit(
+    protocol: BaseProtocol, client_max_fields: int, count: int
+) -> None:
+    body = "&".join(f"f{i}=v" for i in range(count)).encode()
+    payload = _urlencoded_payload(protocol, body)
+    req = make_mocked_request(
+        "POST",
+        "/",
+        payload=payload,
+        headers=_URLENCODED_HEADERS,
+        client_max_fields=client_max_fields,
+    )
+    result = await req.post()
+    assert len(result) == count
+
+
+async def test_urlencoded_form_empty_body(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"")
+    req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
+    result = await req.post()
+    assert len(result) == 0
+
+
+async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9&f=%FF")
+    req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
+    result = await req.post()
+    assert list(result.items()) == [
+        ("a", "1 2"),
+        ("b", ""),
+        ("c", ""),
+        ("d", "%zz"),
+        ("e", "\u00e9"),
+        ("f", "\ufffd"),
+    ]
+
+
+async def test_urlencoded_form_with_non_utf8_charset(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=%E9&b=\xe9")
+    headers = {"Content-Type": "application/x-www-form-urlencoded; charset=latin-1"}
+    req = make_mocked_request("POST", "/", payload=payload, headers=headers)
+    result = await req.post()
+    assert list(result.items()) == [("a", "\u00e9"), ("b", "\u00e9")]
 
 
 async def test_multipart_formdata_field_missing_name(protocol: BaseProtocol) -> None:

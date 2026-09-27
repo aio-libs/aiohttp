@@ -538,6 +538,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer-side: large outbound message as single frame | D | Writer does not auto-fragment; a single `send_str(big_blob)` becomes one frame. Memory pressure on the local side and on intermediaries. | Low |
 | 3.14 | Mask-on-send keys (Cython vs Python parity) | T | Divergence between `mask.pyx` and `helpers.py` `websocket_mask` would silently break receivers (one peer XORs with a different key than the other expects). | Low |
 | 3.15 | Reader Cython vs pure-Python parity | T | Divergence between the two reader backends could let one silently accept a frame the other rejects, weakening protocol enforcement asymmetrically. | Low |
+| 3.16 | Post-error buffering on an upgraded connection | D | `WebSocketReader.feed_data` reports EOF only for a protocol error, and the connection stays upgraded with the reader detached. Were every later byte still buffered with nothing left to drain it, a peer that kept streaming after a deliberate frame error would exhaust memory on a client that never reads. | Medium |
 
 **Mitigations.**
 
@@ -556,6 +557,7 @@ client-side, the writer adds masks to outgoing frames.
 | 3.13 | Writer single-frame size | None — caller-controlled. | **User**: chunk very large outbound payloads (beyond a few MiB) via fragmented messages; a single `send_*` becomes one frame and can pressure intermediaries. |
 | 3.14 | Cython vs pure-Python mask parity | Both implement XOR on the same key cycling; behaviour identical. | Add a parameterised test that runs the mask helper against both backends side-by-side (see [§6.1](#61-highest-leverage-recommendations) #3). |
 | 3.15 | Reader backend parity | `tests/test_websocket_parser.py` imports the single `WebSocketReader` symbol (whichever backend won the import), so each CI run only exercises one. | Parameterise like `tests/test_http_parser.py` does — explicitly import `WebSocketReaderPython` and `WebSocketReaderCython` (when available) and fixture-parametrise over both (see [§6.1](#61-highest-leverage-recommendations) #3). |
+| 3.16 | Post-error buffering bound | After a reader EOF, which only ever means a protocol error, `client_proto.py:data_received` discards what follows; the server closes instead (`web_protocol.py:data_received`). Bytes buffered *before* `set_parser()` are real frames the reader is entitled to, so they are bounded by pausing the transport at `read_bufsize` (default 256 KiB), resumed where the buffer is drained. An upgraded response that never installs a reader keeps that pause, and a paused transport is not told the peer hung up, so it is reclaimed when the response is closed or collected rather than when the peer goes away. | Discarded rather than paused or closed on; see the recap below for what each alternative cost. **User**: set `heartbeat` on long-lived sessions; a peer can keep the client reading and dropping bytes, and `heartbeat` is what reaps such a connection. |
 
 **Past advisories / hardening (recap).**
 
@@ -597,6 +599,18 @@ client-side, the writer adds masks to outgoing frames.
   them once when the frame completes; if a frame arrives in more than
   `max(1024, max_msg_size // 256)` reads, the pending reads are folded into
   a single `bytearray` and cleared.
+- **Issue #13655** — a protocol error detaches the reader but leaves the
+  connection upgraded, so a peer could stream unbounded data into
+  `ResponseHandler._tail`: 32 MiB pushed at a client that never called
+  `receive()` produced 32 MiB of `_tail`. Fixed by discarding what arrives
+  after the reader's EOF (threat 3.16). Two alternatives were measured and
+  rejected: pausing hides the peer's FIN, so sockets accumulate instead of
+  memory; closing makes the transport unwritable, so a message queued before
+  the error cannot be answered, which broke the Autobahn client runner. The
+  pre-parser buffer is bounded by backpressure instead of discarded, since
+  those are frames the reader will want; it looked self-limiting, but the
+  window opens inside `resp.start()` and a `TraceConfig.on_request_end` doing
+  I/O held it open for 32 MiB.
 
 ---
 
@@ -654,7 +668,7 @@ boundary at which user-supplied strings can become wire bytes.
 | # | Component / Vector | STRIDE | Threat | Risk |
 | :--- | :--- | :--- | :--- | :--- |
 | 4.1 | Boundary parameter parsing | T | Malformed boundary parameter (oversized, missing, or containing bytes outside the RFC 2046 §5.1.1 safe set — digits, letters, and a small punctuation set) could enable multipart parser confusion or smuggling. | Low |
-| 4.2 | Number of parts per body | D | A peer submits a body packed with many tiny parts (e.g. ten thousand 100-byte parts inside a 1 MiB body). Each part allocates a `BodyPartReader` plus header dict, so the live-Python-object footprint is far larger than the on-wire byte count. `client_max_size` caps the wire bytes but not the per-part allocation amplification. | Low |
+| 4.2 | Number of parts per body | D | A peer submits a body packed with many tiny parts (e.g. ten thousand 100-byte parts inside a 1 MiB body). Each part allocates a `BodyPartReader` plus header dict, so the live-Python-object footprint is far larger than the on-wire byte count. `client_max_size` caps the wire bytes but not the per-part allocation amplification. The same amplification applies to `application/x-www-form-urlencoded` bodies, where every `&`-separated field becomes a decoded pair in the `MultiDict`. | Low |
 | 4.3 | Nested multipart recursion | D | `MultipartReader.next()` recurses into nested multiparts without a depth cap; deeply nested input can hit `RecursionError`. `Request.post()` short-circuits this by rejecting any nested multipart it sees, but the bare API does not. | Medium |
 | 4.4 | Per-part header block size | D | A peer submits a part with an oversized header block (very long field values, or hundreds of headers per part) to drive memory growth at parse time, multiplied across many parts. | Low |
 | 4.5 | Per-part body size | D | A peer submits a single part with a body that grows arbitrarily large before any framing boundary — if size checking happens only after buffering the whole part, memory blows up before the cap fires. | Low |
@@ -673,7 +687,7 @@ boundary at which user-supplied strings can become wire bytes.
 | # | Threat | Existing | Recommended |
 | :--- | :--- | :--- | :--- |
 | 4.1 | Boundary parameter | 70-char cap; missing-boundary raises; HTTP header layer ([§5.1](#51-http1-parser)) catches CR/LF/NUL. | None. |
-| 4.2 | Many small parts | `client_max_size` caps total bytes. | Documented design decision: rely on `client_max_size` rather than introducing a `max_parts` knob. **User**: operators sensitive to live-object count should reduce `client_max_size`. |
+| 4.2 | Many small parts | `client_max_size` caps total bytes. `Request.post()` additionally caps the number of form fields at `client_max_fields` (default `1000`, `0` disables) since PR #13738: multipart parts are counted before each part is read, and urlencoded bodies are rejected by `yarl.query_to_pairs` before any pair is materialised. Both paths raise `HTTPRequestEntityTooLarge`. | The cap only covers `Request.post()`. Direct `MultipartReader` / `Request.multipart()` users still get an unbounded part count; a `max_parts` parameter on `MultipartReader` would close that path. **User**: operators sensitive to live-object count should reduce `client_max_fields` and `client_max_size`. |
 | 4.3 | Nested-multipart recursion | `Request.post()` rejects any nested multipart with `ValueError` ("To decode nested multipart you need to use custom reader") (`web_request.py:BaseRequest.post`). | **Direct `MultipartReader` users get unlimited recursion. Add a `max_nesting_depth` parameter (default e.g. 10) to fail cleanly before `RecursionError`.** |
 | 4.4 | Per-part headers bounded | `max_field_size` / `max_headers` plumbed since 5fe9dfb64 (Mar 2026). | None. |
 | 4.5 | Per-part body bounded | Per-iteration size check since 9cc4b917c (Mar 2026). | None. |
@@ -724,5 +738,8 @@ boundary at which user-supplied strings can become wire bytes.
   multipart body parts whose `Content-Length` header is not a plain
   decimal sequence (e.g. `+5`, `-1`, `1_0`) are now rejected, matching
   the main request parser's strictness per RFC 9110 §8.6.
+- **PR #13738** (3.14.4) — `Request.post()` caps the number of form fields
+  at `client_max_fields` (default `1000`) for both multipart and
+  urlencoded bodies (threat 4.2).
 
 These are all currently in place; this section assumes no regression.
