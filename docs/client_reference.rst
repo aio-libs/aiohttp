@@ -2488,7 +2488,7 @@ Utilities
       .. versionadded:: 3.7
 
    :param treat_as_secure_origin: (optional) Mark origins as secure
-                                  for cookies marked as Secured. Possible types are
+                                  for cookies marked as Secured.
 
                                   Possible types are:
 
@@ -2512,7 +2512,8 @@ Utilities
          cookies*.  Regular cookies are coupled with server's URL and
          are sent only to this server, shared ones are sent in every
          client request (except that shared cookies marked ``Secure``
-         are only sent over encrypted connections).
+         are only sent over encrypted connections or to origins listed
+         in *treat_as_secure_origin*).
 
    .. method:: filter_cookies(request_url)
 
@@ -2575,6 +2576,14 @@ Utilities
          The tuples gained the *path* element; host-only state is tracked
          per ``(domain, path, name)`` cookie identity so that same-named
          cookies on other paths cannot affect it.
+
+   .. attribute:: treat_as_secure_origin
+
+      A :class:`frozenset` of :class:`~yarl.URL` origins that are
+      treated as secure even when the connection is not encrypted, as
+      configured by the *treat_as_secure_origin* parameter.
+
+      .. versionadded:: 3.14.4
 
 
 .. class:: DummyCookieJar(*, loop=None)

@@ -2900,6 +2900,51 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
+async def test_request_secure_cookie_treat_as_secure_origin(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    """Per-request Secure cookies must honor the session jar's trusted origins."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.cookies.get("auth") == "token"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    jar = aiohttp.CookieJar(unsafe=True, treat_as_secure_origin=[server.make_url("/")])
+    client = await aiohttp_client(server, cookie_jar=jar)
+
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c.set("auth", "token", "token")
+    c["secure"] = True
+
+    async with client.get("/", cookies={"auth": c}) as resp:
+        assert resp.status == 200
+
+
+async def test_request_secure_cookie_not_sent_over_http(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A per-request Secure cookie must not be sent to an untrusted plain-http origin."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.cookies.keys() == {"plain"}
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c.set("auth", "token", "token")
+    c["secure"] = True
+
+    async with client.get("/", cookies={"auth": c, "plain": "ok"}) as resp:
+        assert resp.status == 200
+
+
 async def test_set_cookies(
     aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
 ) -> None:
