@@ -698,7 +698,18 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if method == "CONNECT":
             # authority-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-            url = URL.build(authority=path, encoded=True)
+            try:
+                url = URL.build(authority=path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            if host is None:
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
         elif path.startswith("/"):
             # origin-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -721,10 +732,16 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-            url = URL(path, encoded=True)
-            if not url.absolute:
-                # authority-form is only allowed with CONNECT
-                # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
+            try:
+                url = URL(path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
+            if host is None:
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
                 )

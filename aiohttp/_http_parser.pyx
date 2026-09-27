@@ -741,12 +741,20 @@ cdef class HttpRequestParser(HttpParser):
             return
         self._path = self._buf.decode('utf-8', 'surrogateescape')
         try:
-            idx3 = len(self._path)
             if self._cparser.method == cparser.HTTP_CONNECT:
                 # authority-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-                self._url = URL.build(authority=self._path, encoded=True)
-            elif idx3 > 1 and self._path[0] == '/':
+                try:
+                    self._url = URL.build(authority=self._path, encoded=True)
+                    host = self._url.raw_host
+                except ValueError:
+                    host = None
+                if host is None:
+                    raise InvalidURLError(
+                        self._path.encode(errors="surrogateescape")
+                        .decode("latin1")
+                    )
+            elif self._path[0] == '/':
                 # origin-form,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
                 idx1 = self._path.find("?")
@@ -777,10 +785,23 @@ cdef class HttpRequestParser(HttpParser):
                     fragment=fragment,
                     encoded=True,
                 )
+            elif self._path == '*' and self._cparser.method == cparser.HTTP_OPTIONS:
+                # asterisk-form,
+                self._url = URL(self._path, encoded=True)
             else:
                 # absolute-form for proxy maybe,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-                self._url = URL(self._path, encoded=True)
+                try:
+                    self._url = URL(self._path, encoded=True)
+                    host = self._url.raw_host
+                except ValueError:
+                    host = None
+                # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
+                if host is None:
+                    raise InvalidURLError(
+                        self._path.encode(errors="surrogateescape")
+                        .decode("latin1")
+                    )
         finally:
             PyByteArray_Resize(self._buf, 0)
 
