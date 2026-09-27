@@ -2927,7 +2927,7 @@ async def test_request_secure_cookie_treat_as_secure_origin(
 async def test_request_secure_cookie_not_sent_over_http(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    """A per-request Secure cookie must not be sent to an untrusted plain-http origin."""
+    """A per-request Secure cookie is only sent to the jar's trusted origins."""
 
     async def handler(request: web.Request) -> web.Response:
         assert request.cookies.keys() == {"plain"}
@@ -2935,7 +2935,10 @@ async def test_request_secure_cookie_not_sent_over_http(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app)
+    # The trusted origin never matches the test server, so the Secure
+    # cookie must still be withheld from this plain-http request.
+    jar = aiohttp.CookieJar(treat_as_secure_origin=[URL("http://example.com")])
+    client = await aiohttp_client(app, cookie_jar=jar)
 
     c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("auth", "token", "token")
