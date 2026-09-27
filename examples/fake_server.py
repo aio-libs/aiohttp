@@ -101,9 +101,9 @@ async def main() -> None:
     fake_facebook = FakeFacebook()
     info = await fake_facebook.start()
     resolver = FakeResolver(info)
-    connector = TCPConnector(resolver=resolver, ssl=False)
+    connector = TCPConnector(resolver=resolver)
 
-    async with ClientSession(connector=connector) as session:
+    async with ClientSession(connector=connector, ssl=False) as session:
         async with session.get(
             "https://graph.facebook.com/v2.7/me", params={"access_token": token}
         ) as resp:
