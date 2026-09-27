@@ -441,8 +441,11 @@ async def test_idle_connection_closed_before_first_request(
         await writer.wait_closed()
 
 
+# uvloop closes the socket before running connection_lost, the reverse of the
+# default loop's ordering, so run under both to cover the disconnect race.
+@pytest.mark.asyncio(loop_factories=("uvloop", "selector"))
 async def test_trickled_headers_closed_at_first_request_deadline(
-    aiohttp_raw_server: AiohttpRawServer,
+    aiohttp_raw_server: AiohttpRawServer, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Partial header bytes must not extend the first-request deadline."""
 
@@ -455,11 +458,22 @@ async def test_trickled_headers_closed_at_first_request_deadline(
     server_impl = runner.server
     assert server_impl is not None
 
+    disconnected = asyncio.Event()
+    original_connection_lost = server_impl.connection_lost
+
+    def connection_lost(protocol: Any, exc: BaseException | None = None) -> None:
+        original_connection_lost(protocol, exc)
+        disconnected.set()
+
+    monkeypatch.setattr(server_impl, "connection_lost", connection_lost)
+
     _, writer = await asyncio.open_connection(server.host, server.port)
 
     async def trickle_until_closed() -> None:
         writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Slow: ")
-        with pytest.raises(ConnectionError):
+        # asyncio's drain() raises a ConnectionError once the connection is
+        # lost; uvloop's write() raises RuntimeError on the closed transport.
+        with pytest.raises((ConnectionError, RuntimeError)):
             while True:
                 await writer.drain()
                 await asyncio.sleep(0.05)
@@ -468,12 +482,12 @@ async def test_trickled_headers_closed_at_first_request_deadline(
     try:
         # The deadline must fire despite the steady trickle of bytes.
         await asyncio.wait_for(trickle_until_closed(), timeout=5)
-        # The server dropped the connection without ever parsing a request.
+        await asyncio.wait_for(disconnected.wait(), timeout=5)
         assert not server_impl.connections
         assert server_impl.requests_count == 0
     finally:
         writer.close()
-        with suppress(ConnectionError):
+        with suppress(ConnectionError, RuntimeError):
             await writer.wait_closed()
 
 
