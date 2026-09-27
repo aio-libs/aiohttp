@@ -2914,7 +2914,7 @@ async def test_request_secure_cookie_treat_as_secure_origin(
     server = await aiohttp_server(app)
 
     jar = aiohttp.CookieJar(unsafe=True, treat_as_secure_origin=[server.make_url("/")])
-    client = await aiohttp_client(server, cookie_jar=jar)
+    client = await aiohttp_client(server, cookie_jar=jar)  # type: ignore[var-annotated]
 
     c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("auth", "token", "token")
@@ -2941,7 +2941,8 @@ async def test_request_secure_cookie_not_sent_over_http(
     c.set("auth", "token", "token")
     c["secure"] = True
 
-    async with client.get("/", cookies={"auth": c, "plain": "ok"}) as resp:
+    cookies: dict[str, str | http.cookies.Morsel[str]] = {"auth": c, "plain": "ok"}
+    async with client.get("/", cookies=cookies) as resp:
         assert resp.status == 200
 
 
