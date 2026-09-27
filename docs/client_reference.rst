@@ -1239,8 +1239,8 @@ is controlled by *force_close* constructor's parameter).
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-      :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used, or
+      :param ssl: **(DEPRECATED)** SSL validation mode. ``True`` for default
+                  SSL check (:func:`ssl.create_default_context` is used, or
                   ``truststore.SSLContext`` when the optional
                   ``truststore`` package is installed, see below),
                   ``False`` for skip SSL certificate validation,
@@ -1263,6 +1263,15 @@ is controlled by *force_close* constructor's parameter).
             certificate trust decisions made by other tools on the
             same machine. This only applies to the default check;
             passing an explicit :class:`ssl.SSLContext` is unaffected.
+            Also applies wherever *ssl* is passed to :class:`ClientSession`
+            or per request instead, since both resolve to the same
+            default context.
+
+         .. deprecated:: 4.0
+
+            Scheduled for removal in 5.0. Pass *ssl* to
+            :class:`ClientSession` for a session-wide default, or to
+            :meth:`ClientSession.get` and others per request.
 
    :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
