@@ -1257,6 +1257,34 @@ async def test_treat_as_secure_origin() -> None:
     assert len(filtered_cookies) == 1
 
 
+async def test_treat_as_secure_origin_sends_secure_shared_cookie() -> None:
+    endpoint = URL("http://127.0.0.1/")
+
+    jar = CookieJar(unsafe=True, treat_as_secure_origin=[endpoint])
+    jar.update_cookies(SimpleCookie("shared-secure-cookie=first; Secure;"))
+
+    filtered_cookies = jar.filter_cookies(request_url=endpoint)
+    assert "shared-secure-cookie" in filtered_cookies
+
+
+async def test_filter_cookies_with_secure_shared_cookie() -> None:
+    """Secure shared cookies (no Domain attribute) must not be sent over cleartext."""
+    jar = CookieJar()
+    jar.update_cookies(
+        SimpleCookie("shared-secure-cookie=first; Secure; shared-cookie=second;")
+    )
+
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert set(filtered.keys()) == {"shared-cookie"}
+
+    filtered = jar.filter_cookies(URL("https://example.com/"))
+    assert set(filtered.keys()) == {"shared-cookie", "shared-secure-cookie"}
+
+    # The morsel cached by the https request must not bypass the Secure check.
+    filtered = jar.filter_cookies(URL("http://example.com/"))
+    assert set(filtered.keys()) == {"shared-cookie"}
+
+
 async def test_filter_cookies_does_not_leak_memory() -> None:
     """Test that filter_cookies doesn't create empty cookie entries.
 
