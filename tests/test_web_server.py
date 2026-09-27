@@ -457,30 +457,21 @@ async def test_trickled_headers_closed_at_first_request_deadline(
 
     _, writer = await asyncio.open_connection(server.host, server.port)
 
-    async def trickle() -> None:
+    async def trickle_until_closed() -> None:
         writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Slow: ")
-        while True:
-            await writer.drain()
-            await asyncio.sleep(0.05)
-            writer.write(b"a")
+        with pytest.raises(ConnectionError):
+            while True:
+                await writer.drain()
+                await asyncio.sleep(0.05)
+                writer.write(b"a")
 
-    async def connection_dropped() -> None:
-        while server_impl.connections:
-            await asyncio.sleep(0.01)
-
-    # Observe closure on the server side: reading the socket instead would
-    # race FIN against the RST that close() emits when a trickled byte is
-    # still unread in the server's receive queue.
-    trickle_task = asyncio.create_task(trickle())
     try:
-        # The deadline must fire despite the steady trickle of bytes: the
-        # server drops the connection without ever parsing a request.
-        await asyncio.wait_for(connection_dropped(), timeout=5)
+        # The deadline must fire despite the steady trickle of bytes.
+        await asyncio.wait_for(trickle_until_closed(), timeout=5)
+        # The server dropped the connection without ever parsing a request.
+        assert not server_impl.connections
         assert server_impl.requests_count == 0
     finally:
-        trickle_task.cancel()
-        with suppress(asyncio.CancelledError, ConnectionError):
-            await trickle_task
         writer.close()
         with suppress(ConnectionError):
             await writer.wait_closed()
