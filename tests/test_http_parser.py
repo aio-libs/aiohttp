@@ -1069,7 +1069,66 @@ def test_url_absolute(parser: Any) -> None:
     assert msg.url == URL("https://www.google.com/path/to.html")
 
 
-def test_headers_old_websocket_key1(parser: Any) -> None:
+def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+@pytest.mark.parametrize(
+    "target",
+    (
+        b"https:///protected",
+        b"https:////protected",
+        b"https://:80/protected",
+        b"https://user@/protected",
+    ),
+    ids=("empty-host", "empty-host-extra-slash", "port-only", "userinfo-only"),
+)
+def test_url_absolute_form_empty_host_rejected(
+    parser: HttpRequestParser, target: bytes
+) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.2-4
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_absolute_form_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    # yarl raises ValueError for an out-of-range port; that must surface as
+    # a 400, not escape the parser as a bare ValueError.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET http://example.com:65536/x HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT example.com:65536 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_empty_host_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT :80 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_origin_form_bare_slash(parser: HttpRequestParser) -> None:
+    messages, upgrade, tail = parser.feed_data(b"GET / HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("/")
+
+
+def test_url_asterisk_form_options(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2.4
+    messages, upgrade, tail = parser.feed_data(b"OPTIONS * HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("*")
+
+
+def test_url_asterisk_form_only_options(parser: HttpRequestParser) -> None:
+    # asterisk-form is only valid for OPTIONS; for other methods "*" is
+    # neither origin-form nor a valid absolute-form target.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET * HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_headers_old_websocket_key1(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nSEC-WEBSOCKET-KEY1: line\r\n\r\n"
 
     with pytest.raises(http_exceptions.BadHttpMessage):
