@@ -268,6 +268,13 @@ class WebSocketReader:
             if not fin:
                 # got partial frame payload
                 if opcode != OP_CODE_CONTINUATION:
+                    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+                    if self._opcode != OP_CODE_NOT_SET:
+                        raise WebSocketError(
+                            WSCloseCode.PROTOCOL_ERROR,
+                            "The opcode in non-fin frame is expected "
+                            f"to be zero, got {opcode!r}",
+                        )
                     self._opcode = opcode
                 self._partial += payload
                 return

@@ -1,0 +1,3 @@
+Removed stale ``filterwarnings`` ignores from the pytest configuration
+that are no longer triggered by aiohttp, the supported Python versions
+or the pinned test dependencies -- by :user:`aiolibsbot`.

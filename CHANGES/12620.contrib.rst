@@ -1,0 +1,15 @@
+Moved the pytest configuration from :file:`setup.cfg` to a dedicated
+:file:`pytest.ini` that follows the layout shared with ``propcache`` and
+other ``aio-libs`` projects. Compared to the old configuration,
+``minversion`` is raised from ``3.8.2`` to ``8.4``; ``pytest-xdist``
+(``--numprocesses=auto``) and ``pytest-cov`` (``--cov``,
+``--cov-context=test``, ``--no-cov-on-fail``) are enabled by default
+again, so pass ``--numprocesses=0`` and/or ``--no-cov`` to opt out, as
+the :file:`Makefile` targets and CI jobs now do where needed;
+``--doctest-modules``, ``--strict-markers`` and
+``faulthandler_timeout = 30`` are enabled; ``-v`` is no longer added;
+empty parameter sets are marked ``xfail`` instead of skipped;
+``--junitxml`` reports use ``xunit1`` with captured output and
+call-only durations; and ``norecursedirs`` skips more directories,
+including :file:`tests/isolated/`
+-- by :user:`aiolibsbot`.

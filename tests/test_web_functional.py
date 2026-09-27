@@ -9,6 +9,7 @@ import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
+from functools import partial
 from typing import NoReturn
 from unittest import mock
 
@@ -1804,13 +1805,13 @@ async def test_http1_pipelined_queue_resumes_after_drain(
     handled: list[str] = []
     all_handled = asyncio.Event()
 
-    resume = RequestHandler._resume_msg_queue_reading
+    resume = RequestHandler._resume_reading_if_drained
 
     def observe_resume(self: RequestHandler[web.Request]) -> None:
         resume(self)
         resumed.set()
 
-    monkeypatch.setattr(RequestHandler, "_resume_msg_queue_reading", observe_resume)
+    monkeypatch.setattr(RequestHandler, "_resume_reading_if_drained", observe_resume)
 
     async def handler(request: web.Request) -> web.Response:
         if request.path == "/first":
@@ -1929,7 +1930,7 @@ async def test_upgrade_tail_is_byte_limited(
         data_received(self, data)
         if self._message_tail:
             max_tail = max(max_tail, len(self._message_tail))
-            if self._msg_queue_paused:
+            if self._buffer_paused:
                 reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
@@ -2005,7 +2006,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
 
     def observe_data_received(self: RequestHandler[web.Request], data: bytes) -> None:
         data_received(self, data)
-        if self._msg_queue_paused:
+        if self._buffer_paused:
             reading_paused.set()
 
     monkeypatch.setattr(RequestHandler, "data_received", observe_data_received)
@@ -2342,6 +2343,48 @@ async def test_unread_compressed_body_drain_is_bounded(
     assert max(drain_reads) < decompressed_size
 
 
+async def test_absolute_form_target_does_not_spoof_scheme(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A plaintext absolute-form target with https must not look secure."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response(
+            {
+                "scheme": request.scheme,
+                "secure": request.secure,
+                "url": str(request.url),
+                "host": request.host,
+            }
+        )
+
+    app = web.Application()
+    app.router.add_get("/probe", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET https://trusted.example/probe HTTP/1.1\r\n"
+            b"Host: trusted.example\r\n"
+            b"Connection: close\r\n\r\n"
+        )
+        await writer.drain()
+        raw = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert raw.startswith(b"HTTP/1.1 200 ")
+    assert json.loads(raw.split(b"\r\n\r\n", 1)[1]) == {
+        "scheme": "http",
+        "secure": False,
+        "url": "http://trusted.example/probe",
+        "host": "trusted.example",
+    }
+
+
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> NoReturn:
         await request.post()
@@ -2379,6 +2422,62 @@ async def test_app_max_client_size_form(aiohttp_client: AiohttpClient) -> None:
         assert resp.status == 413
         resp_text = await resp.text()
     assert "Maximum request body size 1048576 exceeded" in resp_text
+
+
+def _multipart_form(count: int) -> aiohttp.FormData:
+    form = aiohttp.FormData(default_to_multipart=True)
+    for i in range(count):
+        form.add_field(f"f{i}", "v")
+    return form
+
+
+@pytest.mark.parametrize(
+    ("make_app", "make_data", "expected_status", "expected_text"),
+    [
+        (
+            partial(web.Application, client_max_fields=2),
+            partial(dict, a="1", b="2", c="3"),
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=2),
+            partial(_multipart_form, 3),
+            413,
+            "2 exceeded",
+        ),
+        (
+            partial(web.Application, client_max_fields=0),
+            partial(dict, {f"f{i}": "v" for i in range(5)}),
+            200,
+            "5",
+        ),
+        (
+            web.Application,
+            partial(dict, {f"f{i}": "v" for i in range(1001)}),
+            413,
+            "1000 exceeded",
+        ),
+    ],
+)
+async def test_app_max_client_fields(
+    aiohttp_client: AiohttpClient,
+    make_app: Callable[[], web.Application],
+    make_data: Callable[[], object],
+    expected_status: int,
+    expected_text: str,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        form = await request.post()
+        return web.Response(text=str(len(form)))
+
+    app = make_app()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.post("/", data=make_data()) as resp:
+        assert resp.status == expected_status
+        assert expected_text in await resp.text()
 
 
 async def test_app_max_client_size_adjusted(aiohttp_client: AiohttpClient) -> None:

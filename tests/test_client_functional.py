@@ -706,15 +706,13 @@ async def test_ssl_client(
     aiohttp_client: AiohttpClient,
     client_ssl_ctx: ssl.SSLContext,
 ) -> None:
-    connector = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="Test message")
 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+    client = await aiohttp_client(server, ssl=client_ssl_ctx)  # type: ignore[var-annotated]
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -743,8 +741,8 @@ async def test_server_hostname_override_not_reused(
     server = await aiohttp_server(app, ssl=server_ctx)
     url = server.make_url("/")
 
-    connector = aiohttp.TCPConnector(ssl=client_ctx, limit=1, limit_per_host=1)
-    async with aiohttp.ClientSession(connector=connector) as session:
+    connector = aiohttp.TCPConnector(limit=1, limit_per_host=1)
+    async with aiohttp.ClientSession(connector=connector, ssl=client_ctx) as session:
         async with session.get(url, server_hostname="first.example") as resp:
             assert resp.status == 200
             await resp.read()
@@ -767,7 +765,7 @@ async def test_ssl_client_shutdown_timeout(
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
-        connector = aiohttp.TCPConnector(ssl=client_ssl_ctx, ssl_shutdown_timeout=0.1)
+        connector = aiohttp.TCPConnector(ssl_shutdown_timeout=0.1)
 
     async def streaming_handler(request: web.Request) -> NoReturn:
         # Create a streaming response that continuously sends data
@@ -784,7 +782,9 @@ async def test_ssl_client_shutdown_timeout(
     app = web.Application()
     app.router.add_route("GET", "/stream", streaming_handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+    client = await aiohttp_client(  # type: ignore[var-annotated]
+        server, connector=connector, ssl=client_ssl_ctx
+    )
 
     # Verify the connector has the correct timeout
     assert connector._ssl_shutdown_timeout == 0.1
@@ -836,8 +836,7 @@ async def test_ssl_client_alpn(
     ssl_ctx.set_alpn_protocols(("http/1.1",))
     server = await aiohttp_server(app, ssl=ssl_ctx)
 
-    connector = aiohttp.TCPConnector(ssl=False)
-    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+    client = await aiohttp_client(server, ssl=False)  # type: ignore[var-annotated]
     async with client.get("/") as resp:
         assert resp.status == 200
         txt = await resp.text()
@@ -855,11 +854,13 @@ async def test_tcp_connector_fingerprint_ok(
     async def handler(request: web.Request) -> web.Response:
         return web.Response(text="Test message")
 
-    connector = aiohttp.TCPConnector(ssl=tls_fingerprint)
+    connector = aiohttp.TCPConnector()
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+    client = await aiohttp_client(  # type: ignore[var-annotated]
+        server, connector=connector, ssl=tls_fingerprint
+    )
 
     async with client.get("/") as resp:
         assert resp.status == 200
@@ -882,12 +883,12 @@ async def test_tcp_connector_fingerprint_fail(
 
     bad_fingerprint = b"\x00" * len(tls_certificate_fingerprint_sha256)
 
-    connector = aiohttp.TCPConnector(ssl=Fingerprint(bad_fingerprint))
-
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    client = await aiohttp_client(server, connector=connector)  # type: ignore[var-annotated]
+    client = await aiohttp_client(  # type: ignore[var-annotated]
+        server, ssl=Fingerprint(bad_fingerprint)
+    )
 
     with pytest.raises(ServerFingerprintMismatch) as cm:
         await client.get("/")
@@ -2883,12 +2884,17 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
     c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("test3", "456", "456")
     c["httponly"] = True
-    c["secure"] = True
     c["max-age"] = 1000
+
+    # A Secure shared cookie must be withheld entirely: the test server
+    # is plain http, so it must not reach the handler at all.
+    c2: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c2.set("test4", "789", "789")
+    c2["secure"] = True
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, cookies={"test2": c})
+    client = await aiohttp_client(app, cookies={"test2": c, "test4": c2})
 
     async with client.get("/") as resp:
         assert 200 == resp.status
@@ -3487,10 +3493,10 @@ async def test_creds_in_auth_and_redirect_url(
         async def close(self) -> None:
             """Dummy"""
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+    connector = aiohttp.TCPConnector(resolver=FakeResolver())
 
     async with (
-        aiohttp.ClientSession(connector=connector) as client,
+        aiohttp.ClientSession(connector=connector, ssl=False) as client,
         client.get(
             url_from,
             headers={"Authorization": aiohttp.encode_basic_auth("user", "pass")},
@@ -3597,9 +3603,9 @@ async def test_drop_auth_on_redirect_to_other_host(
         async def close(self) -> None:
             """Dummy"""
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+    connector = aiohttp.TCPConnector(resolver=FakeResolver())
 
-    async with aiohttp.ClientSession(connector=connector) as client:
+    async with aiohttp.ClientSession(connector=connector, ssl=False) as client:
         async with client.get(
             url_from,
             headers={
@@ -3722,10 +3728,11 @@ async def test_drop_session_authorization_header_on_redirect_to_other_host(
         async def close(self) -> None:
             """Dummy"""
 
-    connector = aiohttp.TCPConnector(resolver=FakeResolver(), ssl=False)
+    connector = aiohttp.TCPConnector(resolver=FakeResolver())
 
     async with aiohttp.ClientSession(
         connector=connector,
+        ssl=False,
         headers={"Authorization": "Basic dXNlcjpwYXNz"},
     ) as client:
         async with client.get(url_from) as resp:
