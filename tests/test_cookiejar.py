@@ -833,6 +833,7 @@ async def test_dummy_cookie_jar() -> None:
     dummy_jar = DummyCookieJar()
     assert dummy_jar.unsafe is False
     assert dummy_jar.quote_cookie is True
+    assert dummy_jar.treat_as_secure_origin == frozenset()
     assert len(dummy_jar) == 0
     dummy_jar.update_cookies(cookie)
     assert len(dummy_jar) == 0
@@ -1223,7 +1224,7 @@ async def test_pickle_format(cookies_to_send) -> None:
 )
 async def test_treat_as_secure_origin_init(url) -> None:
     jar = CookieJar(unsafe=True, treat_as_secure_origin=url)
-    assert jar._treat_as_secure_origin == [URL("http://127.0.0.1")]
+    assert jar.treat_as_secure_origin == frozenset({URL("http://127.0.0.1")})
 
 
 async def test_treat_as_secure_origin() -> None:

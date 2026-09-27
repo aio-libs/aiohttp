@@ -763,6 +763,7 @@ class ClientSession:
                         tmp_cookie_jar = CookieJar(
                             unsafe=self._cookie_jar.unsafe,
                             quote_cookie=self._cookie_jar.quote_cookie,
+                            treat_as_secure_origin=self._cookie_jar.treat_as_secure_origin,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
