@@ -1,6 +1,7 @@
 import asyncio
 import datetime
 import logging
+import ssl
 import sys
 import time
 from collections.abc import Iterator, MutableMapping
@@ -19,7 +20,7 @@ from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge, Request, RequestKey
+from aiohttp.web import HTTPRequestEntityTooLarge, Request, RequestKey
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import _FORWARDED_PAIR_RE, ETag
 
@@ -30,7 +31,7 @@ def protocol():
 
 
 def make_base_request(
-    message: RawRequestMessage, protocol: RequestHandler[web.BaseRequest]
+    message: RawRequestMessage, protocol: RequestHandler
 ) -> web.BaseRequest:
     return web.BaseRequest(
         message,
@@ -295,7 +296,7 @@ def test_connect_authority_form_url_untouched(secure: bool) -> None:
         "CONNECT",
         "example.com:443",
         HttpVersion(1, 1),
-        HeadersDictProxy(CIMultiDict()),
+        CIMultiDictProxy(CIMultiDict()),
         (),
         False,
         None,
