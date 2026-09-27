@@ -12,19 +12,34 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 from yarl import URL
 
 from aiohttp import HttpVersion, web
+from aiohttp.abc import AbstractStreamWriter
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_exceptions import BadHttpMessage, LineTooLong
 from aiohttp.http_parser import RawRequestMessage
 from aiohttp.streams import StreamReader
 from aiohttp.test_utils import make_mocked_request
-from aiohttp.web import BaseRequest, HTTPRequestEntityTooLarge, Request, RequestKey
+from aiohttp.web import HTTPRequestEntityTooLarge, Request, RequestKey
+from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import _FORWARDED_PAIR_RE, ETag
 
 
 @pytest.fixture
 def protocol():
     return mock.Mock(_reading_paused=False)
+
+
+def make_base_request(
+    message: RawRequestMessage, protocol: RequestHandler
+) -> web.BaseRequest:
+    return web.BaseRequest(
+        message,
+        mock.create_autospec(StreamReader, spec_set=True, instance=True),
+        protocol,
+        mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.Task, spec_set=True, instance=True),
+        mock.create_autospec(asyncio.AbstractEventLoop, spec_set=True, instance=True),
+    )
 
 
 def test_base_ctor() -> None:
@@ -41,13 +56,11 @@ def test_base_ctor() -> None:
         URL("/path/to?a=1&b=2"),
     )
 
-    protocol = mock.Mock()
+    protocol = mock.create_autospec(RequestHandler, spec_set=True, instance=True)
     protocol.ssl_context = None
     protocol.peername = None
     protocol.sockname = ("127.0.0.1", 80)
-    req = BaseRequest(
-        message, mock.Mock(), protocol, mock.Mock(), mock.Mock(), mock.Mock()
-    )
+    req = make_base_request(message, protocol)
 
     assert "GET" == req.method
     assert HttpVersion(1, 1) == req.version
@@ -218,18 +231,24 @@ def test_non_ascii_raw_path() -> None:
 
 def test_absolute_url() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.url == URL("https://example.com/path/to?a=1")
-    assert req.scheme == "https"
+    assert req.url == URL("http://example.com/path/to?a=1")
+    # The scheme of an absolute-form target is peer-controlled and must not
+    # override the transport-derived scheme.
+    assert req.scheme == "http"
+    assert not req.secure
     assert req.host == "example.com"
     assert req.rel_url == URL.build(path="/path/to", query={"a": "1"})
 
 
 def test_clone_absolute_scheme() -> None:
     req = make_mocked_request("GET", "https://example.com/path/to?a=1")
-    assert req.scheme == "https"
-    req2 = req.clone(scheme="http")
-    assert req2.scheme == "http"
-    assert req2.url.scheme == "http"
+    assert req.scheme == "http"
+    req2 = req.clone(scheme="https")
+    assert req2.scheme == "https"
+    assert req2.url.scheme == "https"
+    req3 = req2.clone(scheme="http")
+    assert req3.scheme == "http"
+    assert req3.url.scheme == "http"
 
 
 def test_clone_absolute_host() -> None:
