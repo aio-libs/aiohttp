@@ -1,0 +1,12 @@
+Corrected several API reference signatures that no longer matched the code:
+:meth:`FormData.add_field() <aiohttp.FormData.add_field>` no longer documents the
+removed ``content_transfer_encoding`` parameter and now shows ``content_type`` and
+``filename`` as keyword-only, :func:`run_app() <aiohttp.web.run_app>` documents the
+``75.0`` second ``keepalive_timeout`` default instead of ``3630``,
+:class:`Response() <aiohttp.web.Response>` documents the ``4096`` byte
+``zlib_executor_size`` default instead of ``sentinel``,
+:meth:`BodyPartReader.get_charset() <aiohttp.BodyPartReader.get_charset>`
+marks its ``default`` argument as required, and
+:class:`ClientTimeout() <aiohttp.ClientTimeout>` now documents the ``ceil_threshold``
+field that the class has always accepted
+-- by :user:`pasmud`.

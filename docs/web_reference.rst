@@ -909,7 +909,7 @@ and :ref:`aiohttp-web-signals` handlers::
 
 .. class:: Response(*, body=None, status=200, reason=None, text=None, \
                     headers=None, content_type=None, charset=None, \
-                    zlib_executor_size=sentinel, zlib_executor=None)
+                    zlib_executor_size=4096, zlib_executor=None)
    :canonical: aiohttp.web_response.Response
 
    The most usable response class, inherited from :class:`StreamResponse`.
@@ -936,7 +936,7 @@ and :ref:`aiohttp-web-signals` handlers::
                        passed also, ``None`` otherwise.
 
    :param int zlib_executor_size: length in bytes which will trigger zlib compression
-                            of body to happen in an executor
+                            of body to happen in an executor, ``4096`` by default
 
       .. versionadded:: 3.5
 

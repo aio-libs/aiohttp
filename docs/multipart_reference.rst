@@ -150,9 +150,12 @@ Multipart reference
 
       .. versionadded:: 3.13.4
 
-   .. method:: get_charset(default=None)
+   .. method:: get_charset(default)
 
       Returns charset parameter from ``Content-Type`` header or default.
+
+      :param str default: charset to return when the ``Content-Type`` header
+                          does not specify one.
 
    .. attribute:: name
 

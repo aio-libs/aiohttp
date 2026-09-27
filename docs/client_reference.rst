@@ -2220,7 +2220,7 @@ Utilities
 
 
 .. class:: ClientTimeout(*, total=5*60, connect=None, \
-                         sock_connect=None, sock_read=None)
+                         sock_connect=None, sock_read=None, ceil_threshold=5)
    :canonical: aiohttp.client.ClientTimeout
 
    A data class for client timeout settings.
@@ -2257,6 +2257,17 @@ Utilities
       Maximal number of seconds for reading a portion of data from a peer.
 
       :class:`float`, ``None`` by default.
+
+   .. attribute:: ceil_threshold
+
+      Threshold in seconds used to round up timeout values that are used to
+      calculate absolute deadlines, so that timeouts are scheduled at the next
+      integer second instead of at slightly different times. Values below the
+      threshold are not rounded.
+
+      :class:`float`, ``5`` by default.
+
+      See :ref:`aiohttp-client-timeouts` for details.
 
 
 .. class:: ClientWSTimeout(*, ws_receive=None, ws_close=None)
@@ -2681,8 +2692,7 @@ on being called.
                   the keys and values must be valid `name` and `value` arguments to
                   :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
 
-   .. method:: add_field(name, value, content_type=None, filename=None,\
-                         content_transfer_encoding=None)
+   .. method:: add_field(name, value, *, content_type=None, filename=None)
 
       Add a field to the form.
 
@@ -2700,15 +2710,11 @@ on being called.
 
       :param str filename: The field's filename (optional)
 
-                           If this is not set and ``value`` is a :class:`bytes`, :class:`bytearray`,
-                           or :class:`memoryview` object, the `name` argument is used as the filename
-                           unless ``content_transfer_encoding`` is specified.
-
                            If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
                            object, the filename is extracted from the object if possible.
 
-      :param str content_transfer_encoding: The field's content-transfer-encoding
-                                            header (optional)
+                           Passing :class:`bytes`, :class:`bytearray` or :class:`memoryview`
+                           does not create a file field unless ``filename`` is set.
 
    .. method:: add_fields(fields)
 
