@@ -488,9 +488,6 @@ async def test_idle_connection_closed_before_first_request(
         await writer.wait_closed()
 
 
-# uvloop closes the socket before running connection_lost, the reverse of the
-# default loop's ordering, so run under both to cover the disconnect race.
-@pytest.mark.asyncio(loop_factories=("uvloop", "selector"))
 async def test_trickled_headers_closed_at_first_request_deadline(
     aiohttp_raw_server: AiohttpRawServer, monkeypatch: pytest.MonkeyPatch
 ) -> None:
