@@ -450,32 +450,67 @@ async def test_trickled_headers_closed_at_first_request_deadline(
         assert False
 
     server = await aiohttp_raw_server(handler, keepalive_timeout=0.4)
+    runner = server.runner
+    assert runner is not None
+    server_impl = runner.server
+    assert server_impl is not None
 
-    reader, writer = await asyncio.open_connection(server.host, server.port)
+    _, writer = await asyncio.open_connection(server.host, server.port)
 
     async def trickle() -> None:
         writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Slow: ")
-        with suppress(ConnectionError):
-            while True:
-                await writer.drain()
-                await asyncio.sleep(0.05)
-                writer.write(b"a")
+        while True:
+            await writer.drain()
+            await asyncio.sleep(0.05)
+            writer.write(b"a")
 
+    async def connection_dropped() -> None:
+        while server_impl.connections:
+            await asyncio.sleep(0.01)
+
+    # Observe closure on the server side: reading the socket instead would
+    # race FIN against the RST that close() emits when a trickled byte is
+    # still unread in the server's receive queue.
     trickle_task = asyncio.create_task(trickle())
     try:
-        try:
-            data = await asyncio.wait_for(reader.read(), timeout=5)
-        except ConnectionResetError:
-            data = b""
-        # Closed without a response despite the steady trickle of bytes.
-        assert data == b""
+        # The deadline must fire despite the steady trickle of bytes: the
+        # server drops the connection without ever parsing a request.
+        await asyncio.wait_for(connection_dropped(), timeout=5)
+        assert server_impl.requests_count == 0
     finally:
         trickle_task.cancel()
-        with suppress(asyncio.CancelledError):
+        with suppress(asyncio.CancelledError, ConnectionError):
             await trickle_task
         writer.close()
-        with suppress(ConnectionResetError):
+        with suppress(ConnectionError):
             await writer.wait_closed()
+
+
+async def test_keepalive_timeout_zero_no_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """keepalive_timeout=0 must not impose a deadline on the first request."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # A zero timeout must not arm a deadline that fires at accept time:
+        # the connection has to survive an idle pause and serve the request.
+        await asyncio.sleep(0.1)
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert head.startswith(b"HTTP/1.1 200 ")
+        # Between requests a zero timeout still closes the idle connection
+        # right after the response, so the body is followed by EOF.
+        assert await asyncio.wait_for(reader.read(), timeout=5) == b"ok"
+    finally:
+        writer.close()
+        await writer.wait_closed()
 
 
 async def test_handler_slower_than_first_request_deadline(
