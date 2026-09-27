@@ -1,7 +1,6 @@
 import asyncio
 import datetime
 import logging
-import ssl
 import sys
 import time
 from collections.abc import Iterator, MutableMapping
