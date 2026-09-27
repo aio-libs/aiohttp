@@ -164,7 +164,7 @@ class CookieJar(AbstractCookieJar):
     @property
     def treat_as_secure_origin(self) -> frozenset[URL]:
         """Return origins considered secure even over cleartext connections."""
-        return self._treat_as_secure_origin
+        return frozenset(self._treat_as_secure_origin)
 
     @property
     def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
