@@ -538,3 +538,60 @@ async def test_handler_slower_than_first_request_deadline(
     finally:
         writer.close()
         await writer.wait_closed()
+
+
+async def test_missing_body_closed_at_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A declared body that never arrives must not survive the deadline."""
+    handler_unblocked = asyncio.Event()
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        try:
+            await request.read()
+        finally:
+            handler_unblocked.set()
+        return web.Response()
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 100\r\n\r\n"
+        )
+        await writer.drain()
+        # The handler starts once the headers parse and blocks reading the
+        # body; the deadline must still close the connection and unblock it.
+        # The client is quiescent after the headers, so a clean EOF read is
+        # deterministic here.
+        assert await asyncio.wait_for(reader.read(), timeout=5) == b""
+        await asyncio.wait_for(handler_unblocked.wait(), timeout=5)
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+async def test_completed_body_not_closed_at_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A complete first request is not subject to the deadline."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert await request.read() == b"xxxxx"
+        await asyncio.sleep(0.4)  # Deadline fires while the handler runs.
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"POST / HTTP/1.1\r\nHost: example.com\r\nContent-Length: 5\r\n\r\nxxxxx"
+        )
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert head.startswith(b"HTTP/1.1 200 ")
+    finally:
+        writer.close()
+        await writer.wait_closed()

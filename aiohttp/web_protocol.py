@@ -176,6 +176,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_tcp_keepalive",
         "_next_keepalive_close_time",
         "_keepalive_handle",
+        "_first_request_payload",
         "_keepalive_timeout",
         "_lingering_time",
         "_messages",
@@ -259,6 +260,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # placeholder to be replaced on keepalive timeout setup
         self._next_keepalive_close_time = 0.0
         self._keepalive_handle: asyncio.Handle | None = None
+        # Retains the first request's payload until it completes so the
+        # first-request deadline can act on an unfinished body.
+        self._first_request_payload: StreamReader | None = None
         self._keepalive_timeout = keepalive_timeout
         self._lingering_time = float(lingering_time)
 
@@ -494,6 +498,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 upgraded = False
                 tail = b""
 
+            if messages and self._request_count == 0:
+                self._first_request_payload = messages[0][1]
             for msg, payload in messages:
                 self._request_count += 1
                 self._messages.append((msg, payload))
@@ -667,9 +673,21 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
             return
 
-        # handler in idle state
+        # handler in idle state waiting for a request
         if self._waiter and not self._waiter.done():
             self.force_close()
+            return
+
+        if (payload := self._first_request_payload) is not None:
+            if payload.is_eof():
+                # The first request completed; the deadline no longer
+                # applies. Drop the reference to release its buffers.
+                self._first_request_payload = None
+            else:
+                # Headers arrived but the body never completed, so the
+                # connection has still not delivered a complete first
+                # request by the documented deadline.
+                self.force_close()
 
     async def _handle_request(
         self,
