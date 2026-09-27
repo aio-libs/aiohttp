@@ -2343,6 +2343,48 @@ async def test_unread_compressed_body_drain_is_bounded(
     assert max(drain_reads) < decompressed_size
 
 
+async def test_absolute_form_target_does_not_spoof_scheme(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A plaintext absolute-form target with https must not look secure."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response(
+            {
+                "scheme": request.scheme,
+                "secure": request.secure,
+                "url": str(request.url),
+                "host": request.host,
+            }
+        )
+
+    app = web.Application()
+    app.router.add_get("/probe", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET https://trusted.example/probe HTTP/1.1\r\n"
+            b"Host: trusted.example\r\n"
+            b"Connection: close\r\n\r\n"
+        )
+        await writer.drain()
+        raw = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert raw.startswith(b"HTTP/1.1 200 ")
+    assert json.loads(raw.split(b"\r\n\r\n", 1)[1]) == {
+        "scheme": "http",
+        "secure": False,
+        "url": "http://trusted.example/probe",
+        "host": "trusted.example",
+    }
+
+
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> NoReturn:
         await request.post()

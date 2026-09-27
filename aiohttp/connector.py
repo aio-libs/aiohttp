@@ -968,11 +968,11 @@ _SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
 class TCPConnector(BaseConnector):
     """TCP connector.
 
-    verify_ssl - Set to True to check ssl certifications.
-    fingerprint - Pass the binary sha256
-        digest of the expected certificate in DER format to verify
-        that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
+    ssl - DEPRECATED. Will be removed in aiohttp 5.0.
+        SSL validation mode: ``True`` for the default checks, ``False`` to
+        skip certificate validation, a Fingerprint for certificate pinning
+        or an ssl.SSLContext for custom validation. Pass ``ssl`` to
+        ClientSession or to the individual request instead.
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -1013,7 +1013,7 @@ class TCPConnector(BaseConnector):
         ttl_dns_cache: int | None = 10,
         dns_cache_max_size: int = 1000,
         family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
-        ssl: bool | Fingerprint | SSLContext = True,
+        ssl: bool | Fingerprint | SSLContext | _SENTINEL = sentinel,
         local_addr: tuple[str, int] | None = None,
         resolver: AbstractResolver | None = None,
         keepalive_timeout: None | float | _SENTINEL = sentinel,
@@ -1036,12 +1036,23 @@ class TCPConnector(BaseConnector):
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                f"got {ssl!r} instead."
+        self._ssl: bool | Fingerprint | SSLContext
+        if ssl is sentinel:
+            self._ssl = True
+        else:
+            if not isinstance(ssl, SSL_ALLOWED_TYPES):
+                raise TypeError(
+                    "ssl should be SSLContext, Fingerprint, or bool, "
+                    f"got {ssl!r} instead."
+                )
+            warnings.warn(
+                "The ssl parameter is deprecated since 4.0 and scheduled for "
+                "removal in 5.0, pass ssl to ClientSession() or to the "
+                "individual request instead",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        self._ssl = ssl
+            self._ssl = ssl
 
         self._resolver: AbstractResolver
         if resolver is None:

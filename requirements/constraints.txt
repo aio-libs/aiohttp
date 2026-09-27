@@ -138,7 +138,7 @@ mdit-py-plugins==0.6.1
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.9.0
+multidict==6.9.1
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -168,7 +168,7 @@ pip-tools==7.6.1
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.11.11
+platformdirs==4.11.12
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -336,7 +336,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.9.0
+virtualenv==21.9.1
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
