@@ -2884,12 +2884,17 @@ async def test_morsel_with_attributes(aiohttp_client: AiohttpClient) -> None:
     c: http.cookies.Morsel[str] = http.cookies.Morsel()
     c.set("test3", "456", "456")
     c["httponly"] = True
-    c["secure"] = True
     c["max-age"] = 1000
+
+    # A Secure shared cookie must be withheld entirely: the test server
+    # is plain http, so it must not reach the handler at all.
+    c2: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c2.set("test4", "789", "789")
+    c2["secure"] = True
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, cookies={"test2": c})
+    client = await aiohttp_client(app, cookies={"test2": c, "test4": c2})
 
     async with client.get("/") as resp:
         assert 200 == resp.status

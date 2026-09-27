@@ -2511,7 +2511,8 @@ Utilities
       :param ~yarl.URL response_url: URL of response, ``None`` for *shared
          cookies*.  Regular cookies are coupled with server's URL and
          are sent only to this server, shared ones are sent in every
-         client request.
+         client request (except that shared cookies marked ``Secure``
+         are only sent over encrypted connections).
 
    .. method:: filter_cookies(request_url)
 
