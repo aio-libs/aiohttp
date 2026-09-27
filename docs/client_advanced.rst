@@ -618,7 +618,7 @@ checks can be relaxed by setting *ssl* to ``False``::
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
 pass it into the :meth:`ClientSession.request` methods or set it for the
-entire session with ``ClientSession(connector=TCPConnector(ssl=ssl_context))``.
+entire session with ``ClientSession(ssl=ssl_context)``.
 
 There are explicit errors when ssl verification fails
 
@@ -660,7 +660,7 @@ installed or Python is unable to find them, resulting in a error like
 One way to work around this problem is to use the `certifi` package::
 
   ssl_context = ssl.create_default_context(cafile=certifi.where())
-  async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:
+  async with ClientSession(ssl=ssl_context) as sess:
       ...
 
 Example: Use self-signed certificate
@@ -706,9 +706,9 @@ DER with e.g::
    Tip: to convert from a hexadecimal digest to a binary byte-string,
    you can use :func:`binascii.unhexlify`.
 
-   *ssl* parameter could be passed
-   to :class:`TCPConnector` as default, the value from
-   :meth:`ClientSession.get` and others override default.
+   *ssl* parameter could be passed to :class:`ClientSession` as the
+   session-wide default, the value from :meth:`ClientSession.get` and
+   others override it.
 
 .. _aiohttp-client-proxy-support:
 
