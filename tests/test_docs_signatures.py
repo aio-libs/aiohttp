@@ -11,11 +11,21 @@ import re
 from pathlib import Path
 from typing import Any
 
+import pytest
+
 from aiohttp import ClientTimeout, FormData, web
 from aiohttp.compression_utils import MAX_SYNC_CHUNK_SIZE
 from aiohttp.multipart import BodyPartReader
 
 DOCS = Path(__file__).parent.parent / "docs"
+
+# The mobile CI jobs run this suite inside a cibuildwheel testbed whose
+# CIBW_TEST_SOURCES is "pytest.ini README.rst tests", so docs/ is never copied
+# in and these tests have no reST files to read. Skip instead of failing there.
+pytestmark = pytest.mark.skipif(
+    not DOCS.is_dir(),
+    reason=f"docs directory not available at {DOCS} (not shipped to the cibuildwheel mobile testbed)",
+)
 
 
 def documented_signature(stem: str, directive: str, name: str) -> str:
