@@ -2603,6 +2603,32 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     underlying_transport.abort.assert_not_called()
 
 
+async def test_start_tls_connection_returns_none(
+    make_client_request: _RequestMaker,
+) -> None:
+    """A transport closed before the upgrade makes start_tls() return None."""
+    loop = asyncio.get_running_loop()
+    conn = aiohttp.TCPConnector()
+    req = make_client_request("GET", URL("https://example.com"), loop=loop)
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        transport, _ = await loop.create_connection(
+            asyncio.Protocol, *listener.getsockname()
+        )
+    transport.close()
+
+    # start_tls() returns None on asyncio, but not on aiofastnet.
+    with mock.patch.object(connector_module, "aiofastnet", None):
+        with pytest.raises(aiohttp.ClientConnectorError) as exc_info:
+            await conn._start_tls_connection(transport, req, ClientTimeout())
+
+    assert "Failed to start TLS" in exc_info.value.os_error.args[0]
+
+    await conn.close()
+
+
 async def test_start_tls_with_zero_total_timeout(
     aiohttp_server: AiohttpServer,
     aiohttp_client: AiohttpClient,

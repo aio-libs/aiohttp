@@ -431,8 +431,16 @@ class TestProxy(unittest.TestCase):
         spec_set=True,
     )
     @pytest.mark.usefixtures("enable_cleanup_closed")
+    @pytest.mark.parametrize(
+        "asyncio_transport",
+        (True, False),
+        ids=("asyncio-transport", "duck-typed-transport"),
+    )
     def test_https_connect_fingerprint_mismatch(
-        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
+        self,
+        start_connection: mock.Mock,
+        ClientRequestMock: mock.Mock,
+        asyncio_transport: bool,
     ) -> None:
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
@@ -447,6 +455,16 @@ class TestProxy(unittest.TestCase):
                 class TransportMock(asyncio.Transport):
                     def close(self) -> None:
                         pass
+
+                class DuckTypedTransportMock:
+                    """Models aiofastnet's transport, which subclasses no asyncio class."""
+
+                    def close(self) -> None:
+                        pass
+
+                transport_mock: object = (
+                    TransportMock() if asyncio_transport else DuckTypedTransportMock()
+                )
 
                 proxy_resp = ClientResponse(
                     "get",
@@ -526,7 +544,7 @@ class TestProxy(unittest.TestCase):
                                 connector_module,
                                 "start_tls",
                                 autospec=True,
-                                return_value=TransportMock(),
+                                return_value=transport_mock,
                             ),
                             self.assertRaises(aiohttp.ServerFingerprintMismatch),
                         ):

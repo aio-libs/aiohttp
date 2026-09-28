@@ -847,8 +847,8 @@ class BytesIOPayload(IOBasePayload):
 
     def __init__(self, value: io.BytesIO, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
-        # Calculate size once during initialization
-        self._size = len(self._value.getbuffer()) - self._value.tell()
+        with self._value.getbuffer() as buf:
+            self._size = len(buf) - self._value.tell()
 
     @property
     def size(self) -> int:
