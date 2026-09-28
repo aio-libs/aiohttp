@@ -404,8 +404,13 @@ class TestProxy(unittest.TestCase):
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
 
-        for cleanup in (True, False):
-            with self.subTest(cleanup=cleanup):
+        for cleanup, asyncio_transport in (
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ):
+            with self.subTest(cleanup=cleanup, asyncio_transport=asyncio_transport):
                 proxy_req = ClientRequest(
                     "GET", URL("http://proxy.example.com"), loop=self.loop
                 )
@@ -414,6 +419,16 @@ class TestProxy(unittest.TestCase):
                 class TransportMock(asyncio.Transport):
                     def close(self) -> None:
                         pass
+
+                class DuckTypedTransportMock:
+                    """Models aiofastnet's transport, which subclasses no asyncio class."""
+
+                    def close(self) -> None:
+                        pass
+
+                transport_mock: object = (
+                    TransportMock() if asyncio_transport else DuckTypedTransportMock()
+                )
 
                 proxy_resp = ClientResponse(
                     "get",
@@ -487,7 +502,7 @@ class TestProxy(unittest.TestCase):
                             "start_tls",
                             autospec=True,
                             spec_set=True,
-                            return_value=TransportMock(),
+                            return_value=transport_mock,
                         ),
                     ):
                         req = ClientRequest(

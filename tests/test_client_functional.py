@@ -302,7 +302,8 @@ async def test_keepalive_timeout_async_sleep(unused_port_socket: socket.socket) 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    # Timeout must be enough to outlive first request on slow platforms.
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.2)
     await runner.setup()
 
     site = web.SockSite(runner, unused_port_socket)
@@ -315,7 +316,7 @@ async def test_keepalive_timeout_async_sleep(unused_port_socket: socket.socket) 
             resp1 = await sess.get(f"http://{host}:{port}/")
             await resp1.read()
             # wait for server keepalive_timeout
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.5)
             resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
@@ -335,7 +336,7 @@ async def test_keepalive_timeout_sync_sleep(unused_port_socket: socket.socket) -
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.2)
     await runner.setup()
 
     site = web.SockSite(runner, unused_port_socket)
@@ -349,7 +350,7 @@ async def test_keepalive_timeout_sync_sleep(unused_port_socket: socket.socket) -
             await resp1.read()
             # wait for server keepalive_timeout
             # time.sleep is a more challenging scenario than asyncio.sleep
-            time.sleep(0.01)
+            time.sleep(0.5)
             resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
@@ -2923,6 +2924,55 @@ async def test_morsel_with_attributes(aiohttp_client) -> None:
 
     async with client.get("/") as resp:
         assert 200 == resp.status
+
+
+async def test_request_secure_cookie_treat_as_secure_origin(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    """Per-request Secure cookies must honor the session jar's trusted origins."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.cookies.get("auth") == "token"
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    jar = aiohttp.CookieJar(unsafe=True, treat_as_secure_origin=[server.make_url("/")])
+    client = await aiohttp_client(server, cookie_jar=jar)  # type: ignore[var-annotated]
+
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c.set("auth", "token", "token")
+    c["secure"] = True
+
+    async with client.get("/", cookies={"auth": c}) as resp:
+        assert resp.status == 200
+
+
+async def test_request_secure_cookie_not_sent_over_http(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A per-request Secure cookie is only sent to the jar's trusted origins."""
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.cookies.keys() == {"plain"}
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    # The trusted origin never matches the test server, so the Secure
+    # cookie must still be withheld from this plain-http request.
+    jar = aiohttp.CookieJar(treat_as_secure_origin=[URL("http://example.com")])
+    client = await aiohttp_client(app, cookie_jar=jar)
+
+    c: http.cookies.Morsel[str] = http.cookies.Morsel()
+    c.set("auth", "token", "token")
+    c["secure"] = True
+
+    cookies: dict[str, str | http.cookies.Morsel[str]] = {"auth": c, "plain": "ok"}
+    async with client.get("/", cookies=cookies) as resp:
+        assert resp.status == 200
 
 
 async def test_set_cookies(
