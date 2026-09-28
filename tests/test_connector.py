@@ -2561,10 +2561,8 @@ async def test_start_tls_connection_returns_none() -> None:
         )
     transport.close()
 
-    # start_tls() returns None on asyncio, but not on aiofastnet.
-    with mock.patch.object(connector_module, "aiofastnet", None):
-        with pytest.raises(aiohttp.ClientConnectorError) as exc_info:
-            await conn._start_tls_connection(transport, req, ClientTimeout())
+    with pytest.raises(aiohttp.ClientConnectorError) as exc_info:
+        await conn._start_tls_connection(transport, req, ClientTimeout())
 
     assert "Failed to start TLS" in exc_info.value.os_error.args[0]
 

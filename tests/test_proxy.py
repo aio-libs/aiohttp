@@ -502,7 +502,7 @@ class TestProxy(unittest.TestCase):
                             "start_tls",
                             autospec=True,
                             spec_set=True,
-                            return_value=TransportMock(),
+                            return_value=transport_mock,
                         ),
                     ):
                         req = ClientRequest(
