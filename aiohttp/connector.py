@@ -1633,7 +1633,11 @@ class TCPConnector(BaseConnector):
             proxy_req.url = req.url
             key = req.connection_key._replace(proxy=None, proxy_headers_hash=None)
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
-            proxy_resp = await proxy_req._send(conn)
+            try:
+                proxy_resp = await proxy_req._send(conn)
+            except BaseException:
+                conn.close()
+                raise
             try:
                 protocol = conn._protocol
                 assert protocol is not None

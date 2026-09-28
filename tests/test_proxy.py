@@ -913,6 +913,75 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
             await connector.close()
 
 
+@mock.patch("aiohttp.connector.ClientRequestBase")
+@mock.patch(
+    "aiohttp.connector.aiohappyeyeballs.start_connection",
+    autospec=True,
+    spec_set=True,
+)
+async def test_https_connect_send_error(  # type: ignore[misc]
+    start_connection: mock.Mock,
+    ClientRequestMock: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    event_loop = asyncio.get_running_loop()
+    proxy_req = ClientRequestBase(
+        "GET",
+        URL("http://proxy.example.com"),
+        loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
+    )
+    ClientRequestMock.return_value = proxy_req
+
+    with mock.patch.object(
+        proxy_req,
+        "_send",
+        autospec=True,
+        side_effect=aiohttp.ClientConnectionResetError(
+            "Cannot write to closing transport"
+        ),
+    ):
+        connector = aiohttp.TCPConnector()
+        r = {
+            "hostname": "hostname",
+            "host": "127.0.0.1",
+            "port": 80,
+            "family": socket.AF_INET,
+            "proto": 0,
+            "flags": 0,
+        }
+        with mock.patch.object(
+            connector, "_resolve_host", autospec=True, return_value=[r]
+        ):
+            tr, proto = mock.Mock(), mock.Mock()
+            tr.get_extra_info.return_value = None
+            # Called on connection to http://proxy.example.com
+            with mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ):
+                req = make_client_request(
+                    "GET",
+                    URL("https://www.python.org"),
+                    proxy=URL("http://proxy.example.com"),
+                    loop=event_loop,
+                )
+                with pytest.raises(
+                    aiohttp.ClientConnectionResetError,
+                    match="Cannot write to closing transport",
+                ) as exc_info:
+                    await connector._create_connection(req, [], aiohttp.ClientTimeout())
+                # The tunnel connection is still referenced from the traceback,
+                # so the proxy connection must have been closed explicitly
+                # rather than by the garbage collector.
+                assert exc_info.value.__traceback__ is not None
+                proto.close.assert_called_once_with()
+        await connector.close()
+
+
 @mock.patch("aiohttp.connector.ClientRequest")
 @mock.patch(
     "aiohttp.connector.aiohappyeyeballs.start_connection",
