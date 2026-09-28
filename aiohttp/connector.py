@@ -144,7 +144,7 @@ async def start_tls(
     server_hostname: str | None,
     ssl_handshake_timeout: float | None,
     ssl_shutdown_timeout: float | None = None,
-) -> asyncio.BaseTransport | None:
+) -> asyncio.Transport | None:
     if aiofastnet is not None:
         return await aiofastnet.start_tls(
             loop,
@@ -1574,7 +1574,7 @@ class TCPConnector(BaseConnector):
                     else:
                         underlying_transport.close()
                     raise
-                if isinstance(tls_transport, asyncio.Transport):
+                if tls_transport is not None:
                     fingerprint = self._get_fingerprint(req)
                     if fingerprint:
                         try:
