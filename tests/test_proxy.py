@@ -435,9 +435,6 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
         def close(self) -> None:
             pass
 
-        def get_extra_info(self, name: str, default: object = None) -> object:
-            return default
-
     transport_mock: object = (
         TransportMock() if asyncio_transport else DuckTypedTransportMock()
     )

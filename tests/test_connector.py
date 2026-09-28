@@ -2678,6 +2678,44 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -
     underlying_transport.abort.assert_not_called()
 
 
+async def test_start_tls_connection_returns_none(
+    make_client_request: _RequestMaker,
+) -> None:
+    """start_tls() returns None when the underlying transport is closing."""
+    conn = aiohttp.TCPConnector()
+    underlying_transport = mock.create_autospec(
+        asyncio.Transport, spec_set=True, instance=True
+    )
+    req = make_client_request(
+        "GET", URL("https://example.com"), loop=asyncio.get_running_loop()
+    )
+
+    with (
+        mock.patch.object(
+            conn,
+            "_get_ssl_context",
+            autospec=True,
+            spec_set=True,
+            return_value=ssl.create_default_context(),
+        ),
+        mock.patch.object(
+            connector_module,
+            "start_tls",
+            autospec=True,
+            spec_set=True,
+            return_value=None,
+        ),
+    ):
+        with pytest.raises(aiohttp.ClientConnectorError) as exc_info:
+            await conn._start_tls_connection(underlying_transport, req, ClientTimeout())
+
+    assert "Failed to start TLS" in exc_info.value.os_error.args[0]
+    underlying_transport.close.assert_not_called()
+    underlying_transport.abort.assert_not_called()
+
+    await conn.close()
+
+
 def test_client_timeout_total_zero_raises() -> None:
     """Test that ClientTimeout(total=0) raises ValueError.
 
