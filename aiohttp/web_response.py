@@ -165,6 +165,14 @@ class StreamResponse(
         return self._keep_alive
 
     def force_close(self) -> None:
+        """Disable keep-alive for this connection.
+
+        The connection is still closed gracefully after the response
+        is sent (the server may keep reading and discarding remaining
+        client data for up to ``lingering_time`` seconds), so that the
+        client can receive the whole response.  To close the
+        connection immediately, use ``request.protocol.force_close()``.
+        """
         self._keep_alive = False
 
     @property

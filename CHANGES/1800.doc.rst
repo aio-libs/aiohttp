@@ -1,0 +1,4 @@
+Expanded the :meth:`~aiohttp.web.StreamResponse.force_close()` documentation
+to clarify that the connection is still closed gracefully after the response
+is sent (lingering close), and documented ``request.protocol.force_close()``
+for terminating the connection immediately -- by :user:`istoolsfox`.

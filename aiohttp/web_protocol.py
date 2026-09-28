@@ -628,7 +628,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             self._waiter.cancel()
 
     def force_close(self) -> None:
-        """Forcefully close connection."""
+        """Forcefully close connection immediately.
+
+        Unlike the :meth:`StreamResponse.force_close()
+        <aiohttp.web.StreamResponse.force_close>` response method, the
+        underlying transport is closed right away without a graceful
+        lingering close.
+        """
         self._force_close = True
         if self._waiter:
             self._waiter.cancel()
