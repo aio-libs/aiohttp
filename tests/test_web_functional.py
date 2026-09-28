@@ -2061,7 +2061,10 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
 
         for _ in range(frames):
             await ws_writer.send_frame(frame_payload.encode(), WSMsgType.TEXT)
-        writer.write(encoded)
+        # Write an immutable snapshot: zero-copy selector transports hold
+        # buffer exports of the written object until flushed, which would
+        # make the clear() below raise BufferError.
+        writer.write(bytes(encoded))
         await writer.drain()
         await asyncio.wait_for(reading_paused.wait(), 5)
 
@@ -2069,7 +2072,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
         # handover to the websocket resumes the transport.
         encoded.clear()
         await ws_writer.send_frame(b"last", WSMsgType.TEXT)
-        writer.write(encoded)
+        writer.write(bytes(encoded))
         await writer.drain()
         release_handler.set()
 

@@ -295,7 +295,8 @@ async def test_keepalive_timeout_async_sleep(unused_port_socket: socket.socket) 
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    # Timeout must be enough to outlive first request on slow platforms.
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.2)
     await runner.setup()
 
     site = web.SockSite(runner, unused_port_socket)
@@ -308,7 +309,7 @@ async def test_keepalive_timeout_async_sleep(unused_port_socket: socket.socket) 
             resp1 = await sess.get(f"http://{host}:{port}/")
             await resp1.read()
             # wait for server keepalive_timeout
-            await asyncio.sleep(0.01)
+            await asyncio.sleep(0.5)
             resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
@@ -328,7 +329,7 @@ async def test_keepalive_timeout_sync_sleep(unused_port_socket: socket.socket) -
     app = web.Application()
     app.router.add_route("GET", "/", handler)
 
-    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.001)
+    runner = web.AppRunner(app, tcp_keepalive=True, keepalive_timeout=0.2)
     await runner.setup()
 
     site = web.SockSite(runner, unused_port_socket)
@@ -342,7 +343,7 @@ async def test_keepalive_timeout_sync_sleep(unused_port_socket: socket.socket) -
             await resp1.read()
             # wait for server keepalive_timeout
             # time.sleep is a more challenging scenario than asyncio.sleep
-            time.sleep(0.01)
+            time.sleep(0.5)
             resp2 = await sess.get(f"http://{host}:{port}/")
             await resp2.read()
     finally:
