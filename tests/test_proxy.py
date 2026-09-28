@@ -431,22 +431,19 @@ class TestProxy(unittest.TestCase):
         spec_set=True,
     )
     @pytest.mark.usefixtures("enable_cleanup_closed")
-    @pytest.mark.parametrize(
-        "asyncio_transport",
-        (True, False),
-        ids=("asyncio-transport", "duck-typed-transport"),
-    )
     def test_https_connect_fingerprint_mismatch(
-        self,
-        start_connection: mock.Mock,
-        ClientRequestMock: mock.Mock,
-        asyncio_transport: bool,
+        self, start_connection: mock.Mock, ClientRequestMock: mock.Mock
     ) -> None:
         async def make_conn() -> aiohttp.TCPConnector:
             return aiohttp.TCPConnector(enable_cleanup_closed=cleanup)
 
-        for cleanup in (True, False):
-            with self.subTest(cleanup=cleanup):
+        for cleanup, asyncio_transport in (
+            (True, True),
+            (True, False),
+            (False, True),
+            (False, False),
+        ):
+            with self.subTest(cleanup=cleanup, asyncio_transport=asyncio_transport):
                 proxy_req = ClientRequest(
                     "GET", URL("http://proxy.example.com"), loop=self.loop
                 )

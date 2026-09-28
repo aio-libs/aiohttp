@@ -86,7 +86,8 @@ class Stream:
     async def read(self, size=None):
         return self.content.read(size)
 
-    def at_eof(self) -> bool:
+    def at_eof(self):
+        with self.content.getbuffer() as buf:
             return self.content.tell() == len(buf)
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:

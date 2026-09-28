@@ -2603,13 +2603,11 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311(
     underlying_transport.abort.assert_not_called()
 
 
-async def test_start_tls_connection_returns_none(
-    make_client_request: _RequestMaker,
-) -> None:
+async def test_start_tls_connection_returns_none() -> None:
     """A transport closed before the upgrade makes start_tls() return None."""
     loop = asyncio.get_running_loop()
     conn = aiohttp.TCPConnector()
-    req = make_client_request("GET", URL("https://example.com"), loop=loop)
+    req = ClientRequest("GET", URL("https://example.com"), loop=loop)
 
     with socket.socket() as listener:
         listener.bind(("127.0.0.1", 0))
