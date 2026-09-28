@@ -175,6 +175,11 @@ class AbstractCookieJar(Sized, IterableBase):
         """Return True if cookies should be quoted."""
 
     @property
+    def treat_as_secure_origin(self) -> frozenset[URL]:
+        """Return origins considered secure even over cleartext connections."""
+        return frozenset()
+
+    @property
     @abstractmethod
     def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
         """Return the cookies stored in this jar."""

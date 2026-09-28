@@ -156,7 +156,7 @@ pip-tools==7.6.1
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.11.11
+platformdirs==4.11.12
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -214,7 +214,7 @@ python-dateutil==2.9.0.post0
     # via freezegun
 python-discovery==1.6.1
     # via virtualenv
-python-on-whales==0.81.0
+python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -276,7 +276,7 @@ towncrier==26.9.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-trustme==1.2.1 ; platform_machine != "i686"
+trustme==1.2.1 ; platform_machine != "i686" and implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
