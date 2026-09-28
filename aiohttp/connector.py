@@ -1492,7 +1492,7 @@ class TCPConnector(BaseConnector):
                     else:
                         underlying_transport.close()
                     raise
-                if isinstance(tls_transport, asyncio.Transport):
+                if tls_transport is not None:
                     fingerprint = self._get_fingerprint(req)
                     if fingerprint:
                         try:
