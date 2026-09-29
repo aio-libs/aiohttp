@@ -1191,6 +1191,21 @@ def test_method_must_be_empty_body() -> None:
     assert "head" not in EMPTY_BODY_METHODS
 
 
+def test_headers_dict_proxy_mixed_case_keys() -> None:
+    """Duplicate headers that differ only by case collapse to one mapping key."""
+    md: CIMultiDict[str] = CIMultiDict()
+    md.add("X-Foo", "1")
+    md.add("x-foo", "2")
+    md.add("Host", "a")
+    headers = helpers.HeadersDictProxy(md)
+
+    assert list(headers) == ["X-Foo", "Host"]
+    assert len(headers) == 2
+    assert list(headers.items()) == [("X-Foo", "1, 2"), ("Host", "a")]
+    assert headers["X-Foo"] == "1, 2"
+    assert headers["x-foo"] == "1, 2"
+
+
 def test_should_remove_content_length_is_subset_of_must_be_empty_body() -> None:
     """Test should_remove_content_length is always a subset of must_be_empty_body."""
     assert should_remove_content_length("GET", 101) is True

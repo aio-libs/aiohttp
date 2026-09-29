@@ -47,7 +47,7 @@ except ImportError:
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard  # noqa: I900
+        import compression.zstd as zstandard
     else:
         import backports.zstd as zstandard
 except ImportError:
@@ -453,6 +453,17 @@ def test_list_headers(
     msg = messages[0][0]
 
     assert msg.headers.getall("Foo") == expected
+
+
+def test_headers_mixed_case_duplicates(parser: HttpRequestParser) -> None:
+    text = b"GET / HTTP/1.1\r\nHost: a\r\nX-Foo: 1\r\nx-foo: 2\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    headers = messages[0][0].headers
+
+    assert list(headers) == ["Host", "X-Foo"]
+    assert len(headers) == 2
+    assert list(headers.items()) == [("Host", "a"), ("X-Foo", "1, 2")]
+    assert headers["x-foo"] == "1, 2"
 
 
 @pytest.mark.parametrize(

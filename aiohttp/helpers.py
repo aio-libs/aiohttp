@@ -47,7 +47,7 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger
-from .typedefs import PathLike  # noqa
+from .typedefs import PathLike
 
 if sys.version_info >= (3, 11):
     import asyncio as async_timeout
@@ -808,17 +808,19 @@ class HeadersDictProxy(Mapping[str, str]):
         return ", ".join(self._md.getall(key))
 
     def __iter__(self) -> Iterator[str]:
-        # We need to deduplicate keys from MultiDict
-        # But, we also need to retain ordering
-        seen = set()
+        # CIMultiDict keeps the original casing of each insertion, so
+        # "X-Foo" and "x-foo" are distinct keys even though HTTP header
+        # names are case-insensitive. Fold when deduplicating.
+        seen: set[str] = set()
         for k in self._md.__iter__():
-            if k in seen:
+            folded = k.lower()
+            if folded in seen:
                 continue
-            seen.add(k)
+            seen.add(folded)
             yield k
 
     def __len__(self) -> int:
-        return len(set(self._md.keys()))
+        return len({k.lower() for k in self._md.keys()})
 
     def __repr__(self) -> str:
         body = ", ".join(f"'{k}': {v!r}" for k, v in self.items())
