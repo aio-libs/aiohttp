@@ -2717,6 +2717,32 @@ async def test_start_tls_exception_with_ssl_shutdown_timeout_nonzero_pre_311() -
     underlying_transport.abort.assert_not_called()
 
 
+async def test_start_tls_connection_returns_none(
+    make_client_request: _RequestMaker,
+) -> None:
+    """A transport closed before the upgrade makes start_tls() return None."""
+    loop = asyncio.get_running_loop()
+    conn = aiohttp.TCPConnector()
+    req = make_client_request("GET", URL("https://example.com"), loop=loop)
+
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        listener.listen()
+        transport, _ = await loop.create_connection(
+            asyncio.Protocol, *listener.getsockname()
+        )
+    transport.close()
+
+    # start_tls() returns None on asyncio, but not on aiofastnet.
+    with mock.patch.object(connector_module, "aiofastnet", None):
+        with pytest.raises(aiohttp.ClientConnectorError) as exc_info:
+            await conn._start_tls_connection(transport, req, ClientTimeout())
+
+    assert "Failed to start TLS" in exc_info.value.os_error.args[0]
+
+    await conn.close()
+
+
 def test_client_timeout_total_zero_raises() -> None:
     """Test that ClientTimeout(total=0) raises ValueError.
 
@@ -2741,8 +2767,41 @@ async def test_invalid_ssl_param() -> None:
 
 async def test_tcp_connector_ctor_fingerprint_valid() -> None:
     valid = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
-    conn = aiohttp.TCPConnector(ssl=valid)
+    with pytest.warns(DeprecationWarning, match="ssl parameter is deprecated"):
+        conn = aiohttp.TCPConnector(ssl=valid)
     assert conn._ssl is valid
+
+    await conn.close()
+
+
+async def test_tcp_connector_ssl_deprecated() -> None:
+    with pytest.warns(
+        DeprecationWarning,
+        match="ssl parameter is deprecated since 4.0 and scheduled for removal in 5.0",
+    ):
+        conn = aiohttp.TCPConnector(ssl=False)
+    assert conn._ssl is False
+
+    await conn.close()
+
+
+async def test_tcp_connector_ssl_default_not_deprecated() -> None:
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        conn = aiohttp.TCPConnector()
+    assert conn._ssl is True
+
+    await conn.close()
+
+
+async def test_tcp_connector_fingerprint_from_deprecated_ssl_param() -> None:
+    """The deprecated connector-level ssl is still used when the request has none."""
+    fingerprint = aiohttp.Fingerprint(hashlib.sha256(b"foo").digest())
+    with pytest.warns(DeprecationWarning, match="ssl parameter is deprecated"):
+        conn = aiohttp.TCPConnector(ssl=fingerprint)
+    req = mock.Mock()
+    req.ssl = True
+    assert conn._get_fingerprint(req) is fingerprint
 
     await conn.close()
 
@@ -2826,7 +2885,8 @@ async def test___get_ssl_context2() -> None:
 
 async def test___get_ssl_context3() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    conn = aiohttp.TCPConnector(ssl=ctx)
+    with pytest.warns(DeprecationWarning, match="ssl parameter is deprecated"):
+        conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = True
@@ -2837,7 +2897,8 @@ async def test___get_ssl_context3() -> None:
 
 async def test___get_ssl_context4() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    conn = aiohttp.TCPConnector(ssl=ctx)
+    with pytest.warns(DeprecationWarning, match="ssl parameter is deprecated"):
+        conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = False
@@ -2848,7 +2909,8 @@ async def test___get_ssl_context4() -> None:
 
 async def test___get_ssl_context5() -> None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    conn = aiohttp.TCPConnector(ssl=ctx)
+    with pytest.warns(DeprecationWarning, match="ssl parameter is deprecated"):
+        conn = aiohttp.TCPConnector(ssl=ctx)
     req = mock.Mock()
     req.is_ssl.return_value = True
     req.ssl = aiohttp.Fingerprint(hashlib.sha256(b"1").digest())

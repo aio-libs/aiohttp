@@ -20,7 +20,7 @@ docutils==0.21.2
     # via
     #   myst-parser
     #   sphinx
-idna==3.19
+idna==3.20
     # via requests
 imagesize==2.0.1
     # via sphinx
@@ -87,5 +87,5 @@ towncrier==26.9.0
     # via
     #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
-urllib3==2.7.0
+urllib3==2.8.0
     # via requests

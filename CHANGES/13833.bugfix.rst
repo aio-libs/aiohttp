@@ -1,0 +1,1 @@
+Fixed per-request cookies (the ``cookies`` argument of a request method) marked ``Secure`` not being sent to origins listed in ``CookieJar``'s ``treat_as_secure_origin`` -- by :user:`Dreamsorcerer`.
