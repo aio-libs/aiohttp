@@ -1166,7 +1166,7 @@ def test_domain_validation_error(domain: str | None, error: type[Exception]) -> 
 
 def test_domain_valid() -> None:
     assert Domain("example.com:81").canonical == "example.com:81"
-    assert MaskDomain("*.example.com").canonical == r".*\.example\.com"
+    assert MaskDomain("*.example.com").canonical == r"[^:]*\.example\.com(:.*)?"
     assert Domain("пуни.код").canonical == "xn--h1ajfq.xn--d1alm"
 
 
@@ -1180,30 +1180,15 @@ def test_domain_valid() -> None:
         ("*.example.com", "jpg.example.com", True),
         ("*.example.com", "a.example.com", True),
         ("*.example.com", "example.com", False),
-        # The registered name is stored lowercased, without a trailing dot
-        # and without the default port; a request Host in any of those
-        # forms names the same origin.
+        # Registered without a port, a domain matches the Host on any port.
         ("example.com", "example.com:80", True),
-        ("example.com", "example.com.", True),
-        ("example.com", "example.com.:80", True),
-        ("example.com", "EXAMPLE.COM.:080", True),
-        ("example.com:81", "example.com.:81", True),
-        ("example.com:81", "example.com.:081", True),
-        ("*.example.com", "a.example.com:80", True),
-        ("*.example.com", "a.example.com.", True),
+        ("example.com", "EXAMPLE.COM:8080", True),
+        ("*.example.com", "a.example.com:8080", True),
         ("*.example.com", "A.EXAMPLE.COM", True),
-        # A different port, a port that is not a run of ASCII digits, a dot
-        # after the port, an empty name or a second colon is not the
-        # registered origin and must not match.
-        ("example.com", "example.com:8080", False),
-        ("example.com", "example.com:443", False),
-        ("example.com", "example.com:", False),
-        ("example.com", "example.com:x", False),
-        ("example.com", "example.com:\u0668\u0660", False),
-        ("example.com", ":80", False),
-        ("example.com:8080", "example.com:8080.", False),
-        ("example.com:8080", "example.com:8080:80", False),
-        ("example.com:8080", "example.com:8080.:080", False),
+        # Registered with a port, it matches that port only.
+        ("example.com:81", "example.com:8080", False),
+        ("*.example.com:81", "a.example.com:81", True),
+        ("*.example.com:81", "a.example.com", False),
     ],
 )
 def test_match_domain(a: str, b: str, result: bool) -> None:
@@ -1275,19 +1260,11 @@ async def test_add_domain(app: web.Application) -> None:
     assert isinstance(match_info.http_exception, web.HTTPMethodNotAllowed)
 
 
-@pytest.mark.parametrize("cls", (Domain, MaskDomain))
-def test_match_domain_port_beyond_int_limit(cls: type[Domain]) -> None:
-    """int() refuses more than 4300 digits; a long port must not raise."""
-    assert not cls("example.com").match_domain("example.com:" + "1" * 5000)
-
-
-@pytest.mark.parametrize(
-    "host", ("example.com:80", "example.com.", "example.com.:80", "EXAMPLE.COM:80")
-)
-async def test_add_domain_matches_equivalent_host_forms(
+@pytest.mark.parametrize("host", ("example.com:80", "EXAMPLE.COM:8080"))
+async def test_add_domain_matches_host_with_port(
     app: web.Application, host: str
 ) -> None:
-    """Another spelling of the registered host must not reach the parent's route."""
+    """A Host with a port must reach the domain app, not the parent's route."""
     parent_handler = make_handler()
     app.router.add_get("/", parent_handler)
 

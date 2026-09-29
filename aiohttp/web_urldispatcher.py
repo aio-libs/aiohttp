@@ -804,29 +804,10 @@ class Domain(AbstractRuleMatching):
             return False
         return self.match_domain(host)
 
-    @staticmethod
-    def _normalize_host(host: str) -> str:
-        """Spell a request Host the way validation() stores a domain.
-
-        validation() lowercases the name, drops trailing dots and omits the
-        default port, so ``example.com.`` and ``example.com:80`` both name
-        the origin it stores as ``example.com``. Without the same treatment
-        here they would fail the comparison and fall through to the parent
-        application. Anything else after the colon, a second colon
-        included, is not a port, and the Host is only lowercased.
-        """
-        host = host.lower()
-        name, sep, port = host.partition(":")
-        if sep and port.isascii() and port.isdigit():
-            name = name.rstrip(".")
-            # Canonicalized as text: int() refuses more than 4300 digits,
-            # and a Host header may carry that many.
-            port = port.lstrip("0") or "0"
-            return name if port == "80" else f"{name}:{port}"
-        return host if sep else host.rstrip(".")
-
     def match_domain(self, host: str) -> bool:
-        return self._normalize_host(host) == self._domain
+        host = host.lower()
+        # The port only matters when the domain was registered with one.
+        return host == self._domain or host.partition(":")[0] == self._domain
 
     def get_info(self) -> _InfoDict:
         return {"domain": self._domain}
@@ -837,7 +818,7 @@ class MaskDomain(Domain):
 
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
-        mask = self._domain.replace(".", r"\.").replace("*", ".*")
+        mask = self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
         self._mask = re.compile(mask)
 
     @property
@@ -845,7 +826,7 @@ class MaskDomain(Domain):
         return self._mask.pattern
 
     def match_domain(self, host: str) -> bool:
-        return self._mask.fullmatch(self._normalize_host(host)) is not None
+        return self._mask.fullmatch(host.lower()) is not None
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
