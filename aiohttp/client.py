@@ -168,6 +168,22 @@ if sys.version_info >= (3, 11) and TYPE_CHECKING:
     from typing import Unpack
 
 
+# URL parsers strip leading and trailing C0 control characters and spaces and
+# drop tabs and newlines before splitting a URL.
+_C0_CONTROL_OR_SPACE = "".join(map(chr, range(0x21)))
+_REMOVE_TAB_OR_NEWLINE = str.maketrans("", "", "\t\n\r")
+
+
+def _has_no_authority(location: str, scheme: str) -> bool:
+    """Tell if a URL with a scheme has no "//" after the scheme.
+
+    Browsers read a backslash like a slash there for http and https.
+    """
+    location = location.strip(_C0_CONTROL_OR_SPACE).translate(_REMOVE_TAB_OR_NEWLINE)
+    rest = location[len(scheme) + 1 : len(scheme) + 3]
+    return rest[:1] not in ("/", "\\") or rest[1:] not in ("/", "\\")
+
+
 class _RequestOptions(TypedDict, total=False):
     params: Query
     data: Any
@@ -834,7 +850,11 @@ class ClientSession:
                                 await req._body.close()
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
-                        elif not scheme:
+                        elif not scheme or (
+                            scheme == url.scheme and _has_no_authority(r_url, scheme)
+                        ):
+                            # "http:/path" or "http:path" is a reference to
+                            # the current URL, as browsers resolve it.
                             parsed_redirect_url = url.join(parsed_redirect_url)
 
                         try:
