@@ -1,0 +1,6 @@
+Replaced most of the ``sphinx.ext.extlinks``-based roles in the documentation
+with :pypi:`sphinx-issues`, which ships the
+``:issue:``, ``:pr:``, ``:commit:`` and ``:user:`` roles out of the box.
+Pull request references are now captioned ``#N`` instead of ``PR #N``, and
+commit references as abbreviated, ``@``-prefixed hashes
+-- by :user:`aiolibsbot`.

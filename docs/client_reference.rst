@@ -55,7 +55,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
-                         read_bufsize=2**16, \
+                         read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
                          max_headers=128, \
@@ -230,7 +230,9 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.12
 
    :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
-                            64 KiB by default.
+                            256 KiB by default. On a WebSocket connection it
+                            also bounds what is buffered between the handshake
+                            and the reader being installed.
 
       .. versionadded:: 3.7
 
@@ -565,6 +567,12 @@ The client session supports the context manager protocol for self closing.
                          See :ref:`aiohttp-client-middleware` for more information.
 
          .. versionadded:: 3.12
+
+      :param upload_tracker: An :class:`UploadTracker` instance observing
+                             this request's body upload.
+                             ``None`` by default (no tracking).
+
+         .. versionadded:: 3.14.4
 
       :param int read_bufsize: Size of the read buffer (:attr:`ClientResponse.content`).
                               ``None`` by default,
@@ -1229,8 +1237,8 @@ is controlled by *force_close* constructor's parameter).
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-      :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
+      :param ssl: **(DEPRECATED)** SSL validation mode. ``True`` for default
+                  SSL check (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1240,6 +1248,12 @@ is controlled by *force_close* constructor's parameter).
                   *fingerprint* parameters.
 
          .. versionadded:: 3.0
+
+         .. deprecated:: 4.0
+
+            Scheduled for removal in 5.0. Pass *ssl* to
+            :class:`ClientSession` for a session-wide default, or to
+            :meth:`ClientSession.get` and others per request.
 
    :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
@@ -1568,30 +1582,6 @@ Response object
       of link params and url at key `url` as :class:`~yarl.URL` instance.
 
       .. versionadded:: 3.2
-
-   .. attribute:: output_size
-
-      Number of bytes sent for this request.
-
-      Pair with :attr:`upload_complete` to display upload progress::
-
-          async with session.post(url, data=mpwriter) as resp:
-              while not resp.upload_complete.done():
-                  print(f"uploaded {resp.output_size} bytes")
-                  await asyncio.sleep(0.5)
-              print(f"upload complete: {resp.output_size} bytes")
-
-      .. versionadded:: 3.14
-
-   .. attribute:: upload_complete
-
-      An :class:`asyncio.Future` set when the request body has been fully sent.
-
-      Use ``await resp.upload_complete`` to block until the upload finishes, or
-      ``resp.upload_complete.done()`` to poll from a progress-sampling loop
-      (see :attr:`output_size`).
-
-      .. versionadded:: 3.14
 
    .. attribute:: content_type
 
@@ -2372,6 +2362,78 @@ Utilities
    .. versionadded:: 3.14
 
 
+.. class:: UploadTracker()
+   :canonical: aiohttp.client_reqrep.UploadTracker
+
+   Tracks upload progress of a single client request.
+
+   Create a tracker inside a running event loop and pass it to a request
+   via the ``upload_tracker`` argument; read its attributes while the
+   request runs, e.g. from a progress-reporting task::
+
+       tracker = aiohttp.UploadTracker()
+
+       async def report_progress() -> None:
+           while not tracker.upload_complete.done():
+               print(f"uploaded {tracker.bytes_written} bytes")
+               await asyncio.sleep(0.5)
+
+       progress = asyncio.create_task(report_progress())
+       async with session.post(url, data=data, upload_tracker=tracker) as resp:
+           ...
+       await progress
+       # Raises if the upload failed, even when the request itself
+       # succeeded because the server answered early.
+       await tracker.upload_complete
+
+   A tracker observes exactly one request: passing it to a second request
+   raises :exc:`RuntimeError`. Two requests uploading the same payload
+   each get their own tracker.
+
+   .. attribute:: bytes_written
+
+      Body bytes of the current upload attempt that have been sent to
+      the kernel. Counted before transport-level transformations such as compression
+      or chunked framing; within a partially sent chunk the value is a
+      linear estimate. Resets to ``0`` when the request moves on to a new
+      attempt, and equal to the full body size once the attempt has
+      written everything.
+
+      .. note::
+
+         Because this only tracks the data sent to the kernel, which then buffers data
+         itself, this feature is effectively useless on small payloads.
+         Typically, payloads less than ~10 MiB will result in the progress
+         appearing to be 100% immediately, even if not a single byte has left
+         the machine yet. A payload ~20 MiB might see the progress jump to 40-50%
+         immediately, etc. The larger the payload, the less noticeable this skew will be.
+
+   .. attribute:: attempts
+
+      Number of upload attempts dispatched: ``1`` for a plain request,
+      incremented each time the request is resent, e.g. following a
+      redirect or a middleware retry. A redirect that drops the body
+      (such as a *303 See Other*) still counts a zero-byte attempt.
+
+   .. attribute:: upload_complete
+
+      An :class:`asyncio.Future` settled once no more of the body will
+      be sent: with ``None`` when the final attempt wrote the body fully
+      (even if the server responded first, the future settles when
+      writing finishes); with the upload error when the final attempt
+      failed (the request raises the same error unless the server
+      already responded successfully); or with :exc:`UploadAbortedError`
+      when the body was never fully sent, e.g. the request failed before
+      writing started, was cancelled, or a middleware answered without
+      sending the request.
+
+      When the server answers before reading the whole body, the request
+      succeeds without raising; await the future (or check its
+      :meth:`~asyncio.Future.exception`) to observe such upload failures.
+
+   .. versionadded:: 3.14.4
+
+
 .. class:: DigestAuthMiddleware(login, password, *, preemptive=True)
    :canonical: aiohttp.client_middleware_digest_auth.DigestAuthMiddleware
 
@@ -2480,7 +2542,7 @@ Utilities
       .. versionadded:: 3.7
 
    :param treat_as_secure_origin: (optional) Mark origins as secure
-                                  for cookies marked as Secured. Possible types are
+                                  for cookies marked as Secured.
 
                                   Possible types are:
 
@@ -2503,7 +2565,9 @@ Utilities
       :param ~yarl.URL response_url: URL of response, ``None`` for *shared
          cookies*.  Regular cookies are coupled with server's URL and
          are sent only to this server, shared ones are sent in every
-         client request.
+         client request (except that shared cookies marked ``Secure``
+         are only sent over encrypted connections or to origins listed
+         in *treat_as_secure_origin*).
 
    .. method:: filter_cookies(request_url)
 
@@ -2566,6 +2630,14 @@ Utilities
          The tuples gained the *path* element; host-only state is tracked
          per ``(domain, path, name)`` cookie identity so that same-named
          cookies on other paths cannot affect it.
+
+   .. attribute:: treat_as_secure_origin
+
+      A :class:`frozenset` of :class:`~yarl.URL` origins that are
+      treated as secure even when the connection is not encrypted, as
+      configured by the *treat_as_secure_origin* parameter.
+
+      .. versionadded:: 3.14.4
 
 
 .. class:: DummyCookieJar(*, loop=None)
@@ -2737,6 +2809,16 @@ All exceptions are available as members of *aiohttp* module.
    3. not enough data that satisfy ``Content-Length`` HTTP header.
 
    Derived from :exc:`ClientError`
+
+.. class:: UploadAbortedError
+   :canonical: aiohttp.client_exceptions.UploadAbortedError
+
+   Set on :attr:`UploadTracker.upload_complete` when the request body
+   was never fully sent.
+
+   Derived from :exc:`ClientError`
+
+   .. versionadded:: 3.14.4
 
 .. exception:: InvalidURL
    :canonical: aiohttp.client_exceptions.InvalidURL
@@ -3025,6 +3107,8 @@ Hierarchy of exceptions
         * :exc:`SocketTimeoutError`
 
   * :exc:`ClientPayloadError`
+
+  * :exc:`UploadAbortedError`
 
   * :exc:`ClientResponseError`
 

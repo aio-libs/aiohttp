@@ -495,6 +495,16 @@ def test_continuation_err(
         parser._handle_frame(True, WSMsgType.TEXT, b"line2", 0)
 
 
+def test_continuation_non_fin_err(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+    parser._handle_frame(False, WSMsgType.TEXT, b"line1", 0)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._handle_frame(False, WSMsgType.TEXT, b"line2", 0)
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_continuation_with_close(
     out: WebSocketDataQueue, parser: WebSocketReader
 ) -> None:

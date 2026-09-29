@@ -70,3 +70,15 @@ updates:
     target-branch: "3.15"
     schedule:
       interval: "monthly"
+
+  # Maintain dependencies for GitHub Actions aiohttp 3.14 backport
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    cooldown:
+      default-days: 3
+    labels:
+      - dependencies
+    target-branch: "3.14"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 10
