@@ -3279,17 +3279,9 @@ INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
     ("http://example.org:non_int_port/", "http://example.org:non_int_port/"),
 )
 
-INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
-    # # yarl.URL.origin raises ValueError
-    ("http:/", "http:///"),
-    ("http:///example.com", "http:///example.com"),
-)
-
-# A redirect to "http:/" resolves against the current URL, see
-# test_redirect_same_scheme_without_authority().
-INVALID_REDIRECT_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (
-    ("http:///example.com", "http:///example.com"),
-)
+# yarl.URL.origin raises ValueError. A redirect to "http:/" resolves against
+# the current URL instead, see test_redirect_same_scheme_without_authority().
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (("http:/", "http:///"),)
 
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ("call:+380123456789", r"call:\+380123456789"),
@@ -3333,8 +3325,7 @@ async def test_invalid_and_non_http_url(
     (
         *(
             (url, message, InvalidUrlRedirectClientError)
-            for (url, message) in INVALID_REDIRECT_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
-            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
             (url, message, NonHttpUrlRedirectClientError)
@@ -3368,8 +3359,7 @@ async def test_invalid_redirect_url(
     (
         *(
             (url, message, InvalidUrlRedirectClientError)
-            for (url, message) in INVALID_REDIRECT_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN
-            + INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
+            for (url, message) in INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW
         ),
         *(
             (url, message, NonHttpUrlRedirectClientError)
@@ -5694,8 +5684,8 @@ async def test_invalid_redirect_origin_closes_payload(
     async def redirect_handler(request: web.Request) -> web.Response:
         # Read the payload to simulate server processing
         await request.read()
-        # Return a URL that will fail origin() check - using a relative URL without host
-        return web.Response(status=307, headers={hdrs.LOCATION: "http:///path"})
+        # Return a URL that will fail origin() check - using a URL without host
+        return web.Response(status=307, headers={hdrs.LOCATION: "http://"})
 
     app = web.Application()
     app.router.add_post("/redirect", redirect_handler)
@@ -5768,7 +5758,7 @@ async def test_request_body_closed_on_cancellation() -> None:
 async def test_request_error_before_body_created_does_not_mask() -> None:
     async with aiohttp.ClientSession() as session:
         with pytest.raises(InvalidUrlClientError):
-            await session.get("http:///path")
+            await session.get("http://")
 
 
 async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> None:
