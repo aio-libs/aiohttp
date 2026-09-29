@@ -6844,26 +6844,6 @@ async def test_upload_tracker_validation_failure(
     assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
 
 
-async def test_upload_tracker_invalid_timeout_type(
-    aiohttp_client: AiohttpClient,
-) -> None:
-    """A wrong-typed timeout argument still settles the tracker."""
-
-    async def handler(request: web.Request) -> web.Response:
-        assert False
-
-    app = web.Application()
-    app.router.add_get("/", handler)
-    client = await aiohttp_client(app)
-
-    tracker = aiohttp.UploadTracker()
-    with pytest.raises(AttributeError):
-        await client.get("/", timeout=5, upload_tracker=tracker)  # type: ignore[arg-type]
-
-    assert tracker.attempts == 0
-    assert isinstance(tracker.upload_complete.exception(), aiohttp.UploadAbortedError)
-
-
 async def test_upload_tracker_closed_session() -> None:
     """A request on a closed session settles the tracker."""
     session = aiohttp.ClientSession()

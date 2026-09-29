@@ -1600,45 +1600,45 @@ class ClientRequest:
 
             protocol = conn.protocol
             assert protocol is not None
-            # This should be a rare case but the
-            # self._body can be set to None while
-            # the task is being started or we wait above
-            # for the 100-continue response.
-            # The more likely case is we have an empty
-            # payload, but 100-continue is still expected.
-            if self._body is not None:
-                try:
+            try:
+                # This should be a rare case but the
+                # self._body can be set to None while
+                # the task is being started or we wait above
+                # for the 100-continue response.
+                # The more likely case is we have an empty
+                # payload, but 100-continue is still expected.
+                if self._body is not None:
                     await self._body.write_with_length(writer, content_length)
-                except OSError as underlying_exc:
-                    reraised_exc = underlying_exc
+            except OSError as underlying_exc:
+                reraised_exc = underlying_exc
 
-                    # Distinguish between timeout and other OS errors for better error reporting
-                    exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
-                        underlying_exc, asyncio.TimeoutError
+                # Distinguish between timeout and other OS errors for better error reporting
+                exc_is_not_timeout = underlying_exc.errno is not None or not isinstance(
+                    underlying_exc, asyncio.TimeoutError
+                )
+                if exc_is_not_timeout:
+                    reraised_exc = ClientOSError(
+                        underlying_exc.errno,
+                        f"Can not write request body for {self.url !s}",
                     )
-                    if exc_is_not_timeout:
-                        reraised_exc = ClientOSError(
-                            underlying_exc.errno,
-                            f"Can not write request body for {self.url !s}",
-                        )
 
-                    set_exception(protocol, reraised_exc, underlying_exc)
-                    if tracker is not None:
-                        tracker._attempt_failed(gen, reraised_exc)
-                except Exception as underlying_exc:
-                    wrapped_exc = ClientConnectionError(
-                        "Failed to send bytes into the underlying connection "
-                        f"{conn !s}: {underlying_exc!r}",
-                    )
-                    set_exception(protocol, wrapped_exc, underlying_exc)
-                    if tracker is not None:
-                        tracker._attempt_failed(gen, wrapped_exc)
-                else:
-                    # Successfully wrote the body, signal EOF and start response timeout
-                    await writer.write_eof()
-                    if tracker is not None:
-                        tracker._attempt_finished(gen)
-                    protocol.start_timeout()
+                set_exception(protocol, reraised_exc, underlying_exc)
+                if tracker is not None:
+                    tracker._attempt_failed(gen, reraised_exc)
+            except Exception as underlying_exc:
+                wrapped_exc = ClientConnectionError(
+                    "Failed to send bytes into the underlying connection "
+                    f"{conn !s}: {underlying_exc!r}",
+                )
+                set_exception(protocol, wrapped_exc, underlying_exc)
+                if tracker is not None:
+                    tracker._attempt_failed(gen, wrapped_exc)
+            else:
+                # Successfully wrote the body, signal EOF and start response timeout
+                await writer.write_eof()
+                if tracker is not None:
+                    tracker._attempt_finished(gen)
+                protocol.start_timeout()
         except BaseException as underlying_exc:
             # Cancellation, or a failure escaping the inner handlers
             # (100-continue preamble, write_eof), leaves the body unsent:

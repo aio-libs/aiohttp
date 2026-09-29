@@ -654,7 +654,9 @@ class ClientSession:
                 )
             elif json is not None:
                 if self._json_serialize_bytes is not None:
-                    data = payload.JsonBytesPayload(json, dumps=self._json_serialize_bytes)
+                    data = payload.JsonBytesPayload(
+                        json, dumps=self._json_serialize_bytes
+                    )
                 else:
                     data = payload.JsonPayload(json, dumps=self._json_serialize)
 
@@ -712,7 +714,9 @@ class ClientSession:
             # timeout is cumulative for all request operations
             # (request, redirects, responses, data consuming)
             tm = TimeoutHandle(
-                self._loop, real_timeout.total, ceil_threshold=real_timeout.ceil_threshold
+                self._loop,
+                real_timeout.total,
+                ceil_threshold=real_timeout.ceil_threshold,
             )
             handle = tm.start()
 
@@ -1097,9 +1101,8 @@ class ClientSession:
                 await req._body.close()
 
             for trace in traces:
-                # url and headers are bound whenever traces is non-empty.
                 await trace.send_request_exception(
-                    method, url.update_query(params), headers, e  # type: ignore[possibly-undefined, arg-type]
+                    method, url.update_query(params), headers, e  # type: ignore[arg-type]
                 )
             raise
 

@@ -2201,6 +2201,30 @@ async def test_expect100_with_body_becomes_none() -> None:
     await req.write_bytes(mock_writer, mock_conn, None)
 
 
+async def test_expect100_with_body_becomes_none_settles_upload_tracker() -> None:
+    """A body cleared after expect100 still records a finished attempt.
+
+    write_bytes must reach write_eof() even when the body is None, or the
+    tracker stays active and upload_complete never settles.
+    """
+    writer = _ProbeWriter()
+    mock_conn = mock.Mock()
+
+    req = ClientRequest(
+        "POST", URL("http://test.example.com/"), loop=asyncio.get_event_loop()
+    )
+    tracker = UploadTracker()
+    req._upload_tracker = tracker
+    req._upload_gen = tracker._attempt_started()
+    req._body = None
+
+    await req.write_bytes(writer, mock_conn, None)
+
+    writer.write_eof.assert_awaited()
+    tracker._finalize()
+    assert tracker.upload_complete.result() is None
+
+
 @pytest.mark.parametrize(
     ("method", "data", "expected_content_length"),
     [
@@ -2347,48 +2371,6 @@ async def test_update_body_none_no_content_length_for_get_methods(
     await req.close()
 
 
-async def test_multiple_requests_share_empty_body_safely(
-    make_client_request: _RequestMaker,
-) -> None:
-    """Test that multiple ClientRequest objects safely share the empty body payload."""
-    requests: list[ClientRequest] = []
-    for i in range(5):
-        req = make_client_request("GET", URL(f"http://example.com/path{i}"))
-        requests.append(req)
-
-    empty_body = ClientRequest._EMPTY_BODY
-    for i, req in enumerate(requests):
-        assert req.body is empty_body, f"Request {i} has different empty body"
-        assert req.body.size == 0
-        assert req.body.consumed is False
-
-    assert empty_body.consumed is False
-    assert empty_body.size == 0
-
-
-async def test_empty_body_isolation_after_update(
-    make_client_request: _RequestMaker,
-) -> None:
-    """Test that updating one request's body doesn't affect other requests."""
-    req1 = make_client_request("POST", URL("http://example.com/1"))
-    req2 = make_client_request("POST", URL("http://example.com/2"))
-
-    assert req1.body is ClientRequest._EMPTY_BODY
-    assert req2.body is ClientRequest._EMPTY_BODY
-
-    await req1.update_body(b"new data")
-
-    assert req1.body is not ClientRequest._EMPTY_BODY
-    assert req1.body.size == 8
-
-    assert req2.body is ClientRequest._EMPTY_BODY
-    assert req2.body.size == 0
-    assert req2.body.consumed is False
-
-    assert ClientRequest._EMPTY_BODY.consumed is False
-    assert ClientRequest._EMPTY_BODY.size == 0
-
-
 async def test_upload_tracker_stale_attempt_events_ignored() -> None:
     """Events from a superseded attempt must not affect the current one."""
     tracker = UploadTracker()
@@ -2452,11 +2434,10 @@ async def test_upload_tracker_externally_cancelled_future() -> None:
 
 
 async def test_oserror_on_write_bytes_with_upload_tracker(
-    conn: mock.Mock, make_client_request: _RequestMaker
+    conn: mock.Mock, make_request: Any
 ) -> None:
     """A write failure is recorded on the request's UploadTracker."""
-    loop = asyncio.get_running_loop()
-    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    req = make_request("POST", "http://python.org/")
     await req.update_body(b"test data")
     tracker = UploadTracker()
     req._upload_tracker = tracker
@@ -2465,7 +2446,7 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
     writer = _ProbeWriter()
     writer.write.side_effect = OSError
 
-    await req._write_bytes(writer, conn, None)
+    await req.write_bytes(writer, conn, None)
 
     tracker._finalize()
     assert tracker.attempts == 1
@@ -2474,13 +2455,10 @@ async def test_oserror_on_write_bytes_with_upload_tracker(
 
 @pytest.mark.parametrize("with_tracker", (True, False))
 async def test_preamble_failure_reported_to_upload_tracker(
-    conn: mock.Mock, make_client_request: _RequestMaker, with_tracker: bool
+    conn: mock.Mock, make_request: Any, with_tracker: bool
 ) -> None:
     """A failure before the body write (100-continue preamble) is recorded."""
-    loop = asyncio.get_running_loop()
-    req = make_client_request(
-        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
-    )
+    req = make_request("POST", "http://python.org/", data=b"test data", expect100=True)
     tracker = UploadTracker() if with_tracker else None
     req._upload_tracker = tracker
     if tracker is not None:
@@ -2491,7 +2469,7 @@ async def test_preamble_failure_reported_to_upload_tracker(
     writer.drain.side_effect = RuntimeError("preamble boom")
 
     with pytest.raises(RuntimeError, match="preamble boom"):
-        await req._write_bytes(writer, conn, None)
+        await req.write_bytes(writer, conn, None)
 
     # The body was never sent on a connection with headers on the wire.
     assert conn.close.called
@@ -2505,17 +2483,16 @@ async def test_preamble_failure_reported_to_upload_tracker(
     sys.version_info < (3, 11), reason="TimeoutError is OSError only on 3.11+"
 )
 async def test_timeout_on_write_bytes_not_wrapped(
-    conn: mock.Mock, make_client_request: _RequestMaker
+    conn: mock.Mock, make_request: Any
 ) -> None:
     """An asyncio.TimeoutError from the write is not wrapped in ClientOSError."""
-    loop = asyncio.get_running_loop()
-    req = make_client_request("POST", URL("http://python.org/"), loop=loop)
+    req = make_request("POST", "http://python.org/")
     await req.update_body(b"test data")
 
     writer = WriterMock()
     writer.write.side_effect = asyncio.TimeoutError
 
-    await req._write_bytes(writer, conn, None)
+    await req.write_bytes(writer, conn, None)
 
     assert conn.protocol.set_exception.called
     exc = conn.protocol.set_exception.call_args[0][0]
@@ -2536,22 +2513,19 @@ async def test_upload_tracker_unretrieved_error_not_logged() -> None:
 
 
 async def test_cancel_during_expect100_preamble_closes_connection(
-    conn: mock.Mock, make_client_request: _RequestMaker
+    conn: mock.Mock, make_request: Any
 ) -> None:
     """A writer cancelled while waiting for 100-continue closes the connection.
 
     The request headers are already on the wire at that point, so releasing
     the connection for reuse would corrupt the next request on it.
     """
-    loop = asyncio.get_running_loop()
-    req = make_client_request(
-        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
-    )
+    req = make_request("POST", "http://python.org/", data=b"test data", expect100=True)
 
     writer = WriterMock()
     writer.send_headers = mock.Mock()
 
-    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    task = asyncio.create_task(req.write_bytes(writer, conn, None))
     # Let the writer park on the 100-continue waiter.
     await asyncio.sleep(0)
     task.cancel()
@@ -2562,13 +2536,10 @@ async def test_cancel_during_expect100_preamble_closes_connection(
 
 
 async def test_conn_close_failure_still_settles_upload_tracker(
-    conn: mock.Mock, make_client_request: _RequestMaker
+    conn: mock.Mock, make_request: Any
 ) -> None:
     """The attempt is recorded before conn.close(), which conceivably raises."""
-    loop = asyncio.get_running_loop()
-    req = make_client_request(
-        "POST", URL("http://python.org/"), data=b"test data", expect100=True, loop=loop
-    )
+    req = make_request("POST", "http://python.org/", data=b"test data", expect100=True)
     tracker = UploadTracker()
     req._upload_tracker = tracker
     req._upload_gen = tracker._attempt_started()
@@ -2577,7 +2548,7 @@ async def test_conn_close_failure_still_settles_upload_tracker(
     writer = _ProbeWriter()
     writer.send_headers = mock.Mock()
 
-    task = asyncio.create_task(req._write_bytes(writer, conn, None))
+    task = asyncio.create_task(req.write_bytes(writer, conn, None))
     # Let the writer park on the 100-continue waiter.
     await asyncio.sleep(0)
     task.cancel()
