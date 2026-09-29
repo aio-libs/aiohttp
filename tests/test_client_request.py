@@ -631,29 +631,19 @@ async def test_params_empty_path_and_url(make_client_request: _RequestMaker) -> 
     assert str(req_none.url) == "http://python.org"
 
 
+# A long host that is not all digits: WHATWG parses a host made only of
+# numbers, like this one without ".test", as an IPv4 address.
+LONG_HOST = "12345678901234567890123456789012345678901234567890.test"
+
+
 async def test_gen_netloc_all(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get",
-        URL(
-            "https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890:8080"
-        ),
-    )
-    assert (
-        req.headers["HOST"]
-        == "12345678901234567890123456789" + "012345678901234567890:8080"
-    )
+    req = make_client_request("get", URL(f"https://aiohttp:pwpwpw@{LONG_HOST}:8080"))
+    assert req.headers["HOST"] == f"{LONG_HOST}:8080"
 
 
 async def test_gen_netloc_no_port(make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "get",
-        URL(
-            "https://aiohttp:pwpwpw@12345678901234567890123456789012345678901234567890/"
-        ),
-    )
-    assert (
-        req.headers["HOST"] == "12345678901234567890123456789" + "012345678901234567890"
-    )
+    req = make_client_request("get", URL(f"https://aiohttp:pwpwpw@{LONG_HOST}/"))
+    assert req.headers["HOST"] == LONG_HOST
 
 
 async def test_cookie_coded_value_preserved(make_client_request: _RequestMaker) -> None:
