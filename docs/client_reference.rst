@@ -1231,8 +1231,8 @@ is controlled by *force_close* constructor's parameter).
    Constructor accepts all parameters suitable for
    :class:`BaseConnector` plus several TCP-specific ones:
 
-      :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
+      :param ssl: **(DEPRECATED)** SSL validation mode. ``True`` for default
+                  SSL check (:func:`ssl.create_default_context` is used),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1242,6 +1242,12 @@ is controlled by *force_close* constructor's parameter).
                   *fingerprint* parameters.
 
          .. versionadded:: 3.0
+
+         .. deprecated:: 4.0
+
+            Scheduled for removal in 5.0. Pass *ssl* to
+            :class:`ClientSession` for a session-wide default, or to
+            :meth:`ClientSession.get` and others per request.
 
    :param bool verify_ssl: perform SSL certificate validation for
       *HTTPS* requests (enabled by default). May be disabled to
@@ -2482,7 +2488,7 @@ Utilities
       .. versionadded:: 3.7
 
    :param treat_as_secure_origin: (optional) Mark origins as secure
-                                  for cookies marked as Secured. Possible types are
+                                  for cookies marked as Secured.
 
                                   Possible types are:
 
@@ -2505,7 +2511,9 @@ Utilities
       :param ~yarl.URL response_url: URL of response, ``None`` for *shared
          cookies*.  Regular cookies are coupled with server's URL and
          are sent only to this server, shared ones are sent in every
-         client request.
+         client request (except that shared cookies marked ``Secure``
+         are only sent over encrypted connections or to origins listed
+         in *treat_as_secure_origin*).
 
    .. method:: filter_cookies(request_url)
 
@@ -2568,6 +2576,14 @@ Utilities
          The tuples gained the *path* element; host-only state is tracked
          per ``(domain, path, name)`` cookie identity so that same-named
          cookies on other paths cannot affect it.
+
+   .. attribute:: treat_as_secure_origin
+
+      A :class:`frozenset` of :class:`~yarl.URL` origins that are
+      treated as secure even when the connection is not encrypted, as
+      configured by the *treat_as_secure_origin* parameter.
+
+      .. versionadded:: 3.14.4
 
 
 .. class:: DummyCookieJar(*, loop=None)
