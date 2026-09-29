@@ -819,14 +819,14 @@ class MaskDomain(Domain):
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
         mask = self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
-        self._mask = re.compile(mask)
+        self._mask = re.compile(mask, re.I)
 
     @property
     def canonical(self) -> str:
         return self._mask.pattern
 
     def match_domain(self, host: str) -> bool:
-        return self._mask.fullmatch(host.lower()) is not None
+        return self._mask.fullmatch(host) is not None
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):
