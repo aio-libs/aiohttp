@@ -1110,8 +1110,23 @@ def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
         b"https:////protected",
         b"https://:80/protected",
         b"https://user@/protected",
+        b"https://",
+        b"https://?q",
+        b"http:protected/x",
+        b"http:/protected/x",
+        b"http:\\\\protected/x",
     ),
-    ids=("empty-host", "empty-host-extra-slash", "port-only", "userinfo-only"),
+    ids=(
+        "empty-host",
+        "empty-host-extra-slash",
+        "port-only",
+        "userinfo-only",
+        "no-authority",
+        "empty-host-query",
+        "no-slashes",
+        "one-slash",
+        "backslashes",
+    ),
 )
 def test_url_absolute_form_empty_host_rejected(
     parser: HttpRequestParser, target: bytes
