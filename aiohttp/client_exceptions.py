@@ -48,6 +48,7 @@ __all__ = (
     "WSServerHandshakeError",
     "ContentTypeError",
     "ClientPayloadError",
+    "UploadAbortedError",
     "InvalidURL",
     "InvalidUrlClientError",
     "RedirectClientError",
@@ -298,6 +299,10 @@ class ServerFingerprintMismatch(ServerConnectionError):
 
 class ClientPayloadError(ClientError):
     """Response payload error."""
+
+
+class UploadAbortedError(ClientError):
+    """The request body was never fully sent."""
 
 
 class InvalidURL(ClientError, ValueError):
