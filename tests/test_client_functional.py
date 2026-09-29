@@ -1007,16 +1007,22 @@ async def test_drop_fragment(aiohttp_client: AiohttpClient) -> None:
 
 
 @pytest.mark.parametrize(
-    ("location", "path"),
-    (("http:/ok", "/ok"), ("http:ok", "/ok"), ("http:/ok?a=b", "/ok"), ("http:/", "/")),
+    ("location", "path", "query"),
+    (
+        ("http:/ok", "/ok", {}),
+        ("http:ok", "/ok", {}),
+        ("http:/ok?a=b", "/ok", {"a": "b"}),
+        ("http:/", "/", {}),
+    ),
 )
 async def test_redirect_same_scheme_without_authority(
-    aiohttp_client: AiohttpClient, location: str, path: str
+    aiohttp_client: AiohttpClient, location: str, path: str, query: dict[str, str]
 ) -> None:
     async def handler_redirect(request: web.Request) -> web.Response:
         return web.Response(status=301, headers={"Location": location})
 
     async def handler_ok(request: web.Request) -> web.Response:
+        assert dict(request.query) == query
         return web.Response(status=200)
 
     app = web.Application()
@@ -1028,6 +1034,7 @@ async def test_redirect_same_scheme_without_authority(
         assert resp.status == 200
         assert resp.url.host == "127.0.0.1"
         assert resp.url.path == path
+        assert dict(resp.url.query) == query
         assert len(resp.history) == 1
 
 
