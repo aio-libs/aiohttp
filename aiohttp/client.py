@@ -834,7 +834,12 @@ class ClientSession:
                                 await req._body.close()
                             resp.close()
                             raise NonHttpUrlRedirectClientError(r_url)
-                        elif not scheme:
+                        elif not scheme or (
+                            scheme == url.scheme
+                            and r_url[len(scheme) + 1 : len(scheme) + 3] != "//"
+                        ):
+                            # "http:/path" or "http:path" is a reference to
+                            # the current URL, as browsers resolve it.
                             parsed_redirect_url = url.join(parsed_redirect_url)
 
                         try:
