@@ -190,7 +190,7 @@ class TestPartReader:
 
     async def test_read_chunk_with_zero_content_length(self) -> None:
         with Stream(b"\r\n--:--\r\n") as stream:
-            d = HeadersDictProxy(CIMultiDict({"Content-Length": "0"}))
+            d = CIMultiDictProxy(CIMultiDict({"Content-Length": "0"}))
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read_chunk(4)
             assert obj.at_eof()
