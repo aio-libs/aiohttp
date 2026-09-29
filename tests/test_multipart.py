@@ -210,9 +210,8 @@ class TestPartReader:
             d = HeadersDictProxy(CIMultiDict({"Content-Length": "0"}))
             obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
             result = await obj.read_chunk(4)
-            at_eof = obj.at_eof()
+            assert obj.at_eof()
         assert b"" == result
-        assert at_eof
 
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
