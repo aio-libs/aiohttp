@@ -1,8 +1,10 @@
-Added constants to ``aiohttp.hdrs`` for headers that browsers send on
-every request (``Sec-Fetch-*``, ``Sec-CH-UA*``, ``Upgrade-Insecure-Requests``,
-``Priority``), for common response security headers, for the
-``X-Real-IP`` and ``X-Request-ID`` proxy headers and for ``Content-ID``,
-and grouped the constants by where the header is defined. The C parser
-returns these names as the shared :class:`~multidict.istr` constants
-instead of new :class:`str` objects, which made parsing a typical browser
-request about 9% cheaper -- by :user:`asvetlov`.
+Added constants to ``aiohttp.hdrs`` for widely used headers: those that
+browsers send on every request (``Sec-Fetch-*``, ``Sec-CH-UA*``,
+``Sec-GPC``, ``Upgrade-Insecure-Requests``, ``Priority``), W3C trace context
+(``traceparent``, ``tracestate``, ``baggage``), response security, reporting
+and caching headers, the remaining RFC 9110 and RFC 9530 fields,
+``Content-ID`` and common de facto proxy and application headers, and
+grouped the constants by where the header is defined. The C parser returns
+these names as the shared :class:`~multidict.istr` constants instead of new
+:class:`str` objects, which made parsing a typical browser request about
+9% cheaper -- by :user:`asvetlov`.

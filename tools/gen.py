@@ -35,7 +35,7 @@ def build(headers):
     for hdr in headers:
         d = dct
         for ch in hdr:
-            d = d[ch]
+            d = d[ch.upper()]
         d[TERMINAL] = hdr
     return dct
 
