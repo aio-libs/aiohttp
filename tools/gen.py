@@ -35,7 +35,7 @@ def build(headers):
     for hdr in headers:
         d = dct
         for ch in hdr:
-            d = d[ch]
+            d = d[ch.upper()]
         d[TERMINAL] = hdr
     return dct
 
@@ -50,25 +50,22 @@ Run ./tools/gen.py to update it after the origin changing. */
 #include "_find_header.h"
 
 #define NEXT_CHAR() \\
-{ \\
+do { \\
     count++; \\
     if (count == size) { \\
         /* end of search */ \\
         return -1; \\
     } \\
-    pchar++; \\
-    ch = *pchar; \\
-    last = (count == size -1); \\
-} while(0);
+    ch = str[count]; \\
+    last = (count == size - 1); \\
+} while (0)
 
 int
 find_header(const char *str, int size)
 {
-    char *pchar = str;
     int last;
     char ch;
     int count = -1;
-    pchar--;
 """
 
 BLOCK = """
@@ -90,7 +87,6 @@ CASE = """\
 
 FOOTER = """
 {missing}
-missing:
     /* nothing found */
     return -1;
 }}
