@@ -265,7 +265,7 @@ jobs:
     - build-pure-python-dists
     strategy:
       matrix:
-        pyver: ['3.10', '3.11', '3.12', '3.13', '3.14']
+        pyver: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]
@@ -275,12 +275,12 @@ jobs:
           - os: windows
             no-extensions: 'Y'
         include:
-          - pyver: pypy-3.11
+          - pyver: pypy-3.12
             no-extensions: 'Y'
             os: ubuntu
             experimental: false
           - os: ubuntu
-            pyver: "3.14t"
+            pyver: "3.15t"
             no-extensions: ''
             experimental: false
       fail-fast: true
@@ -299,7 +299,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v10.1.0
+      uses: astral-sh/setup-uv@v10.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -385,7 +385,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v10.1.0
+      uses: astral-sh/setup-uv@v10.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true
@@ -450,7 +450,7 @@ jobs:
       # important: do not use system python
       env:
         UV_PYTHON_PREFERENCE: only-managed
-      uses: astral-sh/setup-uv@v10.1.0
+      uses: astral-sh/setup-uv@v10.2.0
       with:
         python-version: ${{ matrix.pyver }}
         activate-environment: true

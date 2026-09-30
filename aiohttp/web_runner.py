@@ -494,6 +494,7 @@ class AppRunner(BaseRunner[Request]):
             task,
             loop,
             client_max_size=self.app._client_max_size,
+            client_max_fields=self.app._client_max_fields,
             pre_handler_error=pre_handler_error,
         )
 

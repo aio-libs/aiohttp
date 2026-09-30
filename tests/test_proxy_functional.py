@@ -58,10 +58,7 @@ else:
         trust_env: bool = False,
         **kwargs: Any,
     ) -> ClientResponse:
-        connector = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(
-            connector=connector, trust_env=trust_env
-        ) as client:
+        async with aiohttp.ClientSession(ssl=False, trust_env=trust_env) as client:
             async with client.request(method, url, **kwargs) as resp:
                 return resp
 

@@ -386,7 +386,7 @@ class BodyPartReader:
         if carry:
             self._b64_carry = b""
             want = max(want, self._boundary_len)
-        if self._length:
+        if self._length is not None:
             fresh = await self._read_chunk_from_length(want)
         else:
             fresh = await self._read_chunk_from_stream(want)

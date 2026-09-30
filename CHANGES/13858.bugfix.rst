@@ -1,0 +1,7 @@
+Rejected absolute-form request targets without ``//`` or with an empty
+host, such as ``http:/example.com/`` or ``http:///example.com/``, before
+parsing them with yarl, which reads a host from them in its WHATWG mode;
+RFC 9110 requires a host for ``http`` and ``https``. The invalid URL test
+data no longer uses ``http:///example.com``, which such a yarl version
+parses as ``http://example.com/``, as browsers do
+-- by :user:`asvetlov`.
