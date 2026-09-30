@@ -1,18 +1,19 @@
 [build-system]
 requires = [
     "pkgconfig",
-    # setuptools >= 67.0 required for Python 3.12+ support
-    # Next step should be >= 77.0 for PEP 639 support
-    # Don't bump too early to give distributors time to update
-    # their setuptools version.
-    "setuptools >= 67.0",
+    # setuptools >= 77.0 required for PEP 639 SPDX license metadata
+    # (it also covers the >= 67.0 floor needed for Python 3.12+ support).
+    "setuptools >= 77.0",
 ]
 build-backend = "setuptools.build_meta"
 
 [project]
 name        = "aiohttp"
-# TODO: Update to just 'license = "..."' once setuptools is bumped to >=77
-license     = {text = "Apache-2.0 AND MIT"}
+license     = "Apache-2.0 AND MIT"
+license-files = [
+  "LICENSE.txt",
+  "vendor/llhttp/LICENSE",
+]
 description = "Async http client/server framework (asyncio)"
 readme      = "README.rst"
 classifiers = [
@@ -70,13 +71,6 @@ email = "team@aiohttp.org"
 "Docs: RTD"          = "https://docs.aiohttp.org"
 "GitHub: issues"     = "https://github.com/aio-libs/aiohttp/issues"
 "GitHub: repo"       = "https://github.com/aio-libs/aiohttp"
-
-[tool.setuptools]
-license-files = [
-  # TODO: Use 'project.license-files' instead once setuptools is bumped to >=77
-  "LICENSE.txt",
-  "vendor/llhttp/LICENSE",
-]
 
 [tool.setuptools.dynamic]
 version = {attr = "aiohttp.__version__"}
