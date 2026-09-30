@@ -13,11 +13,11 @@ from unittest import mock
 from urllib.parse import quote
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import http_exceptions, streams
+from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -47,7 +47,7 @@ except ImportError:
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard  # noqa: I900
+        import compression.zstd as zstandard
     else:
         import backports.zstd as zstandard
 except ImportError:
@@ -279,6 +279,36 @@ test2: data\r
 """
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
+
+
+# Sec-WebSocket-Key1 is rejected outright, see test_headers_old_websocket_key1.
+KNOWN_HEADERS = sorted(
+    v
+    for v in vars(hdrs).values()
+    if isinstance(v, istr) and v != hdrs.SEC_WEBSOCKET_KEY1
+)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize("name", KNOWN_HEADERS)
+@pytest.mark.parametrize("case", [str, str.lower, str.upper])
+def test_known_header_name_is_hdrs_constant(
+    event_loop: asyncio.AbstractEventLoop, name: istr, case: Any
+) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    value = "chunked" if name == hdrs.TRANSFER_ENCODING else "0"
+    text = f"HTTP/1.1 200 OK\r\n{case(name)}: {value}\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert parsed is name
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_name_is_str(event_loop: asyncio.AbstractEventLoop) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    text = b"HTTP/1.1 200 OK\r\nX-Sec-Fetch-Mode: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text)
+    assert list(messages[0][0].headers) == ["X-Sec-Fetch-Mode"]
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
