@@ -10,7 +10,7 @@ backports.zstd; platform_python_implementation == 'CPython' and python_version <
 Brotli >= 1.2; platform_python_implementation == 'CPython' and sys_platform != 'android' and sys_platform != 'ios'
 brotlicffi >= 1.2; platform_python_implementation != 'CPython'
 frozenlist >= 1.1.1
-multidict >=4.5, < 7.0
+multidict >= 4.5, < 8.0
 propcache >= 0.2.0
 typing_extensions >= 4.4 ; python_version < '3.13'
 yarl >= 1.25.1, < 2.0
