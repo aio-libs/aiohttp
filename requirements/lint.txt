@@ -60,7 +60,7 @@ mypy==2.1.0 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.1.0
     # via mypy
-nodeenv==1.10.0
+nodeenv==1.11.0
     # via pre-commit
 packaging==26.3
     # via pytest
