@@ -213,7 +213,9 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Cannot read from a released response")
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError(
+    "Cannot read from a released response"
+)
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
