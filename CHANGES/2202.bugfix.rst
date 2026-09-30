@@ -1,0 +1,5 @@
+Reading a ``ClientResponse`` after it has already been released (e.g. outside
+its ``async with`` block, or after ``.release()``/``.close()`` was called) now
+raises ``ClientConnectionError("Cannot read from a released response")``
+instead of the misleading ``"Connection closed"``, which was indistinguishable
+from an actual network failure -- by :user:`eliahu-frusin`.

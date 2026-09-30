@@ -4319,7 +4319,32 @@ async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -
         # No async with, so should release and therefore read() will fail.
         resp.raise_for_status()
 
-    with pytest.raises(aiohttp.ClientConnectionError, match=r"^Connection closed$"):
+    with pytest.raises(
+        aiohttp.ClientConnectionError, match=r"^Cannot read from a released response$"
+    ):
+        await resp.read()
+
+
+async def test_read_after_release(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"data")
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/")
+
+    body = await resp.read()
+    assert body == b"data"
+
+    resp.release()
+
+    with pytest.raises(
+        aiohttp.ClientConnectionError,
+        match=r"^Cannot read from a released response$",
+    ):
         await resp.read()
 
 

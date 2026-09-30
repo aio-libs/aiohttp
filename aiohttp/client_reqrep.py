@@ -213,7 +213,7 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
+_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Cannot read from a released response")
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
@@ -705,7 +705,7 @@ class ClientResponse(HeadersMixin):
                 self.close()
                 raise
         elif self._released:  # Response explicitly released
-            raise ClientConnectionError("Connection closed")
+            raise ClientConnectionError("Cannot read from a released response")
 
         protocol = self._connection and self._connection.protocol
         if protocol is None or not protocol.upgraded:
