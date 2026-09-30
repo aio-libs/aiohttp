@@ -56,7 +56,7 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
-identify==2.6.19
+identify==2.6.20
     # via pre-commit
 idna==3.20
     # via
