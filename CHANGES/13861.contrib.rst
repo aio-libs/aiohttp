@@ -1,0 +1,4 @@
+Changed the long host in the ``Host`` header tests to one that is not made
+only of digits, since yarl now parses such a host as an IP address in its
+default mode and rejects this one as out of range
+-- by :user:`asvetlov`.

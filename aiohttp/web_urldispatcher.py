@@ -805,7 +805,9 @@ class Domain(AbstractRuleMatching):
         return self.match_domain(host)
 
     def match_domain(self, host: str) -> bool:
-        return host.lower() == self._domain
+        host = host.lower()
+        # The port only matters when the domain was registered with one.
+        return host == self._domain or host.partition(":")[0] == self._domain
 
     def get_info(self) -> _InfoDict:
         return {"domain": self._domain}
@@ -816,8 +818,8 @@ class MaskDomain(Domain):
 
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
-        mask = self._domain.replace(".", r"\.").replace("*", ".*")
-        self._mask = re.compile(mask)
+        mask = self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
+        self._mask = re.compile(mask, re.I)
 
     @property
     def canonical(self) -> str:
