@@ -160,7 +160,7 @@ the :meth:`Payload.set_content_disposition() <aiohttp.payload.Payload.set_conten
 
 Additionally, you may want to set other headers here::
 
-    part.headers[aiohttp.hdrs.CONTENT_ID] = 'X-12345'
+    part.headers[aiohttp.hdrs.CONTENT_ID] = '<part1@example.com>'
 
 If you'd set `Content-Encoding`, it will be automatically applied to the
 data on serialization (see below)::
