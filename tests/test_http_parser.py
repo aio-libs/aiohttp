@@ -6,7 +6,7 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
@@ -47,7 +47,7 @@ except ImportError:
 
 try:
     if sys.version_info >= (3, 14):
-        import compression.zstd as zstandard
+        import compression.zstd as zstandard  # noqa: I900
     else:
         import backports.zstd as zstandard
 except ImportError:
@@ -293,7 +293,7 @@ KNOWN_HEADERS = sorted(
 @pytest.mark.parametrize("name", KNOWN_HEADERS)
 @pytest.mark.parametrize("case", [str, str.lower, str.upper])
 def test_known_header_name_is_hdrs_constant(
-    event_loop: asyncio.AbstractEventLoop, name: istr, case: Any
+    event_loop: asyncio.AbstractEventLoop, name: istr, case: Callable[[str], str]
 ) -> None:
     parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
     value = "chunked" if name == hdrs.TRANSFER_ENCODING else "0"
@@ -304,11 +304,17 @@ def test_known_header_name_is_hdrs_constant(
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
-def test_unknown_header_name_is_str(event_loop: asyncio.AbstractEventLoop) -> None:
+@pytest.mark.parametrize(
+    "name", ["X-Sec-Fetch-Mode", "Accept-Charse", "Accept-Charsets", "T", "TEs"]
+)
+def test_unknown_header_name_keeps_its_spelling(
+    event_loop: asyncio.AbstractEventLoop, name: str
+) -> None:
     parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
-    text = b"HTTP/1.1 200 OK\r\nX-Sec-Fetch-Mode: 0\r\n\r\n"
-    messages, _, _ = parser.feed_data(text)
-    assert list(messages[0][0].headers) == ["X-Sec-Fetch-Mode"]
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert str(parsed) == name
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
