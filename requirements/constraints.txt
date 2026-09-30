@@ -152,7 +152,7 @@ mypy-extensions==1.1.0
     # via mypy
 myst-parser==4.0.1
     # via -r requirements/doc.in
-nodeenv==1.10.0
+nodeenv==1.11.0
     # via pre-commit
 packaging==26.3
     # via
