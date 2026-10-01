@@ -221,9 +221,7 @@ async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.content.read = mock.AsyncMock(
-        side_effect=[b'{"error": "rejected"}', b""]
-    )
+    resp.content.read = mock.AsyncMock(side_effect=[b'{"error": "rejected"}', b""])
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -269,9 +267,7 @@ async def test_ws_connect_err_status_body_read_fails(
     assert ctx.value.body == b""
 
 
-async def test_ws_connect_err_status_body_capped(
-    ws_key: str, key_data: bytes
-) -> None:
+async def test_ws_connect_err_status_body_capped(ws_key: str, key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 500
     resp.headers = {

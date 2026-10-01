@@ -1162,9 +1162,7 @@ class ClientSession:
                 body_size = 0
                 try:
                     while body_size < DEFAULT_CHUNK_SIZE:
-                        chunk = await resp.content.read(
-                            DEFAULT_CHUNK_SIZE - body_size
-                        )
+                        chunk = await resp.content.read(DEFAULT_CHUNK_SIZE - body_size)
                         if not chunk:
                             break
                         body_chunks.append(chunk)
