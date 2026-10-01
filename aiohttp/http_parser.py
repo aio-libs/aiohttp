@@ -626,7 +626,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
         if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+            # Normalize so payload decompression matches case-sensitive encoding checks.
+            encoding = enc.lower()
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)

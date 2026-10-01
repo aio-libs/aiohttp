@@ -1,0 +1,3 @@
+Fixed mixed-case ``Content-Encoding`` values (for example ``Gzip``)
+being accepted by the parser but failing decompression, a regression
+from the CVE-2025-69224 hardening -- by :user:`muhammad-a-dev`.
