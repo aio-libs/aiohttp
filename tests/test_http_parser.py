@@ -1123,6 +1123,7 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
     msg = messages[0][0]
     assert msg.compression == "zstd"
 
+
 @pytest.mark.parametrize(
     ("header_value", "expected"),
     (
@@ -1157,7 +1158,6 @@ def test_compression_case_insensitive(
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == expected
-
 
 
 @pytest.mark.parametrize(
