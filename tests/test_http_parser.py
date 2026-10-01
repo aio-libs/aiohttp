@@ -323,6 +323,44 @@ def test_unknown_header_name_keeps_its_spelling(
     assert str(parsed) == name
 
 
+def _parsed_header_name(loop: asyncio.AbstractEventLoop, name: str) -> str:
+    parser = HttpResponseParserC(ResponseHandler(loop), loop, 2**16)
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    return parsed
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_name_is_reused(loop: asyncio.AbstractEventLoop) -> None:
+    first = _parsed_header_name(loop, "X-Reused-Name")
+    assert _parsed_header_name(loop, "X-Reused-Name") is first
+    assert _parsed_header_name(loop, "x-reused-name") == "x-reused-name"
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_long_unknown_header_name_is_not_reused(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    name = "X-" + "a" * 63
+    first = _parsed_header_name(loop, name)
+    second = _parsed_header_name(loop, name)
+    assert second == first == name
+    assert second is not first
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_names_are_bounded(
+    loop: asyncio.AbstractEventLoop,
+) -> None:
+    first = _parsed_header_name(loop, "X-Evicted-Name")
+    for i in range(1024):
+        _parsed_header_name(loop, f"X-Filler-{i}")
+    again = _parsed_header_name(loop, "X-Evicted-Name")
+    assert again == first
+    assert again is not first
+
+
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
 def test_invalid_character(
     loop: asyncio.AbstractEventLoop,
