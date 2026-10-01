@@ -1,0 +1,1 @@
+Added on_response_headers_received signal to TraceConfig, allowing users to trace response headers as soon as they are received from the server.
