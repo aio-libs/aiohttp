@@ -16,6 +16,7 @@ from aiohttp import (
     hdrs,
 )
 from aiohttp._websocket.writer import WebSocketWriter as RealWebSocketWriter
+from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WS_KEY
 from aiohttp.http_websocket import WSMessageClose
 from aiohttp.streams import EofStream
@@ -142,7 +143,7 @@ async def test_ws_connect_read_timeout_reset_to_max(
 async def test_ws_connect_with_origin(key_data: bytes) -> None:
     resp = mock.Mock()
     resp.status = 403
-    resp.read = mock.AsyncMock(return_value=b"")
+    resp.content.read = mock.AsyncMock(return_value=b"")
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -220,7 +221,9 @@ async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.read = mock.AsyncMock(return_value=b'{"error": "rejected"}')
+    resp.content.read = mock.AsyncMock(
+        side_effect=[b'{"error": "rejected"}', b""]
+    )
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data
@@ -234,6 +237,65 @@ async def test_ws_connect_err_status(ws_key: str, key_data: bytes) -> None:
 
     assert ctx.value.message == "Invalid response status"
     assert ctx.value.body == b'{"error": "rejected"}'
+
+
+async def test_ws_connect_err_status_body_read_fails(
+    ws_key: str, key_data: bytes
+) -> None:
+    resp = mock.Mock()
+    resp.status = 500
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    resp.content.read = mock.AsyncMock(
+        side_effect=aiohttp.ClientPayloadError("Response payload is not completed")
+    )
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = asyncio.get_running_loop().create_future()
+            m_req.return_value.set_result(resp)
+
+            # A truncated/failed body read must not mask the handshake
+            # error with the unrelated payload error.
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
+                await aiohttp.ClientSession().ws_connect(
+                    "http://test.org", protocols=("t1", "t2", "chat")
+                )
+
+    assert ctx.value.status == 500
+    assert ctx.value.body == b""
+
+
+async def test_ws_connect_err_status_body_capped(
+    ws_key: str, key_data: bytes
+) -> None:
+    resp = mock.Mock()
+    resp.status = 500
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+    }
+    chunk = b"x" * DEFAULT_CHUNK_SIZE
+    # The server keeps sending data well past the cap; read() must never
+    # be allowed to buffer more than DEFAULT_CHUNK_SIZE bytes total.
+    resp.content.read = mock.AsyncMock(side_effect=[chunk, chunk, chunk])
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = asyncio.get_running_loop().create_future()
+            m_req.return_value.set_result(resp)
+
+            with pytest.raises(client.WSServerHandshakeError) as ctx:
+                await aiohttp.ClientSession().ws_connect(
+                    "http://test.org", protocols=("t1", "t2", "chat")
+                )
+
+    assert len(ctx.value.body) == DEFAULT_CHUNK_SIZE
+    assert resp.content.read.call_count == 1
 
 
 async def test_ws_connect_err_upgrade(ws_key: str, key_data: bytes) -> None:
@@ -757,7 +819,7 @@ async def test_ws_connect_close_resp_on_err(ws_key: str, key_data: bytes) -> Non
         hdrs.CONNECTION: "upgrade",
         hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
     }
-    resp.read = mock.AsyncMock(return_value=b"")
+    resp.content.read = mock.AsyncMock(return_value=b"")
     with mock.patch("aiohttp.client.os") as m_os:
         with mock.patch("aiohttp.client.ClientSession.request") as m_req:
             m_os.urandom.return_value = key_data

@@ -1152,15 +1152,32 @@ class ClientSession:
             if resp.status != 101:
                 # The connection was never upgraded, so this is an ordinary
                 # HTTP response body (unlike the checks below, which run only
-                # after status == 101 and may be mid-upgrade already).
-                body = await resp.read()
+                # after status == 101 and may be mid-upgrade already). Cap
+                # how much we buffer, since a rejected handshake's body is
+                # server-controlled and otherwise unbounded, and tolerate a
+                # failed/truncated read so WSServerHandshakeError still
+                # carries the status/headers instead of being replaced by
+                # a payload error.
+                body_chunks = []
+                body_size = 0
+                try:
+                    while body_size < DEFAULT_CHUNK_SIZE:
+                        chunk = await resp.content.read(
+                            DEFAULT_CHUNK_SIZE - body_size
+                        )
+                        if not chunk:
+                            break
+                        body_chunks.append(chunk)
+                        body_size += len(chunk)
+                except Exception:
+                    pass
                 raise WSServerHandshakeError(
                     resp.request_info,
                     resp.history,
                     message="Invalid response status",
                     status=resp.status,
                     headers=resp.headers,
-                    body=body,
+                    body=b"".join(body_chunks),
                 )
 
             if resp.headers.get(hdrs.UPGRADE, "").lower() != "websocket":
