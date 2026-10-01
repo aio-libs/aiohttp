@@ -13,7 +13,11 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict, CIMultiDictProxy as _CIMultiDictProxy
+from multidict import (
+    CIMultiDict as _CIMultiDict,
+    CIMultiDictProxy as _CIMultiDictProxy,
+    istr as _istr,
+)
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -62,6 +66,7 @@ cdef object URL = _URL
 cdef object URL_build = URL.build
 cdef object CIMultiDict = _CIMultiDict
 cdef object CIMultiDictProxy = _CIMultiDictProxy
+cdef object istr = _istr
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
 cdef object HttpVersion11 = _HttpVersion11
@@ -122,15 +127,31 @@ for i in range(METHODS_COUNT):
     _http_method.append(_aiohttp_method_names[i].decode('ascii'))
 
 
+# Header names missing from hdrs, as the istr that CIMultiDict would build
+# from them on every read otherwise. Bounded, and emptied when full, so a
+# peer sending many distinct names cannot grow it or keep it filled.
+cdef dict _unknown_names = {}
+cdef Py_ssize_t UNKNOWN_NAMES_MAX = 512
+cdef Py_ssize_t UNKNOWN_NAME_MAX_LEN = 64
+
+
 cdef inline object find_header(bytes raw_header):
     cdef Py_ssize_t size
     cdef char *buf
     cdef int idx
     PyBytes_AsStringAndSize(raw_header, &buf, &size)
     idx = _find_header.find_header(buf, size)
-    if idx == -1:
+    if idx != -1:
+        return headers[idx]
+    if size > UNKNOWN_NAME_MAX_LEN:
         return raw_header.decode('utf-8', 'surrogateescape')
-    return headers[idx]
+    name = _unknown_names.get(raw_header)
+    if name is None:
+        name = istr(raw_header.decode('utf-8', 'surrogateescape'))
+        if len(_unknown_names) >= UNKNOWN_NAMES_MAX:
+            _unknown_names.clear()
+        _unknown_names[raw_header] = name
+    return name
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
