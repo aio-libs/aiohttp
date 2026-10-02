@@ -1,0 +1,1 @@
+Added support for the HTTP QUERY method per RFC 10008, including route shortcuts and decorators (``web.query``, ``routes.query``, ``UrlDispatcher.add_query``) and ``View`` dispatching -- by :user:`AdamMagued`.
