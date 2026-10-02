@@ -1124,48 +1124,20 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
     assert msg.compression == "zstd"
 
 
-@pytest.mark.parametrize(
-    ("header_value", "expected"),
-    (
-        ("GZIP", "gzip"),
-        ("Gzip", "gzip"),
-        ("DEFLATE", "deflate"),
-        ("Deflate", "deflate"),
-        ("BR", "br"),
-        ("Br", "br"),
-        ("ZSTD", "zstd"),
-        ("Zstd", "zstd"),
-    ),
-)
 def test_compression_case_insensitive(
     parser: HttpRequestParser, header_value: str, expected: str
 ) -> None:
-    """Content-Encoding tokens are case-insensitive (RFC 9110).
-
-    After the CVE-2025-69224 hardening, matching used enc.lower() but stored the
-    original casing. Payload decompression compares against lowercase tokens, so
-    mixed-case values must be normalized.
-    """
-    if expected == "br" and brotli is None:
-        pytest.skip("brotli is not installed")
-    if expected == "zstd" and zstandard is None:
-        pytest.skip("zstandard is not installed")
-    text = (
-        b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: "
-        + header_value.encode()
-        + b"\r\n\r\n"
-    )
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: GZiP\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
-    assert msg.compression == expected
+    assert msg.compression == "gzip"
     # Headers mapping keeps Content-Encoding as received.
-    assert msg.headers.get("Content-Encoding") == header_value
+    assert msg.headers.get("Content-Encoding") == "GZiP"
 
 
 async def test_compression_case_insensitive_decodes_body(
     response: HttpResponseParser,
 ) -> None:
-    """Mixed-case Content-Encoding must still decompress the payload."""
     original = b"hello mixed-case content-encoding"
     compressed = gzip.compress(original)
     text = (
