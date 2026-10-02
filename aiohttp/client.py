@@ -1168,6 +1168,9 @@ class ClientSession:
                         body_chunks.append(chunk)
                         body_size += len(chunk)
                 except Exception:
+                    # A failed/truncated read (e.g. ClientPayloadError from a
+                    # dropped connection) must not suppress the handshake
+                    # error below; keep whatever body was read so far.
                     pass
                 raise WSServerHandshakeError(
                     resp.request_info,
