@@ -212,6 +212,17 @@ class UnixClientConnectorError(ClientConnectorError):
             self, "default" if self.ssl is True else self.ssl, self.strerror
         )
 
+    def __reduce__(
+        self,
+    ) -> tuple[
+        type[BaseException], tuple[str, ConnectionKey, OSError], dict[str, object]
+    ]:
+        return (
+            type(self),
+            (self._path, self._conn_key, self._os_error),
+            self.__dict__,
+        )
+
 
 class ServerConnectionError(ClientConnectionError):
     """Server connection errors."""

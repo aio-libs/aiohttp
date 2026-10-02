@@ -7,7 +7,7 @@ import pytest
 from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
-from aiohttp import client, client_reqrep
+from aiohttp import client, client_exceptions, client_reqrep
 from aiohttp.helpers import HeadersDictProxy
 from aiohttp.http_parser import RawResponseMessage
 from aiohttp.typedefs import StrOrURL
@@ -157,6 +157,39 @@ class TestClientConnectorError:
         assert str(err) == (
             "Cannot connect to host example.com:8080 ssl:default [No such file]"
         )
+
+
+class TestUnixClientConnectorError:
+    @pytest.mark.parametrize("protocol", range(pickle.HIGHEST_PROTOCOL + 1))
+    def test_pickle(self, protocol: int) -> None:
+        connection_key = client_reqrep.ConnectionKey(
+            host="localhost",
+            port=80,
+            is_ssl=False,
+            ssl=True,
+            proxy=None,
+            proxy_headers_hash=None,
+        )
+        err = client_exceptions.UnixClientConnectorError(
+            path="/tmp/aiohttp.sock",
+            connection_key=connection_key,
+            os_error=OSError(errno.ENOENT, "No such file"),
+        )
+        err.foo = "bar"  # type: ignore[attr-defined]
+
+        err2 = pickle.loads(pickle.dumps(err, protocol))
+
+        assert type(err2) is client_exceptions.UnixClientConnectorError
+        assert err2.path == err.path
+        assert err2.host == err.host
+        assert err2.port == err.port
+        assert err2.ssl is err.ssl
+        assert err2.errno == err.errno
+        assert err2.strerror == err.strerror
+        assert err2.os_error.args == err.os_error.args
+        assert err2.__dict__["foo"] == "bar"
+        assert str(err2) == str(err)
+        assert repr(err2) == repr(err)
 
 
 class TestClientConnectorCertificateError:
