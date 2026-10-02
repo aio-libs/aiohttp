@@ -139,7 +139,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-on-whales==0.81.0
+python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 rich==15.0.0
     # via pytest-codspeed
@@ -152,7 +152,7 @@ tomli==2.4.1
     #   coverage
     #   mypy
     #   pytest
-trustme==1.2.1 ; platform_machine != "i686"
+trustme==1.2.1 ; platform_machine != "i686" and implementation_name == "cpython"
     # via -r requirements/test-common.in
 typing-extensions==4.16.0 ; python_version < "3.13"
     # via

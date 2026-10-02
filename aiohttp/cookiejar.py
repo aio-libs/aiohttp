@@ -123,6 +123,11 @@ class CookieJar(AbstractCookieJar):
         return self._quote_cookie
 
     @property
+    def treat_as_secure_origin(self) -> frozenset[URL]:
+        """Return origins considered secure even over cleartext connections."""
+        return self._treat_as_secure_origin
+
+    @property
     def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
         """Return the cookies stored in this jar."""
         return MappingProxyType(self._cookies)
@@ -455,6 +460,9 @@ class CookieJar(AbstractCookieJar):
         # Send shared cookie
         key = ("", "")
         for c in self._cookies[key].values():
+            if is_not_secure and c["secure"]:
+                continue
+
             # Check cache first
             if c.key in self._morsel_cache[key]:
                 filtered[c.key] = self._morsel_cache[key][c.key]

@@ -378,6 +378,7 @@ un
 unawaited
 unclosed
 undercounting
+unencrypted
 unescaped
 unhandled
 unicode
