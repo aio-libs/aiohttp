@@ -625,7 +625,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii():
+        if enc.isascii():  # Must be checked before .lower()
             enc = enc.lower()
             if enc in {"gzip", "deflate", "br", "zstd"}:
                 encoding = enc
