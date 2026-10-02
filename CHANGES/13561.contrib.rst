@@ -1,0 +1,3 @@
+Added benchmarks for reading masked WebSocket messages and fixed the
+existing read benchmarks, which stopped measuring the parser after the
+eighth large frame due to the queue limit -- by :user:`bdraco`.

@@ -464,7 +464,9 @@ def test_add_static_append_version_non_exists_file_without_slash(
 
 
 def test_add_static_append_version_follow_symlink(
-    router: web.UrlDispatcher, tmp_path: pathlib.Path
+    router: web.UrlDispatcher,
+    tmp_path: pathlib.Path,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
     symlink_path = tmp_path / "append_version_symlink"
@@ -486,7 +488,9 @@ def test_add_static_append_version_follow_symlink(
 
 
 def test_add_static_append_version_not_follow_symlink(
-    router: web.UrlDispatcher, tmp_path: pathlib.Path
+    router: web.UrlDispatcher,
+    tmp_path: pathlib.Path,
+    symlinks_supported: None,
 ) -> None:
     # Tests the access to a symlink, in static folder with apeend_version
 
@@ -1162,7 +1166,7 @@ def test_domain_validation_error(domain: str | None, error: type[Exception]) -> 
 
 def test_domain_valid() -> None:
     assert Domain("example.com:81").canonical == "example.com:81"
-    assert MaskDomain("*.example.com").canonical == r".*\.example\.com"
+    assert MaskDomain("*.example.com").canonical == r"[^:]*\.example\.com(:.*)?"
     assert Domain("пуни.код").canonical == "xn--h1ajfq.xn--d1alm"
 
 
@@ -1176,6 +1180,15 @@ def test_domain_valid() -> None:
         ("*.example.com", "jpg.example.com", True),
         ("*.example.com", "a.example.com", True),
         ("*.example.com", "example.com", False),
+        # Registered without a port, a domain matches the Host on any port.
+        ("example.com", "example.com:80", True),
+        ("example.com", "EXAMPLE.COM:8080", True),
+        ("*.example.com", "a.example.com:8080", True),
+        ("*.example.com", "A.EXAMPLE.COM", True),
+        # Registered with a port, it matches that port only.
+        ("example.com:81", "example.com:8080", False),
+        ("*.example.com:81", "a.example.com:81", True),
+        ("*.example.com:81", "a.example.com", False),
     ],
 )
 def test_match_domain(a: str, b: str, result: bool) -> None:
@@ -1245,6 +1258,24 @@ async def test_add_domain(app: web.Application) -> None:
     request = make_mocked_request("POST", "/", {"host": "example.com"})
     match_info = await app.router.resolve(request)
     assert isinstance(match_info.http_exception, web.HTTPMethodNotAllowed)
+
+
+@pytest.mark.parametrize("host", ("example.com:80", "EXAMPLE.COM:8080"))
+async def test_add_domain_matches_host_with_port(
+    app: web.Application, host: str
+) -> None:
+    """A Host with a port must reach the domain app, not the parent's route."""
+    parent_handler = make_handler()
+    app.router.add_get("/", parent_handler)
+
+    subapp = web.Application()
+    domain_handler = make_handler()
+    subapp.router.add_get("/", domain_handler)
+    app.add_domain("example.com", subapp)
+
+    request = make_mocked_request("GET", "/", {"host": host})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
 
 
 def test_subapp_url_for(app: web.Application) -> None:

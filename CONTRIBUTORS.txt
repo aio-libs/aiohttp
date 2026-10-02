@@ -1,5 +1,6 @@
 - Contributors -
 ----------------
+2sumtech
 A. Jesse Jiryu Davis
 Abdur Rehman Ali
 Adam Bannister
@@ -42,8 +43,10 @@ Anas El Amraoui
 Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
+Andrew Krylosov
 Andrew Leech
 Andrew Lytvyn
+Andrew Stellman
 Andrew Svetlov
 Andrew Top
 Andrew Zhou
@@ -54,7 +57,10 @@ Anton Kasyanov
 Anton Zhdan-Pushkin
 Arcadiy Ivanov
 Arie Bovenberg
+Arockia Rajamanickam
 Arseny Timoniq
+Arsh Smith
+Arshiya Tabasum
 Artem Yushkovskiy
 Arthur Darcet
 Ashutosh Kumar Singh
@@ -66,6 +72,7 @@ Ben Greiner
 Ben Kallus
 Ben Timby
 Benedikt Reinartz
+Birol Cin
 Bob Haddleton
 Boris Feld
 Borys Vorona
@@ -123,6 +130,7 @@ Dmitry Trofimov
 Dmytro Bohomiakov
 Dmytro Kuznetsov
 Dustin J. Mitchell
+dxbjavid
 Earle Lowe
 Eduard Iskandarov
 Eli Ribble
@@ -152,6 +160,8 @@ Gary Leung
 Gary Wilson Jr.
 Gene Hoffman
 Gennady Andreyev
+Geonseok Lee
+George Fifth
 Georges Dubus
 goingforstudying-ctrl
 Greg Holt
@@ -181,6 +191,8 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ishan Katoch
+istoolsfox
 Ivan Lakovic
 Ivan Larin
 J. Nick Koston
@@ -195,6 +207,7 @@ Jan Buchar
 Jan Gosmann
 Jarno Elonen
 Jashandeep Sohi
+Javid Khan
 Javier Torres
 Jean-Baptiste Estival
 Jens Steinhauser
@@ -239,6 +252,7 @@ Konstantin Valetov
 Krzysztof Blazewicz
 Kyrylo Perevozchikov
 Kyungmin Lee
+Lalith Kothuru
 Lars P. Søndergaard
 Lee LieWhite
 Liu Hua
@@ -249,12 +263,16 @@ Lubomir Gelo
 Ludovic Gasc
 Luis Pedrosa
 Lukasz Marcin Dobrzanski
+Lukshya Supyal
 Lénárd Szolnoki
 Makc Belousow
+Manny7717
 Manuel Miranda
 Marat Sharafutdinov
 Marc Mueller
+Marco Gorelli
 Marco Paolini
+Marcus Campbell
 Marcus Stojcevich
 Mariano Anaya
 Mariusz Masztalerczuk
@@ -283,8 +301,10 @@ Mikhail Nacharov
 Mingjie Zhao
 Misha Behersky
 Mitchell Ferree
+monasco
 Morgan Delahaye-Prat
 Moss Collum
+Muhammad A Dev
 Mun Gwan-gyeong
 Navid Sheikhol
 Nicolas Braem
@@ -369,6 +389,7 @@ Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
 Taha Jahangir
+Taras Kozlov
 Taras Voinarovskyi
 Terence Honles
 Thanos Lefteris
@@ -440,6 +461,7 @@ Yuvi Panda
 Zainab Lawal
 Zeal Wierslee
 Zlatan Sičanica
+Zuhef Ahmed
 Łukasz Setla
 Марк Коренберг
 Семён Марьясин

@@ -1,0 +1,4 @@
+Fixed :attr:`~aiohttp.web.BaseRequest.raw_path` including the scheme and host
+for absolute-form request targets, and made the pure-Python parser reject
+authority-form targets (``host:port``) for methods other than ``CONNECT``
+-- by :user:`Dreamsorcerer`.

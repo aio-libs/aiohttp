@@ -1,0 +1,1 @@
+Fixed leading path separators in ``Content-Disposition`` not being stripped in some circumstances -- by :user:`arshsmith1`.

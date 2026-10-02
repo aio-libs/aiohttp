@@ -2,7 +2,7 @@ import asyncio
 import socket
 import ssl
 import sys
-from typing import Callable
+from typing import Protocol
 from unittest import mock
 
 import pytest
@@ -10,7 +10,7 @@ from multidict import CIMultiDict
 from yarl import URL
 
 import aiohttp
-from aiohttp import hdrs
+from aiohttp import connector as connector_module, hdrs
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import (
     ClientRequest,
@@ -25,7 +25,11 @@ from aiohttp.helpers import TimerNoop
 if sys.version_info >= (3, 11):
     from typing import Unpack
 
-    _RequestMaker = Callable[[str, URL, Unpack[ClientRequestArgs]], ClientRequest]
+    class _RequestMaker(Protocol):
+        def __call__(
+            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+        ) -> ClientRequest: ...
+
 else:
     from typing import Any
 
@@ -70,7 +74,7 @@ async def test_connect(  # type: ignore[misc]
             }
         )
         with mock.patch.object(
-            event_loop,
+            connector_module,
             "create_connection",
             autospec=True,
             return_value=(proto.transport, proto),
@@ -131,7 +135,7 @@ async def test_proxy_headers(  # type: ignore[misc]
             }
         )
         with mock.patch.object(
-            event_loop,
+            connector_module,
             "create_connection",
             autospec=True,
             return_value=(proto.transport, proto),
@@ -204,7 +208,7 @@ async def test_proxy_connection_error(  # type: ignore[misc]
     }
     with mock.patch.object(connector, "_resolve_host", autospec=True, return_value=[r]):
         with mock.patch.object(
-            connector._loop,
+            connector_module,
             "create_connection",
             autospec=True,
             side_effect=OSError("dont take it serious"),
@@ -274,13 +278,13 @@ async def test_proxy_server_hostname_default(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -360,13 +364,13 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -399,10 +403,16 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
 )
 @pytest.mark.usefixtures("enable_cleanup_closed")
 @pytest.mark.parametrize("cleanup", (True, False))
+@pytest.mark.parametrize(
+    "asyncio_transport",
+    (True, False),
+    ids=("asyncio-transport", "duck-typed-transport"),
+)
 async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     cleanup: bool,
+    asyncio_transport: bool,
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
@@ -418,6 +428,16 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     class TransportMock(asyncio.Transport):
         def close(self) -> None:
             pass
+
+    class DuckTypedTransportMock:
+        """Models aiofastnet's transport, which subclasses no asyncio class."""
+
+        def close(self) -> None:
+            pass
+
+    transport_mock: object = (
+        TransportMock() if asyncio_transport else DuckTypedTransportMock()
+    )
 
     url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
@@ -482,18 +502,18 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
                 return_value=fingerprint_mock,
             ),
             mock.patch.object(  # Called on connection to http://proxy.example.com
-                event_loop,
+                connector_module,
                 "create_connection",
                 autospec=True,
                 spec_set=True,
                 return_value=(mock.Mock(), mock.Mock()),
             ),
             mock.patch.object(  # Called on connection to https://www.python.org
-                event_loop,
+                connector_module,
                 "start_tls",
                 autospec=True,
                 spec_set=True,
-                return_value=TransportMock(),
+                return_value=transport_mock,
             ),
         ):
             req = make_client_request(
@@ -561,13 +581,13 @@ async def test_https_connect(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -647,14 +667,14 @@ async def test_https_connect_certificate_error(  # type: ignore[misc]
                 tr, proto = mock.Mock(), mock.Mock()
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     # Called on connection to https://www.python.org
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         side_effect=ssl.CertificateError,
@@ -728,14 +748,14 @@ async def test_https_connect_ssl_error(  # type: ignore[misc]
                 tr, proto = mock.Mock(), mock.Mock()
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     # Called on connection to https://www.python.org
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         side_effect=ssl.SSLError,
@@ -811,7 +831,7 @@ async def test_https_connect_http_proxy_error(  # type: ignore[misc]
                 tr.get_extra_info.return_value = None
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
@@ -891,7 +911,7 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
                 tr.get_extra_info.return_value = None
                 # Called on connection to http://proxy.example.com
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
@@ -907,6 +927,75 @@ async def test_https_connect_resp_start_error(  # type: ignore[misc]
                             req, [], aiohttp.ClientTimeout()
                         )
             await connector.close()
+
+
+@mock.patch("aiohttp.connector.ClientRequestBase")
+@mock.patch(
+    "aiohttp.connector.aiohappyeyeballs.start_connection",
+    autospec=True,
+    spec_set=True,
+)
+async def test_https_connect_send_error(  # type: ignore[misc]
+    start_connection: mock.Mock,
+    ClientRequestMock: mock.Mock,
+    make_client_request: _RequestMaker,
+) -> None:
+    event_loop = asyncio.get_running_loop()
+    proxy_req = ClientRequestBase(
+        "GET",
+        URL("http://proxy.example"),
+        loop=event_loop,
+        ssl=True,
+        headers=CIMultiDict({}),
+    )
+    ClientRequestMock.return_value = proxy_req
+
+    with mock.patch.object(
+        proxy_req,
+        "_send",
+        autospec=True,
+        side_effect=aiohttp.ClientConnectionResetError(
+            "Cannot write to closing transport"
+        ),
+    ):
+        connector = aiohttp.TCPConnector()
+        r = {
+            "hostname": "hostname",
+            "host": "127.0.0.1",
+            "port": 80,
+            "family": socket.AF_INET,
+            "proto": 0,
+            "flags": 0,
+        }
+        with mock.patch.object(
+            connector, "_resolve_host", autospec=True, return_value=[r]
+        ):
+            tr, proto = mock.Mock(), mock.Mock()
+            tr.get_extra_info.return_value = None
+            # Called on connection to http://proxy.example.com
+            with mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ):
+                req = make_client_request(
+                    "GET",
+                    URL("https://www.python.org"),
+                    proxy=URL("http://proxy.example"),
+                    loop=event_loop,
+                )
+                with pytest.raises(
+                    aiohttp.ClientConnectionResetError,
+                    match="Cannot write to closing transport",
+                ) as exc_info:
+                    await connector._create_connection(req, [], aiohttp.ClientTimeout())
+                # The tunnel connection is still referenced from the traceback,
+                # so the proxy connection must have been closed explicitly
+                # rather than by the garbage collector.
+                assert exc_info.value.__traceback__ is not None
+                proto.close.assert_called_once_with()
+        await connector.close()
 
 
 @mock.patch("aiohttp.connector.ClientRequest")
@@ -940,7 +1029,10 @@ async def test_request_port(  # type: ignore[misc]
         tr.get_extra_info.return_value = None
         # Called on connection to http://proxy.example.com
         with mock.patch.object(
-            event_loop, "create_connection", autospec=True, return_value=(tr, proto)
+            connector_module,
+            "create_connection",
+            autospec=True,
+            return_value=(tr, proto),
         ):
             req = make_client_request(
                 "GET",
@@ -1008,13 +1100,13 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
             ):
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),
@@ -1031,6 +1123,7 @@ async def test_https_connect_pass_ssl_context(  # type: ignore[misc]
 
                         # ssl_shutdown_timeout=0 is not passed to start_tls
                         tls_m.assert_called_with(
+                            event_loop,
                             mock.ANY,
                             mock.ANY,
                             _SSL_CONTEXT_VERIFIED,
@@ -1103,13 +1196,13 @@ async def test_https_auth(  # type: ignore[misc]
             ) as host_m:
                 tr, proto = mock.Mock(), mock.Mock()
                 with mock.patch.object(
-                    event_loop,
+                    connector_module,
                     "create_connection",
                     autospec=True,
                     return_value=(tr, proto),
                 ):
                     with mock.patch.object(
-                        event_loop,
+                        connector_module,
                         "start_tls",
                         autospec=True,
                         return_value=mock.Mock(),

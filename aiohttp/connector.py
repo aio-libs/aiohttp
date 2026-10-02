@@ -5,6 +5,7 @@ import socket
 import sys
 import traceback
 import warnings
+from asyncio.base_events import BaseEventLoop
 from collections import OrderedDict, defaultdict, deque
 from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import suppress
@@ -54,6 +55,12 @@ from .helpers import (
 from .log import client_logger
 from .resolver import DefaultResolver
 
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
+
+
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer
 else:
@@ -90,6 +97,82 @@ if TYPE_CHECKING:
     from .client import ClientTimeout
     from .client_reqrep import ConnectionKey
     from .tracing import Trace
+
+
+async def create_connection(
+    loop: asyncio.AbstractEventLoop,
+    protocol_factory: Callable[[], ResponseHandler],
+    *,
+    ssl: SSLContext | None,
+    sock: socket.socket,
+    server_hostname: str | None,
+    ssl_shutdown_timeout: float | None = None,
+) -> tuple[asyncio.Transport, ResponseHandler]:
+    if aiofastnet is not None:
+        return await aiofastnet.create_connection(
+            loop,
+            protocol_factory,
+            ssl=ssl,
+            sock=sock,
+            server_hostname=server_hostname,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
+    else:
+        if sys.version_info >= (3, 11):  # type: ignore[unreachable]
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.create_connection(
+                protocol_factory,
+                ssl=ssl,
+                sock=sock,
+                server_hostname=server_hostname,
+            )
+
+
+async def start_tls(
+    loop: asyncio.AbstractEventLoop,
+    transport: asyncio.Transport,
+    protocol: ResponseHandler,
+    sslcontext: SSLContext,
+    *,
+    server_hostname: str | None,
+    ssl_handshake_timeout: float | None,
+    ssl_shutdown_timeout: float | None = None,
+) -> asyncio.Transport | None:
+    if aiofastnet is not None:
+        return await aiofastnet.start_tls(
+            loop,
+            transport,
+            protocol,
+            sslcontext,
+            server_hostname=server_hostname,
+            ssl_handshake_timeout=ssl_handshake_timeout,
+            ssl_shutdown_timeout=ssl_shutdown_timeout,
+        )
+    else:
+        if sys.version_info >= (3, 11):  # type: ignore[unreachable]
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+                ssl_shutdown_timeout=ssl_shutdown_timeout,
+            )
+        else:
+            return await loop.start_tls(
+                transport,
+                protocol,
+                sslcontext,
+                server_hostname=server_hostname,
+                ssl_handshake_timeout=ssl_handshake_timeout,
+            )
 
 
 class Connection:
@@ -222,7 +305,11 @@ class _TransportPlaceholder:
 class BaseConnector:
     """Base connector class.
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -257,6 +344,7 @@ class BaseConnector:
                 raise ValueError(
                     "keepalive_timeout cannot be set if force_close is True"
                 )
+            keepalive_timeout = None
         else:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
@@ -281,7 +369,7 @@ class BaseConnector:
         self._acquired_per_host: defaultdict[ConnectionKey, set[ResponseHandler]] = (
             defaultdict(set)
         )
-        self._keepalive_timeout = cast(float, keepalive_timeout)
+        self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
@@ -383,6 +471,8 @@ class BaseConnector:
 
         now = monotonic()
         timeout = self._keepalive_timeout
+        # weakref_handle() never schedules this method for a None timeout
+        assert timeout is not None
 
         if self._conns:
             connections = defaultdict(deque)
@@ -686,7 +776,9 @@ class BaseConnector:
             proto, t0 = conns.popleft()
             # We will we reuse the connection if its connected and
             # the keepalive timeout has not been exceeded
-            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+            if proto.is_connected() and (
+                self._keepalive_timeout is None or t1 - t0 <= self._keepalive_timeout
+            ):
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
@@ -871,11 +963,11 @@ _SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
 class TCPConnector(BaseConnector):
     """TCP connector.
 
-    verify_ssl - Set to True to check ssl certifications.
-    fingerprint - Pass the binary sha256
-        digest of the expected certificate in DER format to verify
-        that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
+    ssl - DEPRECATED. Will be removed in aiohttp 5.0.
+        SSL validation mode: ``True`` for the default checks, ``False`` to
+        skip certificate validation, a Fingerprint for certificate pinning
+        or an ssl.SSLContext for custom validation. Pass ``ssl`` to
+        ClientSession or to the individual request instead.
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -883,7 +975,11 @@ class TCPConnector(BaseConnector):
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -916,7 +1012,7 @@ class TCPConnector(BaseConnector):
         ttl_dns_cache: int | None = 10,
         dns_cache_max_size: int = 1000,
         family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
-        ssl: bool | Fingerprint | SSLContext = True,
+        ssl: bool | Fingerprint | SSLContext | _SENTINEL = sentinel,
         local_addr: tuple[str, int] | None = None,
         resolver: AbstractResolver | None = None,
         keepalive_timeout: None | float | _SENTINEL = sentinel,
@@ -939,12 +1035,23 @@ class TCPConnector(BaseConnector):
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                f"got {ssl!r} instead."
+        self._ssl: bool | Fingerprint | SSLContext
+        if ssl is sentinel:
+            self._ssl = True
+        else:
+            if not isinstance(ssl, SSL_ALLOWED_TYPES):
+                raise TypeError(
+                    "ssl should be SSLContext, Fingerprint, or bool, "
+                    f"got {ssl!r} instead."
+                )
+            warnings.warn(
+                "The ssl parameter is deprecated since 4.0 and scheduled for "
+                "removal in 5.0, pass ssl to ClientSession() or to the "
+                "individual request instead",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        self._ssl = ssl
+            self._ssl = ssl
 
         self._resolver: AbstractResolver
         if resolver is None:
@@ -1113,12 +1220,19 @@ class TCPConnector(BaseConnector):
         # all the waiters across all connections.
         #
         coro = self._resolve_host_with_throttle(key, host, port, futures, traces)
-        loop = asyncio.get_running_loop()
-        if sys.version_info >= (3, 12):
-            # Optimization for Python 3.12, try to send immediately
-            resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        if sys.version_info >= (3, 14):
+            # Try to send immediately to avoid having to schedule the task.
+            loop = asyncio.get_running_loop()
+            if isinstance(loop, BaseEventLoop):
+                resolved_host_task = asyncio.create_task(coro, eager_start=True)
+            else:
+                resolved_host_task = asyncio.Task(coro, loop=loop, eager_start=True)
+        elif sys.version_info >= (3, 12):
+            resolved_host_task = asyncio.Task(
+                coro, loop=asyncio.get_running_loop(), eager_start=True
+            )
         else:
-            resolved_host_task = loop.create_task(coro)
+            resolved_host_task = asyncio.create_task(coro)
 
         if not resolved_host_task.done():
             self._resolve_host_tasks.add(resolved_host_task)
@@ -1260,7 +1374,7 @@ class TCPConnector(BaseConnector):
                     and sys.version_info >= (3, 11)
                 ):
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
-                return await self._loop.create_connection(*args, **kwargs, sock=sock)
+                return await create_connection(self._loop, *args, **kwargs, sock=sock)
         except cert_errors as exc:
             raise ClientConnectorCertificateError(req.connection_key, exc) from exc
         except ssl_errors as exc:
@@ -1290,8 +1404,12 @@ class TCPConnector(BaseConnector):
         if type(underlying_transport).__module__.startswith("uvloop"):
             return
 
+        # Check if aiofastnet is being used, which supports TLS in TLS
+        if aiofastnet is not None:
+            return
+
         # Support in asyncio was added in Python 3.11 (bpo-44011)
-        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(
+        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(  # type: ignore[unreachable]
             underlying_transport,
             "_start_tls_compatible",
             False,
@@ -1341,7 +1459,8 @@ class TCPConnector(BaseConnector):
                 try:
                     # ssl_shutdown_timeout is only available in Python 3.11+
                     if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
@@ -1350,7 +1469,8 @@ class TCPConnector(BaseConnector):
                             ssl_shutdown_timeout=self._ssl_shutdown_timeout,
                         )
                     else:
-                        tls_transport = await self._loop.start_tls(
+                        tls_transport = await start_tls(
+                            self._loop,
                             underlying_transport,
                             tls_proto,
                             sslcontext,
@@ -1366,7 +1486,7 @@ class TCPConnector(BaseConnector):
                     else:
                         underlying_transport.close()
                     raise
-                if isinstance(tls_transport, asyncio.Transport):
+                if tls_transport is not None:
                     fingerprint = self._get_fingerprint(req)
                     if fingerprint:
                         try:
@@ -1526,7 +1646,11 @@ class TCPConnector(BaseConnector):
             proxy_req.url = req.url
             key = req.connection_key._replace(proxy=None, proxy_headers_hash=None)
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
-            proxy_resp = await proxy_req._send(conn)
+            try:
+                proxy_resp = await proxy_req._send(conn)
+            except BaseException:
+                conn.close()
+                raise
             try:
                 protocol = conn._protocol
                 assert protocol is not None
@@ -1581,7 +1705,11 @@ class UnixConnector(BaseConnector):
     """Unix socket connector.
 
     path - Unix socket path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -1637,7 +1765,11 @@ class NamedPipeConnector(BaseConnector):
     See also: https://docs.python.org/3/library/asyncio-eventloop.html
 
     path - Windows named pipe path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.

@@ -1,0 +1,1 @@
+Made Python code more typing-spec compliant -- by :user:`MarcoGorelli`.

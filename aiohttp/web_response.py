@@ -267,6 +267,8 @@ class StreamResponse(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
             )
         elif isinstance(value, datetime.datetime):
+            if value.microsecond:
+                value = value.replace(microsecond=0) + datetime.timedelta(seconds=1)
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
                 "%a, %d %b %Y %H:%M:%S GMT", value.utctimetuple()
             )
@@ -419,7 +421,8 @@ class StreamResponse(
         elif (writer.length if self._length_check else self.content_length) != 0:
             # https://www.rfc-editor.org/rfc/rfc9110#section-8.3-5
             headers.setdefault(hdrs.CONTENT_TYPE, "application/octet-stream")
-        headers.setdefault(hdrs.DATE, rfc822_formatted_time())
+        if hdrs.DATE not in headers:
+            headers[hdrs.DATE] = rfc822_formatted_time()
         headers.setdefault(hdrs.SERVER, SERVER_SOFTWARE)
 
         # connection header

@@ -71,8 +71,13 @@ def _discover_path_importables(
         if pkg_dir_path.parts[-1] == "__pycache__":
             continue
 
-        if all(Path(_).suffix != ".py" for _ in file_names):
-            continue
+        if all(Path(_).suffix != ".py" for _ in file_names):  # pragma: no branch
+            # NOTE: This is only possible when testing editable installs where
+            # NOTE: the directory lookup encounters the `aiohttp/.hash/` cache
+            # NOTE: directory with files like `_http_parser.pyx.hash` in it that
+            # NOTE: never get included into source distributions or wheels and so
+            # NOTE: the module discovery mechanism never hits this code branch.
+            continue  # pragma: no cover
 
         rel_pt = pkg_dir_path.relative_to(pkg_pth)
         pkg_pref = ".".join((pkg_name,) + rel_pt.parts)
@@ -102,19 +107,6 @@ def test_no_warnings(import_path: str) -> None:
         # fmt: off
         sys.executable,
         "-W", "error",
-        # The following deprecation warning is triggered by importing
-        # `gunicorn.util`. Hopefully, it'll get fixed in the future. See
-        # https://github.com/benoitc/gunicorn/issues/2840 for detail.
-        "-W", "ignore:module 'sre_constants' is "
-        "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
-        # Also caused by `gunicorn.util` importing `pkg_resources`:
-        "-W", "ignore:Creating a LegacyVersion has been deprecated and "
-        "will be removed in the next major release:"
-        "DeprecationWarning:",
-        # Deprecation warning emitted by setuptools v67.5.0+ triggered by importing
-        # `gunicorn.util`.
-        "-W", "ignore:pkg_resources is deprecated as an API:"
-        "DeprecationWarning",
         "-c", f"import {import_path!s}",
         # fmt: on
     )

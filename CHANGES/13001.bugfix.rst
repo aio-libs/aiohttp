@@ -1,1 +1,0 @@
-Fixed an :exc:`IndexError` in the pure-Python HTTP parser -- by :user:`Dreamsorcerer`.

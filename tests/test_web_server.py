@@ -296,10 +296,12 @@ async def test_raw_server_html_exception_debug(
 
 async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     event = asyncio.Event()
+    started = asyncio.Event()
     sock = unused_port_socket
     port = sock.getsockname()[1]
 
     async def on_request(request: web.Request) -> web.Response:
+        started.set()
         try:
             await asyncio.sleep(10)
         except asyncio.CancelledError:
@@ -320,11 +322,11 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     try:
         assert runner.server.handler_cancellation, "Flag was not propagated"
 
-        async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.15)
-        ) as sess:
-            with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://127.0.0.1:{port}/")
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        await writer.drain()
+        await asyncio.wait_for(started.wait(), timeout=5)
+        writer.close()
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(event.wait(), timeout=1)
@@ -336,13 +338,12 @@ async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
 async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> None:
     timeout_event = asyncio.Event()
     done_event = asyncio.Event()
+    started = asyncio.Event()
     sock = unused_port_socket
     port = sock.getsockname()[1]
-    started = False
 
     async def on_request(request: web.Request) -> web.Response:
-        nonlocal started
-        started = True
+        started.set()
         await asyncio.wait_for(timeout_event.wait(), timeout=5)
         done_event.set()
         return web.Response()
@@ -357,17 +358,16 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
 
     await site.start()
     try:
-        async with client.ClientSession(
-            timeout=client.ClientTimeout(total=0.2)
-        ) as sess:
-            with pytest.raises(asyncio.TimeoutError):
-                await sess.get(f"http://127.0.0.1:{port}/")
+        _, writer = await asyncio.open_connection("127.0.0.1", port)
+        writer.write(b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\n\r\n")
+        await writer.drain()
+        await asyncio.wait_for(started.wait(), timeout=5)
+        writer.close()
         await asyncio.sleep(0.1)
         timeout_event.set()
 
         with suppress(asyncio.TimeoutError):
             await asyncio.wait_for(done_event.wait(), timeout=1)
-        assert started
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
@@ -419,3 +419,122 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
         loop.set_exception_handler(original_handler)
 
     assert not exc_handler_calls
+
+
+async def test_idle_connection_closed_before_first_request(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A connection that never sends a request must not be held open forever."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert False
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # The server must close the connection once keepalive_timeout
+        # expires without a complete request having arrived.
+        assert await asyncio.wait_for(reader.read(), timeout=5) == b""
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+# uvloop closes the socket before running connection_lost, the reverse of the
+# default loop's ordering, so run under both to cover the disconnect race.
+@pytest.mark.asyncio(loop_factories=("uvloop", "selector"))
+async def test_trickled_headers_closed_at_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Partial header bytes must not extend the first-request deadline."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert False
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.4)
+    runner = server.runner
+    assert runner is not None
+    server_impl = runner.server
+    assert server_impl is not None
+
+    disconnected = asyncio.Event()
+    original_connection_lost = server_impl.connection_lost
+
+    def connection_lost(protocol: Any, exc: BaseException | None = None) -> None:
+        original_connection_lost(protocol, exc)
+        disconnected.set()
+
+    monkeypatch.setattr(server_impl, "connection_lost", connection_lost)
+
+    _, writer = await asyncio.open_connection(server.host, server.port)
+
+    async def trickle_until_closed() -> None:
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\nX-Slow: ")
+        # asyncio's drain() raises a ConnectionError once the connection is
+        # lost; uvloop's write() raises RuntimeError on the closed transport.
+        with pytest.raises((ConnectionError, RuntimeError)):
+            while True:
+                await writer.drain()
+                await asyncio.sleep(0.05)
+                writer.write(b"a")
+
+    try:
+        # The deadline must fire despite the steady trickle of bytes.
+        await asyncio.wait_for(trickle_until_closed(), timeout=5)
+        await asyncio.wait_for(disconnected.wait(), timeout=5)
+        assert not server_impl.connections
+        assert server_impl.requests_count == 0
+    finally:
+        writer.close()
+        with suppress(ConnectionError, RuntimeError):
+            await writer.wait_closed()
+
+
+async def test_keepalive_timeout_zero_no_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """keepalive_timeout=0 must not impose a deadline on the first request."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        # A zero timeout must not arm a deadline that fires at accept time:
+        # the connection has to survive an idle pause and serve the request.
+        await asyncio.sleep(0.1)
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert head.startswith(b"HTTP/1.1 200 ")
+        # Between requests a zero timeout still closes the idle connection
+        # right after the response, so the body is followed by EOF.
+        assert await asyncio.wait_for(reader.read(), timeout=5) == b"ok"
+    finally:
+        writer.close()
+        await writer.wait_closed()
+
+
+async def test_handler_slower_than_first_request_deadline(
+    aiohttp_raw_server: AiohttpRawServer,
+) -> None:
+    """A parsed request being handled is not subject to the idle deadline."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        await asyncio.sleep(0.4)  # Longer than keepalive_timeout.
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler, keepalive_timeout=0.2)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+        await writer.drain()
+        head = await asyncio.wait_for(reader.readuntil(b"\r\n\r\n"), timeout=5)
+        assert head.startswith(b"HTTP/1.1 200 ")
+    finally:
+        writer.close()
+        await writer.wait_closed()

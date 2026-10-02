@@ -86,9 +86,22 @@ TOKENRE: Final[Pattern[str]] = re.compile(f"[0-9A-Za-z{_TCHAR_SPECIALS}]+")
 _FIELD_VALUE_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(
     r"[\x00-\x08\x0a-\x1f\x7f]"
 )
+_TARGET_FORBIDDEN_CTL_RE: Final[Pattern[str]] = re.compile(r"[\x00-\x1f\x7f]")
 VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
+
+
+def _has_authority(target: str) -> bool:
+    """Tell if an absolute-form request target has "//" and a non-empty authority.
+
+    RFC 9110 section 4.2 requires a host for http and https. yarl's default
+    WHATWG mode reads a host from "http:host/p" or "http:///host/p", so the
+    target is checked before it is parsed.
+    """
+    rest = target.partition(":")[2]
+    return rest[:2] == "//" and rest[2:3] not in ("", "/", "?", "#")
+
 
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
@@ -358,6 +371,8 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                     # any preceding body is consumed before the next request
                     # line. Resumes via feed_data(b"") when the queue drains.
                     self._tail = data[start_pos:]
+                    # The remainder now lives in self._tail only. Don't return it.
+                    data = EMPTY
                     break
                 pos = data.find(SEP, start_pos)
                 # consume \r\n
@@ -420,8 +435,12 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
                         assert self.protocol is not None
                         # calculate payload
+                        # https://www.rfc-editor.org/info/rfc9112/#name-message-body-length
+                        # https://www.rfc-editor.org/info/rfc9110/#section-9.3.1-6
+                        # EMPTY_BODY_METHODS should only apply to responses.
+                        # self.method is None on request parser.
                         empty_body = code in EMPTY_BODY_STATUS_CODES or bool(
-                            method and method in EMPTY_BODY_METHODS
+                            self.method and self.method in EMPTY_BODY_METHODS
                         )
                         if not empty_body and (
                             (length is not None and length > 0) or msg.chunked
@@ -514,6 +533,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                         should_close = msg.should_close
                 else:
                     self._tail = data[start_pos:]
+                    # A bare LF here means CRLF was required:
+                    # reject instead of buffering, else a following request's
+                    # bytes get appended to this line and leak in the error.
+                    if b"\n" in self._tail:
+                        raise BadHttpMessage("Bad line ending, expected CRLF")
                     if len(self._tail) > self.max_line_size:
                         raise LineTooLong(self._tail[:100] + b"...", self.max_line_size)
                     data = EMPTY
@@ -613,8 +637,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+        if enc.isascii():  # Must be checked before .lower()
+            enc = enc.lower()
+            if enc in {"gzip", "deflate", "br", "zstd"}:
+                encoding = enc
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -658,6 +684,12 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
             raise BadHttpMethod(method)
         method = method.upper()
 
+        # https://www.rfc-editor.org/rfc/rfc9112#section-3.2-4
+        if _TARGET_FORBIDDEN_CTL_RE.search(path):
+            raise InvalidURLError(
+                path.encode(errors="surrogateescape").decode("latin1")
+            )
+
         # version
         match = VERSRE.fullmatch(version)
         if match is None:
@@ -667,7 +699,18 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if method == "CONNECT":
             # authority-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-            url = URL.build(authority=path, encoded=True)
+            try:
+                url = URL.build(authority=path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            if host is None:
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
         elif path.startswith("/"):
             # origin-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -690,9 +733,20 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-            url = URL(path, encoded=True)
-            if url.scheme == "":
-                # not absolute-form
+            if not _has_authority(path):
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            try:
+                url = URL(path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
+            if host is None:
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
                 )
@@ -908,11 +962,20 @@ class HttpPayloadParser:
             self.done = True
             self._eof_pending = False
         elif self._type == ParseState.PARSE_LENGTH:
-            received = self._length_expected - self._length
-            raise ContentLengthError(
-                f"Not enough data to satisfy content length header "
-                f"(received {received} of {self._length_expected} bytes)."
-            )
+            if self._length:
+                received = self._length_expected - self._length
+                raise ContentLengthError(
+                    f"Not enough data to satisfy content length header "
+                    f"(received {received} of {self._length_expected} bytes)."
+                )
+            # Body has already been received, but parser paused.
+            while self._more_data_available:
+                if self._paused:
+                    self._paused = False
+                    return  # Will resume via feed_data(b"") later
+                self._more_data_available = self.payload.feed_data(b"")
+            self.payload.feed_eof()
+            self.done = True
         elif self._type == ParseState.PARSE_CHUNKED:
             raise TransferEncodingError(
                 "Not enough data to satisfy transfer length header."
@@ -1008,6 +1071,12 @@ class HttpPayloadParser:
                             self._chunk_size = size
                             self.payload.begin_http_chunk_receiving()
                     else:
+                        if b"\n" in chunk:
+                            exc = TransferEncodingError(
+                                "Bad chunk-size line ending, expected CRLF"
+                            )
+                            set_exception(self.payload, exc)
+                            raise exc
                         self._chunk_tail = chunk
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
@@ -1052,6 +1121,12 @@ class HttpPayloadParser:
                 if self._chunk == ChunkState.PARSE_TRAILERS:
                     pos = chunk.find(SEP)
                     if pos < 0:  # No line found
+                        if b"\n" in chunk:
+                            exc = TransferEncodingError(
+                                "Bad trailer line ending, expected CRLF"
+                            )
+                            set_exception(self.payload, exc)
+                            raise exc
                         self._chunk_tail = chunk
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 

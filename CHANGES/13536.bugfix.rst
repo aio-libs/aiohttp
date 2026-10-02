@@ -1,0 +1,2 @@
+Fixed the WebSocket reader accepting close code ``1006`` in a Close frame
+received from the peer -- by :user:`arshsmith1`.

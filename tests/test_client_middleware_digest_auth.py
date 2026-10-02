@@ -551,6 +551,32 @@ async def test_escaping_quotes_in_auth_header() -> None:
     assert 'opaque="opaque\\"with\\"quotes"' in header
 
 
+async def test_backslash_in_challenge_cannot_break_quoting() -> None:
+    """A backslash in a server-supplied value must not escape the closing quote."""
+    auth = DigestAuthMiddleware("bob", "secret")
+    # A malicious/compromised server could return directives ending in a
+    # backslash; without escaping it the trailing quote of the field would be
+    # turned into an escaped quote, letting the value run into later directives.
+    auth._challenge = DigestAuthChallenge(
+        realm="realm\\",
+        nonce="n0",
+        qop="auth",
+        algorithm="MD5",
+        opaque="op\\",
+    )
+
+    header = await auth._encode("GET", URL("http://example.com/path"), b"")
+
+    assert 'realm="realm\\\\"' in header
+    assert 'opaque="op\\\\"' in header
+    # Re-parsing the header must recover the exact realm value, i.e. the
+    # backslash did not consume the closing quote and swallow ``nonce``.
+    params = parse_header_pairs(header[len("Digest ") :])
+    assert params["realm"] == "realm\\"
+    assert params["nonce"] == "n0"
+    assert params["opaque"] == "op\\"
+
+
 async def test_template_based_header_construction(
     auth_mw_with_challenge: DigestAuthMiddleware,
     mock_sha1_digest: mock.MagicMock,
@@ -624,7 +650,9 @@ async def test_template_based_header_construction(
         ),
         ('""', '\\"\\"', "Just double quotes"),
         ('"', '\\"', "Single double quote"),
-        ('already\\"escaped', 'already\\\\"escaped', "Already escaped quotes"),
+        ('already\\"escaped', 'already\\\\\\"escaped', "Already escaped quotes"),
+        ("back\\slash", "back\\\\slash", "Embedded backslash"),
+        ("trailing\\", "trailing\\\\", "Trailing backslash"),
     ],
 )
 def test_quote_escaping_functions(

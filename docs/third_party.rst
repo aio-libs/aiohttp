@@ -302,3 +302,7 @@ ask to raise the status.
 
 - `aiointercept <https://github.com/Polandia94/aiointercept>`_
   Mock aiohttp HTTP requests by routing them through a real aiohttp.web test server.
+
+- `interlock-cb <https://github.com/bagowix/interlock>`_
+  Circuit breaker middleware for aiohttp clients with one breaker per host; it fails fast
+  while a host is degraded and trips on failure rate or slow responses.

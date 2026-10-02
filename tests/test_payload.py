@@ -964,6 +964,33 @@ async def test_async_iterable_payload_no_reuse_without_cache() -> None:
     assert writer2.get_written_bytes() == b""
 
 
+async def test_async_iterable_payload_consumed_on_interrupted_write() -> None:
+    """An interrupted write must still mark an uncached payload as consumed."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk1"
+        yield b"chunk2"
+
+    class FailingWriter(MockStreamWriter):
+        async def write(
+            self,
+            chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
+        ) -> None:
+            if self.written:
+                raise ConnectionResetError("connection lost")
+            await super().write(chunk)
+
+    p = payload.AsyncIterablePayload(gen())
+    writer = FailingWriter()
+
+    with pytest.raises(ConnectionResetError):
+        await p.write_with_length(writer, None)
+
+    # The iterator was partially drained, so the payload cannot be replayed.
+    assert writer.get_written_bytes() == b"chunk1"
+    assert p.consumed is True
+
+
 async def test_bytes_io_payload_close_does_not_close_io() -> None:
     """Test that BytesIOPayload close() does not close the underlying BytesIO."""
     bytes_io = io.BytesIO(b"data")

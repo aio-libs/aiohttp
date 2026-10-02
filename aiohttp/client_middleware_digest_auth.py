@@ -102,13 +102,13 @@ QUOTED_AUTH_FIELDS: Final[frozenset[str]] = frozenset(
 
 
 def escape_quotes(value: str) -> str:
-    """Escape double quotes for HTTP header values."""
-    return value.replace('"', '\\"')
+    """Escape backslashes and double quotes for HTTP quoted-strings."""
+    return value.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def unescape_quotes(value: str) -> str:
-    """Unescape double quotes in HTTP header values."""
-    return value.replace('\\"', '"')
+    """Unescape backslashes and double quotes in HTTP quoted-strings."""
+    return value.replace('\\"', '"').replace("\\\\", "\\")
 
 
 def parse_header_pairs(header: str) -> dict[str, str]:

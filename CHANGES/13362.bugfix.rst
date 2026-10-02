@@ -1,0 +1,1 @@
+Reduced CPU consumption when encountering many concatenated members in a compressed payload and rejected large amounts of members -- by :user:`Dreamsorcerer`.
