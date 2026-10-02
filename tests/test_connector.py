@@ -467,6 +467,39 @@ async def test_get_expired_ssl() -> None:
         await conn.close()
 
 
+async def test_get_never_expires_with_keepalive_timeout_none() -> None:
+    loop = asyncio.get_running_loop()
+    conn = aiohttp.BaseConnector(keepalive_timeout=None)
+    key = ConnectionKey("localhost", 80, False, False, None, None)
+    try:
+        proto = create_mocked_conn(loop)
+        conn._conns[key] = deque([(proto, loop.time() - 1000)])
+        connection = await conn._get(key, [])
+        assert connection is not None
+        assert connection.protocol == proto
+        connection.close()
+    finally:
+        await conn.close()
+
+
+async def test_release_with_keepalive_timeout_none_schedules_no_cleanup(
+    key: ConnectionKey,
+) -> None:
+    """_cleanup() asserts a non-None timeout, so nothing may schedule it for None."""
+    loop = asyncio.get_running_loop()
+    conn = aiohttp.BaseConnector(keepalive_timeout=None)
+    with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
+        proto = create_mocked_conn(loop, should_close=False)
+
+        conn._acquired.add(proto)
+        conn._acquired_per_host[key].add(proto)
+
+        conn._release(key, proto)
+        assert conn._cleanup_handle is None
+        assert conn._conns[key][0][0] == proto
+        await conn.close()
+
+
 async def test_release_acquired(key: ConnectionKey) -> None:
     proto = create_mocked_conn()
     conn = aiohttp.BaseConnector(limit=5, limit_per_host=10)

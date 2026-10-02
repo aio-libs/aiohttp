@@ -1106,11 +1106,14 @@ is controlled by *force_close* constructor's parameter).
 
    Base class for all connectors.
 
-   :param float keepalive_timeout: timeout for connection reusing
-                                   after releasing (optional). Values
-                                   ``0``. For disabling *keep-alive*
-                                   feature use ``force_close=True``
-                                   flag.
+   :param keepalive_timeout: timeout for connection reusing
+                             after releasing (optional). Set to
+                             ``None`` to reuse connections
+                             indefinitely, regardless of how long
+                             they've been idle. For disabling
+                             *keep-alive* feature entirely use
+                             ``force_close=True`` flag instead.
+   :type keepalive_timeout: float | None
 
    :param int limit: total number simultaneous connections. If *limit* is
                      ``0`` the connector has no limit (default: 100).
