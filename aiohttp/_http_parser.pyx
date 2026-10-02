@@ -515,9 +515,10 @@ cdef class HttpParser:
         enc = self._content_encoding
         if enc is not None:
             self._content_encoding = None
-            if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-                # Normalize so payload decompression matches case-sensitive encoding checks.
-                encoding = enc.lower()
+            if enc.isascii():
+                enc = enc.lower()
+                if enc in {"gzip", "deflate", "br", "zstd"}:
+                    encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]

@@ -1158,6 +1158,29 @@ def test_compression_case_insensitive(
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
     assert msg.compression == expected
+    # Headers mapping keeps Content-Encoding as received.
+    assert msg.headers.get("Content-Encoding") == header_value
+
+
+async def test_compression_case_insensitive_decodes_body(
+    response: HttpResponseParser,
+) -> None:
+    """Mixed-case Content-Encoding must still decompress the payload."""
+    original = b"hello mixed-case content-encoding"
+    compressed = gzip.compress(original)
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n"
+        b"Content-Encoding: Gzip\r\n"
+        b"\r\n"
+    ) + compressed
+    messages, upgrade, tail = response.feed_data(text)
+    msg, payload = messages[0][0], messages[0][-1]
+    assert msg.compression == "gzip"
+    assert msg.headers.get("Content-Encoding") == "Gzip"
+    assert await payload.read() == original
 
 
 @pytest.mark.parametrize(
