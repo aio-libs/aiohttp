@@ -1756,10 +1756,10 @@ manually.
 
    .. attribute:: headers
 
-      A case-insensitive multidict proxy with HTTP headers of the
-      server's handshake response, :class:`~multidict.CIMultiDictProxy`,
-      e.g. any cookies or custom headers the server sent when accepting
-      the connection.
+      A read-only, case-insensitive mapping of the HTTP headers from the
+      server's handshake response (behaves like
+      :class:`~multidict.CIMultiDictProxy`), e.g. any cookies or custom
+      headers the server sent when accepting the connection.
 
       .. versionadded:: 4.0
 
