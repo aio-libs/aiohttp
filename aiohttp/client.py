@@ -772,8 +772,17 @@ class ClientSession:
                             if req._body is not None:
                                 await req._body.close()
                             resp.close()
+                            msg = "Maximum number of redirects reached"
+                            if self._requote_redirect_url:
+                                msg += (
+                                    "; if redirects loop on percent-encoded "
+                                    "Location URLs, try "
+                                    "ClientSession(requote_redirect_url=False)"
+                                )
                             raise TooManyRedirects(
-                                history[0].request_info, tuple(history)
+                                history[0].request_info,
+                                tuple(history),
+                                message=msg,
                             )
 
                         # For 301 and 302, mimic IE, now changed in RFC

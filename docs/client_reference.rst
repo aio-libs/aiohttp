@@ -215,6 +215,16 @@ The client session supports the context manager protocol for self closing.
                                      automatic redirection is enabled (``True`` by
                                      default).
 
+      When enabled, aiohttp parses each ``Location`` / ``URI`` redirect target
+      and re-quotes it. That helps with malformed redirect URLs, but it can also
+      change a valid percent-encoded path. For example, a server that redirects
+      to a path containing ``%26`` (an encoded ``&``) may then redirect again
+      after requoting turns ``%26`` back into ``&``, until
+      :exc:`~aiohttp.TooManyRedirects` is raised.
+
+      If you need the redirect target to match the ``Location`` header exactly,
+      pass ``requote_redirect_url=False``.
+
       .. versionadded:: 3.5
 
    :param trace_configs: A list of :class:`TraceConfig` instances used for client
@@ -300,9 +310,12 @@ The client session supports the context manager protocol for self closing.
 
    .. attribute:: requote_redirect_url
 
-      aiohttp re quote's redirect urls by default, but some servers
-      require exact url from location header. To disable *re-quote* system
-      set :attr:`requote_redirect_url` attribute to ``False``.
+      Whether redirection ``Location`` URLs are re-quoted (``True`` by default).
+      Some servers require the exact URL from the ``Location`` header. Percent-
+      encoded characters in the path (for example ``%26`` for ``&``) are a common
+      case where requoting causes a redirect loop. Pass
+      ``requote_redirect_url=False`` to the :class:`ClientSession` constructor
+      instead of mutating this attribute.
 
       .. versionadded:: 2.1
 
@@ -2849,6 +2862,10 @@ Response errors
 
    Maximum number of redirects can be configured by using
    parameter ``max_redirects`` in :meth:`request<aiohttp.ClientSession.request>`.
+
+   When :attr:`ClientSession.requote_redirect_url` is enabled (the default), the
+   exception message also suggests trying ``requote_redirect_url=False`` for
+   servers that need the exact ``Location`` URL.
 
    Derived from :exc:`ClientResponseError`
 

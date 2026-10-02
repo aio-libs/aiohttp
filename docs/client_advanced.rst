@@ -291,6 +291,16 @@ the :attr:`~ClientResponse.history` attribute::
 If no redirects occurred or ``allow_redirects`` is set to ``False``,
 history will be an empty sequence.
 
+By default aiohttp re-quotes redirect ``Location`` URLs. If a server depends on
+exact percent-encoding in the path (for example ``%26`` for ``&``), that can
+create a redirect loop and raise :exc:`~aiohttp.TooManyRedirects`. Disable
+requoting for that session::
+
+    session = aiohttp.ClientSession(requote_redirect_url=False)
+
+See :attr:`ClientSession.requote_redirect_url
+<aiohttp.ClientSession.requote_redirect_url>`.
+
 
 Cookie Jar
 ----------

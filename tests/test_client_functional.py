@@ -1655,6 +1655,25 @@ async def test_HTTP_302_max_redirects(aiohttp_client: AiohttpClient) -> None:
     assert 2 == len(ctx.value.history)
     assert ctx.value.request_info.url.path == "/redirect/5"
     assert ctx.value.request_info.method == "GET"
+    assert "Maximum number of redirects reached" in ctx.value.message
+    assert "requote_redirect_url=False" in ctx.value.message
+
+
+async def test_HTTP_302_max_redirects_no_requote_hint(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def redirect(request: web.Request) -> NoReturn:
+        count = int(request.match_info["count"])
+        assert count
+        raise web.HTTPFound(location=f"/redirect/{count - 1}")
+
+    app = web.Application()
+    app.router.add_get(r"/redirect/{count:\d+}", redirect)
+    client = await aiohttp_client(app, requote_redirect_url=False)
+
+    with pytest.raises(TooManyRedirects) as ctx:
+        await client.get("/redirect/5", max_redirects=2)
+    assert ctx.value.message == "Maximum number of redirects reached"
 
 
 async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client: AiohttpClient) -> None:

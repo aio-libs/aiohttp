@@ -1,0 +1,3 @@
+Documented when to disable ``requote_redirect_url`` for redirect loops on
+percent-encoded ``Location`` URLs, and included the same hint in
+:exc:`~aiohttp.TooManyRedirects` -- by :user:`muhammad-a-dev`.
