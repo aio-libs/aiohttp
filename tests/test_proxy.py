@@ -927,7 +927,7 @@ async def test_https_connect_send_error(  # type: ignore[misc]
     event_loop = asyncio.get_running_loop()
     proxy_req = ClientRequestBase(
         "GET",
-        URL("http://proxy.example.com"),
+        URL("http://proxy.example"),
         loop=event_loop,
         ssl=True,
         headers=CIMultiDict({}),
