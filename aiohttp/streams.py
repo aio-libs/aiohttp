@@ -387,14 +387,25 @@ class StreamReader:
         while not_enough:
             while self._buffer and not_enough:
                 offset = self._buffer_offset
-                ichar = self._buffer[0].find(separator, offset) + 1
+                n = -1
+                if chunk and seplen > 1:
+                    # The separator may straddle data already read and this chunk.
+                    # tail and head are each shorter than the separator, so a match
+                    # in tail + head must span both; n counts its bytes in head.
+                    tail = chunk[1 - seplen :]
+                    head = self._buffer[0][offset : offset + seplen - 1]
+                    ichar = (tail + head).find(separator)
+                    if ichar != -1:
+                        n = ichar + seplen - len(tail)
+                if n == -1:
+                    ichar = self._buffer[0].find(separator, offset)
+                    if ichar != -1:
+                        n = ichar - offset + seplen
                 # Read from current offset to found separator or to the end.
-                data = self._read_nowait_chunk(
-                    ichar - offset + seplen - 1 if ichar else -1
-                )
+                data = self._read_nowait_chunk(n)
                 chunk += data
                 chunk_size += len(data)
-                if ichar:
+                if n != -1:
                     not_enough = False
 
                 if chunk_size > max_size:
