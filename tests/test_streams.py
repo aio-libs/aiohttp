@@ -506,11 +506,11 @@ class TestStreamReader:
 
     @pytest.mark.parametrize(
         ("separator", "split"),
-        (
+        [
             (separator, split)
             for separator in (b"\r\n", b"\r\n\r\n", b"--xyz")
             for split in range(1, len(separator))
-        ),
+        ],
     )
     async def test_readuntil_separator_split_between_chunks(
         self, separator: bytes, split: int
