@@ -34,6 +34,7 @@ class BaseTestWorker:
         self._notify_waiter: asyncio.Future[bool] | None = None
         self.cfg = mock.Mock()
         self.cfg.graceful_timeout = 100
+        self.cfg.backlog = 2048
         self.pid = "pid"
         self.wsgi = web.Application()
 
@@ -244,6 +245,27 @@ async def test__run_ok_parent_changed(
 
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
+
+
+async def test__run_passes_backlog_to_sock_site(
+    worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
+) -> None:
+    worker.ppid = 0
+    worker.alive = True
+    worker.sockets = [unused_port_socket]
+    worker.log = mock.Mock()
+    worker.loop = asyncio.get_running_loop()
+    worker.max_requests = 0
+    worker.cfg.access_log_format = ACCEPTABLE_LOG_FORMAT
+    worker.cfg.is_ssl = False
+    worker.cfg.backlog = 42
+
+    with mock.patch.object(web, "SockSite", wraps=web.SockSite) as m_sock_site:
+        await worker._run()
+
+    m_sock_site.assert_called_once_with(
+        mock.ANY, unused_port_socket, ssl_context=None, backlog=42
+    )
 
 
 async def test__run_exc(

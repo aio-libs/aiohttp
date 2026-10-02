@@ -6,18 +6,18 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import http_exceptions, streams
+from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -279,6 +279,80 @@ test2: data\r
 """
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
+
+
+# Sec-WebSocket-Key1 is rejected outright, see test_headers_old_websocket_key1.
+KNOWN_HEADERS = sorted(
+    v
+    for v in vars(hdrs).values()
+    if isinstance(v, istr) and v != hdrs.SEC_WEBSOCKET_KEY1
+)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize("name", KNOWN_HEADERS)
+@pytest.mark.parametrize("case", [str, str.lower, str.upper])
+def test_known_header_name_is_hdrs_constant(
+    event_loop: asyncio.AbstractEventLoop, name: istr, case: Callable[[str], str]
+) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    value = "chunked" if name == hdrs.TRANSFER_ENCODING else "0"
+    text = f"HTTP/1.1 200 OK\r\n{case(name)}: {value}\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert parsed is name
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(
+    "name", ["X-Sec-Fetch-Mode", "Accept-Charse", "Accept-Charsets", "T", "TEs"]
+)
+def test_unknown_header_name_keeps_its_spelling(
+    event_loop: asyncio.AbstractEventLoop, name: str
+) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert str(parsed) == name
+
+
+def _parsed_header_name(loop: asyncio.AbstractEventLoop, name: str) -> str:
+    parser = HttpResponseParserC(ResponseHandler(loop), loop, 2**16)
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    return parsed
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_name_is_reused(event_loop: asyncio.AbstractEventLoop) -> None:
+    first = _parsed_header_name(event_loop, "X-Reused-Name")
+    assert _parsed_header_name(event_loop, "X-Reused-Name") is first
+    assert _parsed_header_name(event_loop, "x-reused-name") == "x-reused-name"
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_long_unknown_header_name_is_not_reused(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    name = "X-" + "a" * 63
+    first = _parsed_header_name(event_loop, name)
+    second = _parsed_header_name(event_loop, name)
+    assert second == first == name
+    assert second is not first
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_names_are_bounded(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    first = _parsed_header_name(event_loop, "X-Evicted-Name")
+    for i in range(1024):
+        _parsed_header_name(event_loop, f"X-Filler-{i}")
+    again = _parsed_header_name(event_loop, "X-Evicted-Name")
+    assert again == first
+    assert again is not first
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")

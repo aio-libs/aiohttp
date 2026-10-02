@@ -1,0 +1,1 @@
+Fixed the connection to an HTTP proxy staying open until garbage collection, and being reported as ``Unclosed connection``, when sending the ``CONNECT`` request for an HTTPS tunnel failed -- by :user:`Garbsener`.
