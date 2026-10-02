@@ -189,6 +189,8 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ishan Katoch
+istoolsfox
 Ivan Lakovic
 Ivan Larin
 J. Nick Koston
@@ -300,6 +302,7 @@ Mitchell Ferree
 monasco
 Morgan Delahaye-Prat
 Moss Collum
+Muhammad A Dev
 Mun Gwan-gyeong
 Navid Sheikhol
 Nicolas Braem

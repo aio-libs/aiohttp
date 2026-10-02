@@ -1,0 +1,4 @@
+Fixed ``tools/gen.py`` dropping a header name from the generated C lookup
+when two names shared a prefix that differed only in letter case, such as
+``Accept-CH`` and ``Accept-Charset``, and made the generated code compile
+without warnings -- by :user:`asvetlov`.

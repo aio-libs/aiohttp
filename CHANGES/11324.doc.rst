@@ -1,0 +1,1 @@
+Documented valid request URL forms when using :class:`~aiohttp.UnixConnector`, including ``base_url`` with an HTTP host -- by :user:`muhammad-a-dev`.

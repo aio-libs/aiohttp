@@ -6,18 +6,18 @@ import platform
 import re
 import sys
 import zlib
-from collections.abc import Iterable, Iterator
+from collections.abc import Callable, Iterable, Iterator
 from contextlib import suppress
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
 
 import pytest
-from multidict import CIMultiDict
+from multidict import CIMultiDict, istr
 from yarl import URL
 
 import aiohttp
-from aiohttp import http_exceptions, streams
+from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -279,6 +279,80 @@ test2: data\r
 """
     with pytest.raises(http_exceptions.BadHttpMessage):
         parser.feed_data(text)
+
+
+# Sec-WebSocket-Key1 is rejected outright, see test_headers_old_websocket_key1.
+KNOWN_HEADERS = sorted(
+    v
+    for v in vars(hdrs).values()
+    if isinstance(v, istr) and v != hdrs.SEC_WEBSOCKET_KEY1
+)
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize("name", KNOWN_HEADERS)
+@pytest.mark.parametrize("case", [str, str.lower, str.upper])
+def test_known_header_name_is_hdrs_constant(
+    event_loop: asyncio.AbstractEventLoop, name: istr, case: Callable[[str], str]
+) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    value = "chunked" if name == hdrs.TRANSFER_ENCODING else "0"
+    text = f"HTTP/1.1 200 OK\r\n{case(name)}: {value}\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert parsed is name
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+@pytest.mark.parametrize(
+    "name", ["X-Sec-Fetch-Mode", "Accept-Charse", "Accept-Charsets", "T", "TEs"]
+)
+def test_unknown_header_name_keeps_its_spelling(
+    event_loop: asyncio.AbstractEventLoop, name: str
+) -> None:
+    parser = HttpResponseParserC(ResponseHandler(event_loop), event_loop, 2**16)
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    assert str(parsed) == name
+
+
+def _parsed_header_name(loop: asyncio.AbstractEventLoop, name: str) -> str:
+    parser = HttpResponseParserC(ResponseHandler(loop), loop, 2**16)
+    text = f"HTTP/1.1 200 OK\r\n{name}: 0\r\n\r\n"
+    messages, _, _ = parser.feed_data(text.encode())
+    (parsed,) = messages[0][0].headers
+    return parsed
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_name_is_reused(event_loop: asyncio.AbstractEventLoop) -> None:
+    first = _parsed_header_name(event_loop, "X-Reused-Name")
+    assert _parsed_header_name(event_loop, "X-Reused-Name") is first
+    assert _parsed_header_name(event_loop, "x-reused-name") == "x-reused-name"
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_long_unknown_header_name_is_not_reused(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    name = "X-" + "a" * 63
+    first = _parsed_header_name(event_loop, name)
+    second = _parsed_header_name(event_loop, name)
+    assert second == first == name
+    assert second is not first
+
+
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
+def test_unknown_header_names_are_bounded(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    first = _parsed_header_name(event_loop, "X-Evicted-Name")
+    for i in range(1024):
+        _parsed_header_name(event_loop, f"X-Filler-{i}")
+    again = _parsed_header_name(event_loop, "X-Evicted-Name")
+    assert again == first
+    assert again is not first
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Only tests C parser.")
@@ -1179,6 +1253,74 @@ def test_url_authority_form_only_connect(parser: HttpRequestParser) -> None:
     # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
     with pytest.raises(http_exceptions.InvalidURLError):
         parser.feed_data(b"GET www.google.com:443 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+@pytest.mark.parametrize(
+    "target",
+    (
+        b"https:///protected",
+        b"https:////protected",
+        b"https://:80/protected",
+        b"https://user@/protected",
+        b"https://",
+        b"https://?q",
+        b"http:protected/x",
+        b"http:/protected/x",
+        b"http:\\\\protected/x",
+    ),
+    ids=(
+        "empty-host",
+        "empty-host-extra-slash",
+        "port-only",
+        "userinfo-only",
+        "no-authority",
+        "empty-host-query",
+        "no-slashes",
+        "one-slash",
+        "backslashes",
+    ),
+)
+def test_url_absolute_form_empty_host_rejected(
+    parser: HttpRequestParser, target: bytes
+) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.2-4
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET " + target + b" HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_absolute_form_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    # yarl raises ValueError for an out-of-range port; that must surface as
+    # a 400, not escape the parser as a bare ValueError.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET http://example.com:65536/x HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_invalid_port_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT example.com:65536 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_connect_empty_host_rejected(parser: HttpRequestParser) -> None:
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"CONNECT :80 HTTP/1.1\r\nHost: a\r\n\r\n")
+
+
+def test_url_origin_form_bare_slash(parser: HttpRequestParser) -> None:
+    messages, upgrade, tail = parser.feed_data(b"GET / HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("/")
+
+
+def test_url_asterisk_form_options(parser: HttpRequestParser) -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2.4
+    messages, upgrade, tail = parser.feed_data(b"OPTIONS * HTTP/1.1\r\nHost: a\r\n\r\n")
+    assert messages[0][0].url == URL("*")
+
+
+def test_url_asterisk_form_only_options(parser: HttpRequestParser) -> None:
+    # asterisk-form is only valid for OPTIONS; for other methods "*" is
+    # neither origin-form nor a valid absolute-form target.
+    with pytest.raises(http_exceptions.InvalidURLError):
+        parser.feed_data(b"GET * HTTP/1.1\r\nHost: a\r\n\r\n")
 
 
 def test_headers_old_websocket_key1(parser: HttpRequestParser) -> None:
