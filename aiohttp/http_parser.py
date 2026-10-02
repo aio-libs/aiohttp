@@ -91,6 +91,18 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
+
+def _has_authority(target: str) -> bool:
+    """Tell if an absolute-form request target has "//" and a non-empty authority.
+
+    RFC 9110 section 4.2 requires a host for http and https. yarl's default
+    WHATWG mode reads a host from "http:host/p" or "http:///host/p", so the
+    target is checked before it is parsed.
+    """
+    rest = target.partition(":")[2]
+    return rest[:2] == "//" and rest[2:3] not in ("", "/", "?", "#")
+
+
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
 # since real-world servers (e.g. Google APIs, Werkzeug) commonly send
@@ -719,6 +731,10 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
+            if not _has_authority(path):
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
             try:
                 url = URL(path, encoded=True)
                 host = url.raw_host

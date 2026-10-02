@@ -403,10 +403,16 @@ async def test_proxy_server_hostname_override(  # type: ignore[misc]
 )
 @pytest.mark.usefixtures("enable_cleanup_closed")
 @pytest.mark.parametrize("cleanup", (True, False))
+@pytest.mark.parametrize(
+    "asyncio_transport",
+    (True, False),
+    ids=("asyncio-transport", "duck-typed-transport"),
+)
 async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     start_connection: mock.Mock,
     ClientRequestMock: mock.Mock,
     cleanup: bool,
+    asyncio_transport: bool,
     make_client_request: _RequestMaker,
 ) -> None:
     event_loop = asyncio.get_running_loop()
@@ -422,6 +428,16 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
     class TransportMock(asyncio.Transport):
         def close(self) -> None:
             pass
+
+    class DuckTypedTransportMock:
+        """Models aiofastnet's transport, which subclasses no asyncio class."""
+
+        def close(self) -> None:
+            pass
+
+    transport_mock: object = (
+        TransportMock() if asyncio_transport else DuckTypedTransportMock()
+    )
 
     url = URL("http://proxy.example.com")
     proxy_resp = ClientResponse(
@@ -497,7 +513,7 @@ async def test_https_connect_fingerprint_mismatch(  # type: ignore[misc]
                 "start_tls",
                 autospec=True,
                 spec_set=True,
-                return_value=TransportMock(),
+                return_value=transport_mock,
             ),
         ):
             req = make_client_request(

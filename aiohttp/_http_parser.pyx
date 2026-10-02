@@ -13,7 +13,7 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc
 from libc.limits cimport ULLONG_MAX
 from libc.string cimport memcpy
 
-from multidict import CIMultiDict as _CIMultiDict
+from multidict import CIMultiDict as _CIMultiDict, istr as _istr
 from yarl import URL as _URL
 
 from aiohttp import hdrs
@@ -31,7 +31,7 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer
+from .http_parser import DeflateBuffer as _DeflateBuffer, _has_authority
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -62,6 +62,7 @@ __all__ = ('HttpRequestParser', 'HttpResponseParser',
 cdef object URL = _URL
 cdef object URL_build = URL.build
 cdef object CIMultiDict = _CIMultiDict
+cdef object istr = _istr
 cdef object HeadersDictProxy = _HeadersDictProxy
 cdef object HttpVersion = _HttpVersion
 cdef object HttpVersion10 = _HttpVersion10
@@ -124,15 +125,31 @@ for i in range(METHODS_COUNT):
     _http_method.append(_aiohttp_method_names[i].decode('ascii'))
 
 
+# Header names missing from hdrs, as the istr that CIMultiDict would build
+# from them on every read otherwise. Bounded, and emptied when full, so a
+# peer sending many distinct names cannot grow it or keep it filled.
+cdef dict _unknown_names = {}
+cdef Py_ssize_t UNKNOWN_NAMES_MAX = 512
+cdef Py_ssize_t UNKNOWN_NAME_MAX_LEN = 64
+
+
 cdef inline object find_header(bytes raw_header):
     cdef Py_ssize_t size
     cdef char *buf
     cdef int idx
     PyBytes_AsStringAndSize(raw_header, &buf, &size)
     idx = _find_header.find_header(buf, size)
-    if idx == -1:
+    if idx != -1:
+        return headers[idx]
+    if size > UNKNOWN_NAME_MAX_LEN:
         return raw_header.decode('utf-8', 'surrogateescape')
-    return headers[idx]
+    name = _unknown_names.get(raw_header)
+    if name is None:
+        name = istr(raw_header.decode('utf-8', 'surrogateescape'))
+        if len(_unknown_names) >= UNKNOWN_NAMES_MAX:
+            _unknown_names.clear()
+        _unknown_names[raw_header] = name
+    return name
 
 
 @cython.freelist(DEFAULT_FREELIST_SIZE)
@@ -793,11 +810,13 @@ cdef class HttpRequestParser(HttpParser):
             else:
                 # absolute-form for proxy maybe,
                 # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-                try:
-                    self._url = URL(self._path, encoded=True)
-                    host = self._url.raw_host
-                except ValueError:
-                    host = None
+                host = None
+                if _has_authority(self._path):
+                    try:
+                        self._url = URL(self._path, encoded=True)
+                        host = self._url.raw_host
+                    except ValueError:
+                        pass
                 # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
                 if host is None:
                     raise InvalidURLError(
