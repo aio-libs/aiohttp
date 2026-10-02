@@ -1170,9 +1170,7 @@ async def test_compression_case_insensitive_decodes_body(
     compressed = gzip.compress(original)
     text = (
         b"HTTP/1.1 200 OK\r\n"
-        b"Content-Length: "
-        + str(len(compressed)).encode()
-        + b"\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
         b"Content-Encoding: Gzip\r\n"
         b"\r\n"
     ) + compressed
