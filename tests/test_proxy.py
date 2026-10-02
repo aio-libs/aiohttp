@@ -926,6 +926,67 @@ class TestProxy(unittest.TestCase):
         autospec=True,
         spec_set=True,
     )
+    def test_https_connect_send_error(
+        self, start_connection: Any, ClientRequestMock: Any
+    ) -> None:
+        proxy_req = ClientRequest("GET", URL("http://proxy.example"), loop=self.loop)
+        ClientRequestMock.return_value = proxy_req
+        proxy_req.send = mock.AsyncMock(
+            side_effect=aiohttp.ClientConnectionResetError(
+                "Cannot write to closing transport"
+            )
+        )
+
+        async def make_conn():
+            return aiohttp.TCPConnector()
+
+        connector = self.loop.run_until_complete(make_conn())
+        connector._resolve_host = mock.AsyncMock(
+            return_value=[
+                {
+                    "hostname": "hostname",
+                    "host": "127.0.0.1",
+                    "port": 80,
+                    "family": socket.AF_INET,
+                    "proto": 0,
+                    "flags": 0,
+                }
+            ]
+        )
+
+        tr, proto = mock.Mock(), mock.Mock()
+        tr.get_extra_info.return_value = None
+        req = ClientRequest(
+            "GET",
+            URL("https://www.python.org"),
+            proxy=URL("http://proxy.example"),
+            loop=self.loop,
+        )
+        with pytest.raises(
+            aiohttp.ClientConnectionResetError,
+            match="Cannot write to closing transport",
+        ) as exc_info:
+            with mock.patch.object(
+                connector_module,
+                "create_connection",
+                autospec=True,
+                return_value=(tr, proto),
+            ):
+                self.loop.run_until_complete(
+                    connector._create_connection(req, None, aiohttp.ClientTimeout())
+                )
+        # The tunnel connection is still referenced from the traceback,
+        # so the proxy connection must have been closed explicitly
+        # rather than by the garbage collector.
+        assert exc_info.value.__traceback__ is not None
+        proto.close.assert_called_once_with()
+
+    @mock.patch("aiohttp.connector.ClientRequest")
+    @mock.patch(
+        "aiohttp.connector.aiohappyeyeballs.start_connection",
+        autospec=True,
+        spec_set=True,
+    )
     def test_request_port(self, start_connection: Any, ClientRequestMock: Any) -> None:
         proxy_req = ClientRequest(
             "GET", URL("http://proxy.example.com"), loop=self.loop
