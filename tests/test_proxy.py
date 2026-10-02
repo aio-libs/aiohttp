@@ -966,7 +966,7 @@ async def test_https_connect_send_error(  # type: ignore[misc]
                 req = make_client_request(
                     "GET",
                     URL("https://www.python.org"),
-                    proxy=URL("http://proxy.example.com"),
+                    proxy=URL("http://proxy.example"),
                     loop=event_loop,
                 )
                 with pytest.raises(
