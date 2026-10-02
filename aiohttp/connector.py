@@ -369,7 +369,7 @@ class BaseConnector:
         self._acquired_per_host: defaultdict[ConnectionKey, set[ResponseHandler]] = (
             defaultdict(set)
         )
-        self._keepalive_timeout: float | None = keepalive_timeout
+        self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}

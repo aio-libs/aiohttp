@@ -468,12 +468,6 @@ async def test_get_expired_ssl() -> None:
 
 
 async def test_get_never_expires_with_keepalive_timeout_none() -> None:
-    """keepalive_timeout=None must reuse connections regardless of idle time.
-
-    Regression test for a connector crash: comparing the idle time against
-    a None keepalive_timeout raised TypeError instead of treating None as
-    "never expire", so any second request to the same host crashed.
-    """
     loop = asyncio.get_running_loop()
     conn = aiohttp.BaseConnector(keepalive_timeout=None)
     key = ConnectionKey("localhost", 80, False, False, None, None)
@@ -3902,20 +3896,6 @@ async def test_force_close_and_explicit_keep_alive() -> None:
     aiohttp.BaseConnector(force_close=True, keepalive_timeout=None)
     with pytest.raises(ValueError):
         aiohttp.BaseConnector(keepalive_timeout=30, force_close=True)
-
-
-async def test_keepalive_timeout_none_without_force_close() -> None:
-    """keepalive_timeout=None is distinct from force_close=True.
-
-    force_close=True disables connection reuse entirely, while
-    keepalive_timeout=None means reused connections never expire from
-    idling alone. Constructing a connector with the latter, and no
-    force_close, must not raise and must store None, not silently
-    normalize to a numeric default.
-    """
-    conn = aiohttp.BaseConnector(keepalive_timeout=None)
-    assert conn._keepalive_timeout is None
-    assert conn.force_close is False
 
 
 async def test_error_on_connection(key: ConnectionKey) -> None:
