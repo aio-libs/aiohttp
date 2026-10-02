@@ -1,1 +1,1 @@
-Fixed pickling of :class:`aiohttp.client_exceptions.UnixClientConnectorError` so Unix socket connection errors retain their socket path and exception state when deserialized -- by :user:`ibrahimypr`.
+Fixed pickling of :class:`aiohttp.client_exceptions.UnixClientConnectorError` so Unix socket connection errors retain their socket path and exception state when restored -- by :user:`ibrahimypr`.
