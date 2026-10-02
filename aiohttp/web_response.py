@@ -267,6 +267,7 @@ class StreamResponse(
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
             )
         elif isinstance(value, datetime.datetime):
+            value = value.astimezone(datetime.timezone.utc)
             if value.microsecond:
                 value = value.replace(microsecond=0) + datetime.timedelta(seconds=1)
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(

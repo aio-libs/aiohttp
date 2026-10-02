@@ -1,0 +1,1 @@
+Fixed naive datetime being treated as UTC instead of local time when setting StreamResponse.last_modified -- by :user:`AdamMagued`.

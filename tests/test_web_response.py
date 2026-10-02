@@ -6,6 +6,7 @@ import io
 import json
 import re
 import sys
+import time
 import weakref
 from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -300,6 +301,50 @@ def test_last_modified_datetime() -> None:
     dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
     resp.last_modified = dt
     assert resp.last_modified == dt
+
+
+def test_last_modified_datetime_aware_non_utc() -> None:
+    resp = web.StreamResponse()
+
+    tz = datetime.timezone(datetime.timedelta(hours=2))
+    dt = datetime.datetime(2001, 2, 3, 6, 5, 6, 0, tzinfo=tz)
+    resp.last_modified = dt
+    assert resp.headers["Last-Modified"] == "Sat, 03 Feb 2001 04:05:06 GMT"
+    assert resp.last_modified == datetime.datetime(
+        2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc
+    )
+
+
+def test_last_modified_datetime_naive() -> None:
+    resp = web.StreamResponse()
+
+    dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0)
+    expected_utc = dt.astimezone(datetime.timezone.utc)
+    resp.last_modified = dt
+    assert resp.headers["Last-Modified"] == time.strftime(
+        "%a, %d %b %Y %H:%M:%S GMT", expected_utc.utctimetuple()
+    )
+    assert resp.last_modified == expected_utc
+
+
+def test_last_modified_datetime_naive_with_non_utc_timezone(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    if not hasattr(time, "tzset"):
+        pytest.skip("time.tzset is required")
+    monkeypatch.setenv("TZ", "EST+5EDT")
+    time.tzset()
+    try:
+        resp = web.StreamResponse()
+        dt = datetime.datetime(2001, 1, 1, 12, 0, 0, 0)
+        resp.last_modified = dt
+        assert resp.headers["Last-Modified"] == "Mon, 01 Jan 2001 17:00:00 GMT"
+        assert resp.last_modified == datetime.datetime(
+            2001, 1, 1, 17, 0, 0, 0, datetime.timezone.utc
+        )
+    finally:
+        monkeypatch.undo()
+        time.tzset()
 
 
 def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
