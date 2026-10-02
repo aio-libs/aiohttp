@@ -1124,9 +1124,7 @@ def test_compression_zstd(parser: HttpRequestParser) -> None:
     assert msg.compression == "zstd"
 
 
-def test_compression_case_insensitive(
-    parser: HttpRequestParser
-) -> None:
+def test_compression_case_insensitive(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: GZiP\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     msg = messages[0][0]
