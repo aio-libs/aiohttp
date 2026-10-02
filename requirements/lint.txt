@@ -91,7 +91,7 @@ pytest==9.1.1
     #   pytest-mock
 pytest-codspeed==5.0.3
     # via -r requirements/lint.in
-pytest-mock==3.15.1
+pytest-mock==3.16.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
