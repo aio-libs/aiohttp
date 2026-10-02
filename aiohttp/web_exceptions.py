@@ -318,7 +318,8 @@ class HTTPMethodNotAllowed(HTTPClientError):
         text: str | None = None,
         content_type: str | None = None,
     ) -> None:
-        allow = ",".join(sorted(allowed_methods))
+        allowed_methods = sorted(allowed_methods)
+        allow = ",".join(allowed_methods)
         super().__init__(
             headers=headers, reason=reason, text=text, content_type=content_type
         )

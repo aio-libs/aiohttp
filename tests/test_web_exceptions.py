@@ -304,6 +304,12 @@ class TestHTTPMethodNotAllowed:
         assert resp.reason == "Unsupported"
         assert resp.status == 405
 
+    def test_allowed_methods_iterator(self) -> None:
+        resp = web.HTTPMethodNotAllowed("GET", iter(["PUT", "POST"]))
+
+        assert resp.allowed_methods == {"POST", "PUT"}
+        assert resp.headers["Allow"] == "POST,PUT"
+
     def test_pickle(self) -> None:
         resp = web.HTTPMethodNotAllowed(
             method="GET",
