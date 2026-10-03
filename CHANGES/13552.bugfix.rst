@@ -1,0 +1,6 @@
+Fixed :class:`~aiohttp.payload.TextIOPayload` advertising the on-disk file
+size as ``Content-Length``. A text stream is decoded and re-encoded before it
+is written, so newline translation or an encoding change made the declared
+length disagree with the body, truncating multibyte content or leaving a
+keep-alive connection short. Text payloads now report an unknown size and are
+sent with chunked framing -- by :user:`arshsmith1`.
