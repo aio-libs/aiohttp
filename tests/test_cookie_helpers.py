@@ -164,7 +164,10 @@ def test_parse_set_cookie_headers_quoted_attribute_values(
     assert result[0][1]["secure"] == secure
 
 
-@pytest.mark.parametrize("header", ("c=v; Path=/x; =junk", "c=v; =junk; Path=/x"))
+@pytest.mark.parametrize(
+    "header",
+    ("c=v; Path=/x; =junk", "c=v; =junk; Path=/x", "c=v; Path=/x; =junk;; ;"),
+)
 def test_parse_set_cookie_headers_skips_malformed_attribute(header: str) -> None:
     result = parse_set_cookie_headers([header])
 

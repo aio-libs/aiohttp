@@ -48,6 +48,8 @@ _MAX_COOKIES_PER_RESPONSE = 50
 _MAX_COOKIE_PAIR_LENGTH = 4096
 _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH = 1024
 
+# Where the next attribute can start: skips runs of ";" and whitespace.
+_ATTRIBUTE_START_RE = re.compile(r"[^;\s]", re.ASCII)
 _COOKIE_FORBIDDEN_CTL_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
 _COOKIE_CTL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
@@ -291,9 +293,13 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
     end = len(attributes)
     while index < end:
         if (attribute_match := _COOKIE_PATTERN.match(attributes, index)) is None:
-            # Skip a malformed segment.
-            if (index := attributes.find(";", index) + 1) == 0:
+            # Skip a malformed segment and any run of ";" or whitespace after it.
+            if (
+                not (next_index := attributes.find(";", index) + 1)
+                or (start := _ATTRIBUTE_START_RE.search(attributes, next_index)) is None
+            ):
                 break
+            index = start.start()
             continue
         index = attribute_match.end()
         attr_key = attribute_match.group("key")
