@@ -1591,7 +1591,9 @@ def test_safe_cookie_jar_rejects_ip_before_parsing() -> None:
     parse.assert_not_called()
 
 
-def test_cookie_jar_limits_cookies_per_domain() -> None:
+def test_cookie_jar_limits_cookies_per_domain(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     jar = CookieJar()
     url = URL("https://example.com/")
     cookies = [
@@ -1602,8 +1604,13 @@ def test_cookie_jar_limits_cookies_per_domain() -> None:
         ),
     ]
 
-    jar.update_cookies(cookies, url)
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        jar.update_cookies(cookies, url)
 
+    assert caplog.messages == [
+        f"Evicted {_TRIM + 1} cookie(s) for example.com over the 180-cookie"
+        " domain limit"
+    ]
     # Adding to a full domain trims it back to its quota, oldest
     # non-secure cookies first.
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
@@ -1860,7 +1867,7 @@ def test_cookie_jar_send_updates_eviction_recency() -> None:
     assert "cookie0" not in names
 
 
-def test_cookie_jar_limits_total_cookies() -> None:
+def test_cookie_jar_limits_total_cookies(caplog: pytest.LogCaptureFixture) -> None:
     jar = CookieJar(unsafe=True)
     cookies = [
         (
@@ -1880,10 +1887,12 @@ def test_cookie_jar_limits_total_cookies() -> None:
     assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
     assert any(cookie.key == "cookie0_0" for cookie in jar)
 
-    jar.update_cookies(
-        {"cookie66_0": _make_morsel("cookie66_0", domain="domain66.example")}
-    )
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        jar.update_cookies(
+            {"cookie66_0": _make_morsel("cookie66_0", domain="domain66.example")}
+        )
 
+    assert caplog.messages == ["Evicted 300 cookie(s) over the 3300-cookie total limit"]
     # The jar is purged back to the total, oldest first, before adding.
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_TOTAL + 1
     names = {cookie.key for cookie in jar}

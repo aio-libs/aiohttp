@@ -417,7 +417,14 @@ class CookieJar(AbstractCookieJar):
                     return False
                 candidates = secure_keys
             candidates.sort()
-            self._delete_cookies([key for _, key in candidates[:excess]])
+            evicted = candidates[:excess]
+            self._delete_cookies([key for _, key in evicted])
+            internal_logger.debug(
+                "Evicted %d cookie(s) for %s over the %d-cookie domain limit",
+                len(evicted),
+                domain,
+                _MAX_COOKIES_PER_DOMAIN,
+            )
         else:
             self._purge_cookies()
         return True
@@ -429,6 +436,11 @@ class CookieJar(AbstractCookieJar):
             return
         generations = self._access_generations
         self._delete_cookies(sorted(generations, key=generations.__getitem__)[:excess])
+        internal_logger.debug(
+            "Evicted %d cookie(s) over the %d-cookie total limit",
+            excess,
+            _MAX_COOKIES_TOTAL,
+        )
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
         cookie_key = (domain, path, name)
