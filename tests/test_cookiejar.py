@@ -2211,11 +2211,23 @@ def test_filter_cookies_omits_unencodable_morsel() -> None:
     assert not any(jar._morsel_cache.values())
 
 
-def test_filter_cookies_omits_control_character_morsel() -> None:
+def _morsel_accepts_value(value: str) -> bool:
+    morsel: Morsel[str] = Morsel()
     try:
-        jar = _jar_with_raw_cookie("\x07")
+        morsel.__setstate__(  # type: ignore[attr-defined]
+            {"key": "cookie", "value": value, "coded_value": f'"{value}"'}
+        )
     except CookieError:
-        pytest.skip("this Python rejects control characters in Morsel")
+        return False
+    return True
+
+
+@pytest.mark.skipif(
+    not _morsel_accepts_value("\x07"),
+    reason="this Python rejects control characters in Morsel",
+)
+def test_filter_cookies_omits_control_character_morsel() -> None:
+    jar = _jar_with_raw_cookie("\x07")
 
     assert not jar.filter_cookies(URL("https://example.com/"))
     assert not any(jar._morsel_cache.values())
