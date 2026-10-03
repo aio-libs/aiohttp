@@ -687,6 +687,10 @@ class ClientSession:
                             quote_cookie=self._cookie_jar.quote_cookie,
                             treat_as_secure_origin=self._cookie_jar.treat_as_secure_origin,
                         )
+                        # Per-request cookies are trusted caller input, not
+                        # remote jar state, so remote-resource limits do not
+                        # apply to this temporary jar.
+                        tmp_cookie_jar._limits_enabled = False
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:

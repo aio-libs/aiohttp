@@ -1563,8 +1563,9 @@ Response object
          To access all cookies, including duplicates with the same name,
          use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
 
-         The session's cookie jar will correctly store all cookies, even if
-         they are not accessible via this attribute.
+         At most 50 valid ``Set-Cookie`` fields are parsed for this attribute
+         and the session cookie jar. Raw response headers remain available
+         without this parsed-cookie limit.
 
    .. attribute:: headers
 
@@ -2533,7 +2534,33 @@ Utilities
    :class:`collections.abc.Sized` and
    :class:`aiohttp.abc.AbstractCookieJar` interfaces.
 
-   Implements cookie storage adhering to RFC 6265.
+   Implements cookie storage adhering to
+   `RFC 10025 <https://auth48-transition.rfc-editor.org/authors/rfc10025.html>`_.
+
+   To keep response cookies from consuming unbounded memory or
+   producing oversized requests, the built-in jar applies these limits:
+
+   * 50 accepted ``Set-Cookie`` fields per response;
+   * 4,096 encoded octets for a cookie's name and value together, and 1,024
+     encoded octets for an attribute value;
+   * 50 stored cookies per exact domain and 3,000 stored cookies in total;
+   * 150 jar cookies and 8,190 encoded octets, including the ``Cookie:`` field
+     name and following space, per generated request header.
+
+   Excess response cookies and attributes are ignored. When storage limits
+   are reached, expired cookies are removed first, then least-recently-used
+   cookies are evicted (preferring non-secure cookies for per-domain
+   eviction). Matching and same-name overwrite precedence is resolved before
+   output limits are applied; selected cookies that do not fit a generated
+   request header are omitted.
+   The total-cookie eviction order is global, so reaching the total cap can
+   evict an older cookie from another origin, including a ``Secure`` cookie.
+
+   Storage and output limits apply to every cookie kept in this jar, including
+   cookies supplied through :class:`ClientSession`, :meth:`update_cookies`,
+   and :meth:`load`. Loading an oversized persisted jar can therefore evict
+   entries. The limits do not apply to an explicit ``Cookie`` header or to
+   cookies supplied for one request with the ``cookies`` argument.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
@@ -2593,6 +2620,9 @@ Utilities
    .. method:: load(file_path)
 
       Load cookies from a JSON file at the provided path.
+
+      The same per-domain and total storage limits are applied in file order.
+      Excess entries are evicted.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.

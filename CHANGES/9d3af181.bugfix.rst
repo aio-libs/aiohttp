@@ -1,0 +1,2 @@
+Added limits to client response-cookie parsing, ``CookieJar`` storage and cached morsels, and generated ``Cookie`` request
+headers -- by :user:`iamibi`.

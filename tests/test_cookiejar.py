@@ -2,7 +2,6 @@ import datetime
 import heapq
 import itertools
 import json
-import logging
 import os
 import stat
 from http.cookies import BaseCookie, Morsel, SimpleCookie
@@ -15,6 +14,7 @@ import pytest
 from freezegun import freeze_time
 from yarl import URL
 
+import aiohttp.cookiejar as cookiejar_module
 from aiohttp import CookieJar, DummyCookieJar
 from aiohttp.typedefs import LooseCookies
 
@@ -42,6 +42,24 @@ def _cookies_to_send() -> SimpleCookie:
         "invalid-expires-cookie=sixteenth; Domain=invalid-values.com; "
         " Expires=string;"
     )
+
+
+def _make_morsel(
+    name: str,
+    value: str = "value",
+    *,
+    domain: str = "example.com",
+    path: str = "/",
+    secure: bool = False,
+) -> Morsel[str]:
+    cookies = SimpleCookie()
+    cookies[name] = value
+    morsel = cookies[name]
+    morsel["domain"] = domain
+    morsel["path"] = path
+    if secure:
+        morsel["secure"] = True
+    return morsel
 
 
 @pytest.fixture
@@ -997,12 +1015,14 @@ async def test_cookie_jar_duplicates_with_expire_heap() -> None:
         assert "foo" in matched_cookies
 
         assert len(jar._expire_heap) == 1
+        assert jar._expire_heap_entries == set(jar._expire_heap)
 
         freezer.move_to("1990-01-01 16:00:00+00:00")
         jar.update_cookies(cookie_two_pm)
         matched_cookies = jar.filter_cookies(URL("/"))
         assert len(matched_cookies) == 0
         assert len(jar._expire_heap) == 0
+        assert not jar._expire_heap_entries
 
 
 async def test_cookie_jar_filter_cookies_expires() -> None:
@@ -1065,6 +1085,7 @@ async def test_cookie_jar_heap_cleanup() -> None:
         assert "foo" in matched_cookies
         # The heap should have been cleaned up
         assert len(jar._expire_heap) == 1
+        assert jar._expire_heap_entries == set(jar._expire_heap)
 
 
 async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
@@ -1097,6 +1118,7 @@ async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
         assert len(jar) == 100
         # The heap should have been cleaned up
         assert len(jar._expire_heap) == 100
+        assert jar._expire_heap_entries == set(jar._expire_heap)
 
         # Verify that the heap is still ordered
         heap_before = jar._expire_heap.copy()
@@ -1301,10 +1323,8 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     assert domains == {"example.com", "www.example.com"}
 
 
-def test_update_cookies_from_headers_invalid_cookies(
-    caplog: pytest.LogCaptureFixture,
-) -> None:
-    """Test that invalid cookies are logged and skipped."""
+def test_update_cookies_from_headers_invalid_cookies() -> None:
+    """Invalid Set-Cookie fields are skipped."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
 
@@ -1316,12 +1336,7 @@ def test_update_cookies_from_headers_invalid_cookies(
         "another-valid=value456",
     ]
 
-    # Enable logging for the client logger
-    with caplog.at_level(logging.WARNING, logger="aiohttp.client"):
-        jar.update_cookies_from_headers(headers, url)
-
-    # Check that we logged warnings for invalid cookies
-    assert "Can not load cookies" in caplog.text
+    jar.update_cookies_from_headers(headers, url)
 
     # Valid cookies should still be added
     assert len(jar) >= 2  # At least the two clearly valid cookies
@@ -1481,6 +1496,32 @@ def test_update_cookies_from_headers_overwrites_same_cookie() -> None:
     assert filtered["session"].value == "new-value"
 
 
+def test_response_cookie_limit_counts_deletions() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies({"existing": "value"}, url)
+    headers = ["existing=; Max-Age=0"]
+    headers.extend(f"cookie{i}=value" for i in range(49))
+    headers.append("over-limit=value")
+
+    jar.update_cookies_from_headers(headers, url)
+
+    names = {cookie.key for cookie in jar}
+    assert "existing" not in names
+    assert "cookie48" in names
+    assert "over-limit" not in names
+
+
+def test_response_cookie_limit_precedes_domain_validation() -> None:
+    jar = CookieJar()
+    headers = [f"invalid{i}=value; Domain=other.example" for i in range(50)]
+    headers.append("over-limit=value")
+
+    jar.update_cookies_from_headers(headers, URL("https://example.com/"))
+
+    assert not jar
+
+
 def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     """Test that DummyCookieJar ignores update_cookies_from_headers."""
     jar: DummyCookieJar = DummyCookieJar()
@@ -1497,6 +1538,619 @@ def test_dummy_cookie_jar_update_cookies_from_headers() -> None:
     assert len(jar) == 0
     filtered: BaseCookie[str] = jar.filter_cookies(url)
     assert len(filtered) == 0
+
+
+def test_dummy_cookie_jar_does_not_parse_headers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_parse(headers: object) -> object:
+        raise AssertionError("Set-Cookie fields must not be parsed")
+
+    monkeypatch.setattr(cookiejar_module, "parse_set_cookie_headers", fail_parse)
+    DummyCookieJar().update_cookies_from_headers(
+        ["other=value"], URL("http://example.com/")
+    )
+
+
+def test_safe_cookie_jar_rejects_ip_before_parsing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def fail_parse(headers: object) -> object:
+        raise AssertionError("Set-Cookie fields must not be parsed")
+
+    monkeypatch.setattr(cookiejar_module, "parse_set_cookie_headers", fail_parse)
+    CookieJar().update_cookies_from_headers(["other=value"], URL("http://127.0.0.1/"))
+
+
+def test_cookie_jar_limits_cookies_per_domain() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    cookies = [
+        ("secure-cookie", _make_morsel("secure-cookie", secure=True)),
+        *((f"cookie{i}", _make_morsel(f"cookie{i}")) for i in range(50)),
+    ]
+
+    jar.update_cookies(cookies, url)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    names = {cookie.key for cookie in jar}
+    assert "secure-cookie" in names
+    assert "cookie0" not in names
+
+
+def test_cookie_jar_replacement_updates_eviction_recency() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies(
+        [(f"cookie{i}", _make_morsel(f"cookie{i}")) for i in range(50)], url
+    )
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+
+    jar.update_cookies({"cookie0": "replaced"}, url)
+    jar.update_cookies({"new": "value"}, url)
+
+    names = {cookie.key for cookie in jar}
+    assert "cookie0" in names
+    assert "cookie1" not in names
+    assert "new" in names
+
+
+def test_cookie_jar_send_updates_eviction_recency() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/hit")
+    cookies = [("sent", _make_morsel("sent", path="/hit"))]
+    cookies.extend(
+        (f"cookie{i}", _make_morsel(f"cookie{i}", path="/miss")) for i in range(49)
+    )
+    jar.update_cookies(cookies, url)
+
+    assert set(jar.filter_cookies(url)) == {"sent"}
+    jar.update_cookies({"new": "value"}, url)
+
+    names = {cookie.key for cookie in jar}
+    assert "sent" in names
+    assert "cookie0" not in names
+
+
+def test_cookie_jar_limits_total_cookies() -> None:
+    jar = CookieJar(unsafe=True)
+    cookies = [
+        (
+            f"cookie{domain_index}_{cookie_index}",
+            _make_morsel(
+                f"cookie{domain_index}_{cookie_index}",
+                domain=f"domain{domain_index}.example",
+            ),
+        )
+        for domain_index in range(60)
+        for cookie_index in range(50)
+    ]
+
+    jar.update_cookies(cookies)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
+    assert any(cookie.key == "cookie0_0" for cookie in jar)
+
+    jar.update_cookies(
+        {"cookie60_0": _make_morsel("cookie60_0", domain="domain60.example")}
+    )
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
+    names = {cookie.key for cookie in jar}
+    assert "cookie0_0" not in names
+    assert "cookie60_0" in names
+
+
+def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> None:
+    file_path = tmp_path / "oversized-cookies.json"
+    data = {
+        "example.com|": {
+            f"cookie{i}": {
+                "key": f"cookie{i}",
+                "value": "value",
+                "coded_value": "value",
+                "domain": "example.com",
+            }
+            for i in range(51)
+        }
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+    jar.update_cookies({"old": "value"}, URL("https://old.example/"))
+
+    jar.load(file_path)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    names = {cookie.key for cookie in jar}
+    assert "old" not in names
+    assert "cookie0" not in names
+    assert "cookie50" in names
+    assert jar._next_access_generation == 51
+
+
+def test_cookie_jar_load_enforces_limits_once(tmp_path: Path) -> None:
+    file_path = tmp_path / "oversized-cookies.json"
+    data = {
+        "example.com|": {
+            f"cookie{i}": {
+                "key": f"cookie{i}",
+                "value": "value",
+                "coded_value": "value",
+            }
+            for i in range(cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1)
+        }
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    with mock.patch.object(
+        jar, "_enforce_limits", wraps=jar._enforce_limits
+    ) as enforce_limits:
+        jar.load(file_path)
+
+    assert enforce_limits.call_count == 1
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert "cookie0" not in {cookie.key for cookie in jar}
+
+
+def test_cookie_jar_load_compacts_expirations_after_limit_eviction(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "expiring-overflow.json"
+    deadline = 4102444800.0
+    data = {
+        "example.com|": {
+            f"cookie{i}": {
+                "key": f"cookie{i}",
+                "value": "value",
+                "coded_value": "value",
+                "domain": "example.com",
+                "expires_timestamp": deadline,
+            }
+            for i in range(1000)
+        }
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert len(jar._expirations) == len(jar)
+    assert len(jar._expire_heap) == len(jar)
+    assert jar._expire_heap_entries == set(jar._expire_heap)
+
+
+@pytest.mark.parametrize("deadline", ["nan", "inf", "-inf", "not-a-number", 10**1000])
+def test_cookie_jar_load_rejects_invalid_expiration(
+    tmp_path: Path, deadline: str | int
+) -> None:
+    file_path = tmp_path / "invalid-expiration.json"
+    data = {
+        "example.com|": {
+            "cookie": {
+                "key": "cookie",
+                "value": "value",
+                "coded_value": "value",
+                "domain": "example.com",
+                "expires_timestamp": deadline,
+            }
+        }
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    with pytest.raises(ValueError, match="must be a finite number"):
+        jar.load(file_path)
+
+    assert len(jar) == 0
+    assert not jar._expirations
+    assert not jar._expire_heap
+    assert not jar._expire_heap_entries
+
+
+def test_cookie_jar_load_failure_clears_deferred_state(tmp_path: Path) -> None:
+    file_path = tmp_path / "late-invalid-expiration.json"
+    deadline = 4102444800.0
+    cookies = {
+        f"cookie{i}": {
+            "key": f"cookie{i}",
+            "value": "value",
+            "coded_value": "value",
+            "domain": "example.com",
+            "expires_timestamp": deadline,
+        }
+        for i in range(1000)
+    }
+    cookies["invalid"] = {
+        "key": "invalid",
+        "value": "value",
+        "coded_value": "value",
+        "domain": "example.com",
+        "expires_timestamp": "nan",
+    }
+    file_path.write_text(json.dumps({"example.com|": cookies}), encoding="utf-8")
+    jar = CookieJar()
+
+    with pytest.raises(ValueError, match="must be a finite number"):
+        jar.load(file_path)
+
+    assert len(jar) == 0
+    assert not jar._expirations
+    assert not jar._expire_heap
+    assert not jar._expire_heap_entries
+
+
+def test_cookie_jar_load_rejects_mismatched_record_name(tmp_path: Path) -> None:
+    file_path = tmp_path / "mismatched-record-name.json"
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|": {
+                    "outer": {
+                        "key": "inner",
+                        "value": "value",
+                        "coded_value": "value",
+                        "domain": "example.com",
+                        "expires_timestamp": 0.0,
+                    }
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    jar = CookieJar()
+
+    with pytest.raises(ValueError, match="record name must match"):
+        jar.load(file_path)
+
+    assert len(jar) == 0
+    assert not jar._expirations
+    assert not jar._expire_heap
+    assert not jar._expire_heap_entries
+
+
+def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
+    jar = CookieJar()
+    cookies: list[tuple[str, Morsel[str]]] = []
+    for index in range(1000):
+        name = f"cookie{index}"
+        morsel = _make_morsel(name)
+        morsel["max-age"] = "3600"
+        cookies.append((name, morsel))
+
+    jar.update_cookies(cookies, URL("https://example.com/"))
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert len(jar._expirations) == len(jar)
+    assert len(jar._expire_heap) == len(jar)
+    assert jar._expire_heap_entries == set(jar._expire_heap)
+
+
+def test_cookie_jar_load_replacement_clears_stale_expiration(tmp_path: Path) -> None:
+    file_path = tmp_path / "colliding-cookies.json"
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "expired",
+                        "coded_value": "expired",
+                        "domain": "example.com",
+                        "expires_timestamp": 0.0,
+                    }
+                },
+                "example.com|/": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "live",
+                        "coded_value": "live",
+                        "domain": "example.com",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert len(jar) == 1
+    assert jar.filter_cookies(URL("https://example.com/"))["sid"].value == "live"
+
+
+def test_cookie_jar_load_rejected_collision_keeps_expiration(tmp_path: Path) -> None:
+    file_path = tmp_path / "rejected-collision.json"
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "expired",
+                        "coded_value": "expired",
+                        "domain": "example.com",
+                        "expires_timestamp": 0.0,
+                    }
+                },
+                "other.example|": {
+                    "sid": {
+                        "key": "sid",
+                        "value": "rejected",
+                        "coded_value": "rejected",
+                        "domain": "example.com",
+                    }
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert len(jar) == 0
+
+
+def test_cookie_jar_load_same_deadline_collision_keeps_heap_bounded(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "same-deadline-collisions.json"
+    deadline = 4102444800.0
+    data = {
+        f"example.com|source{index}": {
+            "sid": {
+                "key": "sid",
+                "value": str(index),
+                "coded_value": str(index),
+                "domain": "example.com",
+                "path": "/" * (index + 1),
+                "expires_timestamp": deadline,
+            }
+        }
+        for index in range(1000)
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert len(jar) == 1
+    assert len(jar._expirations) == 1
+    assert len(jar._expire_heap) == 1
+    assert jar._expire_heap_entries == set(jar._expire_heap)
+
+
+def test_cookie_jar_load_alternating_same_deadline_keeps_heap_bounded(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "alternating-same-deadline-collisions.json"
+    deadline = 4102444800.0
+    data = {
+        f"example.com|source{index}": {
+            "sid": {
+                "key": "sid",
+                "value": str(index),
+                "coded_value": str(index),
+                "domain": "example.com",
+                "path": "/",
+                **(
+                    {"expires_timestamp": deadline}
+                    if index % 2 == 0 or index == 999
+                    else {}
+                ),
+            }
+        }
+        for index in range(1000)
+    }
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    cookie_key = ("example.com", "", "sid")
+    assert len(jar) == 1
+    assert jar.filter_cookies(URL("https://example.com/"))["sid"].value == "999"
+    assert jar._expirations == {cookie_key: deadline}
+    assert jar._expire_heap == [(deadline, cookie_key)]
+    assert jar._expire_heap_entries == set(jar._expire_heap)
+
+    with mock.patch("aiohttp.cookiejar.time.time", return_value=deadline + 1):
+        jar._do_expiration()
+
+    assert len(jar) == 0
+    assert jar._expire_heap == []
+    assert jar._expire_heap_entries == set()
+
+
+def test_cookie_jar_load_expired_normalized_collisions_clear_heap(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "expired-normalized-collisions.json"
+    data: dict[str, dict[str, dict[str, object]]] = {}
+    for index in range(1000):
+        name = f"cookie{index}"
+        base = {
+            "key": name,
+            "value": "value",
+            "coded_value": "value",
+            "domain": "example.com",
+            "path": "/",
+        }
+        data[f"example.com|future{index}"] = {
+            name: {**base, "expires_timestamp": 4102444800.0}
+        }
+        data[f"example.com|expired{index}"] = {name: {**base, "expires_timestamp": 0.0}}
+    file_path.write_text(json.dumps(data), encoding="utf-8")
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert len(jar) == 0
+    assert not jar._expirations
+    assert not jar._expire_heap
+    assert not jar._expire_heap_entries
+
+
+def test_cookie_jar_load_expires_before_eviction(tmp_path: Path) -> None:
+    file_path = tmp_path / "expired-overflow.json"
+    cookies = {
+        f"cookie{i}": {
+            "key": f"cookie{i}",
+            "value": "value",
+            "coded_value": "value",
+            "domain": "example.com",
+            "expires_timestamp": 4102444800.0,
+        }
+        for i in range(50)
+    }
+    cookies["expired"] = {
+        "key": "expired",
+        "value": "value",
+        "coded_value": "value",
+        "domain": "example.com",
+        "expires_timestamp": 0.0,
+    }
+    file_path.write_text(json.dumps({"example.com|": cookies}), encoding="utf-8")
+
+    jar = CookieJar()
+    jar.load(file_path)
+
+    names = {cookie.key for cookie in jar}
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert "cookie0" in names
+    assert "expired" not in names
+    assert len(jar._access_generations) == len(jar)
+    assert len(jar._expirations) == len(jar)
+
+
+def test_cookie_jar_load_cleans_evicted_expiry_metadata(tmp_path: Path) -> None:
+    file_path = tmp_path / "secure-overflow.json"
+    cookies = {
+        f"cookie{i}": {
+            "key": f"cookie{i}",
+            "value": "value",
+            "coded_value": "value",
+            "domain": "example.com",
+            "secure": True,
+        }
+        for i in range(50)
+    }
+    cookies["nonsecure"] = {
+        "key": "nonsecure",
+        "value": "value",
+        "coded_value": "value",
+        "domain": "example.com",
+        "expires_timestamp": 4102444800.0,
+    }
+    file_path.write_text(json.dumps({"example.com|": cookies}), encoding="utf-8")
+
+    jar = CookieJar()
+    jar.load(file_path)
+
+    rejected_key = ("example.com", "", "nonsecure")
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert rejected_key not in jar._access_generations
+    assert rejected_key not in jar._expirations
+
+
+def test_delete_cookies_cleans_access_metadata() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies({"cookie": "value"}, url)
+    jar.filter_cookies(url)
+    cookie_key = ("example.com", "", "cookie")
+    assert cookie_key in jar._access_generations
+
+    jar._delete_cookies([cookie_key])
+
+    assert cookie_key not in jar._access_generations
+    assert ("example.com", "") not in jar._cookies
+    assert ("example.com", "") not in jar._morsel_cache
+
+
+@pytest.mark.parametrize(
+    ("cookie_count", "expected_count"),
+    ((150, 150), (151, 150)),
+)
+def test_filter_cookies_limits_cookie_count(
+    cookie_count: int, expected_count: int
+) -> None:
+    jar = CookieJar()
+    hostname = "a.b.c.example.com"
+    domains = ("com", "example.com", "c.example.com", "b.c.example.com")
+    cookies = [
+        (
+            f"cookie{domain_index}_{cookie_index}",
+            _make_morsel(f"cookie{domain_index}_{cookie_index}", domain=domain),
+        )
+        for domain_index, domain in enumerate(domains)
+        for cookie_index in range(50)
+    ]
+    jar.update_cookies(cookies[:cookie_count], URL(f"https://{hostname}/"))
+
+    filtered = jar.filter_cookies(URL(f"https://{hostname}/"))
+
+    assert len(filtered) == expected_count
+    assert sum(map(len, jar._morsel_cache.values())) == len(filtered)
+
+
+def test_filter_cookies_limits_complete_header_length() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    exact_value = "x" * (cookiejar_module._MAX_COOKIE_HEADER_LENGTH - 10)
+    jar.update_cookies({"a": exact_value}, url)
+
+    exact = jar.filter_cookies(url)
+
+    assert len(b"Cookie: " + exact.output(header="", sep=";").strip().encode()) == (
+        cookiejar_module._MAX_COOKIE_HEADER_LENGTH
+    )
+
+    jar.update_cookies({"a": exact_value + "x"}, url)
+    assert not jar.filter_cookies(url)
+
+
+def test_filter_cookies_limits_do_not_restore_shadowed_domain_cookie() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        [
+            "sid=shared; Domain=example.com; Path=/",
+            f"a={'x' * 4080}; Domain=example.com; Path=/",
+            f"b={'y' * 4070}; Domain=example.com; Path=/",
+        ],
+        URL("https://other.example.com/"),
+    )
+    jar.update_cookies_from_headers(
+        [f"sid={'GOOD' * 10}; Path=/"],
+        URL("https://app.example.com/"),
+    )
+
+    filtered = jar.filter_cookies(URL("https://app.example.com/"))
+
+    assert filtered["sid"].value == "GOOD" * 10
+    assert "b" not in filtered
+    assert len(b"Cookie: " + filtered.output(header="", sep="; ").strip().encode()) <= (
+        cookiejar_module._MAX_COOKIE_HEADER_LENGTH
+    )
+    assert "sid" not in jar._morsel_cache[("example.com", "")]
+    assert "b" not in jar._morsel_cache[("example.com", "")]
+    assert "sid" in jar._morsel_cache[("app.example.com", "")]
+
+
+@pytest.mark.parametrize("value", ("\udcff", "\x07"))
+def test_filter_cookies_omits_unserializable_morsels(value: str) -> None:
+    jar = CookieJar()
+    morsel: Morsel[str] = Morsel()
+    morsel.__setstate__(  # type: ignore[attr-defined]
+        {"key": "cookie", "value": value, "coded_value": f'"{value}"'}
+    )
+    jar.update_cookies({"cookie": morsel}, URL("https://example.com/"))
+
+    assert not jar.filter_cookies(URL("https://example.com/"))
+    assert not any(jar._morsel_cache.values())
 
 
 def test_update_cookies_copies_caller_morsel() -> None:
