@@ -272,6 +272,16 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     return cookies
 
 
+def _encoded_length(text: str) -> int | None:
+    """Return the UTF-8 length of text, or None if it can't be encoded."""
+    if text.isascii():
+        return len(text)
+    try:
+        return len(text.encode("utf-8"))
+    except UnicodeEncodeError:
+        return None
+
+
 def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
     """Set the recognized attributes from the text after the cookie-pair."""
     for cookie_attribute in attributes.split(";"):
@@ -298,14 +308,11 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
                 # Like Firefox, a flag's value is ignored.
                 morsel[lower_key] = True
                 continue
-            if attr_value.isascii():
-                attr_value_length = len(attr_value)
-            else:
-                try:
-                    attr_value_length = len(attr_value.encode("utf-8"))
-                except UnicodeEncodeError:
-                    continue
-            if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
+            attr_value_length = _encoded_length(attr_value)
+            if (
+                attr_value_length is None
+                or attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH
+            ):
                 continue
             if "\t" not in attr_value:
                 morsel[lower_key] = _unquote(attr_value)
@@ -368,18 +375,8 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         if not _COOKIE_NAME_RE.match(key):
             internal_logger.warning("Can not load cookies: Illegal cookie name %r", key)
             continue
-        if "\t" in coded_value:
-            continue
-        if key.isascii() and coded_value.isascii():
-            pair_length = len(key) + len(coded_value)
-        else:
-            try:
-                pair_length = len(key.encode("utf-8")) + len(
-                    coded_value.encode("utf-8")
-                )
-            except UnicodeEncodeError:
-                continue
-        if pair_length > _MAX_COOKIE_PAIR_LENGTH:
+        pair_length = _encoded_length(key + coded_value)
+        if pair_length is None or pair_length > _MAX_COOKIE_PAIR_LENGTH:
             continue
 
         value = _unquote(coded_value)

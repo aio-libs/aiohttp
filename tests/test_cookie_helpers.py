@@ -908,29 +908,34 @@ def test_parse_set_cookie_headers_dollar_attributes() -> None:
 
 
 def test_parse_set_cookie_headers_attributes_after_illegal_cookie() -> None:
-    """An illegal segment is an unknown attribute; later attributes still apply."""
+    """Test that attributes after an illegal cookie name are handled correctly."""
+    # Illegal cookie followed by $ attribute
     result = parse_set_cookie_headers(["good=value; invalid,cookie=bad; $Path=/test"])
     assert len(result) == 1
     assert result[0][0] == "good"
     assert result[0][1]["path"] == ""
 
+    # Illegal cookie followed by boolean attribute
     result = parse_set_cookie_headers(["good=value; invalid,cookie=bad; HttpOnly"])
     assert len(result) == 1
+    assert result[0][0] == "good"
     assert result[0][1]["httponly"] is True
 
+    # Illegal cookie followed by regular attribute with value
     result = parse_set_cookie_headers(["good=value; invalid,cookie=bad; Max-Age=3600"])
     assert len(result) == 1
+    assert result[0][0] == "good"
     assert result[0][1]["max-age"] == "3600"
 
+    # Multiple attributes after illegal cookie
     result = parse_set_cookie_headers(
         ["good=value; invalid,cookie=bad; $Path=/; HttpOnly; Max-Age=60; Domain=.com"]
     )
     assert len(result) == 1
-    morsel = result[0][1]
-    assert morsel["path"] == ""
-    assert morsel["httponly"] is True
-    assert morsel["max-age"] == "60"
-    assert morsel["domain"] == ".com"
+    assert result[0][0] == "good"
+    assert result[0][1]["httponly"] is True
+    assert result[0][1]["max-age"] == "60"
+    assert result[0][1]["domain"] == ".com"
 
 
 def test_parse_set_cookie_headers_unmatched_quotes_compatibility() -> None:

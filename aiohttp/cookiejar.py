@@ -20,6 +20,7 @@ from yarl import URL
 
 from ._cookie_helpers import (
     _COOKIE_CTL_RE,
+    _encoded_length,
     parse_set_cookie_headers,
     preserve_morsel_with_coded_value,
 )
@@ -237,10 +238,8 @@ class CookieJar(AbstractCookieJar):
                 if (raw_expiration := morsel_data.get("expires_timestamp")) is not None:
                     try:
                         expiration = float(raw_expiration)
-                    except (OverflowError, TypeError, ValueError) as exc:
-                        raise ValueError(
-                            "Cookie expiration timestamp must be a finite number"
-                        ) from exc
+                    except (OverflowError, TypeError, ValueError):
+                        expiration = math.nan
                     if not math.isfinite(expiration):
                         raise ValueError(
                             "Cookie expiration timestamp must be a finite number"
@@ -389,43 +388,38 @@ class CookieJar(AbstractCookieJar):
         self._access_generations[cookie_key] = self._next_access_generation
 
     def _make_room(self, domain: str, secure: bool) -> bool:
-        """Evict for a new cookie like Firefox's AddCookie; False drops it."""
-        if self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN:
-            # Leave room so the domain ends at its quota.
-            return self._trim_domain(
-                domain, _COOKIE_QUOTA_PER_DOMAIN - 1, allow_secure=secure
-            )
-        if self._cookie_count >= _MAX_COOKIES_TOTAL:
-            self._purge_cookies()
-        return True
+        """Evict for a new cookie like Firefox; False drops the new cookie.
 
-    def _trim_domain(self, domain: str, target: int, *, allow_secure: bool) -> bool:
-        """Evict like Firefox's FindStaleCookies.
-
-        Returns False if only secure cookies are left and allow_secure is unset.
+        Mirrors AddCookie and FindStaleCookies: expired, then non-secure,
+        cookies go first, least recently used first; secure cookies are only
+        evicted for another secure cookie.
         """
-        count_before = self._domain_counts.get(domain, 0)
-        self._do_expiration()
-        count = self._domain_counts.get(domain, 0)
-        if count <= target:
-            return True
-        non_secure: list[tuple[int, _CookieKey]] = []
-        secure: list[tuple[int, _CookieKey]] = []
-        for (cookie_domain, path), cookies in self._cookies.items():
-            if cookie_domain != domain:
-                continue
-            for name, cookie in cookies.items():
-                cookie_key = (domain, path, name)
-                entry = (self._access_generations.get(cookie_key, 0), cookie_key)
-                (secure if cookie["secure"] else non_secure).append(entry)
-        if not (candidates := non_secure):
-            if count < count_before:
+        if self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN:
+            count_before = self._domain_counts[domain]
+            self._do_expiration()
+            count = self._domain_counts.get(domain, 0)
+            # Leave room so the domain ends at its quota.
+            if (excess := count - _COOKIE_QUOTA_PER_DOMAIN + 1) <= 0:
                 return True
-            if not allow_secure:
-                return False
-            candidates = secure
-        candidates.sort()
-        self._delete_cookies([key for _, key in candidates[: count - target]])
+            non_secure: list[tuple[int, _CookieKey]] = []
+            secure_keys: list[tuple[int, _CookieKey]] = []
+            for (cookie_domain, path), cookies in self._cookies.items():
+                if cookie_domain != domain:
+                    continue
+                for name, cookie in cookies.items():
+                    cookie_key = (domain, path, name)
+                    entry = (self._access_generations.get(cookie_key, 0), cookie_key)
+                    (secure_keys if cookie["secure"] else non_secure).append(entry)
+            if not (candidates := non_secure):
+                if count < count_before:
+                    return True
+                if not secure:
+                    return False
+                candidates = secure_keys
+            candidates.sort()
+            self._delete_cookies([key for _, key in candidates[:excess]])
+        elif self._cookie_count >= _MAX_COOKIES_TOTAL:
+            self._purge_cookies()
         return True
 
     def _purge_cookies(self) -> None:
@@ -675,10 +669,9 @@ class CookieJar(AbstractCookieJar):
                 store = output == f"{morsel.key}={morsel.coded_value}"
                 if _COOKIE_CTL_RE.search(output) is not None:
                     continue
-                try:
-                    length = len(output.encode("utf-8"))
-                except UnicodeEncodeError:
+                if (encoded_length := _encoded_length(output)) is None:
                     continue
+                length = encoded_length
             if admitted:
                 length += 2  # "; " between cookie-pairs
             if (
