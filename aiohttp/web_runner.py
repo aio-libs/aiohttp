@@ -387,6 +387,9 @@ class BaseRunner(ABC, Generic[_Request]):
         await self._cleanup_server()
 
         self._server = None
+        serve_forever_fut = self._serve_forever_fut
+        if serve_forever_fut is not None and not serve_forever_fut.done():
+            serve_forever_fut.set_result(None)
         if self._handle_signals:
             loop = asyncio.get_running_loop()
             try:

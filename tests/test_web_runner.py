@@ -392,3 +392,17 @@ async def test_app_runner_serve_forever_serves_requests(
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+async def test_app_runner_serve_forever_cleanup_wakes_waiter(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    await runner.cleanup()
+    await task
+    assert task.done()
+    assert not task.cancelled()
