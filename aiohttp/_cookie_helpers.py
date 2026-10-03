@@ -294,24 +294,20 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
                 # Python versions before 3.14 do not expose Partitioned.
                 continue
 
-            is_flag = lower_key in _COOKIE_BOOL_ATTRS
+            if lower_key in _COOKIE_BOOL_ATTRS:
+                # Like Firefox, a flag's value is ignored.
+                morsel[lower_key] = True
+                continue
             if attr_value.isascii():
                 attr_value_length = len(attr_value)
             else:
-                # Only retained (non-flag) values must encode strictly.
                 try:
-                    attr_value_length = len(
-                        attr_value.encode(
-                            "utf-8", "surrogateescape" if is_flag else "strict"
-                        )
-                    )
+                    attr_value_length = len(attr_value.encode("utf-8"))
                 except UnicodeEncodeError:
                     continue
             if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
                 continue
-            if is_flag:
-                morsel[lower_key] = True
-            elif "\t" not in attr_value:
+            if "\t" not in attr_value:
                 morsel[lower_key] = _unquote(attr_value)
 
 

@@ -1941,32 +1941,31 @@ def test_cookie_jar_load_failure_leaves_jar_unchanged(tmp_path: Path) -> None:
     assert [cookie.key for cookie in jar] == ["existing"]
 
 
-def test_cookie_jar_load_rejects_mismatched_record_name(tmp_path: Path) -> None:
-    file_path = tmp_path / "mismatched-record-name.json"
-    file_path.write_text(
-        json.dumps(
-            {
-                "example.com|": {
-                    "outer": {
-                        "key": "inner",
-                        "value": "value",
-                        "coded_value": "value",
-                        "domain": "example.com",
-                        "expires_timestamp": 0.0,
-                    }
-                }
-            }
-        ),
-        encoding="utf-8",
-    )
+def test_oversized_secure_value_keeps_cookie_off_plain_http() -> None:
     jar = CookieJar()
+    jar.update_cookies_from_headers(
+        [f"sid=1; Secure={'x' * 1025}"], URL("https://example.com/")
+    )
 
-    with pytest.raises(ValueError, match="record name must match"):
-        jar.load(file_path)
+    assert "sid" in jar.filter_cookies(URL("https://example.com/"))
+    assert "sid" not in jar.filter_cookies(URL("http://example.com/"))
 
-    assert len(jar) == 0
-    assert not jar._expirations
-    assert not jar._expire_heap
+
+def test_cookie_jar_save_load_round_trips_stored_name(tmp_path: Path) -> None:
+    url = URL("https://example.com/")
+    cookies: SimpleCookie = SimpleCookie()
+    cookies["real"] = "value"
+    jar = CookieJar()
+    jar.update_cookies({"alias": cookies["real"]}, url)
+    file_path = tmp_path / "cookies.json"
+    jar.save(file_path)
+
+    loaded = CookieJar()
+    loaded.load(file_path)
+
+    assert loaded.filter_cookies(url).output(header="", sep=";") == (
+        jar.filter_cookies(url).output(header="", sep=";")
+    )
 
 
 def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:

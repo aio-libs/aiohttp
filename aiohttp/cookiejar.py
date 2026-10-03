@@ -233,8 +233,6 @@ class CookieJar(AbstractCookieJar):
         for compound_key, cookie_data in data.items():
             domain, path = compound_key.split("|", 1)
             for name, morsel_data in cookie_data.items():
-                if morsel_data.get("key") != name:
-                    raise ValueError("Cookie record name must match its Morsel key")
                 expiration: float | None = None
                 if (raw_expiration := morsel_data.get("expires_timestamp")) is not None:
                     try:

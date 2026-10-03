@@ -191,15 +191,14 @@ def test_parse_set_cookie_headers_skips_rejected_morsels(
     assert [name for name, _ in result] == ["kept"]
 
 
-def test_parse_set_cookie_headers_boolean_attribute_value_limits() -> None:
-    accepted_value = "x" * 1024
-    ignored_value = accepted_value + "x"
+@pytest.mark.parametrize("flag", ("Secure", "HttpOnly"))
+def test_parse_set_cookie_headers_flag_values_are_ignored(flag: str) -> None:
+    """An oversized value doesn't strip the flag, as in Firefox."""
+    value = "x" * 1025
 
-    accepted = parse_set_cookie_headers([f"cookie=value; Secure={accepted_value}"])
-    ignored = parse_set_cookie_headers([f"cookie=value; Secure={ignored_value}"])
+    result = parse_set_cookie_headers([f"cookie=value; {flag}={value}"])
 
-    assert accepted[0][1]["secure"] is True
-    assert ignored[0][1]["secure"] == ""
+    assert result[0][1][flag.lower()] is True
 
 
 @pytest.mark.parametrize("value", ("a\x00b", "a\x1fb", "a\x7fb"))

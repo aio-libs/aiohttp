@@ -811,7 +811,7 @@ explicit `Cookie` header are caller input and are trusted.
 | # | Threat | Existing | Recommended |
 | :--- | :--- | :--- | :--- |
 | 16.1 | Fields per response | `parse_set_cookie_headers` keeps at most 50 valid fields per response; invalid fields don't count. Applies to `ClientResponse.cookies` and to the jar. | None. |
-| 16.2 | Pair / attribute size | Name plus value is capped at 4096 encoded octets and each attribute value at 1024, matching Chromium and Firefox; oversized pairs are skipped and oversized attributes ignored. | None. |
+| 16.2 | Pair / attribute size | Name plus value is capped at 4096 encoded octets and each attribute value at 1024, matching Chromium and Firefox; oversized pairs are skipped and oversized attribute values ignored. Flags (`Secure`, `HttpOnly`, `Partitioned`) ignore their value, as in Firefox, so an oversized value cannot strip them. | None. |
 | 16.3 | Several cookies per field | Each `Set-Cookie` field yields exactly one cookie (RFC 6265 §5.2); unknown attributes are ignored. | None. |
 | 16.4 | Jar growth | Eviction follows Firefox's `CookieStorage`: adding a cookie to a domain holding 180 evicts expired, then non-secure, cookies, least recently used first, down to 150; at 3300 cookies the jar evicts expired, then least recently used, cookies down to 3000. Counts are per exact domain. | None. |
 | 16.5 | `Cookie` header size | `filter_cookies` emits at most 150 cookies and 8190 octets including `Cookie: `; unserializable cookies are omitted rather than failing the request. | **User**: per-request `cookies=` and an explicit `Cookie` header bypass these limits by design. |
