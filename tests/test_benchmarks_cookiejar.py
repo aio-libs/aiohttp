@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from yarl import URL
 
-from aiohttp.cookiejar import CookieJar, _UnlimitedCookieJar
+from aiohttp.cookiejar import _UnlimitedCookieJar
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
