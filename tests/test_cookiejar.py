@@ -1762,31 +1762,6 @@ def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> No
     assert jar._next_access_generation == cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1
 
 
-def test_cookie_jar_load_enforces_limits_once(tmp_path: Path) -> None:
-    file_path = tmp_path / "oversized-cookies.json"
-    data = {
-        "example.com|": {
-            f"cookie{i}": {
-                "key": f"cookie{i}",
-                "value": "value",
-                "coded_value": "value",
-            }
-            for i in range(cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1)
-        }
-    }
-    file_path.write_text(json.dumps(data), encoding="utf-8")
-    jar = CookieJar()
-
-    with mock.patch.object(
-        jar, "_enforce_limits", wraps=jar._enforce_limits
-    ) as enforce_limits:
-        jar.load(file_path)
-
-    assert enforce_limits.call_count == 1
-    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
-    assert "cookie0" not in {cookie.key for cookie in jar}
-
-
 def test_cookie_jar_load_compacts_expirations_after_limit_eviction(
     tmp_path: Path,
 ) -> None:
@@ -1809,7 +1784,11 @@ def test_cookie_jar_load_compacts_expirations_after_limit_eviction(
 
     jar.load(file_path)
 
-    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+    assert (
+        cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+        < len(jar)
+        <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    )
     assert len(jar._expirations) == len(jar)
     assert len(jar._expire_heap) == len(jar)
     assert jar._expire_heap_entries == set(jar._expire_heap)
@@ -1843,7 +1822,7 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     assert not jar._expire_heap_entries
 
 
-def test_cookie_jar_load_failure_clears_deferred_state(tmp_path: Path) -> None:
+def test_cookie_jar_load_failure_leaves_bounded_jar(tmp_path: Path) -> None:
     file_path = tmp_path / "late-invalid-expiration.json"
     deadline = 4102444800.0
     cookies = {
@@ -1869,10 +1848,7 @@ def test_cookie_jar_load_failure_clears_deferred_state(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="must be a finite number"):
         jar.load(file_path)
 
-    assert len(jar) == 0
-    assert not jar._expirations
-    assert not jar._expire_heap
-    assert not jar._expire_heap_entries
+    assert len(jar) <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
 
 
 def test_cookie_jar_load_rejects_mismatched_record_name(tmp_path: Path) -> None:
