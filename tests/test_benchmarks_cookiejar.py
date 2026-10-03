@@ -34,7 +34,7 @@ async def test_load_cookies_into_temp_cookiejar(benchmark: BenchmarkFixture) -> 
         all_cookies.load(req_cookies)
 
 
-def test_filter_cookies_session_jar(benchmark: BenchmarkFixture) -> None:
+async def test_filter_cookies_session_jar(benchmark: BenchmarkFixture) -> None:
     """Benchmark filtering a warm session jar for one request.
 
     Cookies are split between the host and its parent domain, as a session
@@ -55,7 +55,7 @@ def test_filter_cookies_session_jar(benchmark: BenchmarkFixture) -> None:
         jar.filter_cookies(url)
 
 
-def test_update_cookies_from_headers(benchmark: BenchmarkFixture) -> None:
+async def test_update_cookies_from_headers(benchmark: BenchmarkFixture) -> None:
     """Benchmark storing the Set-Cookie fields of one response in a new jar."""
     url = URL("https://www.example.com/")
     headers = [
@@ -68,7 +68,9 @@ def test_update_cookies_from_headers(benchmark: BenchmarkFixture) -> None:
         CookieJar().update_cookies_from_headers(headers, url)
 
 
-def test_update_cookies_from_headers_replacing(benchmark: BenchmarkFixture) -> None:
+async def test_update_cookies_from_headers_replacing(
+    benchmark: BenchmarkFixture,
+) -> None:
     """Benchmark a response replacing the values of cookies already in the jar."""
     jar = CookieJar()
     url = URL("https://www.example.com/")
