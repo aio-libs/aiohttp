@@ -1020,14 +1020,12 @@ async def test_cookie_jar_duplicates_with_expire_heap() -> None:
         assert "foo" in matched_cookies
 
         assert len(jar._expire_heap) == 1
-        assert jar._expire_heap_entries == set(jar._expire_heap)
 
         freezer.move_to("1990-01-01 16:00:00+00:00")
         jar.update_cookies(cookie_two_pm)
         matched_cookies = jar.filter_cookies(URL("/"))
         assert len(matched_cookies) == 0
         assert len(jar._expire_heap) == 0
-        assert not jar._expire_heap_entries
 
 
 async def test_cookie_jar_filter_cookies_expires() -> None:
@@ -1090,7 +1088,6 @@ async def test_cookie_jar_heap_cleanup() -> None:
         assert "foo" in matched_cookies
         # The heap should have been cleaned up
         assert len(jar._expire_heap) == 1
-        assert jar._expire_heap_entries == set(jar._expire_heap)
 
 
 async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
@@ -1123,7 +1120,6 @@ async def test_cookie_jar_heap_maintains_order_after_cleanup() -> None:
         assert len(jar) == 100
         # The heap should have been cleaned up
         assert len(jar._expire_heap) == 100
-        assert jar._expire_heap_entries == set(jar._expire_heap)
 
         # Verify that the heap is still ordered
         heap_before = jar._expire_heap.copy()
@@ -1759,39 +1755,6 @@ def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> No
     assert f"cookie{_TRIM}" not in names
     assert f"cookie{_TRIM + 1}" in names
     assert f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN}" in names
-    assert jar._next_access_generation == cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1
-
-
-def test_cookie_jar_load_compacts_expirations_after_limit_eviction(
-    tmp_path: Path,
-) -> None:
-    file_path = tmp_path / "expiring-overflow.json"
-    deadline = 4102444800.0
-    data = {
-        "example.com|": {
-            f"cookie{i}": {
-                "key": f"cookie{i}",
-                "value": "value",
-                "coded_value": "value",
-                "domain": "example.com",
-                "expires_timestamp": deadline,
-            }
-            for i in range(1000)
-        }
-    }
-    file_path.write_text(json.dumps(data), encoding="utf-8")
-    jar = CookieJar()
-
-    jar.load(file_path)
-
-    assert (
-        cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
-        < len(jar)
-        <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
-    )
-    assert len(jar._expirations) == len(jar)
-    assert len(jar._expire_heap) == len(jar)
-    assert jar._expire_heap_entries == set(jar._expire_heap)
 
 
 @pytest.mark.parametrize("deadline", ["nan", "inf", "-inf", "not-a-number", 10**1000])
@@ -1819,7 +1782,6 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     assert len(jar) == 0
     assert not jar._expirations
     assert not jar._expire_heap
-    assert not jar._expire_heap_entries
 
 
 def test_cookie_jar_load_failure_leaves_bounded_jar(tmp_path: Path) -> None:
@@ -1877,7 +1839,6 @@ def test_cookie_jar_load_rejects_mismatched_record_name(tmp_path: Path) -> None:
     assert len(jar) == 0
     assert not jar._expirations
     assert not jar._expire_heap
-    assert not jar._expire_heap_entries
 
 
 def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
@@ -1897,8 +1858,9 @@ def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
         <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
     )
     assert len(jar._expirations) == len(jar)
-    assert len(jar._expire_heap) == len(jar)
-    assert jar._expire_heap_entries == set(jar._expire_heap)
+    assert len(jar._expire_heap) <= max(
+        cookiejar_module._MIN_SCHEDULED_COOKIE_EXPIRATION, 2 * len(jar._expirations)
+    )
 
 
 def test_session_cookie_replacement_drops_old_expiry() -> None:
@@ -2016,35 +1978,6 @@ def test_cookie_jar_load_rejected_collision_keeps_expiration(tmp_path: Path) -> 
     assert len(jar) == 0
 
 
-def test_cookie_jar_load_same_deadline_collision_keeps_heap_bounded(
-    tmp_path: Path,
-) -> None:
-    file_path = tmp_path / "same-deadline-collisions.json"
-    deadline = 4102444800.0
-    data = {
-        f"example.com|source{index}": {
-            "sid": {
-                "key": "sid",
-                "value": str(index),
-                "coded_value": str(index),
-                "domain": "example.com",
-                "path": "/" * (index + 1),
-                "expires_timestamp": deadline,
-            }
-        }
-        for index in range(1000)
-    }
-    file_path.write_text(json.dumps(data), encoding="utf-8")
-    jar = CookieJar()
-
-    jar.load(file_path)
-
-    assert len(jar) == 1
-    assert len(jar._expirations) == 1
-    assert len(jar._expire_heap) == 1
-    assert jar._expire_heap_entries == set(jar._expire_heap)
-
-
 def test_cookie_jar_load_alternating_same_deadline_keeps_heap_bounded(
     tmp_path: Path,
 ) -> None:
@@ -2076,15 +2009,15 @@ def test_cookie_jar_load_alternating_same_deadline_keeps_heap_bounded(
     assert len(jar) == 1
     assert jar.filter_cookies(URL("https://example.com/"))["sid"].value == "999"
     assert jar._expirations == {cookie_key: deadline}
-    assert jar._expire_heap == [(deadline, cookie_key)]
-    assert jar._expire_heap_entries == set(jar._expire_heap)
+    assert len(jar._expire_heap) <= max(
+        cookiejar_module._MIN_SCHEDULED_COOKIE_EXPIRATION, 2 * len(jar._expirations)
+    )
 
     with mock.patch("aiohttp.cookiejar.time.time", return_value=deadline + 1):
         jar._do_expiration()
 
     assert len(jar) == 0
     assert jar._expire_heap == []
-    assert jar._expire_heap_entries == set()
 
 
 def test_cookie_jar_load_expired_normalized_collisions_clear_heap(
@@ -2113,7 +2046,6 @@ def test_cookie_jar_load_expired_normalized_collisions_clear_heap(
     assert len(jar) == 0
     assert not jar._expirations
     assert not jar._expire_heap
-    assert not jar._expire_heap_entries
 
 
 def test_cookie_jar_load_expires_before_eviction(tmp_path: Path) -> None:

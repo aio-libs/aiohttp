@@ -136,7 +136,6 @@ class CookieJar(AbstractCookieJar):
                 }
             )
         self._expire_heap: list[tuple[float, tuple[str, str, str]]] = []
-        self._expire_heap_entries: set[tuple[float, tuple[str, str, str]]] = set()
         self._expirations: dict[tuple[str, str, str], float] = {}
         self._access_generations: dict[tuple[str, str, str], int] = {}
         self._next_access_generation = 0
@@ -226,7 +225,7 @@ class CookieJar(AbstractCookieJar):
     def _load_json_data(
         self, data: dict[str, dict[str, dict[str, str | bool | float]]]
     ) -> None:
-        """Replace contents, routing cookies through update_cookies()."""
+        """Replace contents, routing cookies through _update_cookies()."""
         self.clear()
         for compound_key, cookie_data in data.items():
             domain, path = compound_key.split("|", 1)
@@ -280,13 +279,11 @@ class CookieJar(AbstractCookieJar):
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:
             self._expire_heap.clear()
-            self._expire_heap_entries.clear()
             self._cookies.clear()
             self._morsel_cache.clear()
             self._host_only_cookies.clear()
             self._expirations.clear()
             self._access_generations.clear()
-            self._next_access_generation = 0
             self._domain_counts.clear()
             self._cookie_count = 0
             return
@@ -323,10 +320,28 @@ class CookieJar(AbstractCookieJar):
 
     def _do_expiration(self) -> None:
         """Remove expired cookies."""
-        if not self._expire_heap:
+        if not (expire_heap_len := len(self._expire_heap)):
             return
 
-        self._maybe_compact_expiration_heap()
+        # If the expiration heap grows larger than the number expirations
+        # times two, we clean it up to avoid keeping expired entries in
+        # the heap and consuming memory. We guard this with a minimum
+        # threshold to avoid cleaning up the heap too often when there are
+        # only a few scheduled expirations.
+        if (
+            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
+            and expire_heap_len > len(self._expirations) * 2
+        ):
+            # Remove any expired entries from the expiration heap
+            # that do not match the expiration time in the expirations
+            # as it means the cookie has been re-added to the heap
+            # with a different expiration time.
+            self._expire_heap = [
+                entry
+                for entry in self._expire_heap
+                if self._expirations.get(entry[1]) == entry[0]
+            ]
+            heapq.heapify(self._expire_heap)
 
         now = time.time()
         to_del: list[tuple[str, str, str]] = []
@@ -335,7 +350,7 @@ class CookieJar(AbstractCookieJar):
             when, cookie_key = self._expire_heap[0]
             if when > now:
                 break
-            self._expire_heap_entries.discard(heapq.heappop(self._expire_heap))
+            heapq.heappop(self._expire_heap)
             # Check if the cookie hasn't been re-added to the heap
             # with a different expiration time as it will be removed
             # later when it reaches the top of the heap and its
@@ -345,31 +360,6 @@ class CookieJar(AbstractCookieJar):
 
         if to_del:
             self._delete_cookies(to_del)
-            # Deletes can leave more stale heap entries behind.
-            self._maybe_compact_expiration_heap()
-
-    def _maybe_compact_expiration_heap(self) -> None:
-        # If the expiration heap grows larger than the number expirations
-        # times two, we clean it up to avoid keeping expired entries in
-        # the heap and consuming memory. We guard this with a minimum
-        # threshold to avoid cleaning up the heap too often when there are
-        # only a few scheduled expirations.
-        expire_heap_len = len(self._expire_heap)
-        if (
-            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
-            and expire_heap_len > len(self._expirations) * 2
-        ):
-            self._compact_expiration_heap()
-
-    def _compact_expiration_heap(self) -> None:
-        """Discard physical heap entries without matching expiration metadata."""
-        self._expire_heap_entries = {
-            entry
-            for entry in self._expire_heap
-            if self._expirations.get(entry[1]) == entry[0]
-        }
-        self._expire_heap = list(self._expire_heap_entries)
-        heapq.heapify(self._expire_heap)
 
     def _delete_cookies(self, to_del: list[tuple[str, str, str]]) -> None:
         for domain, path, name in to_del:
@@ -409,10 +399,7 @@ class CookieJar(AbstractCookieJar):
         return True
 
     def _trim_domain(self, domain: str, target: int, *, allow_secure: bool) -> bool:
-        """Evict like Firefox's FindStaleCookies, least recently used first.
-
-        Expired, then non-secure; secure only if allow_secure, else False.
-        """
+        """Evict like Firefox's FindStaleCookies; False if only secure remain."""
         count_before = self._domain_counts.get(domain, 0)
         self._do_expiration()
         count = self._domain_counts.get(domain, 0)
@@ -435,7 +422,6 @@ class CookieJar(AbstractCookieJar):
             candidates = secure
         candidates.sort()
         self._delete_cookies([key for _, key in candidates[: count - target]])
-        self._compact_expiration_heap()
         return True
 
     def _purge_cookies(self) -> None:
@@ -443,24 +429,16 @@ class CookieJar(AbstractCookieJar):
         self._do_expiration()
         if (excess := self._cookie_count - _MAX_COOKIES_TOTAL) <= 0:
             return
-        cookie_keys = [
-            (domain, path, name)
-            for (domain, path), cookies in self._cookies.items()
-            for name in cookies
-        ]
-        cookie_keys.sort(key=lambda key: self._access_generations.get(key, 0))
-        self._delete_cookies(cookie_keys[:excess])
-        self._compact_expiration_heap()
+        generations = self._access_generations
+        self._delete_cookies(sorted(generations, key=generations.__getitem__)[:excess])
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
         cookie_key = (domain, path, name)
-        self._expirations[cookie_key] = when
-        expire_heap_entry = (when, cookie_key)
-        if expire_heap_entry in self._expire_heap_entries:
-            # Already scheduled; avoid a duplicate heap entry.
+        if self._expirations.get(cookie_key) == when:
+            # Avoid adding duplicates to the heap
             return
-        heapq.heappush(self._expire_heap, expire_heap_entry)
-        self._expire_heap_entries.add(expire_heap_entry)
+        heapq.heappush(self._expire_heap, (when, cookie_key))
+        self._expirations[cookie_key] = when
 
     def update_cookies(self, cookies: LooseCookies, response_url: URL = URL()) -> None:
         """Update cookies."""
@@ -546,9 +524,6 @@ class CookieJar(AbstractCookieJar):
             elif max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
-                except ValueError:
-                    cookie["max-age"] = ""
-                else:
                     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.2.2
                     if delta_seconds <= 0:
                         deadline = 0.0
@@ -556,9 +531,13 @@ class CookieJar(AbstractCookieJar):
                         # Cap first to protect against OverflowError on next line.
                         delta_seconds = min(delta_seconds, self.MAX_TIME)
                         deadline = min(time.time() + delta_seconds, self.MAX_TIME)
+                except ValueError:
+                    cookie["max-age"] = ""
+
             elif expires := cookie["expires"]:
-                if not (deadline := self._parse_date(expires)):
-                    deadline = None
+                if expire_time := self._parse_date(expires):
+                    deadline = expire_time
+                else:
                     cookie["expires"] = ""
 
             key = (domain, path)
