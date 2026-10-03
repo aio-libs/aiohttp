@@ -181,8 +181,8 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     There are no attributes in Cookie headers - even names that match
     attribute names (like 'path' or 'secure') should be treated as cookies.
 
-    This parser uses the same regex-based approach as parse_set_cookie_headers
-    to properly handle quoted values that may contain semicolons. When the
+    This parser uses _COOKIE_PATTERN to properly handle quoted values that
+    may contain semicolons. When the
     regex fails to match a malformed cookie, it falls back to simple parsing
     to ensure subsequent cookies are not lost
     https://github.com/aio-libs/aiohttp/issues/11632
@@ -203,7 +203,7 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
 
     invalid_names = []
     while i < n:
-        # Use the same pattern as parse_set_cookie_headers to find cookies
+        # Find the next cookie-pair
         match = _COOKIE_PATTERN.match(header, i)
         if not match:
             # Fallback for malformed cookies https://github.com/aio-libs/aiohttp/issues/11632
@@ -284,38 +284,41 @@ def _encoded_length(text: str) -> int | None:
 
 def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
     """Set the recognized attributes from the text after the cookie-pair."""
-    for cookie_attribute in attributes.split(";"):
-        # Tolerate missing semicolons between attributes; every match is an
-        # attribute of this cookie, never a new cookie.
-        attribute_index = 0
-        while attribute_index < len(cookie_attribute):
-            attribute_match = _COOKIE_PATTERN.match(cookie_attribute, attribute_index)
-            if attribute_match is None:
+    # Walk with the cookie pattern so a quoted value keeps its ";". Missing
+    # semicolons between attributes are tolerated; every match is an attribute
+    # of this cookie, never a new cookie.
+    index = 0
+    end = len(attributes)
+    while index < end:
+        if (attribute_match := _COOKIE_PATTERN.match(attributes, index)) is None:
+            # Skip a malformed segment.
+            if (index := attributes.find(";", index) + 1) == 0:
                 break
-            attribute_index = attribute_match.end()
-            attr_key = attribute_match.group("key")
-            attr_value = attribute_match.group("val") or ""
+            continue
+        index = attribute_match.end()
+        attr_key = attribute_match.group("key")
+        attr_value = attribute_match.group("val") or ""
 
-            lower_key = attr_key.lower()
-            if lower_key not in _COOKIE_KNOWN_ATTRS:
-                # RFC 6265 Section 5.2: ignore unknown attributes.
-                continue
-            if not morsel.isReservedKey(lower_key):
-                # Python versions before 3.14 do not expose Partitioned.
-                continue
+        lower_key = attr_key.lower()
+        if lower_key not in _COOKIE_KNOWN_ATTRS:
+            # RFC 6265 Section 5.2: ignore unknown attributes.
+            continue
+        if not morsel.isReservedKey(lower_key):
+            # Python versions before 3.14 do not expose Partitioned.
+            continue
 
-            if lower_key in _COOKIE_BOOL_ATTRS:
-                # Like Firefox, a flag's value is ignored.
-                morsel[lower_key] = True
-                continue
-            attr_value_length = _encoded_length(attr_value)
-            if (
-                attr_value_length is None
-                or attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH
-            ):
-                continue
-            if "\t" not in attr_value:
-                morsel[lower_key] = _unquote(attr_value)
+        if lower_key in _COOKIE_BOOL_ATTRS:
+            # Like Firefox, a flag's value is ignored.
+            morsel[lower_key] = True
+            continue
+        attr_value_length = _encoded_length(attr_value)
+        if (
+            attr_value_length is None
+            or attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH
+        ):
+            continue
+        if "\t" not in attr_value:
+            morsel[lower_key] = _unquote(attr_value)
 
 
 def _parse_quoted_pair(header: str) -> tuple[str, str, int] | None:

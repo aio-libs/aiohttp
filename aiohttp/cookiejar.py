@@ -57,9 +57,6 @@ _MAX_COOKIES_PER_REQUEST = 150
 _MAX_COOKIE_HEADER_LENGTH = 8190
 _COOKIE_HEADER_PREFIX_LENGTH = len(b"Cookie: ")
 
-# Attributes the jar parses as strings when loading a saved jar.
-_STR_ATTRS = frozenset(("domain", "path", "expires"))
-
 # Not persisted; the absolute deadline is saved instead.
 _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 
@@ -225,8 +222,13 @@ class CookieJar(AbstractCookieJar):
         self, data: dict[str, dict[str, dict[str, str | bool | float]]]
     ) -> None:
         """Replace contents, routing cookies through _update_cookies()."""
-        # Build every record before clearing so a bad file changes nothing.
-        records: list[tuple[str, Morsel[str], URL, float | None]] = []
+        # Fill a new jar and adopt its state only once every record is in,
+        # so a bad file leaves this one unchanged.
+        loaded = CookieJar(
+            unsafe=self._unsafe,
+            quote_cookie=self._quote_cookie,
+            treat_as_secure_origin=self._treat_as_secure_origin,
+        )
         for compound_key, cookie_data in data.items():
             domain, path = compound_key.split("|", 1)
             for name, morsel_data in cookie_data.items():
@@ -257,25 +259,21 @@ class CookieJar(AbstractCookieJar):
                         "value",
                         "coded_value",
                     ):
-                        value = morsel_data[attr]
-                        if attr in _STR_ATTRS and not isinstance(value, str):
-                            raise ValueError(
-                                f"Cookie attribute {attr!r} has an invalid value"
-                            )
-                        morsel[attr] = value
+                        morsel[attr] = morsel_data[attr]
                 # Drop the domain so update_cookies() re-marks it host-only.
                 if morsel_data.get("host_only"):
                     morsel["domain"] = ""
                 response_url = (
                     URL.build(scheme="https", host=domain) if domain else URL()
                 )
-                records.append((name, morsel, response_url, expiration))
-        self.clear()
-        for name, morsel, response_url, expiration in records:
-            self._update_cookies(
-                {name: morsel}, response_url, copy_morsels=False, expiration=expiration
-            )
-        self._do_expiration()
+                loaded._update_cookies(
+                    {name: morsel},
+                    response_url,
+                    copy_morsels=False,
+                    expiration=expiration,
+                )
+        loaded._do_expiration()
+        self.__dict__.update(loaded.__dict__)
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:

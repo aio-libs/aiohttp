@@ -1774,6 +1774,17 @@ def test_filter_cookies_host_cookies_win_over_parent_domain_cookies() -> None:
     assert filtered["session"].value == "mine"
 
 
+def test_quoted_path_with_semicolon_keeps_its_scope() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ['sid=1; Path="/account/secure;v=1"'],
+        URL("https://example.com/account/secure/page"),
+    )
+
+    assert [cookie["path"] for cookie in jar] == ["/account/secure;v=1"]
+    assert not jar.filter_cookies(URL("https://example.com/account/secure/other"))
+
+
 def test_update_cookies_unquotes_domain_and_path_attributes() -> None:
     jar = CookieJar()
     jar.update_cookies_from_headers(
@@ -1920,18 +1931,20 @@ def test_cookie_jar_save_load_round_trips_numeric_attribute(tmp_path: Path) -> N
     assert [cookie.key for cookie in loaded] == ["sid"]
 
 
+@pytest.mark.parametrize(("attr", "value"), (("path", 5), ("max-age", ["invalid"])))
 def test_cookie_jar_load_invalid_attribute_leaves_jar_unchanged(
-    tmp_path: Path,
+    tmp_path: Path, attr: str, value: object
 ) -> None:
     file_path = tmp_path / "invalid-attribute.json"
+    record = _saved_cookie("sid")
+    record[attr] = value
     file_path.write_text(
-        json.dumps({"example.com|/": {"sid": _saved_cookie("sid", path=5)}}),
-        encoding="utf-8",
+        json.dumps({"example.com|/": {"sid": record}}), encoding="utf-8"
     )
     jar = CookieJar()
     jar.update_cookies({"existing": "value"}, URL("https://example.com/"))
 
-    with pytest.raises(ValueError, match="'path' has an invalid value"):
+    with pytest.raises(TypeError):
         jar.load(file_path)
 
     assert [cookie.key for cookie in jar] == ["existing"]
