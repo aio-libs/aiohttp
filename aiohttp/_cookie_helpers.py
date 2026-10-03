@@ -318,6 +318,23 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
                 morsel[lower_key] = _unquote(attr_value)
 
 
+def _parse_quoted_pair(header: str) -> tuple[str, str, int] | None:
+    """Parse a first pair whose quoted value contains ";".
+
+    aiohttp has always accepted these. Returns the name, the quoted value and
+    where the attributes start, or None to split at the first ";" instead.
+    """
+    match = _COOKIE_PATTERN.match(header)
+    if match is None or not (value := match.group("val")):
+        return None
+    if not (value.startswith('"') and value.endswith('"') and ";" in value):
+        return None
+    tail = header[match.end("val") :].lstrip(" \t")
+    if tail and not tail.startswith(";"):
+        return None
+    return match.group("key"), value, len(header) - len(tail) + bool(tail)
+
+
 def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[str]]]:
     """Parse Set-Cookie fields into at most one cookie per field.
 
@@ -332,41 +349,20 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         if not header or _COOKIE_FORBIDDEN_CTL_RE.search(header) is not None:
             continue
 
-        parsed_pair: tuple[str, str] | None = None
-        attributes_start = len(header)
-
-        # Accept semicolons inside a quoted value, as aiohttp always has.
-        compatibility_match = _COOKIE_PATTERN.match(header) if '"' in header else None
-        compatibility_value = (
-            compatibility_match.group("val") if compatibility_match else None
-        )
-        if (
-            compatibility_match is not None
-            and compatibility_value is not None
-            and compatibility_value.startswith('"')
-            and compatibility_value.endswith('"')
-            and ";" in compatibility_value
+        if (pair_end := header.find(";")) == -1:
+            pair_end = attributes_start = len(header)
+        else:
+            attributes_start = pair_end + 1
+        # A quote before the first ";" may start a quoted value containing ";".
+        if header.find('"', 0, pair_end) != -1 and (
+            quoted := _parse_quoted_pair(header)
         ):
-            tail = header[compatibility_match.end("val") :].lstrip(" \t")
-            if not tail or tail.startswith(";"):
-                parsed_pair = (
-                    compatibility_match.group("key"),
-                    compatibility_value,
-                )
-                attributes_start = len(header) - len(tail) + bool(tail)
-
-        if parsed_pair is None:
-            pair_end = header.find(";")
-            if pair_end == -1:
-                pair_end = len(header)
-            else:
-                attributes_start = pair_end + 1
+            key, coded_value, attributes_start = quoted
+        else:
             key, sep, coded_value = header[:pair_end].partition("=")
             if not sep:
                 continue
-            parsed_pair = (key, coded_value)
 
-        key, coded_value = parsed_pair
         key = key.strip(" \t")
         coded_value = coded_value.strip(" \t")
 
