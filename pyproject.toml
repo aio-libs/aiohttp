@@ -1,6 +1,7 @@
 [build-system]
 requires = [
     "pkgconfig",
+    "multidict >= 7.0.0"
     # setuptools >= 77.0 required for PEP 639 SPDX license metadata
     # (it also covers the >= 67.0 floor needed for Python 3.12+ support).
     "setuptools >= 77.0",
@@ -39,7 +40,7 @@ dependencies = [
   "aiosignal >= 1.4.0",
   "async-timeout >= 4.0, < 6.0 ; python_version < '3.11'",
   "frozenlist >= 1.1.1",
-  "multidict >= 4.5, < 8.0",
+  "multidict >= 7.0.0",
   "propcache >= 0.2.0",
   "typing_extensions >= 4.4 ; python_version < '3.13'",
   "yarl >= 1.25.1, < 2.0",

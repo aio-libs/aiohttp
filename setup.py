@@ -2,6 +2,7 @@ import os
 import pathlib
 import sys
 
+import multidict
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
@@ -78,6 +79,7 @@ extensions = [
     Extension(
         "aiohttp._http_writer",
         ["aiohttp/_http_writer.c"],
+        include_dirs=[multidict.get_include()],
         define_macros=cython_trace_macros,
     ),
     Extension(
