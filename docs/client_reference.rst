@@ -2543,7 +2543,7 @@ Utilities
    * 50 accepted ``Set-Cookie`` fields per response;
    * 4,096 encoded octets for a cookie's name and value together, and 1,024
      encoded octets for an attribute value;
-   * 50 stored cookies per exact domain and 3,000 stored cookies in total;
+   * 180 stored cookies per exact domain and 3,000 stored cookies in total;
    * 150 jar cookies and 8,190 encoded octets, including the ``Cookie:`` field
      name and following space, per generated request header.
 

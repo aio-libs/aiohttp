@@ -44,7 +44,7 @@ _SIMPLE_COOKIE = SimpleCookie()
 
 # Private limits for cookies accepted from remote responses and emitted from
 # the built-in jar.  They are intentionally not constructor options.
-_MAX_COOKIES_PER_DOMAIN = 50
+_MAX_COOKIES_PER_DOMAIN = 180
 _MAX_COOKIES_TOTAL = 3000
 _MAX_COOKIES_PER_REQUEST = 150
 _MAX_COOKIE_HEADER_LENGTH = 8190

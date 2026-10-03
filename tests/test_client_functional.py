@@ -1696,7 +1696,7 @@ async def test_redirect_cookie_storage_is_bounded(
 ) -> None:
     """Large Set-Cookie fields across redirects keep jar and cache state bounded."""
     redirect_count = 10
-    fields_per_response = 16
+    fields_per_response = 20
     ignored_attribute = "x" * 7400
     received_cookie_headers: list[str] = []
 
@@ -1735,8 +1735,10 @@ async def test_redirect_cookie_storage_is_bounded(
         * len(f"Set-Cookie: cookie10_15=value; junk={ignored_attribute}".encode())
     )
     assert response_bytes > 1024 * 1024
-    assert len(jar) <= 50
-    assert sum(map(len, jar._morsel_cache.values())) <= 50
+    max_cookies = aiohttp.cookiejar._MAX_COOKIES_PER_DOMAIN
+    assert redirect_count * fields_per_response > max_cookies
+    assert len(jar) == max_cookies
+    assert sum(map(len, jar._morsel_cache.values())) <= max_cookies
     assert all(
         len(b"Cookie: " + value.encode()) <= 8190
         for value in received_cookie_headers
