@@ -237,12 +237,13 @@ class CookieJar(AbstractCookieJar):
                 if (raw_expiration := morsel_data.get("expires_timestamp")) is not None:
                     try:
                         expiration = float(raw_expiration)
-                    except (OverflowError, TypeError, ValueError):
-                        expiration = math.nan
-                    if not math.isfinite(expiration):
+                        if not math.isfinite(expiration):
+                            raise ValueError(expiration)
+                    except (OverflowError, TypeError, ValueError) as exc:
                         raise ValueError(
-                            "Cookie expiration timestamp must be a finite number"
-                        )
+                            f"Cookie {name!r} in {compound_key!r}: "
+                            "expiration timestamp must be a finite number"
+                        ) from exc
                 morsel: Morsel[str] = Morsel()
                 # Use __setstate__ to bypass validation, same pattern
                 # used in _build_morsel and _cookie_helpers.
@@ -704,7 +705,7 @@ class CookieJar(AbstractCookieJar):
             len(sent_keys) > _MAX_COOKIES_PER_REQUEST
             or header_length > _MAX_COOKIE_HEADER_LENGTH
         ):
-            return self._filter_cookies_within_limits(selected)
+            return self._filter_cookies_within_limits(selected, hostname)
         for jar_key, name, entry in new_entries:
             self._morsel_cache[jar_key][name] = entry
         self._touch_cookies(sent_keys)
@@ -713,7 +714,7 @@ class CookieJar(AbstractCookieJar):
         return filtered
 
     def _filter_cookies_within_limits(
-        self, selected: dict[str, tuple[_JarKey, Morsel[str]]]
+        self, selected: dict[str, tuple[_JarKey, Morsel[str]]], hostname: str
     ) -> "BaseCookie[str]":
         """Admit the most specific cookies first so a host's own cookies win."""
         header_length = _COOKIE_HEADER_PREFIX_LENGTH - 2  # no "; " before the first
@@ -734,6 +735,14 @@ class CookieJar(AbstractCookieJar):
             dict.__setitem__(filtered, name, entry[0])
             self._morsel_cache[jar_key][name] = entry
         self._touch_cookies([entry[2] for _, _, entry in admitted])
+        internal_logger.debug(
+            "Omitted cookies %s for %s over the %d-cookie"
+            " or %d-octet Cookie header limit",
+            [name for name in selected if name not in filtered],
+            hostname,
+            _MAX_COOKIES_PER_REQUEST,
+            _MAX_COOKIE_HEADER_LENGTH,
+        )
         return filtered
 
     @staticmethod

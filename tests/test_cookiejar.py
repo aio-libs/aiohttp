@@ -1912,9 +1912,13 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     file_path.write_text(json.dumps(data), encoding="utf-8")
     jar = CookieJar()
 
-    with pytest.raises(ValueError, match="must be a finite number"):
+    with pytest.raises(
+        ValueError,
+        match=r"Cookie 'cookie' in 'example.com\|': expiration timestamp must be",
+    ) as exc_info:
         jar.load(file_path)
 
+    assert exc_info.value.__cause__ is not None
     assert len(jar) == 0
     assert not jar._expirations
     assert not jar._expire_heap
@@ -2255,6 +2259,24 @@ def test_filter_cookies_limits_cookie_count(
 
     assert len(filtered) == expected_count
     assert sum(map(len, jar._morsel_cache.values())) == len(filtered)
+
+
+def test_filter_cookies_logs_cookies_over_the_limits(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    url = URL("https://example.com/")
+    jar = CookieJar()
+    jar.update_cookies({"small": "v", "big": "x" * 8200}, url)
+
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        assert set(jar.filter_cookies(url)) == {"small"}
+        jar.update_cookies({"big": "x"}, url)
+        assert set(jar.filter_cookies(url)) == {"small", "big"}
+
+    assert caplog.messages == [
+        "Omitted cookies ['big'] for example.com over the 150-cookie"
+        " or 8190-octet Cookie header limit"
+    ]
 
 
 def test_filter_cookies_limits_complete_header_length() -> None:
