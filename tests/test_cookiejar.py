@@ -2317,6 +2317,7 @@ def test_filter_cookies_omits_cookie_cpython_rejects(
     morsel._coded_value = '"a\\007b"'  # type: ignore[attr-defined]
     jar = CookieJar()
     jar.update_cookies({"sid": morsel}, url)
+    jar.update_cookies({"ok": "value"}, url)
     original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
 
     def setstate(self: Morsel[str], state: dict[str, str]) -> None:
@@ -2327,7 +2328,7 @@ def test_filter_cookies_omits_cookie_cpython_rejects(
 
     monkeypatch.setattr(Morsel, "__setstate__", setstate)
 
-    assert not jar.filter_cookies(url)
+    assert set(jar.filter_cookies(url)) == {"ok"}
 
 
 @pytest.mark.parametrize("quote_cookie", (True, False))
@@ -2340,6 +2341,7 @@ def test_filter_cookies_omits_morsel_cpython_cannot_build(
     morsel._coded_value = "a\x07b"  # type: ignore[attr-defined]
     jar = CookieJar(quote_cookie=quote_cookie)
     jar.update_cookies({"sid": morsel}, url)
+    jar.update_cookies({"ok": "value"}, url)
     original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
 
     def setstate(self: Morsel[str], state: dict[str, str]) -> None:
@@ -2350,7 +2352,7 @@ def test_filter_cookies_omits_morsel_cpython_cannot_build(
 
     monkeypatch.setattr(Morsel, "__setstate__", setstate)
 
-    assert not jar.filter_cookies(url)
+    assert set(jar.filter_cookies(url)) == {"ok"}
 
 
 def test_filter_cookies_omits_unencodable_morsel() -> None:
