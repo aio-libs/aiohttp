@@ -176,7 +176,9 @@ The client session supports the context manager protocol for self closing.
 
    :param ssl: Default SSL validation mode for requests made through this
       session. ``True`` for default SSL check
-      (:func:`ssl.create_default_context` is used),
+      (:func:`ssl.create_default_context` is used, or
+      ``truststore.SSLContext`` when ``truststore`` is installed,
+      see :class:`TCPConnector`'s *ssl* parameter),
       ``False`` for skip SSL certificate validation,
       :class:`aiohttp.Fingerprint` for fingerprint
       validation, :class:`ssl.SSLContext` for custom SSL
@@ -524,7 +526,9 @@ The client session supports the context manager protocol for self closing.
             If :class:`float` is passed it is a *total* timeout (in seconds).
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
+                  (:func:`ssl.create_default_context` is used, or
+                  ``truststore.SSLContext`` when ``truststore`` is
+                  installed, see :class:`TCPConnector`'s *ssl* parameter),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -793,7 +797,9 @@ The client session supports the context manager protocol for self closing.
       :param str proxy: Proxy URL, :class:`str` or :class:`~yarl.URL` (optional)
 
       :param ssl: SSL validation mode. ``True`` for default SSL check
-                  (:func:`ssl.create_default_context` is used),
+                  (:func:`ssl.create_default_context` is used, or
+                  ``truststore.SSLContext`` when ``truststore`` is
+                  installed, see :class:`TCPConnector`'s *ssl* parameter),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1022,7 +1028,9 @@ certification chaining.
         total timeout, 30 seconds socket connect timeout by default.
 
    :param ssl: SSL validation mode. ``True`` for default SSL check
-               (:func:`ssl.create_default_context` is used),
+               (:func:`ssl.create_default_context` is used, or
+               ``truststore.SSLContext`` when ``truststore`` is
+               installed, see :class:`TCPConnector`'s *ssl* parameter),
                ``False`` for skip SSL certificate validation,
                :class:`aiohttp.Fingerprint` for fingerprint
                validation, :class:`ssl.SSLContext` for custom SSL
@@ -1241,7 +1249,9 @@ is controlled by *force_close* constructor's parameter).
    :class:`BaseConnector` plus several TCP-specific ones:
 
       :param ssl: **(DEPRECATED)** SSL validation mode. ``True`` for default
-                  SSL check (:func:`ssl.create_default_context` is used),
+                  SSL check (:func:`ssl.create_default_context` is used, or
+                  ``truststore.SSLContext`` when the optional
+                  ``truststore`` package is installed, see below),
                   ``False`` for skip SSL certificate validation,
                   :class:`aiohttp.Fingerprint` for fingerprint
                   validation, :class:`ssl.SSLContext` for custom SSL
@@ -1251,6 +1261,20 @@ is controlled by *force_close* constructor's parameter).
                   *fingerprint* parameters.
 
          .. versionadded:: 3.0
+
+         .. versionchanged:: 3.15
+
+            When ``truststore`` is installed
+            (:command:`pip install aiohttp[truststore]`), the default
+            SSL check verifies
+            against the OS-native trust store instead of the
+            certifi-derived bundle stdlib :mod:`ssl` uses, matching
+            certificate trust decisions made by other tools on the
+            same machine. This only applies to the default check;
+            passing an explicit :class:`ssl.SSLContext` is unaffected.
+            Also applies wherever *ssl* is passed to :class:`ClientSession`
+            or per request instead, since both resolve to the same
+            default context.
 
          .. deprecated:: 4.0
 
