@@ -1,5 +1,6 @@
 """codspeed benchmarks for cookies."""
 
+import itertools
 from http.cookies import BaseCookie
 from typing import TYPE_CHECKING
 
@@ -68,12 +69,16 @@ def test_update_cookies_from_headers(benchmark: BenchmarkFixture) -> None:
 
 
 def test_update_cookies_from_headers_replacing(benchmark: BenchmarkFixture) -> None:
-    """Benchmark a response replacing cookies already in the jar."""
+    """Benchmark a response replacing the values of cookies already in the jar."""
     jar = CookieJar()
     url = URL("https://www.example.com/")
-    headers = [f"cookie{i}=value{i}; Path=/; Max-Age=3600" for i in range(20)]
-    jar.update_cookies_from_headers(headers, url)
+    # Alternate values so every call replaces each stored cookie.
+    header_sets = itertools.cycle(
+        [f"cookie{i}={value}{i}; Path=/; Max-Age=3600" for i in range(20)]
+        for value in ("old", "new")
+    )
+    jar.update_cookies_from_headers(next(header_sets), url)
 
     @benchmark
     def _run() -> None:
-        jar.update_cookies_from_headers(headers, url)
+        jar.update_cookies_from_headers(next(header_sets), url)
