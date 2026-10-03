@@ -360,3 +360,35 @@ async def test_app_runner_serve_forever_multiple_times(
         task.cancel()
         with pytest.raises(asyncio.CancelledError):
             await task
+
+
+async def test_app_runner_serve_forever_serves_requests(
+    app: web.Application, make_runner: _RunnerMaker
+) -> None:
+    async def hello(request: web.Request) -> web.Response:
+        return web.Response(text="Hello, world")
+
+    app.router.add_get("/", hello)
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    task = asyncio.ensure_future(runner.serve_forever())
+    try:
+        await asyncio.sleep(0)
+        assert not task.done()
+        host, port = runner.addresses[0]
+        reader, writer = await asyncio.open_connection(host, port)
+        try:
+            writer.write(
+                b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
+            )
+            raw = await reader.read(-1)
+        finally:
+            writer.close()
+        assert raw.split(b"\r\n", 1)[0].endswith(b"200 OK")
+        assert b"Hello, world" in raw
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task

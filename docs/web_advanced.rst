@@ -1069,11 +1069,10 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
 
-    await runner.serve_forever()
-
-To stop serving call :meth:`AppRunner.cleanup`::
-
-    await runner.cleanup()
+    try:
+        await runner.serve_forever()
+    finally:
+        await runner.cleanup()
 
 .. versionadded:: 3.0
 

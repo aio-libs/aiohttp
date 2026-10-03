@@ -2815,8 +2815,12 @@ application on specific TCP or Unix socket, e.g.::
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
-    # wait for finish signal
-    await runner.serve_forever()
+
+    try:
+        # wait for finish signal
+        await runner.serve_forever()
+    finally:
+        await runner.cleanup()
 
 
 .. versionadded:: 3.0
@@ -2860,6 +2864,10 @@ application on specific TCP or Unix socket, e.g.::
 
       Wait forever. Make sure to call :meth:`setup` prior to calling this
       method. Only one :meth:`serve_forever` task is allowed per runner object.
+      Call :meth:`cleanup` to stop serving, typically from a ``finally``
+      block around :meth:`serve_forever`.
+
+      .. versionadded:: 4.0
 
    .. method:: cleanup()
       :async:
