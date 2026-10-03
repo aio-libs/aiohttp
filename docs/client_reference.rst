@@ -2537,7 +2537,9 @@ Utilities
 
    Cookies parsed from responses are limited to 50 valid ``Set-Cookie``
    fields per response, 4,096 octets for a cookie's name and value, and
-   1,024 octets per attribute value; anything beyond that is ignored.
+   1,024 octets per attribute value; anything beyond that is ignored. Flags
+   such as ``Secure`` ignore their value, so an oversized value still sets
+   them.
 
    The jar stores at most 180 cookies per domain and 3,300 in total, and
    sends at most 150 cookies and 8,190 octets, including ``Cookie:``, per

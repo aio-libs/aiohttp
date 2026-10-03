@@ -12,7 +12,7 @@ import time
 import warnings
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from types import MappingProxyType
 from typing import Union, cast
 
@@ -716,7 +716,12 @@ class CookieJar(AbstractCookieJar):
         self, jar_key: _JarKey, name: str, cookie: Morsel[str]
     ) -> _MorselEntry | None:
         """Build the morsel to send, or None if it can't be sent."""
-        morsel = self._build_morsel(cookie)
+        try:
+            morsel = self._build_morsel(cookie)
+        except CookieError:
+            # CPython builds with the CVE-2026-3644 patch reject control
+            # characters that an older runtime stored.
+            return None
         pair = f"{morsel.key}={morsel.coded_value}"
         # The stored cookie comes back, attributes and all, when CPython
         # rejects a control character in its value; never send it.

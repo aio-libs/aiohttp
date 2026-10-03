@@ -2330,6 +2330,29 @@ def test_filter_cookies_omits_cookie_cpython_rejects(
     assert not jar.filter_cookies(url)
 
 
+@pytest.mark.parametrize("quote_cookie", (True, False))
+def test_filter_cookies_omits_morsel_cpython_cannot_build(
+    monkeypatch: pytest.MonkeyPatch, quote_cookie: bool
+) -> None:
+    url = URL("https://example.com/")
+    morsel: Morsel[str] = Morsel()
+    morsel._key, morsel._value = "sid", "a\x07b"  # type: ignore[attr-defined]
+    morsel._coded_value = "a\x07b"  # type: ignore[attr-defined]
+    jar = CookieJar(quote_cookie=quote_cookie)
+    jar.update_cookies({"sid": morsel}, url)
+    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
+
+    def setstate(self: Morsel[str], state: dict[str, str]) -> None:
+        # Mirror CPython builds with the CVE-2026-3644 patch.
+        if "\x07" in state["value"]:
+            raise CookieError("Control characters are not allowed")
+        original_setstate(self, state)
+
+    monkeypatch.setattr(Morsel, "__setstate__", setstate)
+
+    assert not jar.filter_cookies(url)
+
+
 def test_filter_cookies_omits_unencodable_morsel() -> None:
     jar = _jar_with_raw_cookie("\udcff")
 
