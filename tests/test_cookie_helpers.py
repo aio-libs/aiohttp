@@ -164,6 +164,13 @@ def test_parse_set_cookie_headers_quoted_attribute_values(
     assert result[0][1]["secure"] == secure
 
 
+@pytest.mark.parametrize("header", ("c=v; Path=/x; =junk", "c=v; =junk; Path=/x"))
+def test_parse_set_cookie_headers_skips_malformed_attribute(header: str) -> None:
+    result = parse_set_cookie_headers([header])
+
+    assert result[0][1]["path"] == "/x"
+
+
 def test_parse_set_cookie_headers_quoted_value_with_trailing_text() -> None:
     # Text after the closing quote means the quoted value isn't the whole
     # pair, so the pair ends at the first semicolon.
