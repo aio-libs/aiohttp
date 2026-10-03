@@ -174,6 +174,26 @@ def test_parse_set_cookie_headers_skips_malformed_attribute(header: str) -> None
     assert result[0][1]["path"] == "/x"
 
 
+@pytest.mark.parametrize(
+    "header",
+    (
+        'a=b; Path="/x\\012y"; Secure',
+        'a=b; Comment="hi\\011there"; Secure',
+        'a=b; Comment="hi\tthere"; Secure',
+    ),
+)
+def test_parse_set_cookie_headers_ignores_attribute_with_control_character(
+    header: str,
+) -> None:
+    """Control characters, even from unquoting, drop just the attribute."""
+    result = parse_set_cookie_headers([header])
+
+    assert len(result) == 1
+    assert result[0][1]["path"] == ""
+    assert result[0][1]["comment"] == ""
+    assert result[0][1]["secure"] is True
+
+
 def test_parse_set_cookie_headers_quoted_value_with_trailing_text() -> None:
     # Text after the closing quote means the quoted value isn't the whole
     # pair, so the pair ends at the first semicolon.

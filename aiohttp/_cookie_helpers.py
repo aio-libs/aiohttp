@@ -323,8 +323,10 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
             or attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH
         ):
             continue
-        if "\t" not in attr_value:
-            morsel[lower_key] = _unquote(attr_value)
+        # Patched CPython rejects control characters, even ones produced by
+        # unquoting, so ignore such an attribute rather than raise.
+        if _COOKIE_CTL_RE.search(value := _unquote(attr_value)) is None:
+            morsel[lower_key] = value
 
 
 def _parse_quoted_pair(header: str) -> tuple[str, str, int] | None:
