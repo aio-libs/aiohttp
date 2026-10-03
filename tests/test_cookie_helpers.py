@@ -148,7 +148,7 @@ def test_parse_set_cookie_headers_many_unknown_attributes() -> None:
 @pytest.mark.parametrize(
     ("attribute", "path", "secure"),
     (
-        ('Path="/\u00e9"', '"/\u00e9"', ""),
+        ('Path="/\u00e9"', "/\u00e9", ""),
         ('Path="/\udcff"', "", ""),
         ('Secure="\udcff"', "", True),
         ('Path="/a\tb"', "", ""),

@@ -1745,16 +1745,58 @@ def test_cookie_jar_purge_expired_cookies_keep_live_ones() -> None:
     assert "cookie66_0" in names
 
 
+def test_filter_cookies_host_cookies_win_over_parent_domain_cookies() -> None:
+    jar = CookieJar()
+    sibling = URL("https://other.example.com/")
+    for batch in range(3):
+        jar.update_cookies_from_headers(
+            [f"p{batch}_{i}=v; Domain=example.com" for i in range(50)], sibling
+        )
+    jar.update_cookies_from_headers(["session=mine"], URL("https://app.example.com/"))
+
+    filtered = jar.filter_cookies(URL("https://app.example.com/"))
+
+    assert len(filtered) == cookiejar_module._MAX_COOKIES_PER_REQUEST
+    assert filtered["session"].value == "mine"
+
+
+def test_update_cookies_unquotes_domain_and_path_attributes() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ['a=1; Domain="example.com"; Path="/app"'], URL("https://example.com/")
+    )
+
+    assert set(jar.filter_cookies(URL("https://sub.example.com/app"))) == {"a"}
+
+
+@pytest.mark.parametrize(
+    ("response_url", "domain"),
+    ((URL("https://example.com/"), "example.com"), (URL(), "")),
+)
+def test_filter_cookies_tracks_stored_cookie_name(
+    response_url: URL, domain: str
+) -> None:
+    jar = CookieJar()
+    cookies: SimpleCookie = SimpleCookie()
+    cookies["real"] = "value"
+    jar.update_cookies({"alias": cookies["real"]}, response_url)
+
+    jar.filter_cookies(URL("https://example.com/"))
+
+    assert set(jar._access_generations) == {(domain, "", "alias")}
+
+
 def test_filter_cookies_cached_length_counts_octets() -> None:
     jar = CookieJar(quote_cookie=False)
     url = URL("https://example.com/")
     # 8 + len("a=") + 2 * 4089 octets is 8,188: "a" fits alone, "a" and "b" don't.
-    jar.update_cookies({"a": "\u00e9" * 4089, "b": "xx"}, url)
+    jar.update_cookies({"a": "\u00e9" * 4089}, url)
+    assert set(jar.filter_cookies(url)) == {"a"}
 
-    first = jar.filter_cookies(url)
-    cached = jar.filter_cookies(url)
+    jar.update_cookies({"b": "xx"}, url)
 
-    assert set(first) == set(cached) == {"a"}
+    # "b" is admitted first; the cached "a" must be measured in octets.
+    assert set(jar.filter_cookies(url)) == {"b"}
 
 
 def test_cookie_jar_send_updates_eviction_recency() -> None:
@@ -2265,12 +2307,12 @@ def test_filter_cookies_limits_do_not_restore_shadowed_domain_cookie() -> None:
     filtered = jar.filter_cookies(URL("https://app.example.com/"))
 
     assert filtered["sid"].value == "GOOD" * 10
-    assert "b" not in filtered
+    assert "a" not in filtered
     assert len(b"Cookie: " + filtered.output(header="", sep="; ").strip().encode()) <= (
         cookiejar_module._MAX_COOKIE_HEADER_LENGTH
     )
     assert "sid" not in jar._morsel_cache[("example.com", "")]
-    assert "b" not in jar._morsel_cache[("example.com", "")]
+    assert "a" not in jar._morsel_cache[("example.com", "")]
     assert "sid" in jar._morsel_cache[("app.example.com", "")]
 
 

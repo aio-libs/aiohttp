@@ -312,7 +312,7 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
             if is_flag:
                 morsel[lower_key] = True
             elif "\t" not in attr_value:
-                morsel[lower_key] = attr_value
+                morsel[lower_key] = _unquote(attr_value)
 
 
 def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[str]]]:
