@@ -583,6 +583,9 @@ class CookieJar(AbstractCookieJar):
                 self._host_only_cookies.discard(cookie_key)
             if deadline is not None:
                 self._expire_cookie(deadline, domain, path, name)
+            else:
+                # RFC 6265 5.3 step 11: a replacement doesn't inherit expiry.
+                self._expirations.pop(cookie_key, None)
 
             if stored != cookie:
                 # Don't blow away the cache if the same

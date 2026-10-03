@@ -1901,6 +1901,54 @@ def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
     assert jar._expire_heap_entries == set(jar._expire_heap)
 
 
+def test_session_cookie_replacement_drops_old_expiry() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    with freeze_time("2030-01-01") as freezer:
+        jar.update_cookies_from_headers(["sid=old; Max-Age=60"], url)
+        jar.update_cookies_from_headers(["sid=new"], url)
+        freezer.tick(120)
+
+        assert jar.filter_cookies(url)["sid"].value == "new"
+
+
+def test_cookie_jar_load_session_replacement_drops_old_expiry(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "colliding-cookies.json"
+    with freeze_time("2030-01-01") as freezer:
+        deadline = datetime.datetime.now(datetime.timezone.utc).timestamp() + 60
+        file_path.write_text(
+            json.dumps(
+                {
+                    "example.com|": {
+                        "sid": {
+                            "key": "sid",
+                            "value": "old",
+                            "coded_value": "old",
+                            "domain": "example.com",
+                            "expires_timestamp": deadline,
+                        }
+                    },
+                    "example.com|/": {
+                        "sid": {
+                            "key": "sid",
+                            "value": "new",
+                            "coded_value": "new",
+                            "domain": "example.com",
+                        }
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
+        jar = CookieJar()
+        jar.load(file_path)
+        freezer.tick(120)
+
+        assert jar.filter_cookies(URL("https://example.com/"))["sid"].value == "new"
+
+
 def test_cookie_jar_load_replacement_clears_stale_expiration(tmp_path: Path) -> None:
     file_path = tmp_path / "colliding-cookies.json"
     file_path.write_text(

@@ -1,0 +1,2 @@
+Fixed a replaced cookie keeping the previous cookie's expiry when the new cookie
+has none -- by :user:`bdraco`.
