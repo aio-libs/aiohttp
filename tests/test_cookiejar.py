@@ -1911,7 +1911,7 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     assert not jar._expire_heap
 
 
-def test_cookie_jar_load_failure_leaves_bounded_jar(tmp_path: Path) -> None:
+def test_cookie_jar_load_failure_leaves_jar_unchanged(tmp_path: Path) -> None:
     file_path = tmp_path / "late-invalid-expiration.json"
     deadline = 4102444800.0
     cookies = {
@@ -1933,11 +1933,12 @@ def test_cookie_jar_load_failure_leaves_bounded_jar(tmp_path: Path) -> None:
     }
     file_path.write_text(json.dumps({"example.com|": cookies}), encoding="utf-8")
     jar = CookieJar()
+    jar.update_cookies({"existing": "value"}, URL("https://example.com/"))
 
     with pytest.raises(ValueError, match="must be a finite number"):
         jar.load(file_path)
 
-    assert len(jar) <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert [cookie.key for cookie in jar] == ["existing"]
 
 
 def test_cookie_jar_load_rejects_mismatched_record_name(tmp_path: Path) -> None:

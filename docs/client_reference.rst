@@ -2610,7 +2610,8 @@ Utilities
 
       Load cookies from a JSON file at the provided path.
 
-      The jar's storage limits apply to the loaded cookies.
+      The jar's storage limits apply to the loaded cookies. If the file is
+      malformed, an exception is raised and the jar is left unchanged.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.

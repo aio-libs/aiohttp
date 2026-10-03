@@ -212,7 +212,8 @@ class CookieJar(AbstractCookieJar):
         """Load cookies from a JSON file.
 
         Replaces the current jar contents; loaded cookies pass through the
-        same acceptance rules as :meth:`update_cookies`.
+        same acceptance rules as :meth:`update_cookies`. A malformed file
+        raises and leaves the jar unchanged.
 
         :param file_path: Path to file from where cookies will be
             imported, :class:`str` or :class:`pathlib.Path` instance.
@@ -226,7 +227,8 @@ class CookieJar(AbstractCookieJar):
         self, data: dict[str, dict[str, dict[str, str | bool | float]]]
     ) -> None:
         """Replace contents, routing cookies through _update_cookies()."""
-        self.clear()
+        # Build every record before clearing so a bad file changes nothing.
+        records: list[tuple[str, Morsel[str], URL, float | None]] = []
         for compound_key, cookie_data in data.items():
             domain, path = compound_key.split("|", 1)
             for name, morsel_data in cookie_data.items():
@@ -268,12 +270,12 @@ class CookieJar(AbstractCookieJar):
                 response_url = (
                     URL.build(scheme="https", host=domain) if domain else URL()
                 )
-                self._update_cookies(
-                    {name: morsel},
-                    response_url,
-                    copy_morsels=False,
-                    expiration=expiration,
-                )
+                records.append((name, morsel, response_url, expiration))
+        self.clear()
+        for name, morsel, response_url, expiration in records:
+            self._update_cookies(
+                {name: morsel}, response_url, copy_morsels=False, expiration=expiration
+            )
         self._do_expiration()
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
