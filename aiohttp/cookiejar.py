@@ -57,6 +57,9 @@ _MAX_COOKIES_PER_REQUEST = 150
 _MAX_COOKIE_HEADER_LENGTH = 8190
 _COOKIE_HEADER_PREFIX_LENGTH = len(b"Cookie: ")
 
+# Attributes the jar parses as strings when loading a saved jar.
+_STR_ATTRS = frozenset(("domain", "path", "expires"))
+
 # Not persisted; the absolute deadline is saved instead.
 _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 
@@ -254,7 +257,8 @@ class CookieJar(AbstractCookieJar):
                         "value",
                         "coded_value",
                     ):
-                        if not isinstance(value := morsel_data[attr], (str, bool)):
+                        value = morsel_data[attr]
+                        if attr in _STR_ATTRS and not isinstance(value, str):
                             raise ValueError(
                                 f"Cookie attribute {attr!r} has an invalid value"
                             )
@@ -716,7 +720,9 @@ class CookieJar(AbstractCookieJar):
         """Build the morsel to send, or None if it can't be sent."""
         morsel = self._build_morsel(cookie)
         pair = f"{morsel.key}={morsel.coded_value}"
-        if _COOKIE_CTL_RE.search(pair) is not None:
+        # The stored cookie comes back, attributes and all, when CPython
+        # rejects a control character in its value; never send it.
+        if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
             return None
         if (length := _encoded_length(pair)) is None:
             return None

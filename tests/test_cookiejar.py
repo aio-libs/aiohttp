@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import stat
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
 from types import MappingProxyType
@@ -1904,6 +1904,22 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     assert not jar._expire_heap
 
 
+def test_cookie_jar_save_load_round_trips_numeric_attribute(tmp_path: Path) -> None:
+    url = URL("https://example.com/")
+    cookies: SimpleCookie = SimpleCookie()
+    cookies["sid"] = "value"
+    cookies["sid"]["version"] = 1
+    jar = CookieJar()
+    jar.update_cookies(cookies, url)
+    file_path = tmp_path / "cookies.json"
+    jar.save(file_path)
+
+    loaded = CookieJar()
+    loaded.load(file_path)
+
+    assert [cookie.key for cookie in loaded] == ["sid"]
+
+
 def test_cookie_jar_load_invalid_attribute_leaves_jar_unchanged(
     tmp_path: Path,
 ) -> None:
@@ -2276,6 +2292,29 @@ def test_filter_cookies_over_limit_skips_unserializable_morsels() -> None:
 
     assert len(filtered) == cookiejar_module._MAX_COOKIES_PER_REQUEST
     assert "cookie" not in filtered
+
+
+def test_filter_cookies_omits_cookie_cpython_rejects(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A control character escaped in the coded value is still never sent."""
+    url = URL("https://example.com/")
+    morsel: Morsel[str] = Morsel()
+    morsel._key, morsel._value = "sid", "a\x07b"  # type: ignore[attr-defined]
+    morsel._coded_value = '"a\\007b"'  # type: ignore[attr-defined]
+    jar = CookieJar()
+    jar.update_cookies({"sid": morsel}, url)
+    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
+
+    def setstate(self: Morsel[str], state: dict[str, str]) -> None:
+        # Mirror CPython builds with the CVE-2026-3644 patch.
+        if "\x07" in state["value"]:
+            raise CookieError("Control characters are not allowed")
+        original_setstate(self, state)
+
+    monkeypatch.setattr(Morsel, "__setstate__", setstate)
+
+    assert not jar.filter_cookies(url)
 
 
 def test_filter_cookies_omits_unencodable_morsel() -> None:
