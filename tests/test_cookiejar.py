@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import stat
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
 from types import MappingProxyType
@@ -2327,9 +2327,10 @@ def test_filter_cookies_limits_do_not_restore_shadowed_domain_cookie() -> None:
 def _jar_with_raw_cookie(value: str) -> CookieJar:
     jar = CookieJar()
     morsel: Morsel[str] = Morsel()
-    morsel.__setstate__(  # type: ignore[attr-defined]
-        {"key": "cookie", "value": value, "coded_value": f'"{value}"'}
-    )
+    # Bypass validation: CPython builds with the CVE-2026-3644 patch reject
+    # control characters in Morsel.__setstate__().
+    morsel._key, morsel._value = "cookie", value  # type: ignore[attr-defined]
+    morsel._coded_value = f'"{value}"'  # type: ignore[attr-defined]
     jar.update_cookies({"cookie": morsel}, URL("https://example.com/"))
     return jar
 
@@ -2341,21 +2342,6 @@ def test_filter_cookies_omits_unencodable_morsel() -> None:
     assert not any(jar._morsel_cache.values())
 
 
-def _morsel_accepts_value(value: str) -> bool:
-    morsel: Morsel[str] = Morsel()
-    try:
-        morsel.__setstate__(  # type: ignore[attr-defined]
-            {"key": "cookie", "value": value, "coded_value": f'"{value}"'}
-        )
-    except CookieError:
-        return False
-    return True
-
-
-@pytest.mark.skipif(
-    not _morsel_accepts_value("\x07"),
-    reason="this Python rejects control characters in Morsel",
-)
 def test_filter_cookies_omits_control_character_morsel() -> None:
     jar = _jar_with_raw_cookie("\x07")
 
