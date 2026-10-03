@@ -2,6 +2,7 @@ import datetime
 import heapq
 import itertools
 import json
+import logging
 import os
 import stat
 from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
@@ -1324,8 +1325,10 @@ def test_update_cookies_from_headers_duplicate_names() -> None:
     assert domains == {"example.com", "www.example.com"}
 
 
-def test_update_cookies_from_headers_invalid_cookies() -> None:
-    """Invalid Set-Cookie fields are skipped."""
+def test_update_cookies_from_headers_invalid_cookies(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test that invalid cookies are logged and skipped."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/")
 
@@ -1337,7 +1340,12 @@ def test_update_cookies_from_headers_invalid_cookies() -> None:
         "another-valid=value456",
     ]
 
-    jar.update_cookies_from_headers(headers, url)
+    # Enable logging for the client logger
+    with caplog.at_level(logging.WARNING, logger="aiohttp.client"):
+        jar.update_cookies_from_headers(headers, url)
+
+    # Check that we logged warnings for invalid cookies
+    assert "Can not load cookies" in caplog.text
 
     # Valid cookies should still be added
     assert len(jar) >= 2  # At least the two clearly valid cookies

@@ -367,12 +367,12 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         key = key.strip(" \t")
         coded_value = coded_value.strip(" \t")
 
-        if (
-            not key
-            or not _COOKIE_NAME_RE.match(key)
-            or "\t" in key
-            or "\t" in coded_value
-        ):
+        if not key:
+            continue
+        if not _COOKIE_NAME_RE.match(key):
+            internal_logger.warning("Can not load cookies: Illegal cookie name %r", key)
+            continue
+        if "\t" in coded_value:
             continue
         if key.isascii() and coded_value.isascii():
             pair_length = len(key) + len(coded_value)

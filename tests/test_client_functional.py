@@ -6,6 +6,7 @@ import datetime
 import http.cookies
 import io
 import json
+import logging
 import pathlib
 import socket
 import ssl
@@ -3132,7 +3133,9 @@ async def test_request_secure_cookie_not_sent_over_http(
         assert resp.status == 200
 
 
-async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
+async def test_set_cookies(
+    aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
+) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()
         ret.set_cookie("c1", "cookie1")
@@ -3148,11 +3151,14 @@ async def test_set_cookies(aiohttp_client: AiohttpClient) -> None:
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    async with client.get("/") as resp:
-        assert 200 == resp.status
-        cookie_names = {c.key for c in client.session.cookie_jar}
-        _ = resp.cookies
-    assert cookie_names == {"c1", "c2"}
+    with caplog.at_level(logging.WARNING):
+        async with client.get("/") as resp:
+            assert 200 == resp.status
+            cookie_names = {c.key for c in client.session.cookie_jar}
+            _ = resp.cookies
+        assert cookie_names == {"c1", "c2"}
+
+    assert "Can not load cookies: Illegal cookie name 'invalid,cookie'" in caplog.text
 
 
 async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> None:
