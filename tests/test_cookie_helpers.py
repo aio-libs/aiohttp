@@ -199,10 +199,10 @@ def test_parse_set_cookie_headers_survives_strict_morsel_setitem(
 ) -> None:
     """CPython builds with the CVE-2026-3644 patch reject these in __setitem__."""
     original_setitem = Morsel.__setitem__
+    values: list[object] = []
 
     def setitem(self: Morsel[str], key: str, value: object) -> None:
-        if isinstance(value, str) and helpers._COOKIE_CTL_RE.search(value):
-            raise CookieError("Control characters are not allowed")
+        values.append(value)
         original_setitem(self, key, value)
 
     monkeypatch.setattr(Morsel, "__setitem__", setitem)
@@ -211,6 +211,9 @@ def test_parse_set_cookie_headers_survives_strict_morsel_setitem(
 
     assert result[0][1]["path"] == ""
     assert result[0][1]["domain"] == "example.com"
+    # No value with a control character ever reaches Morsel.__setitem__.
+    assert "example.com" in values
+    assert not [v for v in values if helpers._COOKIE_CTL_RE.search(str(v))]
 
 
 def test_parse_set_cookie_headers_limits_attributes_per_field() -> None:
