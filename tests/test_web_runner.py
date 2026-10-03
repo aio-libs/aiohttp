@@ -406,3 +406,31 @@ async def test_app_runner_serve_forever_cleanup_wakes_waiter(
     await task
     assert task.done()
     assert not task.cancelled()
+
+
+async def test_app_runner_double_cleanup_runs_callbacks_once(
+    app: web.Application, make_runner: _RunnerMaker
+) -> None:
+    shutdown_calls = 0
+    cleanup_calls = 0
+
+    async def on_shutdown(app: web.Application) -> None:
+        nonlocal shutdown_calls
+        shutdown_calls += 1
+
+    async def on_cleanup(app: web.Application) -> None:
+        nonlocal cleanup_calls
+        cleanup_calls += 1
+
+    app.on_shutdown.append(on_shutdown)
+    app.on_cleanup.append(on_cleanup)
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    await runner.cleanup()
+    await task
+    await runner.cleanup()
+    assert shutdown_calls == 1
+    assert cleanup_calls == 1

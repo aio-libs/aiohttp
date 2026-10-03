@@ -303,6 +303,7 @@ class BaseRunner(ABC, Generic[_Request]):
         "_sites",
         "_shutdown_timeout",
         "_serve_forever_fut",
+        "_cleanup_done",
     )
 
     def __init__(
@@ -318,6 +319,7 @@ class BaseRunner(ABC, Generic[_Request]):
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
         self._serve_forever_fut: asyncio.Future[None] | None = None
+        self._cleanup_done = False
 
     @property
     def server(self) -> Server[_Request] | None:
@@ -350,6 +352,7 @@ class BaseRunner(ABC, Generic[_Request]):
                 # add_signal_handler is not implemented on Windows
                 pass
 
+        self._cleanup_done = False
         self._server = await self._make_server()
 
     async def serve_forever(self) -> None:
@@ -384,7 +387,9 @@ class BaseRunner(ABC, Generic[_Request]):
             self._server.pre_shutdown()
             await self.shutdown()
             await self._server.shutdown(self._shutdown_timeout)
-        await self._cleanup_server()
+        if not self._cleanup_done:
+            await self._cleanup_server()
+            self._cleanup_done = True
 
         self._server = None
         serve_forever_fut = self._serve_forever_fut
