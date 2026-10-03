@@ -1,4 +1,6 @@
 Changed ``Set-Cookie`` parsing to create exactly one cookie per field, as RFC 6265
 and browsers do. Later ``name=value`` pairs and unknown attributes no longer create
 extra cookies, a leading pair such as ``Path=/`` or ``$Version=1`` is the cookie itself,
-and legacy ``$Path`` and ``$Domain`` attributes are ignored -- by :user:`iamibi`.
+and legacy ``$Path`` and ``$Domain`` attributes are ignored. ``CookieJar.load()`` no
+longer calls ``update_cookies()``, so a subclass overriding it does not see loaded
+cookies -- by :user:`iamibi` and :user:`bdraco`.
