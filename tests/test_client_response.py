@@ -1677,6 +1677,34 @@ def test_response_duplicate_cookie_names(
     assert response.cookies["user-pref"].value == "light"  # Last one wins
 
 
+def test_response_cookies_are_bounded_but_raw_headers_remain_available(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    url = URL("http://example.com")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    cookie_headers = tuple(f"cookie{i}=value" for i in range(51))
+    headers = CIMultiDict(("Set-Cookie", value) for value in cookie_headers)
+    response._headers = HeadersDictProxy(headers)
+    response._raw_cookie_headers = cookie_headers
+
+    assert len(response.cookies) == 50
+    assert response.headers.getall("Set-Cookie") == cookie_headers
+
+
 async def test_response_raw_cookie_headers_preserved(session: ClientSession) -> None:
     """Test that raw Set-Cookie headers are preserved in _raw_cookie_headers."""
     url = URL("http://example.com")
