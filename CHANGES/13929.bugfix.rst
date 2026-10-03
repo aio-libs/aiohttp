@@ -1,0 +1,6 @@
+Tightened the HTTP/1 version parsing (``VERSRE`` and the C parser's
+``http_version()``) to only accept ``HTTP/1.0`` and ``HTTP/1.1``.
+Previously ``HTTP/0.9``, ``HTTP/2.0``, and other malformed versions
+(e.g. ``HTTP/9.9``) were accepted and could silently affect
+keep-alive and ``Host`` header handling downstream
+-- by :user:`choudhryfrompak`.
