@@ -1737,7 +1737,7 @@ async def test_redirect_cookie_storage_is_bounded(
     assert response_bytes > 1024 * 1024
     max_cookies = aiohttp.cookiejar._MAX_COOKIES_PER_DOMAIN
     assert redirect_count * fields_per_response > max_cookies
-    assert len(jar) == max_cookies
+    assert aiohttp.cookiejar._COOKIE_QUOTA_PER_DOMAIN < len(jar) <= max_cookies
     assert sum(map(len, jar._morsel_cache.values())) <= max_cookies
     assert all(
         len(b"Cookie: " + value.encode()) <= 8190

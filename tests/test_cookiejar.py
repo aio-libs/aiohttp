@@ -1575,10 +1575,18 @@ def test_cookie_jar_limits_cookies_per_domain() -> None:
 
     jar.update_cookies(cookies, url)
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    # Adding to a full domain trims it back to its quota, oldest
+    # non-secure cookies first.
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+    evicted = (
+        cookiejar_module._MAX_COOKIES_PER_DOMAIN
+        - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+        + 1
+    )
     names = {cookie.key for cookie in jar}
     assert "secure-cookie" in names
-    assert "cookie0" not in names
+    assert f"cookie{evicted - 1}" not in names
+    assert f"cookie{evicted}" in names
 
 
 def test_cookie_jar_replacement_updates_eviction_recency() -> None:
@@ -1600,6 +1608,93 @@ def test_cookie_jar_replacement_updates_eviction_recency() -> None:
     assert "cookie0" in names
     assert "cookie1" not in names
     assert "new" in names
+
+
+def _fill_domain(jar: CookieJar, url: URL, *, secure: bool) -> None:
+    jar.update_cookies(
+        [
+            (f"cookie{i}", _make_morsel(f"cookie{i}", secure=secure))
+            for i in range(cookiejar_module._MAX_COOKIES_PER_DOMAIN)
+        ],
+        url,
+    )
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+
+
+def test_cookie_jar_full_secure_domain_drops_new_non_secure_cookie() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    _fill_domain(jar, url, secure=True)
+
+    morsel = _make_morsel("new")
+    morsel["max-age"] = "3600"
+    jar.update_cookies({"new": morsel}, url)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert "new" not in {cookie.key for cookie in jar}
+    assert ("example.com", "", "new") not in jar.host_only_cookies
+    assert ("example.com", "", "new") not in jar._expirations
+
+
+def test_cookie_jar_full_secure_domain_evicts_for_new_secure_cookie() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    _fill_domain(jar, url, secure=True)
+
+    jar.update_cookies({"new": _make_morsel("new", secure=True)}, url)
+
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+    names = {cookie.key for cookie in jar}
+    assert "new" in names
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
+        not in names
+    )
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN + 1}"
+        in names
+    )
+
+
+def test_cookie_jar_evicts_expired_before_live_cookies() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    with freeze_time("2030-01-01") as freezer:
+        _fill_domain(jar, url, secure=False)
+        short_lived = _make_morsel("short-lived", secure=True)
+        short_lived["max-age"] = "10"
+        # Replacing an existing cookie in a full domain never evicts.
+        jar.update_cookies(
+            {f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - 1}": short_lived}, url
+        )
+        assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+
+        freezer.tick(60)
+        jar.update_cookies({"new": _make_morsel("new")}, url)
+
+    names = {cookie.key for cookie in jar}
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+    assert f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - 1}" not in names
+    assert "cookie0" not in names
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN - 1}"
+        not in names
+    )
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
+        in names
+    )
+    assert "new" in names
+
+
+def test_cookie_jar_deleting_cookie_does_not_evict() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    _fill_domain(jar, url, secure=False)
+
+    jar.update_cookies_from_headers(["unknown=; Max-Age=0"], url)
+
+    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
 
 
 def test_cookie_jar_send_updates_eviction_recency() -> None:
@@ -1630,23 +1725,26 @@ def test_cookie_jar_limits_total_cookies() -> None:
                 domain=f"domain{domain_index}.example",
             ),
         )
-        for domain_index in range(60)
+        for domain_index in range(66)
         for cookie_index in range(50)
     ]
+    assert len(cookies) == cookiejar_module._COOKIE_PURGE_THRESHOLD
 
     jar.update_cookies(cookies)
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
+    assert len(jar) == cookiejar_module._COOKIE_PURGE_THRESHOLD
     assert any(cookie.key == "cookie0_0" for cookie in jar)
 
     jar.update_cookies(
-        {"cookie60_0": _make_morsel("cookie60_0", domain="domain60.example")}
+        {"cookie66_0": _make_morsel("cookie66_0", domain="domain66.example")}
     )
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
+    # The jar is purged back to the total, oldest first, before adding.
+    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL + 1
     names = {cookie.key for cookie in jar}
-    assert "cookie0_0" not in names
-    assert "cookie60_0" in names
+    assert "cookie5_49" not in names
+    assert "cookie6_0" in names
+    assert "cookie66_0" in names
 
 
 def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> None:
@@ -1668,10 +1766,17 @@ def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> No
 
     jar.load(file_path)
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     names = {cookie.key for cookie in jar}
     assert "old" not in names
-    assert "cookie0" not in names
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
+        not in names
+    )
+    assert (
+        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN + 1}"
+        in names
+    )
     assert f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN}" in names
     assert jar._next_access_generation == cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1
 
@@ -1697,7 +1802,7 @@ def test_cookie_jar_load_enforces_limits_once(tmp_path: Path) -> None:
         jar.load(file_path)
 
     assert enforce_limits.call_count == 1
-    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     assert "cookie0" not in {cookie.key for cookie in jar}
 
 
@@ -1723,7 +1828,7 @@ def test_cookie_jar_load_compacts_expirations_after_limit_eviction(
 
     jar.load(file_path)
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     assert len(jar._expirations) == len(jar)
     assert len(jar._expire_heap) == len(jar)
     assert jar._expire_heap_entries == set(jar._expire_heap)
@@ -1829,7 +1934,11 @@ def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
 
     jar.update_cookies(cookies, URL("https://example.com/"))
 
-    assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    assert (
+        cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+        < len(jar)
+        <= cookiejar_module._MAX_COOKIES_PER_DOMAIN
+    )
     assert len(jar._expirations) == len(jar)
     assert len(jar._expire_heap) == len(jar)
     assert jar._expire_heap_entries == set(jar._expire_heap)

@@ -2543,18 +2543,22 @@ Utilities
    * 50 accepted ``Set-Cookie`` fields per response;
    * 4,096 encoded octets for a cookie's name and value together, and 1,024
      encoded octets for an attribute value;
-   * 180 stored cookies per exact domain and 3,000 stored cookies in total;
+   * 180 stored cookies per exact domain and 3,300 stored cookies in total;
    * 150 jar cookies and 8,190 encoded octets, including the ``Cookie:`` field
      name and following space, per generated request header.
 
-   Excess response cookies and attributes are ignored. When storage limits
-   are reached, expired cookies are removed first, then least-recently-used
-   cookies are evicted (preferring non-secure cookies for per-domain
-   eviction). Matching and same-name overwrite precedence is resolved before
-   output limits are applied; selected cookies that do not fit a generated
-   request header are omitted.
-   The total-cookie eviction order is global, so reaching the total cap can
-   evict an older cookie from another origin, including a ``Secure`` cookie.
+   Excess response cookies and attributes are ignored. Eviction follows
+   Firefox. Adding a new cookie to a domain that already holds 180 cookies
+   first evicts expired and non-secure cookies, least recently used first,
+   until the domain is back to 150. If the domain holds only live ``Secure``
+   cookies, a new ``Secure`` cookie evicts the least recently used of them
+   and a new non-secure cookie is dropped instead. Adding a new cookie when
+   the jar holds 3,300 cookies removes expired cookies and then the least
+   recently used cookies until 3,000 remain. This total eviction order is
+   global, so it can evict an older cookie from another origin, including a
+   ``Secure`` cookie. Matching and same-name overwrite precedence is resolved
+   before output limits are applied; selected cookies that do not fit a
+   generated request header are omitted.
 
    Storage and output limits apply to every cookie kept in this jar, including
    cookies supplied through :class:`ClientSession`, :meth:`update_cookies`,
