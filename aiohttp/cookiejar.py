@@ -31,6 +31,8 @@ __all__ = ("CookieJar", "DummyCookieJar")
 
 
 CookieItem = Union[str, "Morsel[str]"]
+_JarKey = tuple[str, str]  # (domain, path)
+_CookieKey = tuple[str, str, str]  # (domain, path, name)
 
 # We cache these string methods here as their use is in performance critical code.
 _FORMAT_PATH = "{}/{}".format
@@ -112,14 +114,12 @@ class CookieJar(AbstractCookieJar):
         quote_cookie: bool = True,
         treat_as_secure_origin: StrOrURL | Iterable[StrOrURL] | None = None,
     ) -> None:
-        self._cookies: defaultdict[tuple[str, str], SimpleCookie] = defaultdict(
-            SimpleCookie
-        )
-        self._morsel_cache: defaultdict[tuple[str, str], dict[str, Morsel[str]]] = (
-            defaultdict(dict)
+        self._cookies: defaultdict[_JarKey, SimpleCookie] = defaultdict(SimpleCookie)
+        self._morsel_cache: defaultdict[_JarKey, dict[str, Morsel[str]]] = defaultdict(
+            dict
         )
         # Cookie identity is (domain, path, name).
-        self._host_only_cookies: set[tuple[str, str, str]] = set()
+        self._host_only_cookies: set[_CookieKey] = set()
         self._unsafe = unsafe
         self._quote_cookie = quote_cookie
         if treat_as_secure_origin is None:
@@ -137,9 +137,9 @@ class CookieJar(AbstractCookieJar):
                     for url in treat_as_secure_origin
                 }
             )
-        self._expire_heap: list[tuple[float, tuple[str, str, str]]] = []
-        self._expirations: dict[tuple[str, str, str], float] = {}
-        self._access_generations: dict[tuple[str, str, str], int] = {}
+        self._expire_heap: list[tuple[float, _CookieKey]] = []
+        self._expirations: dict[_CookieKey, float] = {}
+        self._access_generations: dict[_CookieKey, int] = {}
         self._next_access_generation = 0
         self._domain_counts: dict[str, int] = {}
         self._cookie_count = 0
@@ -347,7 +347,7 @@ class CookieJar(AbstractCookieJar):
             heapq.heapify(self._expire_heap)
 
         now = time.time()
-        to_del: list[tuple[str, str, str]] = []
+        to_del: list[_CookieKey] = []
         # Find any expired cookies and add them to the to-delete list
         while self._expire_heap:
             when, cookie_key = self._expire_heap[0]
@@ -364,7 +364,7 @@ class CookieJar(AbstractCookieJar):
         if to_del:
             self._delete_cookies(to_del)
 
-    def _delete_cookies(self, to_del: list[tuple[str, str, str]]) -> None:
+    def _delete_cookies(self, to_del: list[_CookieKey]) -> None:
         for domain, path, name in to_del:
             cookie_key = (domain, path, name)
             jar_key = (domain, path)
@@ -385,7 +385,7 @@ class CookieJar(AbstractCookieJar):
             self._expirations.pop(cookie_key, None)
             self._access_generations.pop(cookie_key, None)
 
-    def _touch_cookie(self, cookie_key: tuple[str, str, str]) -> None:
+    def _touch_cookie(self, cookie_key: _CookieKey) -> None:
         """Record a monotonic last-access generation for a stored cookie."""
         self._next_access_generation += 1
         self._access_generations[cookie_key] = self._next_access_generation
@@ -411,8 +411,8 @@ class CookieJar(AbstractCookieJar):
         count = self._domain_counts.get(domain, 0)
         if count <= target:
             return True
-        non_secure: list[tuple[int, tuple[str, str, str]]] = []
-        secure: list[tuple[int, tuple[str, str, str]]] = []
+        non_secure: list[tuple[int, _CookieKey]] = []
+        secure: list[tuple[int, _CookieKey]] = []
         for (cookie_domain, path), cookies in self._cookies.items():
             if cookie_domain != domain:
                 continue
@@ -613,7 +613,7 @@ class CookieJar(AbstractCookieJar):
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
         # Last (most specific) matching cookie per name wins.
-        selected: dict[str, tuple[tuple[str, str], Morsel[str]]] = {}
+        selected: dict[str, tuple[_JarKey, Morsel[str]]] = {}
 
         # Send shared cookie
         key = ("", "")
@@ -662,7 +662,7 @@ class CookieJar(AbstractCookieJar):
         # Apply the limits most specific first so a host's own cookies are
         # never crowded out by parent-domain ones.
         header_length = _COOKIE_HEADER_PREFIX_LENGTH
-        admitted: list[tuple[str, tuple[str, str], Morsel[str]]] = []
+        admitted: list[tuple[str, _JarKey, Morsel[str]]] = []
         for name, (jar_key, cookie) in reversed(selected.items()):
             if self._limits_enabled and len(admitted) >= _MAX_COOKIES_PER_REQUEST:
                 break
