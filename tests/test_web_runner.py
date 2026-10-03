@@ -329,7 +329,7 @@ async def test_app_runner_serve_forever_uninitialized(
     make_runner: _RunnerMaker,
 ) -> None:
     runner = make_runner()
-    with pytest.raises(RuntimeError, match="Call setup() first"):
+    with pytest.raises(RuntimeError, match="Call setup\\(\\) first"):
         await runner.serve_forever()
 
 

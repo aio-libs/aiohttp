@@ -1,3 +1,3 @@
-Added :meth:`BaseRunner.serve_forever() <aiohttp.web_runner.BaseRunner.serve_forever>`
-that waits forever until cancelled, mirroring :meth:`asyncio.Server.serve_forever`
+Added ``BaseRunner.serve_forever()``
+that waits forever until cancelled, mirroring ``asyncio.Server.serve_forever()``
 -- by :user:`Mubashir78`.
