@@ -18,7 +18,11 @@ from typing import Union, cast
 
 from yarl import URL
 
-from ._cookie_helpers import parse_set_cookie_headers, preserve_morsel_with_coded_value
+from ._cookie_helpers import (
+    _COOKIE_CTL_RE,
+    parse_set_cookie_headers,
+    preserve_morsel_with_coded_value,
+)
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
 from .typedefs import LooseCookies, PathLike, StrOrURL
@@ -45,10 +49,18 @@ _MAX_COOKIES_TOTAL = 3000
 _MAX_COOKIES_PER_REQUEST = 150
 _MAX_COOKIE_HEADER_LENGTH = 8190
 _COOKIE_HEADER_PREFIX_LENGTH = len(b"Cookie: ")
-_COOKIE_OUTPUT_CTL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 # Not persisted; the absolute deadline is saved instead.
 _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
+
+
+def _cached_morsel_length(morsel: Morsel[str]) -> int:
+    """Return the encoded length of a validated ``name=value`` morsel."""
+    key = morsel.key
+    coded_value = morsel.coded_value
+    if key.isascii() and coded_value.isascii():
+        return len(key) + 1 + len(coded_value)
+    return len(f"{key}={coded_value}".encode())
 
 
 class CookieJar(AbstractCookieJar):
@@ -338,19 +350,10 @@ class CookieJar(AbstractCookieJar):
 
     def _do_expiration(self) -> None:
         """Remove expired cookies."""
-        if not (expire_heap_len := len(self._expire_heap)):
+        if not self._expire_heap:
             return
 
-        # If the expiration heap grows larger than the number expirations
-        # times two, we clean it up to avoid keeping expired entries in
-        # the heap and consuming memory. We guard this with a minimum
-        # threshold to avoid cleaning up the heap too often when there are
-        # only a few scheduled expirations.
-        if (
-            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
-            and expire_heap_len > len(self._expirations) * 2
-        ):
-            self._compact_expiration_heap()
+        self._maybe_compact_expiration_heap()
 
         now = time.time()
         to_del: list[tuple[str, str, str]] = []
@@ -369,13 +372,22 @@ class CookieJar(AbstractCookieJar):
 
         if to_del:
             self._delete_cookies(to_del)
-            if (
-                len(self._expire_heap) > _MIN_SCHEDULED_COOKIE_EXPIRATION
-                and len(self._expire_heap) > len(self._expirations) * 2
-            ):
-                # Deleting the current expiration can expose stale, later
-                # entries that were not eligible for the pre-pop compaction.
-                self._compact_expiration_heap()
+            # Deleting the current expiration can expose stale, later
+            # entries that were not eligible for the pre-pop compaction.
+            self._maybe_compact_expiration_heap()
+
+    def _maybe_compact_expiration_heap(self) -> None:
+        # If the expiration heap grows larger than the number expirations
+        # times two, we clean it up to avoid keeping expired entries in
+        # the heap and consuming memory. We guard this with a minimum
+        # threshold to avoid cleaning up the heap too often when there are
+        # only a few scheduled expirations.
+        expire_heap_len = len(self._expire_heap)
+        if (
+            expire_heap_len > _MIN_SCHEDULED_COOKIE_EXPIRATION
+            and expire_heap_len > len(self._expirations) * 2
+        ):
+            self._compact_expiration_heap()
 
     def _compact_expiration_heap(self) -> None:
         """Discard physical heap entries without matching expiration metadata."""
@@ -412,17 +424,19 @@ class CookieJar(AbstractCookieJar):
         """Evict cookies that exceed per-domain or total storage limits."""
         if not self._limits_enabled:
             return
-        cookies_by_domain: defaultdict[str, list[tuple[str, str, str]]] = defaultdict(
-            list
-        )
-        for (domain, path), cookies in self._cookies.items():
-            cookies_by_domain[domain].extend((domain, path, name) for name in cookies)
-
+        domain_counts: defaultdict[str, int] = defaultdict(int)
+        for (domain, _), cookies in self._cookies.items():
+            domain_counts[domain] += len(cookies)
         to_del: list[tuple[str, str, str]] = []
-        for cookie_keys in cookies_by_domain.values():
-            excess = len(cookie_keys) - _MAX_COOKIES_PER_DOMAIN
-            if excess <= 0:
+        for over_domain, count in domain_counts.items():
+            if (excess := count - _MAX_COOKIES_PER_DOMAIN) <= 0:
                 continue
+            cookie_keys = [
+                (domain, path, name)
+                for (domain, path), cookies in self._cookies.items()
+                if domain == over_domain
+                for name in cookies
+            ]
             # RFC 10025 evicts non-secure cookies before secure cookies within
             # an overfull domain, using oldest access within each group.
             cookie_keys.sort(
@@ -432,12 +446,13 @@ class CookieJar(AbstractCookieJar):
                 )
             )
             to_del.extend(cookie_keys[:excess])
+            domain_counts[over_domain] = _MAX_COOKIES_PER_DOMAIN
 
         evicted = bool(to_del)
         if evicted:
             self._delete_cookies(to_del)
 
-        total = len(self)
+        total = sum(domain_counts.values())
         if total > _MAX_COOKIES_TOTAL:
             cookie_keys = [
                 (domain, path, name)
@@ -606,82 +621,25 @@ class CookieJar(AbstractCookieJar):
                 request_origin = request_url.origin()
             is_not_secure = request_origin not in self._treat_as_secure_origin
 
-        header_length = _COOKIE_HEADER_PREFIX_LENGTH
-        emitted_keys: dict[str, tuple[str, str, str]] = {}
-        matching_cookies: dict[str, tuple[tuple[str, str], Morsel[str]]] = {}
-
-        def morsel_length(morsel: Morsel[str]) -> int | None:
-            output = morsel.OutputString()
-            if _COOKIE_OUTPUT_CTL_RE.search(output) is not None:
-                return None
-            try:
-                return len(output.encode("utf-8"))
-            except UnicodeEncodeError:
-                return None
-
-        def add_cookie(jar_key: tuple[str, str], cookie: Morsel[str]) -> None:
-            """Add one matching cookie without exceeding request limits."""
-            nonlocal header_length
-            name = cookie.key
-            old_morsel = filtered.get(name)
-            if (
-                self._limits_enabled
-                and old_morsel is None
-                and len(filtered) >= _MAX_COOKIES_PER_REQUEST
-            ):
-                return
-
-            cached_morsel = self._morsel_cache.get(jar_key, {}).get(name)
-            morsel = cached_morsel or self._build_morsel(cookie)
-            if (length := morsel_length(morsel)) is None:
-                return
-            if old_morsel is None:
-                new_header_length = header_length + length
-                if filtered:
-                    new_header_length += 2  # "; " between cookie-pairs
-            else:
-                old_length = morsel_length(old_morsel)
-                if old_length is None:
-                    return
-                new_header_length = header_length - old_length + length
-
-            if self._limits_enabled and new_header_length > _MAX_COOKIE_HEADER_LENGTH:
-                return
-
-            if cached_morsel is None:
-                self._morsel_cache[jar_key][name] = morsel
-            filtered[name] = morsel
-            emitted_keys[name] = jar_key + (name,)
-            header_length = new_header_length
-
-        def select_cookie(jar_key: tuple[str, str], cookie: Morsel[str]) -> None:
-            """Select the last matching cookie for each name."""
-            matching_cookies[cookie.key] = (jar_key, cookie)
-
-        def emit_selected_cookies() -> None:
-            """Serialize selected cookies within the outbound limits."""
-            for jar_key, cookie in matching_cookies.values():
-                add_cookie(jar_key, cookie)
-            for cookie_key in emitted_keys.values():
-                self._touch_cookie(cookie_key)
+        # Last matching cookie per name wins.
+        selected: dict[str, tuple[tuple[str, str], Morsel[str]]] = {}
 
         # Send shared cookie
         key = ("", "")
         for cookie in self._cookies.get(key, {}).values():
             if is_not_secure and cookie["secure"]:
                 continue
-            select_cookie(key, cookie)
+            selected[cookie.key] = (key, cookie)
 
-        if is_ip_address(hostname):
-            if not self._unsafe:
-                emit_selected_cookies()
-                return filtered
-            domains: Iterable[str] = (hostname,)
-        else:
+        if not is_ip_address(hostname):
             # Get all the subdomains that might match a cookie (e.g. "foo.bar.com", "bar.com", "com")
-            domains = itertools.accumulate(
+            domains: Iterable[str] = itertools.accumulate(
                 reversed(hostname.split(".")), _FORMAT_DOMAIN_REVERSED
             )
+        elif self._unsafe:
+            domains = (hostname,)
+        else:
+            domains = ()
 
         # Get all the path prefixes that might match a cookie (e.g. "", "/foo", "/foo/bar")
         paths = itertools.accumulate(request_url.path.split("/"), _FORMAT_PATH)
@@ -706,9 +664,40 @@ class CookieJar(AbstractCookieJar):
                 if is_not_secure and cookie["secure"]:
                     continue
 
-                select_cookie(p, cookie)
+                selected[name] = (p, cookie)
 
-        emit_selected_cookies()
+        header_length = _COOKIE_HEADER_PREFIX_LENGTH
+        for jar_key, cookie in selected.values():
+            if self._limits_enabled and len(filtered) >= _MAX_COOKIES_PER_REQUEST:
+                break
+            name = cookie.key
+            morsels = self._morsel_cache.get(jar_key)
+            if morsels is not None and (morsel := morsels.get(name)) is not None:
+                store = False
+                length = _cached_morsel_length(morsel)
+            else:
+                morsel = self._build_morsel(cookie)
+                output = morsel.OutputString()
+                # _cached_morsel_length assumes a bare name=value morsel.
+                store = output == f"{name}={morsel.coded_value}"
+                if _COOKIE_CTL_RE.search(output) is not None:
+                    continue
+                try:
+                    length = len(output.encode("utf-8"))
+                except UnicodeEncodeError:
+                    continue
+            if filtered:
+                length += 2  # "; " between cookie-pairs
+            if (
+                self._limits_enabled
+                and header_length + length > _MAX_COOKIE_HEADER_LENGTH
+            ):
+                continue
+            if store:
+                self._morsel_cache[jar_key][name] = morsel
+            header_length += length
+            filtered[name] = morsel
+            self._touch_cookie(jar_key + (name,))
 
         return filtered
 

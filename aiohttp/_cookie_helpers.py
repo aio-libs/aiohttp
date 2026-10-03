@@ -50,7 +50,7 @@ _MAX_COOKIE_PAIR_LENGTH = 4096
 _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH = 1024
 
 _COOKIE_FORBIDDEN_CTL_RE = re.compile(r"[\x00-\x08\x0a-\x1f\x7f]")
-_COOKIE_DECODED_CTL_RE = re.compile(r"[\x00-\x1f\x7f]")
+_COOKIE_CTL_RE = re.compile(r"[\x00-\x1f\x7f]")
 
 # SimpleCookie's pattern for parsing cookies with relaxed validation
 # Based on http.cookies pattern but extended to allow more characters in cookie names
@@ -306,7 +306,7 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         # aiohttp has historically accepted semicolons inside a properly
         # quoted first value. Preserve that narrow compatibility extension,
         # while never interpreting its contents as additional cookies.
-        compatibility_match = _COOKIE_PATTERN.match(header, 0)
+        compatibility_match = _COOKIE_PATTERN.match(header) if '"' in header else None
         compatibility_value = (
             compatibility_match.group("val") if compatibility_match else None
         )
@@ -323,13 +323,7 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                     compatibility_match.group("key"),
                     compatibility_value,
                 )
-                attributes_start = compatibility_match.end("val")
-                while (
-                    attributes_start < len(header) and header[attributes_start] in " \t"
-                ):
-                    attributes_start += 1
-                if attributes_start < len(header) and header[attributes_start] == ";":
-                    attributes_start += 1
+                attributes_start = len(header) - len(tail) + bool(tail)
 
         if parsed_pair is None:
             pair_end = header.find(";")
@@ -337,12 +331,10 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                 pair_end = len(header)
             else:
                 attributes_start = pair_end + 1
-            name_value_pair = header[:pair_end]
-            if "=" in name_value_pair:
-                key, coded_value = name_value_pair.split("=", 1)
-                parsed_pair = (key, coded_value)
-            else:
-                parsed_pair = ("", name_value_pair)
+            key, sep, coded_value = header[:pair_end].partition("=")
+            if not sep:
+                continue
+            parsed_pair = (key, coded_value)
 
         key, coded_value = parsed_pair
         key = key.strip(" \t")
@@ -355,15 +347,20 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
             or "\t" in coded_value
         ):
             continue
-        try:
-            pair_length = len(key.encode("utf-8")) + len(coded_value.encode("utf-8"))
-        except UnicodeEncodeError:
-            continue
+        if key.isascii() and coded_value.isascii():
+            pair_length = len(key) + len(coded_value)
+        else:
+            try:
+                pair_length = len(key.encode("utf-8")) + len(
+                    coded_value.encode("utf-8")
+                )
+            except UnicodeEncodeError:
+                continue
         if pair_length > _MAX_COOKIE_PAIR_LENGTH:
             continue
 
         value = _unquote(coded_value)
-        if _COOKIE_DECODED_CTL_RE.search(value) is not None:
+        if _COOKIE_CTL_RE.search(value) is not None:
             continue
         morsel: Morsel[str] = Morsel()
         try:
@@ -396,15 +393,6 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                 attr_key = attribute_match.group("key")
                 attr_value = attribute_match.group("val") or ""
 
-                try:
-                    attr_value_length = len(
-                        attr_value.encode("utf-8", "surrogateescape")
-                    )
-                except UnicodeEncodeError:
-                    continue
-                if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
-                    continue
-
                 lower_key = attr_key.lower()
                 if lower_key not in _COOKIE_KNOWN_ATTRS:
                     # RFC 10025: ignore unrecognized cookie attributes.
@@ -412,19 +400,27 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
                 if not morsel.isReservedKey(lower_key):
                     # Python versions before 3.14 do not expose Partitioned.
                     continue
-                if lower_key in _COOKIE_BOOL_ATTRS:
-                    morsel[lower_key] = True
-                    continue
 
-                # Retained attributes are included by Morsel.OutputString().
-                # Ignore values Python's serializer cannot represent safely.
-                if "\t" in attr_value:
+                is_flag = lower_key in _COOKIE_BOOL_ATTRS
+                if attr_value.isascii():
+                    attr_value_length = len(attr_value)
+                else:
+                    # Flag values are discarded, so only retained values
+                    # must be strictly encodable for Morsel.OutputString().
+                    try:
+                        attr_value_length = len(
+                            attr_value.encode(
+                                "utf-8", "surrogateescape" if is_flag else "strict"
+                            )
+                        )
+                    except UnicodeEncodeError:
+                        continue
+                if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
                     continue
-                try:
-                    attr_value.encode("utf-8")
-                except UnicodeEncodeError:
-                    continue
-                morsel[lower_key] = attr_value
+                if is_flag:
+                    morsel[lower_key] = True
+                elif "\t" not in attr_value:
+                    morsel[lower_key] = attr_value
 
         parsed_cookies.append((key, morsel))
 
