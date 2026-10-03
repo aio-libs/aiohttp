@@ -5,7 +5,7 @@ import json
 import logging
 import os
 import stat
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
 from types import MappingProxyType
@@ -2331,82 +2331,61 @@ def _jar_with_raw_cookie(value: str) -> CookieJar:
     return jar
 
 
-def test_filter_cookies_over_limit_skips_unserializable_morsels() -> None:
-    url = URL("https://example.com/")
-    jar = CookieJar()
-    jar.update_cookies(
-        {f"c{i}": "v" for i in range(cookiejar_module._MAX_COOKIES_PER_REQUEST + 1)},
-        url,
-    )
-    raw = _jar_with_raw_cookie("\x07")
-    jar.update_cookies(raw._cookies[("example.com", "")], url)
-
-    filtered = jar.filter_cookies(url)
-
-    assert len(filtered) == cookiejar_module._MAX_COOKIES_PER_REQUEST
-    assert "cookie" not in filtered
-
-
-def test_filter_cookies_omits_cookie_cpython_rejects(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """A control character escaped in the coded value is still never sent."""
-    url = URL("https://example.com/")
-    morsel: Morsel[str] = Morsel()
-    morsel._key, morsel._value = "sid", "a\x07b"  # type: ignore[attr-defined]
-    morsel._coded_value = '"a\\007b"'  # type: ignore[attr-defined]
-    jar = CookieJar()
-    jar.update_cookies({"sid": morsel}, url)
-    jar.update_cookies({"ok": "value"}, url)
-    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
-
-    def setstate(self: Morsel[str], state: dict[str, str]) -> None:
-        # Mirror CPython builds with the CVE-2026-3644 patch.
-        if "\x07" in state["value"]:
-            raise CookieError("Control characters are not allowed")
-        original_setstate(self, state)
-
-    monkeypatch.setattr(Morsel, "__setstate__", setstate)
-
-    assert set(jar.filter_cookies(url)) == {"ok"}
-
-
-@pytest.mark.parametrize("quote_cookie", (True, False))
-def test_filter_cookies_omits_morsel_cpython_cannot_build(
-    monkeypatch: pytest.MonkeyPatch, quote_cookie: bool
+@pytest.mark.parametrize(
+    ("coded_value", "quote_cookie"),
+    (('"a\\007b"', True), ("a\x07b", True), ("a\x07b", False)),
+)
+def test_update_cookies_rejects_control_character_value(
+    coded_value: str, quote_cookie: bool
 ) -> None:
     url = URL("https://example.com/")
     morsel: Morsel[str] = Morsel()
     morsel._key, morsel._value = "sid", "a\x07b"  # type: ignore[attr-defined]
-    morsel._coded_value = "a\x07b"  # type: ignore[attr-defined]
+    morsel._coded_value = coded_value  # type: ignore[attr-defined]
     jar = CookieJar(quote_cookie=quote_cookie)
+
     jar.update_cookies({"sid": morsel}, url)
     jar.update_cookies({"ok": "value"}, url)
-    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
 
-    def setstate(self: Morsel[str], state: dict[str, str]) -> None:
-        # Mirror CPython builds with the CVE-2026-3644 patch.
-        if "\x07" in state["value"]:
-            raise CookieError("Control characters are not allowed")
-        original_setstate(self, state)
-
-    monkeypatch.setattr(Morsel, "__setstate__", setstate)
-
+    assert [cookie.key for cookie in jar] == ["ok"]
     assert set(jar.filter_cookies(url)) == {"ok"}
 
 
-def test_filter_cookies_omits_unencodable_morsel() -> None:
+def test_update_cookies_rejects_unencodable_morsel() -> None:
     jar = _jar_with_raw_cookie("\udcff")
 
+    assert len(jar) == 0
     assert not jar.filter_cookies(URL("https://example.com/"))
-    assert not any(jar._morsel_cache.values())
 
 
-def test_filter_cookies_omits_control_character_morsel() -> None:
-    jar = _jar_with_raw_cookie("\x07")
+def test_update_cookies_rejects_control_character_morsel(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        jar = _jar_with_raw_cookie("\x07")
 
-    assert not jar.filter_cookies(URL("https://example.com/"))
-    assert not any(jar._morsel_cache.values())
+    assert len(jar) == 0
+    assert "Dropped cookie 'cookie' for example.com" in caplog.text
+
+
+def test_cookie_jar_load_skips_cookie_that_cannot_be_sent(tmp_path: Path) -> None:
+    file_path = tmp_path / "cookies.json"
+    file_path.write_text(
+        json.dumps(
+            {
+                "example.com|": {
+                    "good": _saved_cookie("good"),
+                    "bad": _saved_cookie("bad", "\udcff"),
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    jar = CookieJar()
+
+    jar.load(file_path)
+
+    assert [cookie.key for cookie in jar] == ["good"]
 
 
 def test_update_cookies_copies_caller_morsel() -> None:

@@ -12,7 +12,7 @@ import time
 import warnings
 from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
-from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
+from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType
 from typing import Union, cast
 
@@ -452,7 +452,13 @@ class CookieJar(AbstractCookieJar):
         if headers and (cookies_to_update := parse_set_cookie_headers(headers)):
             # The freshly parsed Morsels are not shared with the caller,
             # so they can be stored and normalized without a defensive copy.
-            self._update_cookies(cookies_to_update, response_url, copy_morsels=False)
+            # The parser only produces cookies that can be sent.
+            self._update_cookies(
+                cookies_to_update,
+                response_url,
+                copy_morsels=False,
+                check_sendable=False,
+            )
 
     def _update_cookies(
         self,
@@ -461,6 +467,7 @@ class CookieJar(AbstractCookieJar):
         *,
         copy_morsels: bool,
         expiration: float | None = None,
+        check_sendable: bool = True,
     ) -> None:
         hostname = response_url.raw_host
 
@@ -536,6 +543,14 @@ class CookieJar(AbstractCookieJar):
                     deadline = expire_time
                 else:
                     cookie["expires"] = ""
+
+            if check_sendable and self._limits_enabled and not self._can_send(cookie):
+                internal_logger.debug(
+                    "Dropped cookie %r for %s: it can't be sent in a Cookie header",
+                    name,
+                    domain,
+                )
+                continue
 
             key = (domain, path)
             cookie_key = (domain, path, name)
@@ -678,8 +693,7 @@ class CookieJar(AbstractCookieJar):
         for name, (jar_key, cookie) in selected.items():
             morsels = self._morsel_cache.get(jar_key)
             if morsels is None or (entry := morsels.get(name)) is None:
-                if (entry := self._sendable_morsel(jar_key, name, cookie)) is None:
-                    continue
+                entry = self._morsel_entry(jar_key, name, cookie)
                 new_entries.append((jar_key, name, entry))
             morsel, length, cookie_key = entry
             sent[name] = morsel
@@ -709,8 +723,7 @@ class CookieJar(AbstractCookieJar):
                 break
             morsels = self._morsel_cache.get(jar_key)
             if morsels is None or (entry := morsels.get(name)) is None:
-                if (entry := self._sendable_morsel(jar_key, name, cookie)) is None:
-                    continue
+                entry = self._morsel_entry(jar_key, name, cookie)
             if header_length + 2 + entry[1] > _MAX_COOKIE_HEADER_LENGTH:
                 continue
             header_length += 2 + entry[1]
@@ -723,23 +736,21 @@ class CookieJar(AbstractCookieJar):
         self._touch_cookies([entry[2] for _, _, entry in admitted])
         return filtered
 
-    def _sendable_morsel(
+    @staticmethod
+    def _can_send(cookie: Morsel[str]) -> bool:
+        """Return whether the cookie can be written to a Cookie header."""
+        # Whichever of value and coded_value is sent, CPython builds with the
+        # CVE-2026-3644 patch also reject control characters in either.
+        text = f"{cookie.key}={cookie.value}{cookie.coded_value}"
+        return _COOKIE_CTL_RE.search(text) is None and _encoded_length(text) is not None
+
+    def _morsel_entry(
         self, jar_key: _JarKey, name: str, cookie: Morsel[str]
-    ) -> _MorselEntry | None:
-        """Build the morsel to send, or None if it can't be sent."""
-        try:
-            morsel = self._build_morsel(cookie)
-        except CookieError:
-            # CPython builds with the CVE-2026-3644 patch reject control
-            # characters that an older runtime stored.
-            return None
+    ) -> _MorselEntry:
+        """Build the morsel to send; stored cookies always fit a Cookie header."""
+        morsel = self._build_morsel(cookie)
         pair = f"{morsel.key}={morsel.coded_value}"
-        # The stored cookie comes back, attributes and all, when CPython
-        # rejects a control character in its value; never send it.
-        if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
-            return None
-        if (length := _encoded_length(pair)) is None:
-            return None
+        length = len(pair) if pair.isascii() else len(pair.encode())
         return morsel, length, jar_key + (name,)
 
     def _touch_cookies(self, cookie_keys: Sequence[_CookieKey]) -> None:
