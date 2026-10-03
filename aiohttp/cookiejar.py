@@ -568,7 +568,8 @@ class CookieJar(AbstractCookieJar):
                     self._domain_counts[domain] = self._domain_counts.get(domain, 0) + 1
                 self._cookies[key][name] = cookie
                 self._morsel_cache[key].pop(name, None)
-            self._touch_cookie(cookie_key)
+            if self._limits_enabled:
+                self._touch_cookie(cookie_key)
 
         self._do_expiration()
 
@@ -649,11 +650,16 @@ class CookieJar(AbstractCookieJar):
 
         # Apply the limits most specific first so a host's own cookies are
         # never crowded out by parent-domain ones.
-        limits = self._limits_enabled
+        if not self._limits_enabled:
+            # Per-request cookies: nothing to limit, cache or keep recent.
+            for name, (_, cookie) in selected.items():
+                filtered[name] = self._build_morsel(cookie)
+            return filtered
+
         header_length = _COOKIE_HEADER_PREFIX_LENGTH
         admitted: list[tuple[str, _JarKey, Morsel[str]]] = []
         for name, (jar_key, cookie) in reversed(selected.items()):
-            if limits and len(admitted) >= _MAX_COOKIES_PER_REQUEST:
+            if len(admitted) >= _MAX_COOKIES_PER_REQUEST:
                 break
             morsels = self._morsel_cache.get(jar_key)
             if morsels is not None and (cached := morsels.get(name)) is not None:
@@ -670,10 +676,7 @@ class CookieJar(AbstractCookieJar):
                     continue
                 length = encoded_length
             separator = 2 if admitted else 0  # "; " between cookie-pairs
-            if (
-                limits
-                and header_length + separator + length > _MAX_COOKIE_HEADER_LENGTH
-            ):
+            if header_length + separator + length > _MAX_COOKIE_HEADER_LENGTH:
                 continue
             if cached is None:
                 self._morsel_cache[jar_key][name] = (morsel, length)

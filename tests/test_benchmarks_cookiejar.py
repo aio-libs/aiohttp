@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 import pytest
 from yarl import URL
 
-from aiohttp.cookiejar import CookieJar
+from aiohttp.cookiejar import CookieJar, _UnlimitedCookieJar
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -27,7 +27,7 @@ async def test_load_cookies_into_temp_cookiejar(benchmark: BenchmarkFixture) -> 
 
     @benchmark
     def _run() -> None:
-        tmp_cookie_jar = CookieJar()
+        tmp_cookie_jar = _UnlimitedCookieJar()
         tmp_cookie_jar.update_cookies(cookies)
         req_cookies = tmp_cookie_jar.filter_cookies(url)
         all_cookies.load(req_cookies)
