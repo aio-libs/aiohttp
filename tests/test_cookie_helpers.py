@@ -194,6 +194,34 @@ def test_parse_set_cookie_headers_ignores_attribute_with_control_character(
     assert result[0][1]["secure"] is True
 
 
+def test_parse_set_cookie_headers_survives_strict_morsel_setitem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CPython builds with the CVE-2026-3644 patch reject these in __setitem__."""
+    original_setitem = Morsel.__setitem__
+
+    def setitem(self: Morsel[str], key: str, value: object) -> None:
+        if isinstance(value, str) and helpers._COOKIE_CTL_RE.search(value):
+            raise CookieError("Control characters are not allowed")
+        original_setitem(self, key, value)
+
+    monkeypatch.setattr(Morsel, "__setitem__", setitem)
+
+    result = parse_set_cookie_headers(['a=b; Path="/x\\012y"; Domain=example.com'])
+
+    assert result[0][1]["path"] == ""
+    assert result[0][1]["domain"] == "example.com"
+
+
+def test_parse_set_cookie_headers_limits_attributes_per_field() -> None:
+    limit = helpers._MAX_COOKIE_ATTRIBUTES
+    within = "c=v; " + "x=1; " * (limit - 1) + "Path=/within"
+    beyond = "c=v; " + "x=1; " * limit + "Path=/beyond"
+
+    assert parse_set_cookie_headers([within])[0][1]["path"] == "/within"
+    assert parse_set_cookie_headers([beyond])[0][1]["path"] == ""
+
+
 def test_parse_set_cookie_headers_quoted_value_with_trailing_text() -> None:
     # Text after the closing quote means the quoted value isn't the whole
     # pair, so the pair ends at the first semicolon.

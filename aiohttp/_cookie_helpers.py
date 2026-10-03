@@ -47,6 +47,8 @@ _COOKIE_BOOL_ATTRS = frozenset(  # AKA Morsel._flags
 _MAX_COOKIES_PER_RESPONSE = 50
 _MAX_COOKIE_PAIR_LENGTH = 4096
 _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH = 1024
+# Like Chromium's ParsedCookie::kMaxPairs, but more lenient.
+_MAX_COOKIE_ATTRIBUTES = 32
 
 # Where the next attribute can start: skips runs of ";" and whitespace.
 _ATTRIBUTE_START_RE = re.compile(r"[^;\s]", re.ASCII)
@@ -291,7 +293,9 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
     # of this cookie, never a new cookie.
     index = 0
     end = len(attributes)
-    while index < end:
+    for _ in range(_MAX_COOKIE_ATTRIBUTES):
+        if index >= end:
+            break
         if (attribute_match := _COOKIE_PATTERN.match(attributes, index)) is None:
             # Skip a malformed segment and any run of ";" or whitespace after it.
             if (
@@ -302,10 +306,7 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
             index = start.start()
             continue
         index = attribute_match.end()
-        attr_key = attribute_match.group("key")
-        attr_value = attribute_match.group("val") or ""
-
-        lower_key = attr_key.lower()
+        lower_key = attribute_match.group("key").lower()
         if lower_key not in _COOKIE_KNOWN_ATTRS:
             # RFC 6265 Section 5.2: ignore unknown attributes.
             continue
@@ -317,6 +318,7 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
             # Like Firefox, a flag's value is ignored.
             morsel[lower_key] = True
             continue
+        attr_value = attribute_match.group("val") or ""
         attr_value_length = _encoded_length(attr_value)
         if (
             attr_value_length is None
