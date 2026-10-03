@@ -145,6 +145,52 @@ def test_parse_set_cookie_headers_many_unknown_attributes() -> None:
     assert "unknown" not in result[0][1]
 
 
+@pytest.mark.parametrize(
+    ("attribute", "path", "secure"),
+    (
+        ('Path="/\u00e9"', '"/\u00e9"', ""),
+        ('Path="/\udcff"', "", ""),
+        ('Secure="\udcff"', "", True),
+        ('Path="/a\tb"', "", ""),
+        ('Path="/' + "\u00e9" * 600 + '"', "", ""),
+    ),
+)
+def test_parse_set_cookie_headers_quoted_attribute_values(
+    attribute: str, path: str, secure: str | bool
+) -> None:
+    result = parse_set_cookie_headers([f"cookie=value; {attribute}"])
+
+    assert result[0][1]["path"] == path
+    assert result[0][1]["secure"] == secure
+
+
+def test_parse_set_cookie_headers_quoted_value_with_trailing_text() -> None:
+    # Text after the closing quote means the quoted value isn't the whole
+    # pair, so the pair ends at the first semicolon.
+    result = parse_set_cookie_headers(['name="a;b" junk; Path=/x'])
+
+    assert len(result) == 1
+    assert result[0][1].coded_value == '"a'
+    assert result[0][1]["path"] == "/x"
+
+
+def test_parse_set_cookie_headers_skips_rejected_morsels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original_setstate = Morsel.__setstate__  # type: ignore[attr-defined]
+
+    def setstate(self: Morsel[str], state: dict[str, str]) -> None:
+        if state["key"] == "rejected":
+            raise CookieError()
+        original_setstate(self, state)
+
+    monkeypatch.setattr("aiohttp._cookie_helpers.Morsel.__setstate__", setstate)
+
+    result = parse_set_cookie_headers(["rejected=value", "kept=value"])
+
+    assert [name for name, _ in result] == ["kept"]
+
+
 def test_parse_set_cookie_headers_boolean_attribute_value_limits() -> None:
     accepted_value = "x" * 1024
     ignored_value = accepted_value + "x"
