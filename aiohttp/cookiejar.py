@@ -59,15 +59,6 @@ _COOKIE_HEADER_PREFIX_LENGTH = len(b"Cookie: ")
 _RELATIVE_EXPIRY_ATTRS = frozenset(("max-age", "expires"))
 
 
-def _cached_morsel_length(morsel: Morsel[str]) -> int:
-    """Return the encoded length of a validated ``name=value`` morsel."""
-    key = morsel.key
-    coded_value = morsel.coded_value
-    if key.isascii() and coded_value.isascii():
-        return len(key) + 1 + len(coded_value)
-    return len(f"{key}={coded_value}".encode())
-
-
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
@@ -116,8 +107,9 @@ class CookieJar(AbstractCookieJar):
         treat_as_secure_origin: StrOrURL | Iterable[StrOrURL] | None = None,
     ) -> None:
         self._cookies: defaultdict[_JarKey, SimpleCookie] = defaultdict(SimpleCookie)
-        self._morsel_cache: defaultdict[_JarKey, dict[str, Morsel[str]]] = defaultdict(
-            dict
+        # Built morsels and their encoded name=value length.
+        self._morsel_cache: defaultdict[_JarKey, dict[str, tuple[Morsel[str], int]]] = (
+            defaultdict(dict)
         )
         # Cookie identity is (domain, path, name).
         self._host_only_cookies: set[_CookieKey] = set()
@@ -547,6 +539,10 @@ class CookieJar(AbstractCookieJar):
                 and self._limits_enabled
                 # Like Firefox, a cookie that only deletes never evicts others.
                 and (deadline is None or deadline > time.time())
+                and (
+                    self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN
+                    or self._cookie_count >= _MAX_COOKIES_TOTAL
+                )
                 and not self._make_room(domain, bool(cookie["secure"]))
             ):
                 continue
@@ -653,40 +649,43 @@ class CookieJar(AbstractCookieJar):
 
         # Apply the limits most specific first so a host's own cookies are
         # never crowded out by parent-domain ones.
+        limits = self._limits_enabled
         header_length = _COOKIE_HEADER_PREFIX_LENGTH
         admitted: list[tuple[str, _JarKey, Morsel[str]]] = []
         for name, (jar_key, cookie) in reversed(selected.items()):
-            if self._limits_enabled and len(admitted) >= _MAX_COOKIES_PER_REQUEST:
+            if limits and len(admitted) >= _MAX_COOKIES_PER_REQUEST:
                 break
             morsels = self._morsel_cache.get(jar_key)
-            if morsels is not None and (morsel := morsels.get(name)) is not None:
-                store = False
-                length = _cached_morsel_length(morsel)
+            if morsels is not None and (cached := morsels.get(name)) is not None:
+                morsel, length = cached
             else:
+                cached = None
                 morsel = self._build_morsel(cookie)
-                output = morsel.OutputString()
-                # _cached_morsel_length assumes a bare name=value morsel.
-                store = output == f"{morsel.key}={morsel.coded_value}"
-                if _COOKIE_CTL_RE.search(output) is not None:
+                pair = f"{morsel.key}={morsel.coded_value}"
+                # A fallback to the stored cookie only happens for control
+                # characters, so it is never sent.
+                if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
                     continue
-                if (encoded_length := _encoded_length(output)) is None:
+                if (encoded_length := _encoded_length(pair)) is None:
                     continue
                 length = encoded_length
-            if admitted:
-                length += 2  # "; " between cookie-pairs
+            separator = 2 if admitted else 0  # "; " between cookie-pairs
             if (
-                self._limits_enabled
-                and header_length + length > _MAX_COOKIE_HEADER_LENGTH
+                limits
+                and header_length + separator + length > _MAX_COOKIE_HEADER_LENGTH
             ):
                 continue
-            if store:
-                self._morsel_cache[jar_key][name] = morsel
-            header_length += length
+            if cached is None:
+                self._morsel_cache[jar_key][name] = (morsel, length)
+            header_length += separator + length
             admitted.append((name, jar_key, morsel))
 
+        # One access generation per request, like Firefox's last-accessed time.
+        self._next_access_generation += 1
+        generation = self._next_access_generation
         for name, jar_key, morsel in reversed(admitted):
             filtered[name] = morsel
-            self._touch_cookie(jar_key + (name,))
+            self._access_generations[jar_key + (name,)] = generation
 
         return filtered
 

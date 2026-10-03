@@ -2320,7 +2320,7 @@ async def test_shared_cookie_cache_population() -> None:
     assert "shared" in jar._morsel_cache[("", "")]
 
     # Verify the cached morsel is the same one returned
-    cached_morsel = jar._morsel_cache[("", "")]["shared"]
+    cached_morsel = jar._morsel_cache[("", "")]["shared"][0]
     assert cached_morsel is filtered["shared"]
 
 
