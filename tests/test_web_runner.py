@@ -323,3 +323,40 @@ def test_run_after_asyncio_run() -> None:
 
     web.run_app(app)
     assert called, "run_app() should work after asyncio.run()."
+
+
+async def test_app_runner_serve_forever_uninitialized(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    with pytest.raises(RuntimeError, match="Call setup() first"):
+        await runner.serve_forever()
+
+
+async def test_app_runner_serve_forever_concurrent_call(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    with pytest.raises(RuntimeError, match="Concurrent calls"):
+        await runner.serve_forever()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def test_app_runner_serve_forever_multiple_times(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    for _ in range(3):
+        task = asyncio.ensure_future(runner.serve_forever())
+        await asyncio.sleep(0)
+        assert not task.done()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
