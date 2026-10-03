@@ -55,6 +55,8 @@ else:
         "define_macros": [("LLHTTP_STRICT_MODE", 0)],
         "include_dirs": ["vendor/llhttp/build"],
     }
+    # Compiles to nothing outside WebAssembly; see the comment in the file.
+    llhttp_sources.append("aiohttp/_llhttp_wasm_shim.c")
 
 cython_trace_macros = [("CYTHON_TRACE", 1)] if CYTHON_TRACING else []
 if cython_trace_macros:
