@@ -2245,6 +2245,22 @@ def _jar_with_raw_cookie(value: str) -> CookieJar:
     return jar
 
 
+def test_filter_cookies_over_limit_skips_unserializable_morsels() -> None:
+    url = URL("https://example.com/")
+    jar = CookieJar()
+    jar.update_cookies(
+        {f"c{i}": "v" for i in range(cookiejar_module._MAX_COOKIES_PER_REQUEST + 1)},
+        url,
+    )
+    raw = _jar_with_raw_cookie("\x07")
+    jar.update_cookies(raw._cookies[("example.com", "")], url)
+
+    filtered = jar.filter_cookies(url)
+
+    assert len(filtered) == cookiejar_module._MAX_COOKIES_PER_REQUEST
+    assert "cookie" not in filtered
+
+
 def test_filter_cookies_omits_unencodable_morsel() -> None:
     jar = _jar_with_raw_cookie("\udcff")
 

@@ -34,6 +34,8 @@ __all__ = ("CookieJar", "DummyCookieJar")
 CookieItem = Union[str, "Morsel[str]"]
 _JarKey = tuple[str, str]  # (domain, path)
 _CookieKey = tuple[str, str, str]  # (domain, path, name)
+# A built morsel, its encoded name=value length and the cookie's key.
+_MorselEntry = tuple["Morsel[str]", int, _CookieKey]
 
 # We cache these string methods here as their use is in performance critical code.
 _FORMAT_PATH = "{}/{}".format
@@ -108,8 +110,8 @@ class CookieJar(AbstractCookieJar):
     ) -> None:
         self._cookies: defaultdict[_JarKey, SimpleCookie] = defaultdict(SimpleCookie)
         # Built morsels and their encoded name=value length.
-        self._morsel_cache: defaultdict[_JarKey, dict[str, tuple[Morsel[str], int]]] = (
-            defaultdict(dict)
+        self._morsel_cache: defaultdict[_JarKey, dict[str, _MorselEntry]] = defaultdict(
+            dict
         )
         # Cookie identity is (domain, path, name).
         self._host_only_cookies: set[_CookieKey] = set()
@@ -382,6 +384,8 @@ class CookieJar(AbstractCookieJar):
     def _make_room(self, domain: str, secure: bool) -> bool:
         """Evict for a new cookie like Firefox; False drops the new cookie.
 
+        Called once the domain or the jar is full.
+
         Mirrors AddCookie and FindStaleCookies: expired, then non-secure,
         cookies go first, least recently used first; secure cookies are only
         evicted for another secure cookie.
@@ -410,7 +414,7 @@ class CookieJar(AbstractCookieJar):
                 candidates = secure_keys
             candidates.sort()
             self._delete_cookies([key for _, key in candidates[:excess]])
-        elif self._cookie_count >= _MAX_COOKIES_TOTAL:
+        else:
             self._purge_cookies()
         return True
 
@@ -652,45 +656,84 @@ class CookieJar(AbstractCookieJar):
         # never crowded out by parent-domain ones.
         if not self._limits_enabled:
             # Per-request cookies: nothing to limit, cache or keep recent.
-            for name, (_, cookie) in selected.items():
-                filtered[name] = self._build_morsel(cookie)
+            dict.update(
+                filtered,
+                {name: self._build_morsel(c) for name, (_, c) in selected.items()},
+            )
             return filtered
 
-        header_length = _COOKIE_HEADER_PREFIX_LENGTH
-        admitted: list[tuple[str, _JarKey, Morsel[str]]] = []
+        # The limits rarely bind, so first send the cookies as selected.
+        header_length = _COOKIE_HEADER_PREFIX_LENGTH - 2  # no "; " before the first
+        new_entries: list[tuple[_JarKey, str, _MorselEntry]] = []
+        sent: dict[str, Morsel[str]] = {}
+        sent_keys: list[_CookieKey] = []
+        for name, (jar_key, cookie) in selected.items():
+            morsels = self._morsel_cache.get(jar_key)
+            if morsels is None or (entry := morsels.get(name)) is None:
+                if (entry := self._sendable_morsel(jar_key, name, cookie)) is None:
+                    continue
+                new_entries.append((jar_key, name, entry))
+            morsel, length, cookie_key = entry
+            sent[name] = morsel
+            header_length += 2 + length
+            sent_keys.append(cookie_key)
+
+        if (
+            len(sent_keys) > _MAX_COOKIES_PER_REQUEST
+            or header_length > _MAX_COOKIE_HEADER_LENGTH
+        ):
+            return self._filter_cookies_within_limits(selected)
+        for jar_key, name, entry in new_entries:
+            self._morsel_cache[jar_key][name] = entry
+        self._touch_cookies(sent_keys)
+        # BaseCookie.__setitem__ stores Morsel values as-is; skip it per cookie.
+        dict.update(filtered, sent)
+        return filtered
+
+    def _filter_cookies_within_limits(
+        self, selected: dict[str, tuple[_JarKey, Morsel[str]]]
+    ) -> "BaseCookie[str]":
+        """Admit the most specific cookies first so a host's own cookies win."""
+        header_length = _COOKIE_HEADER_PREFIX_LENGTH - 2  # no "; " before the first
+        admitted: list[tuple[str, _JarKey, _MorselEntry]] = []
         for name, (jar_key, cookie) in reversed(selected.items()):
             if len(admitted) >= _MAX_COOKIES_PER_REQUEST:
                 break
             morsels = self._morsel_cache.get(jar_key)
-            if morsels is not None and (cached := morsels.get(name)) is not None:
-                morsel, length = cached
-            else:
-                cached = None
-                morsel = self._build_morsel(cookie)
-                pair = f"{morsel.key}={morsel.coded_value}"
-                # A fallback to the stored cookie only happens for control
-                # characters, so it is never sent.
-                if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
+            if morsels is None or (entry := morsels.get(name)) is None:
+                if (entry := self._sendable_morsel(jar_key, name, cookie)) is None:
                     continue
-                if (encoded_length := _encoded_length(pair)) is None:
-                    continue
-                length = encoded_length
-            separator = 2 if admitted else 0  # "; " between cookie-pairs
-            if header_length + separator + length > _MAX_COOKIE_HEADER_LENGTH:
+            if header_length + 2 + entry[1] > _MAX_COOKIE_HEADER_LENGTH:
                 continue
-            if cached is None:
-                self._morsel_cache[jar_key][name] = (morsel, length)
-            header_length += separator + length
-            admitted.append((name, jar_key, morsel))
+            header_length += 2 + entry[1]
+            admitted.append((name, jar_key, entry))
 
-        # One access generation per request, like Firefox's last-accessed time.
-        self._next_access_generation += 1
-        generation = self._next_access_generation
-        for name, jar_key, morsel in reversed(admitted):
-            filtered[name] = morsel
-            self._access_generations[jar_key + (name,)] = generation
-
+        filtered: BaseCookie[str] = BaseCookie()
+        for name, jar_key, entry in reversed(admitted):
+            dict.__setitem__(filtered, name, entry[0])
+            self._morsel_cache[jar_key][name] = entry
+        self._touch_cookies([entry[2] for _, _, entry in admitted])
         return filtered
+
+    def _sendable_morsel(
+        self, jar_key: _JarKey, name: str, cookie: Morsel[str]
+    ) -> _MorselEntry | None:
+        """Build the morsel to send, or None if it can't be sent."""
+        morsel = self._build_morsel(cookie)
+        pair = f"{morsel.key}={morsel.coded_value}"
+        # A fallback to the stored cookie only happens for control characters.
+        if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
+            return None
+        if (length := _encoded_length(pair)) is None:
+            return None
+        return morsel, length, jar_key + (name,)
+
+    def _touch_cookies(self, cookie_keys: list[_CookieKey]) -> None:
+        """Record one access generation for cookies sent together, like Firefox."""
+        self._next_access_generation += 1
+        self._access_generations.update(
+            dict.fromkeys(cookie_keys, self._next_access_generation)
+        )
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""
