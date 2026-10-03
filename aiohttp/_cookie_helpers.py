@@ -286,7 +286,10 @@ def _encoded_length(text: str) -> int | None:
 
 
 def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
-    """Set the recognized attributes from the text after the cookie-pair."""
+    """Set the recognized attributes from the text after the cookie-pair.
+
+    The field must already be free of control characters other than tab.
+    """
     # Walk with the cookie pattern so a quoted value keeps its ";". Missing
     # semicolons between attributes are tolerated; every match is an attribute
     # of this cookie, never a new cookie.
@@ -309,15 +312,25 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
         if lower_key not in _COOKIE_KNOWN_ATTRS:
             # RFC 6265 Section 5.2: ignore unknown attributes.
             continue
-        if not morsel.isReservedKey(lower_key):
+        if lower_key not in morsel._reserved:  # type: ignore[attr-defined]
             # Python versions before 3.14 do not expose Partitioned.
             continue
 
+        # The key and value are checked here, so skip Morsel.__setitem__'s checks.
         if lower_key in _COOKIE_BOOL_ATTRS:
             # Like Firefox, a flag's value is ignored.
-            morsel[lower_key] = True
+            dict.__setitem__(morsel, lower_key, True)
             continue
         attr_value = attribute_match.group("val") or ""
+        if (
+            len(attr_value) <= _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH
+            and attr_value.isascii()
+            and attr_value[:1] != '"'
+            and "\t" not in attr_value
+        ):
+            # The field has no other control characters and nothing to unquote.
+            dict.__setitem__(morsel, lower_key, attr_value)
+            continue
         attr_value_length = _encoded_length(attr_value)
         if (
             attr_value_length is None
@@ -327,7 +340,7 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
         # Patched CPython rejects control characters, even ones produced by
         # unquoting, so ignore such an attribute rather than raise.
         if _COOKIE_CTL_RE.search(value := _unquote(attr_value)) is None:
-            morsel[lower_key] = value
+            dict.__setitem__(morsel, lower_key, value)
 
 
 def _parse_quoted_pair(header: str) -> tuple[str, str, int] | None:

@@ -37,6 +37,7 @@ _JarKey = tuple[str, str]  # (domain, path)
 _CookieKey = tuple[str, str, str]  # (domain, path, name)
 # A built morsel, its encoded name=value length and the cookie's key.
 _MorselEntry = tuple["Morsel[str]", int, _CookieKey]
+_UNLIMITED_COOKIE_KEY: _CookieKey = ("", "", "")
 
 # We cache these string methods here as their use is in performance critical code.
 _FORMAT_PATH = "{}/{}".format
@@ -741,9 +742,8 @@ class CookieJar(AbstractCookieJar):
     ) -> _MorselEntry:
         """Build the morsel to send with its length in the Cookie header."""
         morsel = self._build_morsel(cookie)
-        # Only per-request cookies, which skip the storage check and the
-        # limits, can fail to encode; the writer then reports it.
-        length = _encoded_length(f"{morsel.key}={morsel.coded_value}") or 0
+        length = _encoded_length(f"{morsel.key}={morsel.coded_value}")
+        assert length is not None  # Checked before storing.
         return morsel, length, jar_key + (name,)
 
     def _touch_cookies(self, cookie_keys: Sequence[_CookieKey]) -> None:
@@ -853,6 +853,13 @@ class _UnlimitedCookieJar(CookieJar):
     """Jar for per-request cookies, which the jar limits don't apply to."""
 
     _limits_enabled = False
+
+    def _morsel_entry(
+        self, jar_key: _JarKey, name: str, cookie: Morsel[str]
+    ) -> _MorselEntry:
+        # The length and LRU key only serve the limits. These cookies skip the
+        # storage check, so an unencodable one is left for the writer to report.
+        return self._build_morsel(cookie), 0, _UNLIMITED_COOKIE_KEY
 
 
 class DummyCookieJar(AbstractCookieJar):
