@@ -63,7 +63,9 @@ mypy-extensions==1.1.0
 nodeenv==1.11.0
     # via pre-commit
 packaging==26.3
-    # via pytest
+    # via
+    #   pytest
+    #   virtualenv
 pathspec==1.1.1
     # via mypy
 platformdirs==4.12.2
@@ -130,7 +132,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.13.0
+virtualenv==21.14.1
     # via pre-commit
 zlib-ng==1.0.0
     # via -r requirements/lint.in

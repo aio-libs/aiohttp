@@ -150,6 +150,7 @@ packaging==26.3
     #   build
     #   pytest
     #   sphinx
+    #   virtualenv
     #   wheel
 pathspec==1.1.1
     # via mypy
@@ -314,7 +315,7 @@ uvloop==0.22.1 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.13.0
+virtualenv==21.14.1
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
