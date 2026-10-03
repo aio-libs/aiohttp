@@ -29,7 +29,7 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.compression_utils import ZLibBackend
 from aiohttp.connector import Connection
-from aiohttp.hdrs import METH_DELETE
+from aiohttp.hdrs import METH_DELETE, METH_QUERY
 from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
@@ -78,7 +78,7 @@ class _ProbeWriter(WriterMock):
 
 
 ALL_METHODS = frozenset(
-    (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE)
+    (*ClientRequest.GET_METHODS, *ClientRequest.POST_METHODS, METH_DELETE, METH_QUERY)
 )
 
 
@@ -953,6 +953,17 @@ async def test_get_with_data(make_client_request: _RequestMaker) -> None:
         assert isinstance(req.body, payload.Payload)
         assert b"life=42" == req.body._value
         await req._close()
+
+
+async def test_query_with_data(make_client_request: _RequestMaker) -> None:
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        METH_QUERY, URL("http://python.org/"), data={"life": "42"}, loop=loop
+    )
+    assert "/" == req.url.path
+    assert isinstance(req.body, payload.Payload)
+    assert b"life=42" == req.body._value
+    await req._close()
 
 
 async def test_bytes_data(conn: mock.Mock, make_client_request: _RequestMaker) -> None:
