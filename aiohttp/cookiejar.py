@@ -46,8 +46,8 @@ _SIMPLE_COOKIE = SimpleCookie()
 # Eviction follows Firefox's CookieStorage.
 _MAX_COOKIES_PER_DOMAIN = 180
 _COOKIE_QUOTA_PER_DOMAIN = 150
-_MAX_COOKIES_TOTAL = 3000
-_COOKIE_PURGE_THRESHOLD = _MAX_COOKIES_TOTAL + _MAX_COOKIES_TOTAL // 10
+_MAX_COOKIES_TOTAL = 3300
+_COOKIE_QUOTA_TOTAL = 3000
 _MAX_COOKIES_PER_REQUEST = 150
 _MAX_COOKIE_HEADER_LENGTH = 8190
 _COOKIE_HEADER_PREFIX_LENGTH = len(b"Cookie: ")
@@ -394,7 +394,7 @@ class CookieJar(AbstractCookieJar):
             return self._trim_domain(
                 domain, _COOKIE_QUOTA_PER_DOMAIN - 1, allow_secure=secure
             )
-        if self._cookie_count >= _COOKIE_PURGE_THRESHOLD:
+        if self._cookie_count >= _MAX_COOKIES_TOTAL:
             self._purge_cookies()
         return True
 
@@ -430,7 +430,7 @@ class CookieJar(AbstractCookieJar):
     def _purge_cookies(self) -> None:
         """Evict expired, then least recently used, cookies down to the total."""
         self._do_expiration()
-        if (excess := self._cookie_count - _MAX_COOKIES_TOTAL) <= 0:
+        if (excess := self._cookie_count - _COOKIE_QUOTA_TOTAL) <= 0:
             return
         generations = self._access_generations
         self._delete_cookies(sorted(generations, key=generations.__getitem__)[:excess])

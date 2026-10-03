@@ -1747,7 +1747,7 @@ def test_cookie_jar_purge_expired_cookies_keep_live_ones() -> None:
         )
 
     names = {cookie.key for cookie in jar}
-    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL + 1
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_TOTAL + 1
     assert "cookie0_0" not in names
     assert "cookie6_0" in names
     assert "cookie66_0" in names
@@ -1838,11 +1838,11 @@ def test_cookie_jar_limits_total_cookies() -> None:
         for domain_index in range(66)
         for cookie_index in range(50)
     ]
-    assert len(cookies) == cookiejar_module._COOKIE_PURGE_THRESHOLD
+    assert len(cookies) == cookiejar_module._MAX_COOKIES_TOTAL
 
     jar.update_cookies(cookies)
 
-    assert len(jar) == cookiejar_module._COOKIE_PURGE_THRESHOLD
+    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL
     assert any(cookie.key == "cookie0_0" for cookie in jar)
 
     jar.update_cookies(
@@ -1850,7 +1850,7 @@ def test_cookie_jar_limits_total_cookies() -> None:
     )
 
     # The jar is purged back to the total, oldest first, before adding.
-    assert len(jar) == cookiejar_module._MAX_COOKIES_TOTAL + 1
+    assert len(jar) == cookiejar_module._COOKIE_QUOTA_TOTAL + 1
     names = {cookie.key for cookie in jar}
     assert "cookie5_49" not in names
     assert "cookie6_0" in names
