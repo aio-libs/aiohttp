@@ -86,7 +86,7 @@ from .client_ws import (
     ClientWSTimeout,
 )
 from .connector import BaseConnector, NamedPipeConnector, TCPConnector, UnixConnector
-from .cookiejar import CookieJar
+from .cookiejar import CookieJar, _UnlimitedCookieJar
 from .helpers import (
     _SENTINEL,
     DEFAULT_CHUNK_SIZE,
@@ -682,13 +682,11 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
-                        tmp_cookie_jar = CookieJar(
+                        tmp_cookie_jar = _UnlimitedCookieJar(
                             unsafe=self._cookie_jar.unsafe,
                             quote_cookie=self._cookie_jar.quote_cookie,
                             treat_as_secure_origin=self._cookie_jar.treat_as_secure_origin,
                         )
-                        # Jar limits don't apply to per-request cookies.
-                        tmp_cookie_jar._limits_enabled = False
                         tmp_cookie_jar.update_cookies(cookies)
                         req_cookies = tmp_cookie_jar.filter_cookies(url)
                         if req_cookies:

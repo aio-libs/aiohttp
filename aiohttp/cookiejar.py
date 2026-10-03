@@ -68,6 +68,8 @@ def _cached_morsel_length(morsel: Morsel[str]) -> int:
 class CookieJar(AbstractCookieJar):
     """Implements cookie storage adhering to RFC 6265."""
 
+    _limits_enabled = True
+
     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
     DATE_TOKENS_RE = re.compile(
         r"[\x09\x20-\x2F\x3B-\x40\x5B-\x60\x7B-\x7E]*"
@@ -141,7 +143,6 @@ class CookieJar(AbstractCookieJar):
         self._next_access_generation = 0
         self._domain_counts: dict[str, int] = {}
         self._cookie_count = 0
-        self._limits_enabled = True
 
     @property
     def unsafe(self) -> bool:
@@ -791,6 +792,12 @@ class CookieJar(AbstractCookieJar):
             return None
 
         return calendar.timegm((year, month, day, hour, minute, second, -1, -1, -1))
+
+
+class _UnlimitedCookieJar(CookieJar):
+    """Jar for per-request cookies, which the jar limits don't apply to."""
+
+    _limits_enabled = False
 
 
 class DummyCookieJar(AbstractCookieJar):
