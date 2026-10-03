@@ -274,7 +274,12 @@ class CookieJar(AbstractCookieJar):
                     expiration=expiration,
                 )
         loaded._do_expiration()
+        # Refill the existing mapping so views from the cookies property stay live.
+        cookies = self._cookies
+        cookies.clear()
+        cookies.update(loaded._cookies)
         self.__dict__.update(loaded.__dict__)
+        self._cookies = cookies
 
     def clear(self, predicate: ClearCookiePredicate | None = None) -> None:
         if predicate is None:

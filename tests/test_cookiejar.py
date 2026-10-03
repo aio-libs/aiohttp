@@ -1983,6 +1983,21 @@ def test_oversized_secure_value_keeps_cookie_off_plain_http() -> None:
     assert "sid" not in jar.filter_cookies(URL("http://example.com/"))
 
 
+def test_cookie_jar_load_keeps_cookies_view_live(tmp_path: Path) -> None:
+    url = URL("https://example.com/")
+    saved = CookieJar()
+    saved.update_cookies({"saved": "value"}, url)
+    file_path = tmp_path / "cookies.json"
+    saved.save(file_path)
+    jar = CookieJar()
+    jar.update_cookies({"old": "value"}, url)
+    view = jar.cookies
+
+    jar.load(file_path)
+
+    assert [name for cookies in view.values() for name in cookies] == ["saved"]
+
+
 def test_cookie_jar_save_load_round_trips_stored_name(tmp_path: Path) -> None:
     url = URL("https://example.com/")
     cookies: SimpleCookie = SimpleCookie()
@@ -2256,6 +2271,26 @@ def test_filter_cookies_limits_complete_header_length() -> None:
 
     jar.update_cookies({"a": exact_value + "x"}, url)
     assert not jar.filter_cookies(url)
+
+
+def test_filter_cookies_counts_the_real_separator() -> None:
+    """Two cookies whose real Cookie header is exactly the limit are both sent."""
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    pairs = len("Cookie: ") + len("a=") + len("; ") + len("b=") + 10
+    jar.update_cookies(
+        {
+            "a": "x" * (cookiejar_module._MAX_COOKIE_HEADER_LENGTH - pairs),
+            "b": "y" * 10,
+        },
+        url,
+    )
+
+    filtered = jar.filter_cookies(url)
+    header = "Cookie: " + filtered.output(header="", sep=";").strip()
+
+    assert set(filtered) == {"a", "b"}
+    assert len(header.encode()) == cookiejar_module._MAX_COOKIE_HEADER_LENGTH
 
 
 def test_filter_cookies_limits_do_not_restore_shadowed_domain_cookie() -> None:
