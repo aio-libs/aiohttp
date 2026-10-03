@@ -1904,6 +1904,23 @@ def test_cookie_jar_load_rejects_invalid_expiration(
     assert not jar._expire_heap
 
 
+def test_cookie_jar_load_invalid_attribute_leaves_jar_unchanged(
+    tmp_path: Path,
+) -> None:
+    file_path = tmp_path / "invalid-attribute.json"
+    file_path.write_text(
+        json.dumps({"example.com|/": {"sid": _saved_cookie("sid", path=5)}}),
+        encoding="utf-8",
+    )
+    jar = CookieJar()
+    jar.update_cookies({"existing": "value"}, URL("https://example.com/"))
+
+    with pytest.raises(ValueError, match="'path' has an invalid value"):
+        jar.load(file_path)
+
+    assert [cookie.key for cookie in jar] == ["existing"]
+
+
 def test_cookie_jar_load_failure_leaves_jar_unchanged(tmp_path: Path) -> None:
     file_path = tmp_path / "late-invalid-expiration.json"
     deadline = 4102444800.0

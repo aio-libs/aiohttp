@@ -109,7 +109,6 @@ class CookieJar(AbstractCookieJar):
         treat_as_secure_origin: StrOrURL | Iterable[StrOrURL] | None = None,
     ) -> None:
         self._cookies: defaultdict[_JarKey, SimpleCookie] = defaultdict(SimpleCookie)
-        # Built morsels and their encoded name=value length.
         self._morsel_cache: defaultdict[_JarKey, dict[str, _MorselEntry]] = defaultdict(
             dict
         )
@@ -255,7 +254,11 @@ class CookieJar(AbstractCookieJar):
                         "value",
                         "coded_value",
                     ):
-                        morsel[attr] = morsel_data[attr]
+                        if not isinstance(value := morsel_data[attr], (str, bool)):
+                            raise ValueError(
+                                f"Cookie attribute {attr!r} has an invalid value"
+                            )
+                        morsel[attr] = value
                 # Drop the domain so update_cookies() re-marks it host-only.
                 if morsel_data.get("host_only"):
                     morsel["domain"] = ""
@@ -376,22 +379,14 @@ class CookieJar(AbstractCookieJar):
             self._expirations.pop(cookie_key, None)
             self._access_generations.pop(cookie_key, None)
 
-    def _touch_cookie(self, cookie_key: _CookieKey) -> None:
-        """Record a monotonic last-access generation for a stored cookie."""
-        self._next_access_generation += 1
-        self._access_generations[cookie_key] = self._next_access_generation
-
     def _make_room(self, domain: str, secure: bool) -> bool:
         """Evict for a new cookie like Firefox; False drops the new cookie.
-
-        Called once the domain or the jar is full.
 
         Mirrors AddCookie and FindStaleCookies: expired, then non-secure,
         cookies go first, least recently used first; secure cookies are only
         evicted for another secure cookie.
         """
         if self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN:
-            count_before = self._domain_counts[domain]
             self._do_expiration()
             count = self._domain_counts.get(domain, 0)
             # Leave room so the domain ends at its quota.
@@ -407,7 +402,7 @@ class CookieJar(AbstractCookieJar):
                     entry = (self._access_generations.get(cookie_key, 0), cookie_key)
                     (secure_keys if cookie["secure"] else non_secure).append(entry)
             if not (candidates := non_secure):
-                if count < count_before:
+                if count < _MAX_COOKIES_PER_DOMAIN:  # expiry freed a slot
                     return True
                 if not secure:
                     return False
@@ -541,12 +536,12 @@ class CookieJar(AbstractCookieJar):
             if (
                 stored is None
                 and self._limits_enabled
-                # Like Firefox, a cookie that only deletes never evicts others.
-                and (deadline is None or deadline > time.time())
                 and (
                     self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN
                     or self._cookie_count >= _MAX_COOKIES_TOTAL
                 )
+                # Like Firefox, a cookie that only deletes never evicts others.
+                and (deadline is None or deadline > time.time())
                 and not self._make_room(domain, bool(cookie["secure"]))
             ):
                 continue
@@ -573,7 +568,7 @@ class CookieJar(AbstractCookieJar):
                 self._cookies[key][name] = cookie
                 self._morsel_cache[key].pop(name, None)
             if self._limits_enabled:
-                self._touch_cookie(cookie_key)
+                self._touch_cookies((cookie_key,))
 
         self._do_expiration()
 
@@ -648,12 +643,12 @@ class CookieJar(AbstractCookieJar):
                 if is_not_secure and cookie["secure"]:
                     continue
 
-                # Re-insert so the order tracks specificity.
-                selected.pop(name, None)
+                # Re-insert so the order tracks specificity, for the header and
+                # the over-limit fallback.
+                if name in selected:
+                    del selected[name]
                 selected[name] = (p, cookie)
 
-        # Apply the limits most specific first so a host's own cookies are
-        # never crowded out by parent-domain ones.
         if not self._limits_enabled:
             # Per-request cookies: nothing to limit, cache or keep recent.
             dict.update(
@@ -686,7 +681,7 @@ class CookieJar(AbstractCookieJar):
         for jar_key, name, entry in new_entries:
             self._morsel_cache[jar_key][name] = entry
         self._touch_cookies(sent_keys)
-        # BaseCookie.__setitem__ stores Morsel values as-is; skip it per cookie.
+        # Bypass BaseCookie.__setitem__, which stores Morsel values as-is.
         dict.update(filtered, sent)
         return filtered
 
@@ -721,19 +716,19 @@ class CookieJar(AbstractCookieJar):
         """Build the morsel to send, or None if it can't be sent."""
         morsel = self._build_morsel(cookie)
         pair = f"{morsel.key}={morsel.coded_value}"
-        # A fallback to the stored cookie only happens for control characters.
-        if morsel is cookie or _COOKIE_CTL_RE.search(pair) is not None:
+        if _COOKIE_CTL_RE.search(pair) is not None:
             return None
         if (length := _encoded_length(pair)) is None:
             return None
         return morsel, length, jar_key + (name,)
 
-    def _touch_cookies(self, cookie_keys: list[_CookieKey]) -> None:
-        """Record one access generation for cookies sent together, like Firefox."""
+    def _touch_cookies(self, cookie_keys: Sequence[_CookieKey]) -> None:
+        """Record one access generation for cookies used together, like Firefox."""
         self._next_access_generation += 1
-        self._access_generations.update(
-            dict.fromkeys(cookie_keys, self._next_access_generation)
-        )
+        generation = self._next_access_generation
+        generations = self._access_generations
+        for cookie_key in cookie_keys:
+            generations[cookie_key] = generation
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""

@@ -2543,8 +2543,8 @@ Utilities
    sends at most 150 cookies and 8,190 octets, including ``Cookie:``, per
    request header. Eviction follows Firefox: adding a cookie to a full domain
    evicts expired, then non-secure, cookies, least recently used first, down
-   to 150. If only ``Secure`` cookies are left, they are evicted for a new
-   ``Secure`` cookie and a new non-secure cookie is dropped. A full jar
+   to 150. If the domain is full of live ``Secure`` cookies, they are evicted
+   for a new ``Secure`` cookie and a new non-secure cookie is dropped. A full jar
    evicts expired, then least recently used, cookies from any domain down to
    3,000.
 
