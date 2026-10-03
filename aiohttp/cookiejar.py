@@ -739,10 +739,11 @@ class CookieJar(AbstractCookieJar):
     def _morsel_entry(
         self, jar_key: _JarKey, name: str, cookie: Morsel[str]
     ) -> _MorselEntry:
-        """Build the morsel to send; stored cookies always fit a Cookie header."""
+        """Build the morsel to send with its length in the Cookie header."""
         morsel = self._build_morsel(cookie)
-        length = _encoded_length(f"{morsel.key}={morsel.coded_value}")
-        assert length is not None
+        # Only per-request cookies, which skip the storage check and the
+        # limits, can fail to encode; the writer then reports it.
+        length = _encoded_length(f"{morsel.key}={morsel.coded_value}") or 0
         return morsel, length, jar_key + (name,)
 
     def _touch_cookies(self, cookie_keys: Sequence[_CookieKey]) -> None:

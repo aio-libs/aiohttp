@@ -2364,6 +2364,13 @@ def test_update_cookies_rejects_cookie_that_cannot_be_sent(
     assert "Dropped cookie 'cookie' for example.com" in caplog.text
 
 
+def test_unlimited_jar_leaves_unencodable_cookie_to_the_writer() -> None:
+    jar = cookiejar_module._UnlimitedCookieJar()
+    jar.update_cookies({"a": "\udcff"})
+
+    assert jar.filter_cookies(URL("https://example.com/"))["a"].value == "\udcff"
+
+
 def test_cookie_jar_load_skips_cookie_that_cannot_be_sent(tmp_path: Path) -> None:
     file_path = _write_saved(
         tmp_path,
