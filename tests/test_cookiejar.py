@@ -1625,14 +1625,19 @@ def test_cookie_jar_replacement_updates_eviction_recency() -> None:
     assert "new" in names
 
 
-def test_cookie_jar_full_secure_domain_drops_new_non_secure_cookie() -> None:
+def test_cookie_jar_full_secure_domain_drops_new_non_secure_cookie(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
     jar = CookieJar()
     url = URL("https://example.com/")
     _fill_domain(jar, url, secure=True)
 
     morsel = _make_morsel("new")
     morsel["max-age"] = "3600"
-    jar.update_cookies({"new": morsel}, url)
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        jar.update_cookies({"new": morsel}, url)
+
+    assert "Dropped cookie 'new' for example.com" in caplog.text
 
     assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
     assert "new" not in {cookie.key for cookie in jar}

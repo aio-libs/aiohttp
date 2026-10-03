@@ -355,9 +355,11 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
     the allowlist, or tabs in the pair are skipped.
     """
     parsed_cookies: list[tuple[str, Morsel[str]]] = []
+    over_limit = 0
 
-    for header in headers:
+    for position, header in enumerate(headers):
         if len(parsed_cookies) >= _MAX_COOKIES_PER_RESPONSE:
+            over_limit = len(headers) - position
             break
         if not header or _COOKIE_FORBIDDEN_CTL_RE.search(header) is not None:
             continue
@@ -402,4 +404,11 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         _apply_cookie_attributes(morsel, header[attributes_start:])
         parsed_cookies.append((key, morsel))
 
+    if (invalid := len(headers) - over_limit - len(parsed_cookies)) or over_limit:
+        internal_logger.debug(
+            "Ignored %d invalid Set-Cookie field(s) and %d over the %d-cookie limit",
+            invalid,
+            over_limit,
+            _MAX_COOKIES_PER_RESPONSE,
+        )
     return parsed_cookies

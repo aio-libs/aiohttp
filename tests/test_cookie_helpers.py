@@ -225,6 +225,34 @@ def test_parse_set_cookie_headers_limits_attributes_per_field() -> None:
     assert parse_set_cookie_headers([beyond])[0][1]["path"] == ""
 
 
+@pytest.mark.parametrize(
+    ("headers", "message"),
+    (
+        (["ok=1", "", "bad\x01=1", "nameless"], "Ignored 3 invalid"),
+        (
+            [f"c{i}=1" for i in range(helpers._MAX_COOKIES_PER_RESPONSE + 2)],
+            "and 2 over the 50-cookie limit",
+        ),
+    ),
+)
+def test_parse_set_cookie_headers_logs_dropped_fields(
+    caplog: pytest.LogCaptureFixture, headers: list[str], message: str
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        parse_set_cookie_headers(headers)
+
+    assert message in caplog.text
+
+
+def test_parse_set_cookie_headers_valid_fields_log_nothing(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
+        parse_set_cookie_headers(["a=1; Path=/", "b=2"])
+
+    assert not caplog.records
+
+
 def test_parse_set_cookie_headers_quoted_value_with_trailing_text() -> None:
     # Text after the closing quote means the quoted value isn't the whole
     # pair, so the pair ends at the first semicolon.

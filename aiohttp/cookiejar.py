@@ -26,6 +26,7 @@ from ._cookie_helpers import (
 )
 from .abc import AbstractCookieJar, ClearCookiePredicate
 from .helpers import is_ip_address
+from .log import internal_logger
 from .typedefs import LooseCookies, PathLike, StrOrURL
 
 __all__ = ("CookieJar", "DummyCookieJar")
@@ -546,6 +547,11 @@ class CookieJar(AbstractCookieJar):
                 and (deadline is None or deadline > time.time())
                 and not self._make_room(domain, bool(cookie["secure"]))
             ):
+                internal_logger.debug(
+                    "Dropped cookie %r for %s: its domain is full of Secure cookies",
+                    name,
+                    domain,
+                )
                 continue
 
             if host_only:
