@@ -4,7 +4,7 @@ import itertools
 import json
 import os
 import stat
-from http.cookies import BaseCookie, Morsel, SimpleCookie
+from http.cookies import BaseCookie, CookieError, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
 from types import MappingProxyType
@@ -2194,14 +2194,28 @@ def test_filter_cookies_limits_do_not_restore_shadowed_domain_cookie() -> None:
     assert "sid" in jar._morsel_cache[("app.example.com", "")]
 
 
-@pytest.mark.parametrize("value", ("\udcff", "\x07"))
-def test_filter_cookies_omits_unserializable_morsels(value: str) -> None:
+def _jar_with_raw_cookie(value: str) -> CookieJar:
     jar = CookieJar()
     morsel: Morsel[str] = Morsel()
     morsel.__setstate__(  # type: ignore[attr-defined]
         {"key": "cookie", "value": value, "coded_value": f'"{value}"'}
     )
     jar.update_cookies({"cookie": morsel}, URL("https://example.com/"))
+    return jar
+
+
+def test_filter_cookies_omits_unencodable_morsel() -> None:
+    jar = _jar_with_raw_cookie("\udcff")
+
+    assert not jar.filter_cookies(URL("https://example.com/"))
+    assert not any(jar._morsel_cache.values())
+
+
+def test_filter_cookies_omits_control_character_morsel() -> None:
+    try:
+        jar = _jar_with_raw_cookie("\x07")
+    except CookieError:
+        pytest.skip("this Python rejects control characters in Morsel")
 
     assert not jar.filter_cookies(URL("https://example.com/"))
     assert not any(jar._morsel_cache.values())
