@@ -1,2 +1,2 @@
-Added limits to client response-cookie parsing, ``CookieJar`` storage and cached morsels, and generated ``Cookie`` request
-headers -- by :user:`iamibi`.
+Added limits to client cookie parsing, :class:`~aiohttp.CookieJar` storage and
+generated ``Cookie`` headers, with Firefox-style eviction -- by :user:`iamibi`.

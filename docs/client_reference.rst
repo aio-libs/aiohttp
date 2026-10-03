@@ -1563,9 +1563,8 @@ Response object
          To access all cookies, including duplicates with the same name,
          use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
 
-         At most 50 valid ``Set-Cookie`` fields are parsed for this attribute
-         and the session cookie jar. Raw response headers remain available
-         without this parsed-cookie limit.
+         At most 50 ``Set-Cookie`` fields are parsed, here and for the
+         session's cookie jar.
 
    .. attribute:: headers
 
@@ -2534,37 +2533,24 @@ Utilities
    :class:`collections.abc.Sized` and
    :class:`aiohttp.abc.AbstractCookieJar` interfaces.
 
-   Implements cookie storage adhering to
-   `RFC 10025 <https://auth48-transition.rfc-editor.org/authors/rfc10025.html>`_.
+   Implements cookie storage adhering to RFC 6265.
 
-   To keep response cookies from consuming unbounded memory or
-   producing oversized requests, the built-in jar applies these limits:
+   The jar applies these limits:
 
-   * 50 accepted ``Set-Cookie`` fields per response;
-   * 4,096 encoded octets for a cookie's name and value together, and 1,024
-     encoded octets for an attribute value;
-   * 180 stored cookies per exact domain and 3,300 stored cookies in total;
-   * 150 jar cookies and 8,190 encoded octets, including the ``Cookie:`` field
-     name and following space, per generated request header.
+   * 50 ``Set-Cookie`` fields per response;
+   * 4,096 octets for a cookie's name and value, and 1,024 octets for an
+     attribute value;
+   * 180 cookies per domain and 3,300 cookies in total;
+   * 150 cookies and 8,190 octets per ``Cookie`` request header.
 
-   Excess response cookies and attributes are ignored. Eviction follows
-   Firefox. Adding a new cookie to a domain that already holds 180 cookies
-   first evicts expired and non-secure cookies, least recently used first,
-   until the domain is back to 150. If the domain holds only live ``Secure``
-   cookies, a new ``Secure`` cookie evicts the least recently used of them
-   and a new non-secure cookie is dropped instead. Adding a new cookie when
-   the jar holds 3,300 cookies removes expired cookies and then the least
-   recently used cookies until 3,000 remain. This total eviction order is
-   global, so it can evict an older cookie from another origin, including a
-   ``Secure`` cookie. Matching and same-name overwrite precedence is resolved
-   before output limits are applied; selected cookies that do not fit a
-   generated request header are omitted.
+   Excess fields, attributes and cookies are ignored. Eviction follows Firefox:
+   adding a cookie to a full domain evicts expired, then non-secure, cookies,
+   least recently used first, down to 150. A domain holding only ``Secure``
+   cookies evicts them only for another ``Secure`` cookie. A full jar evicts
+   the least recently used cookies, from any domain, down to 3,000.
 
-   Storage and output limits apply to every cookie kept in this jar, including
-   cookies supplied through :class:`ClientSession`, :meth:`update_cookies`,
-   and :meth:`load`. Loading an oversized persisted jar can therefore evict
-   entries. The limits do not apply to an explicit ``Cookie`` header or to
-   cookies supplied for one request with the ``cookies`` argument.
+   The limits do not apply to an explicit ``Cookie`` header or to the
+   per-request ``cookies`` argument.
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
@@ -2625,8 +2611,7 @@ Utilities
 
       Load cookies from a JSON file at the provided path.
 
-      The same per-domain and total storage limits are applied in file order.
-      Excess entries are evicted.
+      The jar's storage limits apply to the loaded cookies.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.

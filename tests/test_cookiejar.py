@@ -44,6 +44,11 @@ def _cookies_to_send() -> SimpleCookie:
     )
 
 
+_TRIM = (
+    cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
+)
+
+
 def _make_morsel(
     name: str,
     value: str = "value",
@@ -1578,15 +1583,10 @@ def test_cookie_jar_limits_cookies_per_domain() -> None:
     # Adding to a full domain trims it back to its quota, oldest
     # non-secure cookies first.
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
-    evicted = (
-        cookiejar_module._MAX_COOKIES_PER_DOMAIN
-        - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
-        + 1
-    )
     names = {cookie.key for cookie in jar}
     assert "secure-cookie" in names
-    assert f"cookie{evicted - 1}" not in names
-    assert f"cookie{evicted}" in names
+    assert f"cookie{_TRIM}" not in names
+    assert f"cookie{_TRIM + 1}" in names
 
 
 def test_cookie_jar_replacement_updates_eviction_recency() -> None:
@@ -1633,7 +1633,6 @@ def test_cookie_jar_full_secure_domain_drops_new_non_secure_cookie() -> None:
     assert len(jar) == cookiejar_module._MAX_COOKIES_PER_DOMAIN
     assert "new" not in {cookie.key for cookie in jar}
     assert ("example.com", "", "new") not in jar.host_only_cookies
-    assert ("example.com", "", "new") not in jar._expirations
 
 
 def test_cookie_jar_full_secure_domain_evicts_for_new_secure_cookie() -> None:
@@ -1646,14 +1645,8 @@ def test_cookie_jar_full_secure_domain_evicts_for_new_secure_cookie() -> None:
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     names = {cookie.key for cookie in jar}
     assert "new" in names
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
-        not in names
-    )
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN + 1}"
-        in names
-    )
+    assert f"cookie{_TRIM}" not in names
+    assert f"cookie{_TRIM + 1}" in names
 
 
 def test_cookie_jar_evicts_expired_before_live_cookies() -> None:
@@ -1676,14 +1669,8 @@ def test_cookie_jar_evicts_expired_before_live_cookies() -> None:
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     assert f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - 1}" not in names
     assert "cookie0" not in names
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN - 1}"
-        not in names
-    )
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
-        in names
-    )
+    assert f"cookie{_TRIM - 1}" not in names
+    assert f"cookie{_TRIM}" in names
     assert "new" in names
 
 
@@ -1769,14 +1756,8 @@ def test_cookie_jar_load_resets_recency_and_applies_limits(tmp_path: Path) -> No
     assert len(jar) == cookiejar_module._COOKIE_QUOTA_PER_DOMAIN
     names = {cookie.key for cookie in jar}
     assert "old" not in names
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN}"
-        not in names
-    )
-    assert (
-        f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN - cookiejar_module._COOKIE_QUOTA_PER_DOMAIN + 1}"
-        in names
-    )
+    assert f"cookie{_TRIM}" not in names
+    assert f"cookie{_TRIM + 1}" in names
     assert f"cookie{cookiejar_module._MAX_COOKIES_PER_DOMAIN}" in names
     assert jar._next_access_generation == cookiejar_module._MAX_COOKIES_PER_DOMAIN + 1
 

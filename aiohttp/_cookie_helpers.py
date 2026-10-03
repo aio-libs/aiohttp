@@ -20,7 +20,7 @@ __all__ = (
 # Cookie parsing constants
 # Allow more characters in cookie names to handle real-world cookies
 # that don't strictly follow RFC standards (fixes #2683)
-# RFC 10025 defines cookie-name as a token,
+# RFC 6265 defines cookie-name token as per RFC 2616 Section 2.2,
 # but many servers send cookies with characters like {} [] () etc.
 # This makes the cookie parser more tolerant of real-world cookies
 # while still providing some validation to catch obviously malformed names.
@@ -43,8 +43,7 @@ _COOKIE_BOOL_ATTRS = frozenset(  # AKA Morsel._flags
     ("secure", "httponly", "partitioned")
 )
 
-# RFC 10025 section 5.3 allows user agents to impose implementation limits.
-# These limits bound work performed per Set-Cookie field.
+# Implementation limits as permitted by RFC 6265 Section 6.1.
 _MAX_COOKIES_PER_RESPONSE = 50
 _MAX_COOKIE_PAIR_LENGTH = 4096
 _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH = 1024
@@ -109,9 +108,7 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
         A Morsel object with preserved coded_value
 
     """
-    # Morsel is also a mapping of reserved attribute names to strings. Looking
-    # up the cookie name in it would return an attribute string for valid
-    # cookie-pair names such as ``path`` or ``secure``.
+    # Morsel maps attribute names, so a cookie named ``path`` would collide.
     mrsl_val: Morsel[str] = Morsel()
     # We use __setstate__ instead of the public set() API because it allows us to
     # bypass validation and set already validated state. This is more stable than
@@ -177,7 +174,7 @@ def _unquote(value: str) -> str:
 
 def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     """
-    Parse a Cookie header according to RFC 10025.
+    Parse a Cookie header according to RFC 6265 Section 5.4.
 
     Cookie headers contain only name-value pairs separated by semicolons.
     There are no attributes in Cookie headers - even names that match
@@ -274,23 +271,54 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     return cookies
 
 
+def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
+    """Set the recognized attributes from the text after the cookie-pair."""
+    for cookie_attribute in attributes.split(";"):
+        # Tolerate missing semicolons between attributes; every match is an
+        # attribute of this cookie, never a new cookie.
+        attribute_index = 0
+        while attribute_index < len(cookie_attribute):
+            attribute_match = _COOKIE_PATTERN.match(cookie_attribute, attribute_index)
+            if attribute_match is None:
+                break
+            attribute_index = attribute_match.end()
+            attr_key = attribute_match.group("key")
+            attr_value = attribute_match.group("val") or ""
+
+            lower_key = attr_key.lower()
+            if lower_key not in _COOKIE_KNOWN_ATTRS:
+                # RFC 6265 Section 5.2: ignore unknown attributes.
+                continue
+            if not morsel.isReservedKey(lower_key):
+                # Python versions before 3.14 do not expose Partitioned.
+                continue
+
+            is_flag = lower_key in _COOKIE_BOOL_ATTRS
+            if attr_value.isascii():
+                attr_value_length = len(attr_value)
+            else:
+                # Only retained (non-flag) values must encode strictly.
+                try:
+                    attr_value_length = len(
+                        attr_value.encode(
+                            "utf-8", "surrogateescape" if is_flag else "strict"
+                        )
+                    )
+                except UnicodeEncodeError:
+                    continue
+            if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
+                continue
+            if is_flag:
+                morsel[lower_key] = True
+            elif "\t" not in attr_value:
+                morsel[lower_key] = attr_value
+
+
 def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[str]]]:
-    """
-    Parse Set-Cookie fields into at most one cookie per field.
+    """Parse Set-Cookie fields into at most one cookie per field.
 
-    RFC 10025 defines each Set-Cookie field as one name-value pair followed by
-    attributes. Unknown attributes are ignored rather than interpreted as
-    additional cookies. The parser applies finite user-agent limits before
-    constructing a Morsel.
-
-    Python's cookie types cannot safely or unambiguously serialize every name
-    RFC 10025's parsing algorithm permits. Nameless cookies, names outside
-    aiohttp's existing compatibility allowlist, and cookie pairs containing
-    internal horizontal tabs are rejected as an explicit user-agent
-    cookie-policy choice permitted by section 5.3. Quoted values retain
-    aiohttp's historical decoded ``value`` and original ``coded_value``
-    representations. Controls introduced by that compatibility decoding are
-    rejected so application-visible cookie state remains free of controls.
+    Nameless cookies, names outside the allowlist, tabs in the pair and
+    control characters after unquoting are rejected.
     """
     parsed_cookies: list[tuple[str, Morsel[str]]] = []
 
@@ -303,9 +331,7 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         parsed_pair: tuple[str, str] | None = None
         attributes_start = len(header)
 
-        # aiohttp has historically accepted semicolons inside a properly
-        # quoted first value. Preserve that narrow compatibility extension,
-        # while never interpreting its contents as additional cookies.
+        # Accept semicolons inside a quoted value, as aiohttp always has.
         compatibility_match = _COOKIE_PATTERN.match(header) if '"' in header else None
         compatibility_value = (
             compatibility_match.group("val") if compatibility_match else None
@@ -370,58 +396,7 @@ def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[s
         except CookieError:
             continue
 
-        # Scan the original field by increasing offsets rather than repeatedly
-        # partitioning a shrinking suffix.
-        header_length = len(header)
-        while attributes_start < header_length:
-            attribute_end = header.find(";", attributes_start)
-            if attribute_end == -1:
-                attribute_end = header_length
-            cookie_attribute = header[attributes_start:attribute_end]
-            attributes_start = attribute_end + 1
-            # Preserve aiohttp's established tolerance for omitted semicolons
-            # between recognizable attributes. Every parsed pair remains an
-            # attribute of the first cookie; it can never create another one.
-            attribute_index = 0
-            while attribute_index < len(cookie_attribute):
-                attribute_match = _COOKIE_PATTERN.match(
-                    cookie_attribute, attribute_index
-                )
-                if attribute_match is None:
-                    break
-                attribute_index = attribute_match.end()
-                attr_key = attribute_match.group("key")
-                attr_value = attribute_match.group("val") or ""
-
-                lower_key = attr_key.lower()
-                if lower_key not in _COOKIE_KNOWN_ATTRS:
-                    # RFC 10025: ignore unrecognized cookie attributes.
-                    continue
-                if not morsel.isReservedKey(lower_key):
-                    # Python versions before 3.14 do not expose Partitioned.
-                    continue
-
-                is_flag = lower_key in _COOKIE_BOOL_ATTRS
-                if attr_value.isascii():
-                    attr_value_length = len(attr_value)
-                else:
-                    # Flag values are discarded, so only retained values
-                    # must be strictly encodable for Morsel.OutputString().
-                    try:
-                        attr_value_length = len(
-                            attr_value.encode(
-                                "utf-8", "surrogateescape" if is_flag else "strict"
-                            )
-                        )
-                    except UnicodeEncodeError:
-                        continue
-                if attr_value_length > _MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH:
-                    continue
-                if is_flag:
-                    morsel[lower_key] = True
-                elif "\t" not in attr_value:
-                    morsel[lower_key] = attr_value
-
+        _apply_cookie_attributes(morsel, header[attributes_start:])
         parsed_cookies.append((key, morsel))
 
     return parsed_cookies

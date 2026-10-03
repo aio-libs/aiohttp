@@ -42,10 +42,8 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
 _SIMPLE_COOKIE = SimpleCookie()
 
-# Private limits for cookies accepted from remote responses and emitted from
-# the built-in jar.  They are intentionally not constructor options.
-# Eviction mirrors Firefox's CookieStorage: a full domain is trimmed back to
-# its quota, and the whole jar is purged once it is ten percent over the total.
+# Private, non-configurable limits for the built-in jar.
+# Eviction follows Firefox's CookieStorage.
 _MAX_COOKIES_PER_DOMAIN = 180
 _COOKIE_QUOTA_PER_DOMAIN = 150
 _MAX_COOKIES_TOTAL = 3000
@@ -68,7 +66,7 @@ def _cached_morsel_length(morsel: Morsel[str]) -> int:
 
 
 class CookieJar(AbstractCookieJar):
-    """Implements cookie storage adhering to RFC 10025."""
+    """Implements cookie storage adhering to RFC 6265."""
 
     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
     DATE_TOKENS_RE = re.compile(
@@ -233,8 +231,7 @@ class CookieJar(AbstractCookieJar):
         try:
             self._load_json_data_unchecked(data)
         except Exception:
-            # Deferred limit enforcement must not expose partially loaded,
-            # potentially unbounded state when a later record is malformed.
+            # Don't leave a partial, unbounded jar behind.
             self.clear()
             raise
 
@@ -295,15 +292,12 @@ class CookieJar(AbstractCookieJar):
                     morsel["path"].rstrip("/"),
                     name,
                 )
-                # Restore the absolute deadline before expiration processing and
-                # eviction. Rejected cookies must not leave stale metadata.
+                # Restore the saved deadline, only for cookies that were stored.
                 if (
                     self._access_generations.get(cookie_key, 0)
                     > previous_access_generation
                 ):
-                    # A later persisted entry may normalize to the same cookie
-                    # identity. Its deadline replaces, rather than inherits,
-                    # the earlier entry's deadline.
+                    # A later entry for the same cookie replaces its deadline.
                     if expiration is None:
                         if not morsel["max-age"] and not morsel["expires"]:
                             self._expirations.pop(cookie_key, None)
@@ -354,7 +348,7 @@ class CookieJar(AbstractCookieJar):
         This function does not iterate self to avoid unnecessary expiration
         checks.
         """
-        return sum(len(cookie.values()) for cookie in self._cookies.values())
+        return self._cookie_count
 
     def _do_expiration(self) -> None:
         """Remove expired cookies."""
@@ -380,8 +374,7 @@ class CookieJar(AbstractCookieJar):
 
         if to_del:
             self._delete_cookies(to_del)
-            # Deleting the current expiration can expose stale, later
-            # entries that were not eligible for the pre-pop compaction.
+            # Deletes can leave more stale heap entries behind.
             self._maybe_compact_expiration_heap()
 
     def _maybe_compact_expiration_heap(self) -> None:
@@ -434,70 +427,59 @@ class CookieJar(AbstractCookieJar):
         self._access_generations[cookie_key] = self._next_access_generation
 
     def _enforce_limits(self) -> None:
-        """Bring a freshly loaded jar within the storage limits."""
+        """Bound a freshly loaded jar."""
         if not self._limits_enabled:
             return
-        evicted = False
         for domain in list(self._domain_counts):
-            while (count := self._domain_counts.get(domain, 0)) > (
-                _MAX_COOKIES_PER_DOMAIN
-            ):
-                self._evict_stale_cookies(
-                    domain, count - _COOKIE_QUOTA_PER_DOMAIN, allow_secure=True
-                )
-                evicted = True
+            # A pass evicts non-secure or secure cookies, never both.
+            while self._domain_counts.get(domain, 0) > _MAX_COOKIES_PER_DOMAIN:
+                self._trim_domain(domain, _COOKIE_QUOTA_PER_DOMAIN, allow_secure=True)
         if self._cookie_count > _COOKIE_PURGE_THRESHOLD:
             self._purge_cookies()
-            evicted = True
-        if evicted:
-            self._compact_expiration_heap()
 
     def _make_room(self, domain: str, secure: bool) -> bool:
-        """Evict before adding a new cookie; False means drop the new cookie.
-
-        Follows Firefox's CookieStorage::AddCookie.
-        """
-        count = self._domain_counts.get(domain, 0)
-        if count >= _MAX_COOKIES_PER_DOMAIN:
-            # +1 for the cookie being added, so the domain ends at its quota.
-            return self._evict_stale_cookies(
-                domain, count - _COOKIE_QUOTA_PER_DOMAIN + 1, allow_secure=secure
+        """Evict for a new cookie like Firefox's AddCookie; False drops it."""
+        if self._domain_counts.get(domain, 0) >= _MAX_COOKIES_PER_DOMAIN:
+            # Leave room so the domain ends at its quota.
+            return self._trim_domain(
+                domain, _COOKIE_QUOTA_PER_DOMAIN - 1, allow_secure=secure
             )
         if self._cookie_count >= _COOKIE_PURGE_THRESHOLD:
             self._purge_cookies()
         return True
 
-    def _evict_stale_cookies(
-        self, domain: str, limit: int, *, allow_secure: bool
-    ) -> bool:
-        """Evict up to limit cookies from domain, like Firefox's FindStaleCookies.
+    def _trim_domain(self, domain: str, target: int, *, allow_secure: bool) -> bool:
+        """Evict like Firefox's FindStaleCookies, least recently used first.
 
-        Expired and non-secure cookies go first, least recently used first.
-        Live secure cookies are only evicted when there is nothing else and
-        allow_secure is set.
+        Expired, then non-secure; secure only if allow_secure, else False.
         """
-        now = time.time()
-        stale: list[tuple[bool, int, tuple[str, str, str]]] = []
-        secure: list[tuple[bool, int, tuple[str, str, str]]] = []
+        count_before = self._domain_counts.get(domain, 0)
+        self._do_expiration()
+        count = self._domain_counts.get(domain, 0)
+        if count <= target:
+            return True
+        non_secure: list[tuple[int, tuple[str, str, str]]] = []
+        secure: list[tuple[int, tuple[str, str, str]]] = []
         for (cookie_domain, path), cookies in self._cookies.items():
             if cookie_domain != domain:
                 continue
             for name, cookie in cookies.items():
                 cookie_key = (domain, path, name)
-                when = self._expirations.get(cookie_key)
-                live = when is None or when > now
-                entry = (live, self._access_generations.get(cookie_key, 0), cookie_key)
-                (secure if live and cookie["secure"] else stale).append(entry)
-        if not stale:
+                entry = (self._access_generations.get(cookie_key, 0), cookie_key)
+                (secure if cookie["secure"] else non_secure).append(entry)
+        if not (candidates := non_secure):
+            if count < count_before:
+                return True
             if not allow_secure:
                 return False
-            stale = secure
-        stale.sort()
-        self._delete_cookies([cookie_key for _, _, cookie_key in stale[:limit]])
+            candidates = secure
+        candidates.sort()
+        self._delete_cookies([key for _, key in candidates[: count - target]])
+        self._compact_expiration_heap()
         return True
 
     def _purge_cookies(self) -> None:
-        """Drop expired, then least recently used, cookies down to the total."""
+        """Evict expired, then least recently used, cookies down to the total."""
         self._do_expiration()
         if (excess := self._cookie_count - _MAX_COOKIES_TOTAL) <= 0:
             return
@@ -508,14 +490,14 @@ class CookieJar(AbstractCookieJar):
         ]
         cookie_keys.sort(key=lambda key: self._access_generations.get(key, 0))
         self._delete_cookies(cookie_keys[:excess])
+        self._compact_expiration_heap()
 
     def _expire_cookie(self, when: float, domain: str, path: str, name: str) -> None:
         cookie_key = (domain, path, name)
         self._expirations[cookie_key] = when
         expire_heap_entry = (when, cookie_key)
         if expire_heap_entry in self._expire_heap_entries:
-            # The entry may still be scheduled after expiration metadata was
-            # cleared, so reactivate it without adding a duplicate to the heap.
+            # Already scheduled; avoid a duplicate heap entry.
             return
         heapq.heappush(self._expire_heap, expire_heap_entry)
         self._expire_heap_entries.add(expire_heap_entry)
@@ -554,7 +536,7 @@ class CookieJar(AbstractCookieJar):
         if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
-        evicted = False
+        limits = enforce_limits and self._limits_enabled
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
                 tmp = SimpleCookie()
@@ -593,54 +575,53 @@ class CookieJar(AbstractCookieJar):
             path = path.rstrip("/")
 
             if not domain and hostname is not None:
-                self._host_only_cookies.add((hostname, path, name))
-                domain = cookie["domain"] = hostname
+                host_only = True
+                domain = hostname
             else:
-                # A cookie with an explicit Domain attribute replaces any
-                # host-only cookie with the same (domain, path, name) identity.
-                self._host_only_cookies.discard((domain, path, name))
+                host_only = False
 
+            expiration: float | None = None
             if max_age := cookie["max-age"]:
                 try:
                     delta_seconds = int(max_age)
+                except ValueError:
+                    cookie["max-age"] = ""
+                else:
                     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.2.2
                     if delta_seconds <= 0:
-                        max_age_expiration = 0.0
+                        expiration = 0.0
                     else:
                         # Cap first to protect against OverflowError on next line.
                         delta_seconds = min(delta_seconds, self.MAX_TIME)
-                        max_age_expiration = min(
-                            time.time() + delta_seconds, self.MAX_TIME
-                        )
-                    self._expire_cookie(max_age_expiration, domain, path, name)
-                except ValueError:
-                    cookie["max-age"] = ""
-
+                        expiration = min(time.time() + delta_seconds, self.MAX_TIME)
             elif expires := cookie["expires"]:
-                if expire_time := self._parse_date(expires):
-                    self._expire_cookie(expire_time, domain, path, name)
-                else:
+                if not (expiration := self._parse_date(expires)):
+                    expiration = None
                     cookie["expires"] = ""
 
             key = (domain, path)
             cookie_key = (domain, path, name)
-            stored = self._cookies[key].get(name)
+            bucket = self._cookies.get(key)
+            stored = None if bucket is None else bucket.get(name)
             if (
                 stored is None
-                and enforce_limits
-                and self._limits_enabled
+                and limits
                 # Like Firefox, a cookie that only deletes never evicts others.
-                and not (
-                    (when := self._expirations.get(cookie_key)) is not None
-                    and when <= time.time()
-                )
+                and (expiration is None or expiration > time.time())
+                and not self._make_room(domain, bool(cookie["secure"]))
             ):
-                count_before = self._cookie_count
-                if not self._make_room(domain, bool(cookie["secure"])):
-                    self._host_only_cookies.discard(cookie_key)
-                    self._expirations.pop(cookie_key, None)
-                    continue
-                evicted |= self._cookie_count < count_before
+                continue
+
+            if host_only:
+                self._host_only_cookies.add(cookie_key)
+                cookie["domain"] = domain
+            else:
+                # A cookie with an explicit Domain attribute replaces any
+                # host-only cookie with the same (domain, path, name) identity.
+                self._host_only_cookies.discard(cookie_key)
+            if expiration is not None:
+                self._expire_cookie(expiration, domain, path, name)
+
             if stored != cookie:
                 # Don't blow away the cache if the same
                 # cookie gets set again
@@ -653,8 +634,6 @@ class CookieJar(AbstractCookieJar):
 
         if enforce_limits:
             self._do_expiration()
-            if evicted:
-                self._compact_expiration_heap()
 
     def filter_cookies(self, request_url: URL) -> "BaseCookie[str]":
         """Returns this jar's cookies filtered by their attributes."""
@@ -781,7 +760,7 @@ class CookieJar(AbstractCookieJar):
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:
-        """Implement domain matching according to RFC 10025."""
+        """Implements domain matching adhering to RFC 6265."""
         if hostname == domain:
             return True
 
@@ -797,7 +776,7 @@ class CookieJar(AbstractCookieJar):
 
     @classmethod
     def _parse_date(cls, date_str: str) -> int | None:
-        """Implement cookie date parsing according to RFC 10025."""
+        """Implements date string parsing adhering to RFC 6265."""
         if not date_str:
             return None
 
