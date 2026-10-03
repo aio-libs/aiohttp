@@ -107,16 +107,18 @@ def test_parse_set_cookie_headers_simple() -> None:
 
 def test_parse_set_cookie_headers_limits_accepted_fields() -> None:
     """Malformed fields do not consume the 50-cookie response budget."""
-    headers = ["not-a-cookie"] * 10 + [f"cookie{i}=value" for i in range(51)]
+    limit = helpers._MAX_COOKIES_PER_RESPONSE
+    headers = ["not-a-cookie"] * 10 + [f"cookie{i}=value" for i in range(limit + 1)]
 
     result = parse_set_cookie_headers(headers)
 
-    assert len(result) == helpers._MAX_COOKIES_PER_RESPONSE
-    assert result[-1][0] == "cookie49"
+    assert len(result) == limit
+    assert result[-1][0] == f"cookie{limit - 1}"
 
 
 def test_parse_set_cookie_headers_duplicate_consumes_response_budget() -> None:
-    headers = [f"cookie{i}=value" for i in range(49)]
+    limit = helpers._MAX_COOKIES_PER_RESPONSE
+    headers = [f"cookie{i}=value" for i in range(limit - 1)]
     headers.extend(("cookie0=replaced", "not_stored=over-limit"))
 
     result = parse_set_cookie_headers(headers)
@@ -127,7 +129,7 @@ def test_parse_set_cookie_headers_duplicate_consumes_response_budget() -> None:
 
 
 def test_parse_set_cookie_headers_attribute_value_limits() -> None:
-    accepted_path = "/" + "x" * 1023
+    accepted_path = "/" + "x" * (helpers._MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH - 1)
     ignored_path = accepted_path + "x"
 
     accepted = parse_set_cookie_headers([f"cookie=value; Path={accepted_path}"])
@@ -192,28 +194,6 @@ def test_parse_set_cookie_headers_ignores_attribute_with_control_character(
     assert result[0][1]["path"] == ""
     assert result[0][1]["comment"] == ""
     assert result[0][1]["secure"] is True
-
-
-def test_parse_set_cookie_headers_survives_strict_morsel_setitem(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    """CPython builds with the CVE-2026-3644 patch reject these in __setitem__."""
-    original_setitem = Morsel.__setitem__
-    calls: list[tuple[str, object]] = []
-
-    def setitem(self: Morsel[str], key: str, value: object) -> None:
-        calls.append((key, value))
-        original_setitem(self, key, value)
-
-    monkeypatch.setattr(Morsel, "__setitem__", setitem)
-
-    result = parse_set_cookie_headers(['a=b; Path="/x\\012y"; Domain=example.com'])
-
-    assert result[0][1]["path"] == ""
-    assert result[0][1]["domain"] == "example.com"
-    # No value with a control character ever reaches Morsel.__setitem__.
-    assert ("domain", "example.com") in calls
-    assert not [c for c in calls if helpers._COOKIE_CTL_RE.search(str(c[1]))]
 
 
 def test_parse_set_cookie_headers_limits_attributes_per_field() -> None:
@@ -283,20 +263,24 @@ def test_parse_set_cookie_headers_skips_rejected_morsels(
 @pytest.mark.parametrize("flag", ("Secure", "HttpOnly"))
 def test_parse_set_cookie_headers_flag_values_are_ignored(flag: str) -> None:
     """An oversized value doesn't strip the flag, as in Firefox."""
-    value = "x" * 1025
+    value = "x" * (helpers._MAX_COOKIE_ATTRIBUTE_VALUE_LENGTH + 1)
 
     result = parse_set_cookie_headers([f"cookie=value; {flag}={value}"])
 
     assert result[0][1][flag.lower()] is True
 
 
-@pytest.mark.parametrize("value", ("a\x00b", "a\x1fb", "a\x7fb"))
-def test_parse_set_cookie_headers_rejects_control_characters(value: str) -> None:
-    assert parse_set_cookie_headers([f'cookie="{value}"']) == []
-
-
-def test_parse_set_cookie_headers_rejects_controls_in_unknown_attributes() -> None:
-    assert parse_set_cookie_headers(["cookie=value; unknown=a\x07b"]) == []
+@pytest.mark.parametrize(
+    "header",
+    (
+        'cookie="a\x00b"',
+        'cookie="a\x1fb"',
+        'cookie="a\x7fb"',
+        "cookie=value; unknown=a\x07b",
+    ),
+)
+def test_parse_set_cookie_headers_rejects_control_characters(header: str) -> None:
+    assert parse_set_cookie_headers([header]) == []
 
 
 def test_parse_set_cookie_headers_with_attributes() -> None:

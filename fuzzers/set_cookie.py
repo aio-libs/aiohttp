@@ -41,7 +41,9 @@ def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
     for _, morsel in parse_set_cookie_headers(headers):
         assert jar._can_send(morsel), (headers, morsel)
     jar.update_cookies_from_headers(headers, URL_)
-    jar.filter_cookies(URL_).output(header="Cookie:", sep=";").encode()
+    header = jar.filter_cookies(URL_).output(header="Cookie:", sep=";")
+    header.encode()
+    assert not any(c < " " or c == "\x7f" for c in header), headers
 
 
 if __name__ == "__main__":

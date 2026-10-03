@@ -185,10 +185,9 @@ def parse_cookie_header(header: str) -> list[tuple[str, Morsel[str]]]:
     There are no attributes in Cookie headers - even names that match
     attribute names (like 'path' or 'secure') should be treated as cookies.
 
-    This parser uses _COOKIE_PATTERN to properly handle quoted values that
-    may contain semicolons. When the
-    regex fails to match a malformed cookie, it falls back to simple parsing
-    to ensure subsequent cookies are not lost
+    This parser uses _COOKIE_PATTERN to properly handle quoted values that may
+    contain semicolons. When the regex fails to match a malformed cookie, it
+    falls back to simple parsing to ensure subsequent cookies are not lost
     https://github.com/aio-libs/aiohttp/issues/11632
 
     Args:

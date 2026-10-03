@@ -57,6 +57,7 @@ from aiohttp.client_exceptions import (
     TooManyRedirects,
 )
 from aiohttp.client_reqrep import ClientRequest
+from aiohttp.cookiejar import _MAX_COOKIES_PER_REQUEST
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.payload import (
     AsyncIterablePayload,
@@ -2928,7 +2929,7 @@ async def test_cookies_per_request(aiohttp_client: AiohttpClient) -> None:
 async def test_per_request_cookies_are_not_jar_limited(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    cookies = {f"cookie{i}": "value" for i in range(151)}
+    cookies = {f"cookie{i}": "value" for i in range(_MAX_COOKIES_PER_REQUEST + 1)}
 
     async def handler(request: web.Request) -> web.Response:
         assert request.cookies.keys() == cookies.keys()
@@ -2945,11 +2946,12 @@ async def test_per_request_cookies_are_not_jar_limited(
 async def test_explicit_cookie_header_is_not_jar_limited(
     aiohttp_client: AiohttpClient,
 ) -> None:
-    cookie_header = "; ".join(f"cookie{i}=value" for i in range(151))
+    count = _MAX_COOKIES_PER_REQUEST + 1
+    cookie_header = "; ".join(f"cookie{i}=value" for i in range(count))
 
     async def handler(request: web.Request) -> web.Response:
         assert request.headers[hdrs.COOKIE] == cookie_header
-        assert len(request.cookies) == 151
+        assert len(request.cookies) == count
         return web.Response()
 
     app = web.Application()

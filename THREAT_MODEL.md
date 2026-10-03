@@ -826,7 +826,7 @@ explicit `Cookie` header are caller input and are trusted.
 - **PR #13930** — added the response, storage and output limits above
   (threats 16.1 to 16.6), one cookie per `Set-Cookie` field (16.3),
   Firefox-style eviction (16.4, 16.10), control-character and encoding checks
-  on emission (16.7), and atomic `load()` (16.9). Also stopped a replacement
+  before storage (16.7), and atomic `load()` (16.9). Also stopped a replacement
   session cookie from inheriting the previous cookie's expiry (16.8).
 
 These are all currently in place; this section assumes no regression.

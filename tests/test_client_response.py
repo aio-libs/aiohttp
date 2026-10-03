@@ -14,6 +14,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, http
+from aiohttp._cookie_helpers import _MAX_COOKIES_PER_RESPONSE
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.connector import Connection
@@ -1696,12 +1697,14 @@ def test_response_cookies_are_bounded_but_raw_headers_remain_available(
             AbstractStreamWriter, spec_set=True, instance=True
         ),
     )
-    cookie_headers = tuple(f"cookie{i}=value" for i in range(51))
+    cookie_headers = tuple(
+        f"cookie{i}=value" for i in range(_MAX_COOKIES_PER_RESPONSE + 1)
+    )
     headers = CIMultiDict(("Set-Cookie", value) for value in cookie_headers)
     response._headers = HeadersDictProxy(headers)
     response._raw_cookie_headers = cookie_headers
 
-    assert len(response.cookies) == 50
+    assert len(response.cookies) == _MAX_COOKIES_PER_RESPONSE
     assert response.headers.getall("Set-Cookie") == cookie_headers
 
 
