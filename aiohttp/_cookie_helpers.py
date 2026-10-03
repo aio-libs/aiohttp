@@ -108,7 +108,8 @@ def preserve_morsel_with_coded_value(cookie: Morsel[str]) -> Morsel[str]:
         A Morsel object with preserved coded_value
 
     """
-    # Morsel maps attribute names, so a cookie named ``path`` would collide.
+    # Don't look up cookie.key in the Morsel: it maps attribute names, so a
+    # cookie named ``path`` would return the Path attribute.
     mrsl_val: Morsel[str] = Morsel()
     # We use __setstate__ instead of the public set() API because it allows us to
     # bypass validation and set already validated state. This is more stable than
@@ -317,8 +318,8 @@ def _apply_cookie_attributes(morsel: Morsel[str], attributes: str) -> None:
 def parse_set_cookie_headers(headers: Sequence[str]) -> list[tuple[str, Morsel[str]]]:
     """Parse Set-Cookie fields into at most one cookie per field.
 
-    Nameless cookies, names outside the allowlist, tabs in the pair and
-    control characters after unquoting are rejected.
+    Fields with control characters, oversized or nameless pairs, names outside
+    the allowlist, or tabs in the pair are skipped.
     """
     parsed_cookies: list[tuple[str, Morsel[str]]] = []
 

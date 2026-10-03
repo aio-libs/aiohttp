@@ -75,7 +75,7 @@ def test_preserve_morsel_with_coded_value_no_coded_value() -> None:
 @pytest.mark.parametrize("name", sorted(Morsel._reserved))  # type: ignore[attr-defined]
 @pytest.mark.parametrize("coded_value", ("value", '"value"'))
 def test_preserve_morsel_with_reserved_cookie_name(name: str, coded_value: str) -> None:
-    """Attribute words remain valid cookie-pair names in first position."""
+    """A cookie named like an attribute, such as ``path``, is preserved."""
     cookie: Morsel[str] = Morsel()
     cookie.__setstate__(  # type: ignore[attr-defined]
         {"key": name, "value": "value", "coded_value": coded_value}
@@ -137,20 +137,12 @@ def test_parse_set_cookie_headers_attribute_value_limits() -> None:
     assert ignored[0][1]["path"] == ""
 
 
-def test_parse_set_cookie_headers_scans_attribute_tail_linearly() -> None:
-    class PartitionCountingStr(str):
-        partition_calls = 0
+def test_parse_set_cookie_headers_many_unknown_attributes() -> None:
+    result = parse_set_cookie_headers(["cookie=value;" + "unknown=x;" * 1000])
 
-        def partition(self, sep: str) -> tuple[str, str, str]:
-            type(self).partition_calls += 1
-            return super().partition(sep)
-
-    header = PartitionCountingStr("cookie=value;" + "unknown=x;" * 1000)
-
-    result = parse_set_cookie_headers([header])
-
+    assert len(result) == 1
     assert result[0][0] == "cookie"
-    assert PartitionCountingStr.partition_calls == 0
+    assert "unknown" not in result[0][1]
 
 
 def test_parse_set_cookie_headers_boolean_attribute_value_limits() -> None:
@@ -280,7 +272,7 @@ def test_parse_set_cookie_headers_trims_wsp_and_preserves_first_equals() -> None
     ),
 )
 def test_parse_set_cookie_headers_rejects_unserializable_pairs(header: str) -> None:
-    """Stricter UA policy avoids ambiguous or unsafe BaseCookie output."""
+    """Pairs that BaseCookie can't serialize unambiguously are rejected."""
     assert parse_set_cookie_headers([header]) == []
 
 

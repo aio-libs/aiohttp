@@ -399,7 +399,10 @@ class CookieJar(AbstractCookieJar):
         return True
 
     def _trim_domain(self, domain: str, target: int, *, allow_secure: bool) -> bool:
-        """Evict like Firefox's FindStaleCookies; False if only secure remain."""
+        """Evict like Firefox's FindStaleCookies.
+
+        Returns False if only secure cookies are left and allow_secure is unset.
+        """
         count_before = self._domain_counts.get(domain, 0)
         self._do_expiration()
         count = self._domain_counts.get(domain, 0)

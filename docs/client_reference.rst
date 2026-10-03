@@ -1563,7 +1563,7 @@ Response object
          To access all cookies, including duplicates with the same name,
          use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
 
-         At most 50 ``Set-Cookie`` fields are parsed, here and for the
+         At most 50 valid ``Set-Cookie`` fields are parsed, here and for the
          session's cookie jar.
 
    .. attribute:: headers
@@ -2535,19 +2535,18 @@ Utilities
 
    Implements cookie storage adhering to RFC 6265.
 
-   The jar applies these limits:
+   Cookies parsed from responses are limited to 50 valid ``Set-Cookie``
+   fields per response, 4,096 octets for a cookie's name and value, and
+   1,024 octets per attribute value; anything beyond that is ignored.
 
-   * 50 ``Set-Cookie`` fields per response;
-   * 4,096 octets for a cookie's name and value, and 1,024 octets for an
-     attribute value;
-   * 180 cookies per domain and 3,300 cookies in total;
-   * 150 cookies and 8,190 octets per ``Cookie`` request header.
-
-   Excess fields, attributes and cookies are ignored. Eviction follows Firefox:
-   adding a cookie to a full domain evicts expired, then non-secure, cookies,
-   least recently used first, down to 150. A domain holding only ``Secure``
-   cookies evicts them only for another ``Secure`` cookie. A full jar evicts
-   the least recently used cookies, from any domain, down to 3,000.
+   The jar stores at most 180 cookies per domain and 3,300 in total, and
+   sends at most 150 cookies and 8,190 octets, including ``Cookie:``, per
+   request header. Eviction follows Firefox: adding a cookie to a full domain
+   evicts expired, then non-secure, cookies, least recently used first, down
+   to 150. If only ``Secure`` cookies are left, they are evicted for a new
+   ``Secure`` cookie and a new non-secure cookie is dropped. A full jar
+   evicts expired, then least recently used, cookies from any domain down to
+   3,000.
 
    The limits do not apply to an explicit ``Cookie`` header or to the
    per-request ``cookies`` argument.
