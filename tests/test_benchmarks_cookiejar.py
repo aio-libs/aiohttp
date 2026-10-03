@@ -72,10 +72,10 @@ def test_update_cookies_from_headers_replacing(benchmark: BenchmarkFixture) -> N
     """Benchmark a response replacing the values of cookies already in the jar."""
     jar = CookieJar()
     url = URL("https://www.example.com/")
-    # Alternate values so every call replaces each stored cookie.
+    # Alternate values so every call replaces each stored cookie. No expiry,
+    # so the jar's expiration state doesn't grow between timed calls.
     header_sets = itertools.cycle(
-        [f"cookie{i}={value}{i}; Path=/; Max-Age=3600" for i in range(20)]
-        for value in ("old", "new")
+        [f"cookie{i}={value}{i}; Path=/" for i in range(20)] for value in ("old", "new")
     )
     jar.update_cookies_from_headers(next(header_sets), url)
 
