@@ -1,0 +1,4 @@
+Restricted :meth:`~aiohttp.web.Application.add_domain` host masks to a single
+``*`` wildcard: registering a mask with two or more wildcards now raises
+:exc:`ValueError`, since such a mask could make matching an incoming ``Host``
+slow -- by :user:`rodrigobnogueira`.

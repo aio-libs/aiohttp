@@ -1,4 +1,0 @@
-Restricted :meth:`~aiohttp.web.Application.add_domain` host masks to a single
-``*`` wildcard; a mask containing two or more wildcards is now rejected at
-registration, since it could otherwise make matching an incoming ``Host`` slow
--- by :user:`rodrigobnogueira`.
