@@ -1571,8 +1571,8 @@ Response object
          To access all cookies, including duplicates with the same name,
          use :meth:`response.headers.getall('Set-Cookie') <multidict.MultiDictProxy.getall>`.
 
-         The session's cookie jar will correctly store all cookies, even if
-         they are not accessible via this attribute.
+         At most 50 valid ``Set-Cookie`` fields are parsed, here and for the
+         session's cookie jar.
 
    .. attribute:: headers
 
@@ -2574,6 +2574,24 @@ Utilities
 
    Implements cookie storage adhering to RFC 6265.
 
+   Cookies parsed from responses are limited to 50 valid ``Set-Cookie``
+   fields per response, 4,096 octets for a cookie's name and value, 32
+   attributes per field and 1,024 octets per attribute value; anything beyond
+   that is ignored. Flags such as ``Secure`` ignore their value, so a value
+   over the limit still sets them.
+
+   The jar stores at most 180 cookies per domain and 3,300 in total, and
+   sends at most 150 cookies and 8,190 octets, including ``Cookie:``, per
+   request header. Eviction follows Firefox: adding a cookie to a full domain
+   evicts expired, then non-secure, cookies, least recently used first, down
+   to 150 or until none are left. If the domain is full of live ``Secure``
+   cookies, they are evicted for a new ``Secure`` cookie and a new non-secure
+   cookie is dropped. A full jar evicts expired, then least recently used,
+   cookies from any domain down to 3,000.
+
+   The limits do not apply to an explicit ``Cookie`` header or to the
+   per-request ``cookies`` argument.
+
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
    :param bool quote_cookie: (optional) Whether to quote cookies according to
@@ -2645,6 +2663,9 @@ Utilities
 
          Now loads JSON format by default. Falls back to restricted
          pickle for files saved by older versions.
+
+      The jar's storage limits apply to the loaded cookies. If the file is
+      malformed, an exception is raised and the jar is left unchanged.
 
       :param file_path: Path to file from where cookies will be
            imported, :class:`str` or :class:`pathlib.Path` instance.

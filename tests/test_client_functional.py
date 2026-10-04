@@ -54,6 +54,7 @@ from aiohttp.client_exceptions import (
 )
 from aiohttp.client_reqrep import ClientRequest
 from aiohttp.connector import Connection
+from aiohttp.cookiejar import _MAX_COOKIES_PER_REQUEST
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http_writer import StreamWriter
 from aiohttp.payload import (
@@ -1683,6 +1684,62 @@ async def test_HTTP_302_max_redirects(aiohttp_client) -> None:
     assert ctx.value.request_info.method == "GET"
 
 
+async def test_redirect_cookie_storage_is_bounded(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Large Set-Cookie fields across redirects keep jar and cache state bounded."""
+    redirect_count = 10
+    fields_per_response = 20
+    ignored_attribute = "x" * 7400
+    received_cookie_headers: list[str] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        received_cookie_headers.append(request.headers.get(hdrs.COOKIE, ""))
+        count = int(request.match_info["count"])
+        if count:
+            response = web.Response(
+                status=302, headers={hdrs.LOCATION: f"/redirect/{count - 1}"}
+            )
+        else:
+            response = web.Response()
+        for index in range(fields_per_response):
+            response.headers.add(
+                hdrs.SET_COOKIE,
+                f"cookie{count}_{index}=value; junk={ignored_attribute}",
+            )
+        return response
+
+    app = web.Application()
+    app.router.add_get(r"/redirect/{count:\d+}", handler)
+    jar = aiohttp.CookieJar(unsafe=True)
+    client = await aiohttp_client(app, cookie_jar=jar)
+
+    async with client.get(
+        f"/redirect/{redirect_count}", max_redirects=redirect_count + 1
+    ) as response:
+        assert response.status == 200
+        assert len(response.history) == redirect_count
+        assert len(response.cookies) == fields_per_response
+        assert len(response.headers.getall(hdrs.SET_COOKIE)) == fields_per_response
+
+    response_bytes = (
+        (redirect_count + 1)
+        * fields_per_response
+        * len(f"Set-Cookie: cookie10_15=value; junk={ignored_attribute}".encode())
+    )
+    assert response_bytes > 1024 * 1024
+    max_cookies = aiohttp.cookiejar._MAX_COOKIES_PER_DOMAIN
+    assert redirect_count * fields_per_response > max_cookies
+    assert aiohttp.cookiejar._COOKIE_QUOTA_PER_DOMAIN < len(jar) <= max_cookies
+    assert sum(map(len, jar._morsel_cache.values())) <= max_cookies
+    assert all(
+        aiohttp.cookiejar._COOKIE_HEADER_PREFIX_LENGTH + len(value.encode())
+        <= aiohttp.cookiejar._MAX_COOKIE_HEADER_LENGTH
+        for value in received_cookie_headers
+        if value
+    )
+
+
 async def test_HTTP_200_GET_WITH_PARAMS(aiohttp_client) -> None:
     async def handler(request):
         return web.Response(
@@ -2909,6 +2966,76 @@ async def test_cookies_per_request(aiohttp_client) -> None:
 
     async with client.get("/", cookies={"test4": "789", "test5": rc}) as resp:
         assert 200 == resp.status
+
+
+async def test_per_request_cookies_are_not_jar_limited(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    cookies = {f"cookie{i}": "value" for i in range(_MAX_COOKIES_PER_REQUEST + 1)}
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.cookies.keys() == cookies.keys()
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", cookies=cookies) as response:
+        assert response.status == 200
+
+
+async def test_explicit_cookie_header_is_not_jar_limited(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    count = _MAX_COOKIES_PER_REQUEST + 1
+    cookie_header = "; ".join(f"cookie{i}=value" for i in range(count))
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.headers[hdrs.COOKIE] == cookie_header
+        assert len(request.cookies) == count
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", headers={hdrs.COOKIE: cookie_header}) as response:
+        assert response.status == 200
+
+
+@pytest.mark.parametrize(
+    ("set_cookie", "name", "value"),
+    (("path=unquoted", "path", "unquoted"), ('secure="quoted"', "secure", "quoted")),
+)
+async def test_reserved_cookie_name_round_trip(
+    aiohttp_client: AiohttpClient,
+    set_cookie: str,
+    name: str,
+    value: str,
+) -> None:
+    """Reserved attribute words are valid cookie names in first position."""
+    received_cookies: dict[str, str] = {}
+
+    async def set_handler(request: web.Request) -> web.Response:
+        response = web.Response(status=302, headers={hdrs.LOCATION: "/receive"})
+        response.headers.add(hdrs.SET_COOKIE, set_cookie)
+        return response
+
+    async def receive_handler(request: web.Request) -> web.Response:
+        received_cookies.update(request.cookies)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/set", set_handler)
+    app.router.add_get("/receive", receive_handler)
+    client = await aiohttp_client(app, cookie_jar=aiohttp.CookieJar(unsafe=True))
+
+    async with client.get("/set") as response:
+        assert response.status == 200
+        assert response.history[0].cookies[name].value == value
+
+    assert received_cookies == {name: value}
 
 
 async def test_cookies_redirect(aiohttp_client) -> None:

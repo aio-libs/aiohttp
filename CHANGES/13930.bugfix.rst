@@ -1,0 +1,4 @@
+Added limits to client cookie parsing, :class:`~aiohttp.CookieJar` storage and
+generated ``Cookie`` headers, with Firefox-style eviction, and fixed a replaced cookie
+keeping the previous cookie's expiry when the new cookie has none
+-- by :user:`iamibi` and :user:`bdraco`.
