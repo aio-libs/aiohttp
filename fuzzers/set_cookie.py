@@ -30,7 +30,7 @@ URL_ = URL("https://example.com/")
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
+def TestOneInput(data: bytes) -> None:
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
     jar = CookieJar(quote_cookie=fdp.ConsumeBool())
     headers = [
