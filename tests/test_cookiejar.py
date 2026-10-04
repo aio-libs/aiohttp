@@ -4,7 +4,9 @@ import itertools
 import json
 import logging
 import os
+import random
 import stat
+from collections import Counter
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from operator import not_
 from pathlib import Path
@@ -2002,6 +2004,76 @@ def test_oversized_secure_value_keeps_cookie_off_plain_http() -> None:
 
     assert "sid" in jar.filter_cookies(URL("https://example.com/"))
     assert "sid" not in jar.filter_cookies(URL("http://example.com/"))
+
+
+def _assert_consistent(jar: CookieJar) -> None:
+    """Check the jar's bookkeeping against the cookies it stores."""
+    stored = {
+        (domain, path, name)
+        for (domain, path), cookies in jar._cookies.items()
+        for name in cookies
+    }
+    assert jar._cookie_count == len(stored) == len(jar)
+    assert jar._domain_counts == Counter(domain for domain, _, _ in stored)
+    assert set(jar._access_generations) == stored
+    assert all(
+        generation <= jar._next_access_generation
+        for generation in jar._access_generations.values()
+    )
+    assert jar._host_only_cookies <= stored
+    assert set(jar._expirations) <= stored
+    for jar_key, morsels in jar._morsel_cache.items():
+        for name, (morsel, _, cookie_key) in morsels.items():
+            assert cookie_key == jar_key + (name,)
+            assert cookie_key in stored
+            assert morsel.value == jar._cookies[jar_key][name].value
+
+
+def test_cookie_jar_bookkeeping_stays_consistent(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    # Small limits so eviction, purging and output limits happen often.
+    monkeypatch.setattr(cookiejar_module, "_MAX_COOKIES_PER_DOMAIN", 6)
+    monkeypatch.setattr(cookiejar_module, "_COOKIE_QUOTA_PER_DOMAIN", 4)
+    monkeypatch.setattr(cookiejar_module, "_MAX_COOKIES_TOTAL", 14)
+    monkeypatch.setattr(cookiejar_module, "_COOKIE_QUOTA_TOTAL", 10)
+    monkeypatch.setattr(cookiejar_module, "_MAX_COOKIES_PER_REQUEST", 5)
+    rng = random.Random(13930)
+    hosts = ("example.com", "a.example.com", "b.example.com", "c.a.example.com")
+    file_path = tmp_path / "cookies.json"
+    jar = CookieJar()
+
+    def random_url() -> URL:
+        return URL(f"{rng.choice(('http', 'https'))}://{rng.choice(hosts)}/x/y")
+
+    for _ in range(3000):
+        operation = rng.randrange(10)
+        if operation < 5:
+            field = f"c{rng.randrange(10)}={rng.choice(('1', '2', 'x' * 40))}"
+            if rng.random() < 0.5:
+                field += f"; Domain={rng.choice(hosts[:3])}"
+            if rng.random() < 0.5:
+                field += f"; Path={rng.choice(('/', '/x'))}"
+            if rng.random() < 0.4:
+                field += "; Secure"
+            if rng.random() < 0.3:
+                field += f"; Max-Age={rng.choice(('0', '3600'))}"
+            jar.update_cookies_from_headers([field], random_url())
+        elif operation == 5:
+            jar.update_cookies({f"c{rng.randrange(10)}": "v"}, random_url())
+        elif operation == 6:
+            jar.filter_cookies(random_url())
+        elif operation == 7:
+            jar.clear(lambda morsel: bool(morsel["secure"]))
+        elif operation == 8:
+            if rng.random() < 0.5:
+                jar.clear_domain(rng.choice(hosts))
+            else:
+                jar.save(file_path)
+                jar.load(file_path)
+        elif rng.random() < 0.1:
+            jar.clear()
+        _assert_consistent(jar)
 
 
 def test_cookie_jar_load_keeps_cookies_view_live(tmp_path: Path) -> None:
