@@ -89,7 +89,7 @@ from .connector import (
     TCPConnector as TCPConnector,
     UnixConnector as UnixConnector,
 )
-from .cookiejar import CookieJar
+from .cookiejar import CookieJar, _UnlimitedCookieJar
 from .helpers import (
     _SENTINEL,
     DEBUG,
@@ -795,7 +795,7 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
-                        tmp_cookie_jar = CookieJar(
+                        tmp_cookie_jar = _UnlimitedCookieJar(
                             unsafe=self._cookie_jar.unsafe,
                             quote_cookie=self._cookie_jar.quote_cookie,
                             treat_as_secure_origin=frozenset(
