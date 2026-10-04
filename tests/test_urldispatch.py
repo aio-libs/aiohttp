@@ -1180,6 +1180,8 @@ def test_domain_valid() -> None:
         ("*.example.com", "jpg.example.com", True),
         ("*.example.com", "a.example.com", True),
         ("*.example.com", "example.com", False),
+        # A single wildcard spans dots, so it matches nested subdomains too.
+        ("*.example.com", "a.b.example.com", True),
         # Registered without a port, a domain matches the Host on any port.
         ("example.com", "example.com:80", True),
         ("example.com", "EXAMPLE.COM:8080", True),
@@ -1197,6 +1199,14 @@ def test_match_domain(a: str, b: str, result: bool) -> None:
     else:
         rule = Domain(a)
     assert rule.match_domain(b) is result
+
+
+@pytest.mark.parametrize(
+    "mask", ["*.*.example.com", "*.*", "**", "*.*.*.example.com", "a*b*.example.com"]
+)
+def test_mask_domain_rejects_multiple_wildcards(mask: str) -> None:
+    with pytest.raises(ValueError, match="at most one"):
+        MaskDomain(mask)
 
 
 def test_add_subapp_errors(app: web.Application) -> None:

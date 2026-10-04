@@ -818,6 +818,11 @@ class MaskDomain(Domain):
 
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
+        # Two or more "*" compile to adjacent unbounded quantifiers that can
+        # backtrack against each other, so matching a long Host against such a
+        # mask can get very slow. A single "*" stays linear, so allow only one.
+        if self._domain.count("*") > 1:
+            raise ValueError("Domain mask may contain at most one '*' wildcard")
         mask = self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
         self._mask = re.compile(mask, re.I)
 

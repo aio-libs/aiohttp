@@ -299,6 +299,13 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         return resource
 
     def add_domain(self, domain: str, subapp: "Application") -> MatchedSubAppResource:
+        """Register *subapp* to serve requests whose Host matches *domain*.
+
+        *domain* may contain a single ``*`` wildcard, which matches any part of
+        the Host and may span dots -- ``*.example.com`` also matches
+        ``a.b.example.com``, and a bare ``*`` matches every Host. A mask with
+        more than one ``*`` is rejected.
+        """
         if not isinstance(domain, str):
             raise TypeError("Domain must be str")
         elif "*" in domain:
