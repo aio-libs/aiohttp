@@ -595,7 +595,7 @@ def _weakref_handle(info: "tuple[weakref.ref[object], str]") -> None:
 def weakref_handle(
     ob: object,
     name: str,
-    timeout: float,
+    timeout: float | None,
     loop: asyncio.AbstractEventLoop,
     timeout_ceil_threshold: float = 5,
 ) -> asyncio.TimerHandle | None:
