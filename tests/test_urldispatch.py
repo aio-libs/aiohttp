@@ -1143,6 +1143,23 @@ def test_domain_valid():
         ("example.com:81", "example.com:8080", False),
         ("*.example.com:81", "a.example.com:81", True),
         ("*.example.com:81", "a.example.com", False),
+        ("*.example.com:81", "a.example.com:8181", False),
+        # A wildcard spans labels, but never a colon.
+        ("*.example.com", "a.b.example.com", True),
+        ("*.example.com", ".example.com", True),
+        ("*.example.com", "a:b.example.com", False),
+        ("*", "a:b", True),
+        # Several wildcards, including adjacent and infix ones.
+        ("*.*.example.com", "a.b.example.com", True),
+        ("*.*.example.com", "a.example.com", False),
+        ("**.example.com", "a.example.com", True),
+        ("a*b.example.com", "axxb.example.com", True),
+        ("x*x.example.com", "x.example.com", False),
+        # Matching splits at the first colon, like ``Domain``: a portless
+        # rule ignores the port entirely; a rule with a port requires that
+        # exact port, so a malformed multi-colon Host cannot match it.
+        ("*.example.com", "a.example.com:81:9", True),
+        ("*.example.com:81", "a.example.com:81:9", False),
     ],
 )
 def test_match_domain(a, b, result):
