@@ -13,6 +13,7 @@ from yarl import URL
 
 import aiohttp
 from aiohttp import ClientSession, hdrs, http
+from aiohttp._cookie_helpers import _MAX_COOKIES_PER_RESPONSE
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.client_reqrep import ClientResponse, RequestInfo
 from aiohttp.helpers import TimerNoop
@@ -1596,6 +1597,34 @@ def test_response_duplicate_cookie_names(
     assert len(response.cookies) == 2  # Only 'session-id' and 'user-pref'
     assert response.cookies["session-id"].value == "098-7654321"  # Last one wins
     assert response.cookies["user-pref"].value == "light"  # Last one wins
+
+
+def test_response_cookies_are_bounded_but_raw_headers_remain_available(
+    loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    response = ClientResponse(
+        "get",
+        URL("http://example.com"),
+        request_info=mock.Mock(),
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=loop,
+        session=session,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    cookie_headers = tuple(
+        f"cookie{i}=value" for i in range(_MAX_COOKIES_PER_RESPONSE + 1)
+    )
+    headers = CIMultiDict(("Set-Cookie", value) for value in cookie_headers)
+    response._headers = CIMultiDictProxy(headers)
+    response._raw_cookie_headers = cookie_headers
+
+    assert len(response.cookies) == _MAX_COOKIES_PER_RESPONSE
+    assert response.headers.getall("Set-Cookie") == list(cookie_headers)
 
 
 def test_response_raw_cookie_headers_preserved(
