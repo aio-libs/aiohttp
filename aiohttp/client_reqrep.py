@@ -1431,6 +1431,12 @@ class ClientRequest(ClientRequestBase):
                     "chunked can not be set "
                     'if "Transfer-Encoding: chunked" header is set'
                 )
+            # Without chunked, the body is sent as is after a Content-Length
+            # header, which must not be combined with Transfer-Encoding.
+            raise ValueError(
+                '"Transfer-Encoding: chunked" header can not be set, '
+                "use chunked=True instead"
+            )
 
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:

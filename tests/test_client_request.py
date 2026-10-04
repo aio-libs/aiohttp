@@ -1068,17 +1068,18 @@ async def test_chunked(conn: mock.Mock, make_client_request: _RequestMaker) -> N
     resp.close()
 
 
-async def test_chunked2(conn: mock.Mock, make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "post",
-        URL("http://python.org/"),
-        headers=CIMultiDict({"Transfer-encoding": "chunked"}),
-        loop=asyncio.get_running_loop(),
-    )
-    resp = await req._send(conn)
-    assert "chunked" == req.headers["TRANSFER-ENCODING"]
-    await req._close()
-    resp.close()
+@pytest.mark.parametrize("data", (None, b"data"))
+async def test_chunked_header_without_chunked(
+    make_client_request: _RequestMaker, data: bytes | None
+) -> None:
+    with pytest.raises(ValueError, match="use chunked=True instead"):
+        make_client_request(
+            "post",
+            URL("http://python.org/"),
+            data=data,
+            headers=CIMultiDict({"Transfer-encoding": "chunked"}),
+            loop=asyncio.get_running_loop(),
+        )
 
 
 async def test_chunked_empty_body(

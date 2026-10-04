@@ -495,7 +495,9 @@ The client session supports the context manager protocol for self closing.
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.
          If *chunked* is ``True``, then the *Transfer-encoding* and
-         *content-length* headers are disallowed.
+         *content-length* headers are disallowed. Set *chunked* instead of
+         passing a *Transfer-encoding: chunked* header, which raises
+         :exc:`ValueError`.
 
          When ``False``, aiohttp still enables chunking if *compress* is set,
          or if the body size is unknown (such as for an async generator)
@@ -1003,7 +1005,9 @@ certification chaining.
       to decide how to chunk data streams. If chunking is enabled, aiohttp
       encodes the provided chunks in the "Transfer-encoding: chunked" format.
       If *chunked* is ``True``, then the *Transfer-encoding* and
-      *content-length* headers are disallowed.
+      *content-length* headers are disallowed. Set *chunked* instead of
+      passing a *Transfer-encoding: chunked* header, which raises
+      :exc:`ValueError`.
 
       When ``False``, aiohttp still enables chunking if *compress* is set,
       or if the body size is unknown (such as for an async generator)
