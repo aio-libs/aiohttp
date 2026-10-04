@@ -1654,7 +1654,7 @@ def test_terminate_with_closed_loop(
             cookies=BaseCookie[str](),
             version=HttpVersion11,
             compress=False,
-            chunked=None,
+            chunked=False,
             expect100=False,
             response_class=ClientResponse,
             proxy=None,

@@ -473,7 +473,7 @@ async def make_client_request() -> AsyncIterator[_RequestMaker]:
             "cookies": BaseCookie[str](),
             "version": HttpVersion11,
             "compress": False,
-            "chunked": None,
+            "chunked": False,
             "expect100": False,
             "response_class": ClientResponse,
             "proxy": None,

@@ -3,5 +3,7 @@ Fixed the client framing a request body as chunked without sending
 a ``Content-Length`` header, and a ``GET``, ``HEAD``, ``OPTIONS`` or ``TRACE``
 request without a body sent a stray ``0\r\n\r\n`` terminator when ``chunked``
 was set (for example, the ``GET`` following a ``303`` redirect of a
-``chunked=True`` ``POST``), which servers rejected with ``400 Bad Request``
+``chunked=True`` ``POST``), which servers rejected with ``400 Bad Request``.
+The *chunked* parameter is now a :class:`bool` defaulting to ``False``, which
+behaves like the previous ``None`` default
 -- by :user:`HelmiDev03`.

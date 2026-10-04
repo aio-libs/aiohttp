@@ -198,7 +198,7 @@ class _RequestOptions(TypedDict, total=False):
     allow_redirects: bool
     max_redirects: int
     compress: Literal["deflate", "gzip"] | bool
-    chunked: bool | None
+    chunked: bool
     expect100: bool
     raise_for_status: None | bool | Callable[[ClientResponse], Awaitable[None]]
     read_until_eof: bool
@@ -499,7 +499,7 @@ class ClientSession:
         allow_redirects: bool = True,
         max_redirects: int = 10,
         compress: Literal["deflate", "gzip"] | bool = False,
-        chunked: bool | None = None,
+        chunked: bool = False,
         expect100: bool = False,
         raise_for_status: (
             None | bool | Callable[[ClientResponse], Awaitable[None]]
@@ -1627,7 +1627,7 @@ else:
         version - Request HTTP version.
         compress - Set to True if request has to be compressed
         with deflate encoding.
-        chunked - Set to chunk size for chunked transfer encoding.
+        chunked - Set to True to send the body with chunked transfer encoding.
         expect100 - Expect 100-continue response from server.
         connector - BaseConnector sub-class instance to support
         connection pooling.

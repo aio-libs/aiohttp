@@ -1224,7 +1224,7 @@ class ClientRequestArgs(TypedDict, total=False):
     cookies: BaseCookie[str]
     version: HttpVersion
     compress: Literal["deflate", "gzip"] | bool
-    chunked: bool | None
+    chunked: bool
     expect100: bool
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
@@ -1272,7 +1272,7 @@ class ClientRequest(ClientRequestBase):
         cookies: BaseCookie[str],
         version: HttpVersion,
         compress: Literal["deflate", "gzip"] | bool,
-        chunked: bool | None,
+        chunked: bool,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
