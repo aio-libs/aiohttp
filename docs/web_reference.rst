@@ -1685,6 +1685,11 @@ Application and Router
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
 
+      A mask may contain a single ``*`` wildcard, which matches any part of
+      the host and may span dots: ``*.example.com`` matches both
+      ``a.example.com`` and ``a.b.example.com``, and a bare ``*`` matches
+      every host. A mask with more than one ``*`` raises :exc:`ValueError`.
+
       .. warning::
 
          Registering many domains using this method may cause performance
@@ -1698,6 +1703,10 @@ Application and Router
       :param Application subapp: nested application.
 
       :returns: a :class:`~aiohttp.web.MatchedSubAppResource` instance.
+
+      .. versionchanged:: 3.14.4
+
+         A mask with more than one ``*`` wildcard is rejected.
 
    .. method:: add_routes(routes_table)
 

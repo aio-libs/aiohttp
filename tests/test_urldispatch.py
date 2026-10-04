@@ -1182,6 +1182,8 @@ def test_domain_valid() -> None:
         ("*.example.com", "example.com", False),
         # A single wildcard spans dots, so it matches nested subdomains too.
         ("*.example.com", "a.b.example.com", True),
+        ("*", "a.b.example.com", True),
+        ("a*.example.com", "abc.example.com", True),
         # Registered without a port, a domain matches the Host on any port.
         ("example.com", "example.com:80", True),
         ("example.com", "EXAMPLE.COM:8080", True),
@@ -1229,6 +1231,11 @@ def test_subapp_rule_resource(app: web.Application) -> None:
     assert repr(resource).startswith("<MatchedSubAppResource")
     with pytest.raises(RuntimeError):
         resource.url_for()
+
+
+def test_add_domain_rejects_multiple_wildcards(app: web.Application) -> None:
+    with pytest.raises(ValueError, match="at most one"):
+        app.add_domain("*.*.example.com", web.Application())
 
 
 async def test_add_domain_not_str(app: web.Application) -> None:
