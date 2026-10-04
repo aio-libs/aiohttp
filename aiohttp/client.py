@@ -1135,11 +1135,18 @@ class ClientSession:
             )
 
         # send request
+        # The handshake is an ordinary request, so it has to run under a timeout
+        # the caller can reason about rather than inheriting the session default
+        # silently (#7220). `ClientWSTimeout` is websocket-only (ws_receive /
+        # ws_close) and has no connect leg, so the session timeout is what
+        # actually bounds the handshake; naming it here makes that explicit
+        # instead of a fallback buried in _request.
         resp = await self.request(
             method,
             url,
             params=params,
             headers=real_headers,
+            timeout=self._timeout,
             read_until_eof=False,
             proxy=proxy,
             ssl=ssl,

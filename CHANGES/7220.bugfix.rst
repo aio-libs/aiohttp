@@ -1,0 +1,4 @@
+Fixed :meth:`~aiohttp.ClientSession.ws_connect` sending the websocket upgrade
+request without a timeout, so the handshake ran under the session default
+rather than under a timeout the caller could reason about -- by
+:user:`lucasmartins-ai`.
