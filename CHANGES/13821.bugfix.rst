@@ -1,1 +1,0 @@
-Fixed the web server trusting the scheme of an absolute-form request-target -- by :user:`Dreamsorcerer`.

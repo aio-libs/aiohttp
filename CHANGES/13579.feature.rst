@@ -1,1 +1,0 @@
-Added :class:`aiohttp.UploadTracker` for observing a client request's upload progress -- by :user:`Dreamsorcerer`.

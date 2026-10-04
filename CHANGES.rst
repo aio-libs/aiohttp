@@ -10,6 +10,793 @@
 
 .. towncrier release notes start
 
+3.14.4 (2026-10-04)
+===================
+
+Features
+--------
+
+- Added :class:`aiohttp.UploadTracker` for observing a client request's upload progress -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13579`.
+  
+  
+  
+- Switched ``application/x-www-form-urlencoded`` parsing in
+  :meth:`~aiohttp.web.BaseRequest.post` to the faster :func:`yarl.query_to_pairs`
+  parser and added the ``client_max_fields`` argument to
+  :class:`~aiohttp.web.Application` (default ``1000``) to cap the number of form
+  fields accepted by :meth:`~aiohttp.web.BaseRequest.post`. Forms with more
+  than 1000 fields now receive a ``413`` response unless the cap is raised;
+  ``0`` disables it -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13738`.
+  
+  
+  
+- Added constants to ``aiohttp.hdrs`` for widely used headers: those that
+  browsers send on every request (``Sec-Fetch-*``, ``Sec-CH-UA*``,
+  ``Sec-GPC``, ``Upgrade-Insecure-Requests``, ``Priority``), W3C trace context
+  (``traceparent``, ``tracestate``, ``baggage``), response security, reporting
+  and caching headers, the remaining RFC 9110 and RFC 9530 fields,
+  ``Content-ID`` and common de facto proxy and application headers, and
+  grouped the constants by where the header is defined. The C parser returns
+  these names as the shared :class:`~multidict.istr` constants instead of new
+  :class:`str` objects, which made parsing a typical browser request about
+  9% cheaper -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13886`.
+
+
+
+Bug fixes
+---------
+
+- Remove overlapping slots in ``RequestHandler``,
+  fix broken slots inheritance in :py:class:`~aiohttp.web.StreamResponse`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`6547`.
+  
+  
+  
+- Fixed a segmentation fault in the C HTTP parser on Python 3.12 and newer when payload decompression raised an error while pending decompressed data was being drained, as seen with ``brotlicffi`` 1.2 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13203`, :issue:`13249`.
+  
+  
+  
+- Rejected control characters in the request target in the pure-Python HTTP parser,
+  matching the llhttp-backed parser, which already refuses them
+  -- by :user:`arshsmith1`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13212`.
+  
+  
+  
+- Stripped the trailing whitespace from header values in the C HTTP parser,
+  so that it matches the pure-Python parser and :rfc:`9110#section-5.5`
+  -- by :user:`LuShadowX`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13246`.
+  
+  
+  
+- Fixed the WebSocket reader rejecting a compressed data frame with close code 1002 when a control frame arrived before the first data frame (regression in 3.14.2) -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13274`.
+  
+  
+  
+- Fixed internally retried requests sending a truncated body when the request
+  data was a file object.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13329`, :issue:`13330`.
+  
+  
+  
+- Fixed event loop state possibly being corrupted on Python 3.12+ -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13346`.
+  
+  
+  
+- Fixed the HTTP parser raising :exc:`~aiohttp.ClientPayloadError` when a fully received ``Content-Length`` body was pending completion -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13348`.
+  
+  
+  
+- Bounded the per-read object overhead the WebSocket reader retains while reassembling a frame delivered across many small reads; the reads are joined once when the frame completes, and folded into a single buffer if they exceed a fragment cap, so a frame dribbled in tiny reads cannot pin unbounded per-read overhead -- by :user:`Dreamsorcerer` and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13352`, :issue:`13488`.
+  
+  
+  
+- Fixed requests pipelined behind a request whose upgrade the handler declined
+  going unanswered once there were more of them than the per-connection queue
+  holds. With the pure-Python parser the same requests were also served more
+  than once -- by :user:`rodrigobnogueira`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13356`.
+  
+  
+  
+- Reduced CPU consumption when encountering many concatenated members in a compressed payload and rejected large amounts of members -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13362`.
+  
+  
+  
+- Fixed excessive memory consumption with small WebSocket messages -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13393`.
+  
+  
+  
+- Fixed an integer overflow on too large messages -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13415`.
+  
+  
+  
+- Switched multipart handling to use spooled temporary files to reduce number of file descriptors needed -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13426`.
+  
+  
+  
+- Fixed a limit on message tail after an upgrade request -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13501`.
+  
+  
+  
+- Fixed some edge case handling in multipart parts using base 64 encoding -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13509`.
+  
+  
+  
+- Fixed Cython 3.3.0 failing to compile the WebSocket reader: dropped the
+  ``Final[...]`` annotation from ``ALLOWED_CLOSE_CODES`` and the ``int``
+  annotation from the local ``start_pos`` in ``WebSocketReader._feed_data``,
+  both of which conflicted with declarations in ``reader_c.pxd`` under
+  Cython 3.3.0 -- by :user:`Georgefifth`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13520`.
+  
+  
+  
+- Fixed the WebSocket reader accepting a new data frame injected between the
+  fragments of an in-progress message; per :rfc:`6455#section-5.4` every frame
+  after the first fragment and before the ``FIN`` must be a continuation, and
+  such a stream is now rejected as a protocol error -- by :user:`arshsmith1`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13553`.
+  
+  
+  
+- Fixed a connection being eligible for reuse after its request was cancelled
+  or failed while waiting for a ``100 Continue`` response or finalizing the
+  body; the request headers were already sent, so reusing the connection
+  corrupted the next request on it -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13579`.
+  
+  
+  
+- Fixed ``BaseRequest.http_range`` not accepting case-insensitive range units -- by :user:`Manny7717`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13580`, :issue:`13581`.
+  
+  
+  
+- Fixed ``CookieJar.update_cookies()`` to copy user-passed mutable ``Morsel`` objects -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13637`.
+  
+  
+  
+- Fixed unbounded memory growth on a client WebSocket connection. A frame
+  protocol error detaches the reader but leaves the connection upgraded, so a
+  peer could stream unlimited data into an internal buffer when the application
+  never called :meth:`~aiohttp.ClientWebSocketResponse.receive`; that data is
+  now discarded, since nothing can parse it. Data arriving before the reader is
+  installed is bounded by ``read_bufsize``, which now applies to this buffer as
+  well as to :attr:`~aiohttp.ClientResponse.content`
+  -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13655`, :issue:`13743`.
+  
+  
+  
+- Fixed pure-Python request parser not reading a body in a ``HEAD`` request -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13671`.
+  
+  
+  
+- Fixed host-only cookie state being lost on expiration -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13674`.
+  
+  
+  
+- Fixed a possible ``OverflowError`` on cookies and a connection not being closed properly -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13677`.
+  
+  
+  
+- The first-request deadline now also closes connections whose first request body stalls, while a body that is still arriving extends the deadline instead of being interrupted -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13681`.
+  
+  
+  
+- Fixed idle connections not being closed if no request was received -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13681`.
+  
+  
+  
+- Fixed :meth:`~aiohttp.web.Application.add_domain` not routing a request to
+  its domain application when the ``Host`` header carried a port and the
+  domain was registered without one, or, for a wildcard domain, uppercase
+  letters -- by :user:`rodrigobnogueira`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13693`.
+  
+  
+  
+- Added empty ``__slots__`` to ``AbstractRouteDef`` so that ``RouteDef`` and
+  ``StaticDef`` instances no longer carry an unused ``__dict__``.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13716`.
+  
+  
+  
+- Fixed ``BaseConnector(keepalive_timeout=None)`` crashing on the second request to the same host with ``TypeError: '<=' not supported between instances of 'float' and 'NoneType'`` -- by :user:`ishan-1010`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13756`, :issue:`13757`.
+  
+  
+  
+- Fixed a crash in :meth:`~aiohttp.BodyPartReader.read_chunk` on a body part
+  with an explicit ``Content-Length: 0``: the part fell through to the
+  streaming read strategy, whose minimum chunk size assertion then failed for
+  chunk sizes below the boundary length. Such parts now yield an immediate
+  empty chunk, like any other part with a known length
+  -- by :user:`istoolsfox`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13758`, :issue:`13760`.
+  
+  
+  
+- Fixed ``Set-Cookie`` parsing treating unrecognized attributes as additional
+  cookies. Each ``Set-Cookie`` header now sets exactly one cookie and
+  unrecognized attributes are ignored, per :rfc:`6265#section-5.2`, preventing
+  a malicious server from creating an attacker-selected number of cookie
+  objects (and correspondingly large outgoing ``Cookie`` headers) from a
+  bounded amount of response data. ``DummyCookieJar``, and ``CookieJar`` in
+  safe mode for IP-address origins, no longer parse ``Set-Cookie`` headers at
+  all -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13800`.
+  
+  
+  
+- Fixed the web server trusting the scheme of an absolute-form request-target -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13821`.
+  
+  
+  
+- Fixed ``CookieJar.filter_cookies()`` sending shared cookies (cookies without a ``Domain`` attribute) marked ``Secure`` over unencrypted connections -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13830`.
+  
+  
+  
+- Fixed per-request cookies (the ``cookies`` argument of a request method) marked ``Secure`` not being sent to origins listed in ``CookieJar``'s ``treat_as_secure_origin`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13833`.
+  
+  
+  
+- Fixed the connection to an HTTP proxy staying open until garbage collection, and being reported as ``Unclosed connection``, when sending the ``CONNECT`` request for an HTTPS tunnel failed -- by :user:`Garbsener`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13841`.
+  
+  
+  
+- Resolved a redirect ``Location`` with the scheme of the current URL but
+  without ``//``, such as ``http:/path`` or ``http:path``, against the
+  current URL, as browsers do, instead of treating it as an absolute URL
+  without a host
+  -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13855`.
+  
+  
+  
+- Rejected absolute-form request targets without ``//`` or with an empty
+  host, such as ``http:/example.com/`` or ``http:///example.com/``, before
+  parsing them with yarl, which reads a host from them in its WHATWG mode;
+  RFC 9110 requires a host for ``http`` and ``https``. The invalid URL test
+  data no longer uses ``http:///example.com``, which such a yarl version
+  parses as ``http://example.com/``, as browsers do
+  -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13858`.
+  
+  
+  
+- Fixed :py:meth:`~aiohttp.StreamReader.readuntil` not finding a multi-byte
+  separator whose bytes arrived in different chunks, which made it return data
+  past the separator -- by :user:`andrewstellman`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13870`.
+  
+  
+  
+- Fixed mixed-case ``Content-Encoding`` values (for example ``Gzip``)
+  being accepted by the parser but failing decompression, a regression
+  from the CVE-2025-69224 hardening -- by :user:`muhammad-a-dev`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13894`.
+  
+  
+  
+- Added limits to client cookie parsing, :class:`~aiohttp.CookieJar` storage and
+  generated ``Cookie`` headers, with Firefox-style eviction, and fixed a replaced cookie
+  keeping the previous cookie's expiry when the new cookie has none
+  -- by :user:`iamibi` and :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13930`.
+  
+  
+  
+- Improved performance in domain matching with ``Application.add_domain()`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13943`.
+  
+  
+  
+
+Deprecations (removal in next major release)
+--------------------------------------------
+
+- Deprecated ``ClientResponse.output_size`` and ``ClientResponse.upload_complete``;
+  use ``aiohttp.UploadTracker`` instead -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13579`.
+  
+  
+  
+
+Removals and backward incompatible breaking changes
+---------------------------------------------------
+
+- The WebSocket receive queue now only holds a weak reference to the ``WebSocketReader`` while parsing is stalled; code constructing a reader directly and passing it to ``set_parser()`` must keep its own strong reference to it, or frames the reader stopped short of parsing are lost with it -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13393`.
+  
+  
+  
+- Removed the internal writer proxy used for upload progress accounting.
+  ``AbstractStreamWriter`` gained an optional ``on_body_write`` callback that
+  ``write()`` / ``write_eof()`` implementations must invoke with each accepted
+  body chunk's byte length; custom writer implementations that do not call it
+  will report ``Payload.bytes_written`` as ``0`` -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13436`.
+  
+  
+  
+- Increased minimum yarl version to 1.25.1 -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13734`.
+  
+  
+  
+- Changed ``Set-Cookie`` parsing to create exactly one cookie per field, as RFC 6265
+  and browsers do. Later ``name=value`` pairs and unknown attributes no longer create
+  extra cookies, a leading pair such as ``Path=/`` or ``$Version=1`` is the cookie itself,
+  and legacy ``$Path`` and ``$Domain`` attributes are ignored -- by :user:`iamibi`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13930`.
+  
+  
+  
+
+Improved documentation
+----------------------
+
+- Documented valid request URL forms when using :class:`~aiohttp.UnixConnector`, including ``base_url`` with an HTTP host -- by :user:`muhammad-a-dev`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`11324`, :issue:`13781`.
+  
+  
+  
+- Corrected the documented signature of :meth:`~aiohttp.StreamReader.read_nowait`,
+  whose ``n`` parameter defaults to ``-1`` rather than the ``None`` that was
+  previously documented -- by :user:`LALITH0110`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13295`.
+  
+  
+  
+- Added ``interlock-cb``, an aiohttp client circuit breaker middleware, to the
+  third-party libraries page -- by :user:`bagowix`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13336`.
+  
+  
+  
+- Documented that ``max_redirects=0`` means no limit and that ``allow_redirects=False`` disables redirects -- by :user:`monasco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13658`.
+  
+  
+  
+- Corrected the documented signature of :py:meth:`~aiohttp.StreamReader.readuntil`, which
+  showed a ``str`` separator although the method takes ``bytes``, and documented its
+  keyword-only ``max_size`` argument -- by :user:`hxperl`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13686`.
+  
+  
+  
+- Replaced most of the ``sphinx.ext.extlinks``-based roles in the documentation
+  with :pypi:`sphinx-issues`, which ships the
+  ``:issue:``, ``:pr:``, ``:commit:`` and ``:user:`` roles out of the box.
+  Pull request references are now captioned ``#N`` instead of ``PR #N``, and
+  commit references as abbreviated, ``@``-prefixed hashes
+  -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13752`.
+  
+  
+  
+- Fixed the ``Content-ID`` example in the multipart docs, which used a
+  constant missing from ``aiohttp.hdrs`` and a value that is not a valid
+  message ID -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13886`.
+  
+  
+  
+
+Packaging updates and notes for downstreams
+-------------------------------------------
+
+- Started publishing an additional pure-Python wheel alongside the existing
+  per-platform binary wheels and the ``sdist`` -- by :user:`webknjaz`.
+
+  This gives users on platforms without a working C compiler, or without a
+  matching pre-built wheel, an installable fallback that does not require
+  compilation.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`7632`, :issue:`13388`.
+  
+  
+  
+- Removed the ``aiohttp/_websocket/reader_c.py`` symlink from the source tree; the ``aiohttp._websocket.reader_c`` extension is now compiled directly from ``reader_py.py`` using ``cython --module-name``, so distributions no longer include a ``reader_c.py`` file that showed up as an uncovered module in coverage reports -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13457`.
+  
+  
+  
+- Adopted :pep:`639` license metadata -- the license is now declared as the
+  SPDX expression ``Apache-2.0 AND MIT`` and ``license-files`` moved to the
+  ``[project]`` table, which raises the build-time requirement to
+  ``setuptools >= 77.0``. Built distributions now carry
+  ``License-Expression`` instead of the legacy ``License`` field
+  -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13891`.
+  
+  
+  
+
+Contributor-facing changes
+--------------------------
+
+- The CI/CD is now in sync with the rest of the projects in terms of where
+  the ``cibuildwheel`` workflow lives -- by :user:`webknjaz`.
+
+
+  
+  *Related commits on GitHub:*
+  :commit:`59c0123d`.
+  
+  
+- Moved the pytest configuration from :file:`setup.cfg` to a dedicated
+  :file:`pytest.ini` that follows the layout shared with ``propcache`` and
+  other ``aio-libs`` projects. Compared to the old configuration,
+  ``minversion`` is raised from ``3.8.2`` to ``8.4``; ``pytest-xdist``
+  (``--numprocesses=auto``) and ``pytest-cov`` (``--cov``,
+  ``--cov-context=test``, ``--no-cov-on-fail``) are enabled by default
+  again, so pass ``--numprocesses=0`` and/or ``--no-cov`` to opt out, as
+  the :file:`Makefile` targets and CI jobs now do where needed;
+  ``--doctest-modules``, ``--strict-markers`` and
+  ``faulthandler_timeout = 30`` are enabled; ``-v`` is no longer added;
+  empty parameter sets are marked ``xfail`` instead of skipped;
+  ``--junitxml`` reports use ``xunit1`` with captured output and
+  call-only durations; and ``norecursedirs`` skips more directories,
+  including :file:`tests/isolated/`
+  -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12620`, :issue:`12621`.
+  
+  
+  
+- Added check that change fragment matches PR number -- by :user:`Dreamsorcerer`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`12788`.
+  
+  
+  
+- CI now builds the ``sdist`` (and a pure-Python wheel) once, in a new
+  ``build-pure-python-dists`` job, and shares that build across ``test``,
+  ``autobahn``, ``benchmark``, ``build-wheels``, ``test-mobile`` and the
+  ``sdist``-based half of linting, instead of every one of those jobs
+  checking out the repository and running ``make cythonize`` on its own
+  -- by :user:`webknjaz`.
+
+  Linting is also now split into ``lint-from-git`` (the
+  :file:`requirements/runtime-deps.in` sync check and docs spell-checking,
+  which need real Git history) and ``lint-from-sdist`` (``mypy``,
+  ``slotscheck``, the changelog fragment check, and ``twine check``, which
+  build from the shared artifact instead), since an ``sdist`` tarball never
+  contains :file:`.git`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13363`, :issue:`13388`.
+  
+  
+  
+- Synchronized the ``coverage.py`` configuration (:file:`.coveragerc.toml` and
+  :file:`.coveragerc-cython.toml`) with the pattern already established in
+  :external+yarl:doc:`yarl <index>`, :external+multidict:doc:`multidict
+  <index>`, ``frozenlist`` and other sibling projects
+  -- by :user:`webknjaz`.
+
+  Both files now anchor package discovery through ``source_pkgs`` instead of
+  relying on a same-named directory happening to exist relative to the
+  working directory, and add a ``[paths]`` mapping so coverage recorded
+  against an installed copy of ``aiohttp`` still combines correctly with
+  coverage recorded from the Git checkout. CI now lets ``pytest-cov`` write
+  ``coverage.xml`` directly via ``--cov-report=xml`` instead of a separate
+  ``coverage xml`` step, and the Autobahn testsuite's subprocess-based
+  coverage collection (which uses ``coverage run --append``, incompatible
+  with parallel mode) now opts out per-invocation via a
+  ``COVERAGE_PARALLEL_MODE`` environment variable instead of trying to
+  override it on the command line.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13422`.
+  
+  
+  
+- Stopped the benchmark CI job from hanging in the CodSpeed runner's apt
+  install by installing ``libc6-dbg`` up front with a bounded retry, and raised
+  the job timeout from 15 to 30 minutes -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13489`.
+  
+  
+  
+- Added benchmarks for reading masked WebSocket messages and fixed the
+  existing read benchmarks, which stopped measuring the parser after the
+  eighth large frame due to the queue limit -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13561`.
+  
+  
+  
+- Removed stale ``filterwarnings`` ignores from the pytest configuration
+  that are no longer triggered by aiohttp, the supported Python versions
+  or the pinned test dependencies -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13717`.
+  
+  
+  
+- Dropped the leftover ``PIP_USER`` setting and the ``pip --user`` ``PATH``
+  prefix from the CI workflow; both became dead once the test jobs started
+  provisioning Python via ``astral-sh/setup-uv``
+  -- by :user:`aiolibsbot`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13718`, :issue:`13721`.
+  
+  
+  
+- Changed the long host in the ``Host`` header tests to one that is not made
+  only of digits, since yarl now parses such a host as an IP address in its
+  default mode and rejects this one as out of range
+  -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13861`.
+  
+  
+  
+- Fixed ``tools/gen.py`` dropping a header name from the generated C lookup
+  when two names shared a prefix that differed only in letter case, such as
+  ``Accept-CH`` and ``Accept-Charset``, and made the generated code compile
+  without warnings -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13886`.
+  
+  
+  
+
+Miscellaneous internal changes
+------------------------------
+
+- Avoided formatting an unused fallback ``Date`` header value when the response
+  already has one -- by :user:`marcus-campbell`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13299`.
+  
+  
+  
+- Improved header parsing performance in the C HTTP parser by reusing the
+  :class:`~multidict.istr` built for a header name missing from
+  ``aiohttp.hdrs`` the next time the same name arrives, from a bounded
+  cache of up to 512 names of at most 64 bytes -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13887`.
+  
+  
+  
+
+----
+
+
 3.14.3 (2026-07-22)
 ===================
 
