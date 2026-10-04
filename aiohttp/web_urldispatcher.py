@@ -823,14 +823,14 @@ class MaskDomain(Domain):
             self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
         )
         host_mask, _, self._port = self._domain.partition(":")
-        self._mask = re.compile(fnmatch.translate(host_mask))
+        self._mask = re.compile(fnmatch.translate(host_mask), re.I)
 
     @property
     def canonical(self) -> str:
         return self._pattern
 
     def match_domain(self, host: str) -> bool:
-        hostname, _, port = host.lower().partition(":")
+        hostname, _, port = host.partition(":")
         if self._port and port != self._port:
             return False
         return self._mask.match(hostname) is not None
