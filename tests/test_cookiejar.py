@@ -1267,10 +1267,8 @@ async def test_filter_cookies_does_not_leak_memory() -> None:
         assert len(filtered) == 1
         assert "test_cookie" in filtered
 
-    # Storage size should not grow significantly
-    # Only the shared cookie entry ('', '') may be added
-    final_storage_size = len(jar._cookies)
-    assert final_storage_size <= initial_storage_size + 1
+    # Storage size should not grow
+    assert len(jar._cookies) == initial_storage_size
 
     # Verify _morsel_cache doesn't leak either
     # It should only have entries for domains/paths where cookies exist
@@ -1279,8 +1277,7 @@ async def test_filter_cookies_does_not_leak_memory() -> None:
 
     # Verify no empty entries were created for domain-path combinations
     for key, cookies in jar._cookies.items():
-        if key != ("", ""):  # Skip the shared cookie entry
-            assert len(cookies) > 0, f"Empty cookie entry found for {key}"
+        assert len(cookies) > 0, f"Empty cookie entry found for {key}"
 
     # Verify _morsel_cache entries correspond to actual cookies
     for key, morsels in jar._morsel_cache.items():
