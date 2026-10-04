@@ -16,6 +16,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import web
 from aiohttp.http import HttpVersion, RawRequestMessage
+from aiohttp.web_urldispatcher import MaskDomain
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -578,3 +579,18 @@ def test_resolve_prefix_resources_many_prefix_many_plain(
     @benchmark
     def _run() -> None:
         loop.run_until_complete(run_url_dispatcher_benchmark())
+
+
+def test_match_domain_wildcards_long_host(benchmark: BenchmarkFixture) -> None:
+    """Match a two-wildcard domain rule against the longest possible Host header."""
+    rule = MaskDomain("*.*.example.com")
+    # llhttp caps a Host header at max_field_size - len("Host") bytes, and a
+    # dotted host is the worst case for a wildcard rule.
+    host = ("a." * 4093)[:8186]
+
+    assert rule.match_domain(host) is False
+
+    @benchmark
+    def _run() -> None:
+        for _ in range(100):
+            rule.match_domain(host)
