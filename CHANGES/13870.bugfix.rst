@@ -1,3 +1,0 @@
-Fixed :py:meth:`~aiohttp.StreamReader.readuntil` not finding a multi-byte
-separator whose bytes arrived in different chunks, which made it return data
-past the separator -- by :user:`andrewstellman`.
