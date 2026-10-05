@@ -516,6 +516,14 @@ class CookieJar(AbstractCookieJar):
                 # Setting cookies for different domains is not allowed
                 continue
 
+            if domain and hostname and "." not in domain:
+                # A single label is a public suffix, so it can only name the
+                # host itself, and the cookie is then host-only.
+                # https://datatracker.ietf.org/doc/html/rfc6265#section-5.3
+                if domain != hostname:
+                    continue
+                domain = ""
+
             path = cookie["path"]
             if not path or path[0] != "/":
                 # Set the cookie's path to the response path

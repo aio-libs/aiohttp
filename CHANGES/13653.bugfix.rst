@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.CookieJar` accepting a cookie whose ``Domain`` attribute is a single label such as ``com``, which was then sent to every host under it -- by :user:`dxbjavid`.
