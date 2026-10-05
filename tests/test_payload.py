@@ -1340,6 +1340,14 @@ async def test_text_io_payload_size_utf16(tmp_path: Path) -> None:
         await loop.run_in_executor(None, f.close)
 
 
+async def test_text_io_payload_empty_utf16() -> None:
+    """An empty text stream must write nothing rather than a lone BOM."""
+    tiop = payload.TextIOPayload(io.StringIO(""), encoding="utf-16")
+    writer = BufferWriter()
+    await tiop.write(writer)
+    assert bytes(writer.buffer) == b""
+
+
 async def test_text_io_payload_reencode_not_truncated(tmp_path: Path) -> None:
     """Re-encoding to a wider form must not be truncated to the on-disk size."""
     latin1_file = tmp_path / "latin1.txt"
