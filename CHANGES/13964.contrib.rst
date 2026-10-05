@@ -1,0 +1,4 @@
+Changed two client tests to pass with a yarl that rejects an ``http`` URL
+with an empty host, such as ``http://``, and writes ``http:/`` without the
+``//`` it used to add
+-- by :user:`asvetlov`.
