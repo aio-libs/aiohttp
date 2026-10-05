@@ -554,7 +554,7 @@ jobs:
         done
         exit 1
     - name: Run benchmarks
-      uses: CodSpeedHQ/action@v5.2.1
+      uses: CodSpeedHQ/action@v5.4.0
       with:
         mode: instrumentation
         run: >-
