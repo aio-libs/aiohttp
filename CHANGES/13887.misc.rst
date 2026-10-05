@@ -1,4 +1,0 @@
-Improved header parsing performance in the C HTTP parser by reusing the
-:class:`~multidict.istr` built for a header name missing from
-``aiohttp.hdrs`` the next time the same name arrives, from a bounded
-cache of up to 512 names of at most 64 bytes -- by :user:`asvetlov`.

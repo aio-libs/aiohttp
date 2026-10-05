@@ -1,1 +1,0 @@
-Fixed host-only cookie state being lost on expiration -- by :user:`Dreamsorcerer`.

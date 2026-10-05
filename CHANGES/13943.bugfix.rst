@@ -1,1 +1,0 @@
-Improved performance in domain matching with ``Application.add_domain()`` -- by :user:`Dreamsorcerer`.

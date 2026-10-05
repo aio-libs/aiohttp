@@ -1,3 +1,0 @@
-Fixed the ``Content-ID`` example in the multipart docs, which used a
-constant missing from ``aiohttp.hdrs`` and a value that is not a valid
-message ID -- by :user:`asvetlov`.
