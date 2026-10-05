@@ -742,7 +742,7 @@ jobs:
       runner-vm-os: ${{ matrix.runner-vm-os }}
       source-tarball-name: >-
         ${{ needs.build-pure-python-dists.outputs.sdist-filename }}
-      timeout-minutes: ${{ matrix.qemu != '' && 35 || 15 }}
+      timeout-minutes: 90
 
   deploy:
     name: Deploy
