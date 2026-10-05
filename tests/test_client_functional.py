@@ -3435,7 +3435,8 @@ INVALID_URL_WITH_ERROR_MESSAGE_YARL_NEW = (
 
 # yarl.URL.origin raises ValueError. A redirect to "http:/" resolves against
 # the current URL instead, see test_redirect_same_scheme_without_authority().
-INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (("http:/", "http:///"),)
+# Older yarl versions write the URL as "http:///", which the pattern matches.
+INVALID_URL_WITH_ERROR_MESSAGE_YARL_ORIGIN = (("http:/", "http:/"),)
 
 NON_HTTP_URL_WITH_ERROR_MESSAGE = (
     ("call:+380123456789", r"call:\+380123456789"),
@@ -5839,7 +5840,8 @@ async def test_invalid_redirect_origin_closes_payload(
         # Read the payload to simulate server processing
         await request.read()
         # Return a URL that will fail origin() check - using a URL without host
-        return web.Response(status=307, headers={hdrs.LOCATION: "http://"})
+        # in another scheme, so that it is not resolved against the current URL
+        return web.Response(status=307, headers={hdrs.LOCATION: "https:"})
 
     app = web.Application()
     app.router.add_post("/redirect", redirect_handler)
