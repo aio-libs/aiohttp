@@ -1,5 +1,0 @@
-Resolved a redirect ``Location`` with the scheme of the current URL but
-without ``//``, such as ``http:/path`` or ``http:path``, against the
-current URL, as browsers do, instead of treating it as an absolute URL
-without a host
--- by :user:`asvetlov`.
