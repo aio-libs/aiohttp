@@ -48,7 +48,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   aiosignal
     #   exceptiongroup
     #   multidict
-uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.23.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 yarl==1.25.1
     # via -r requirements/runtime-deps.in
