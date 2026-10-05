@@ -61,7 +61,7 @@ cffi==2.1.1
     #   pycares
 cfgv==3.5.0
     # via pre-commit
-charset-normalizer==3.5.1
+charset-normalizer==3.5.2
     # via requests
 click==8.5.0
     # via
