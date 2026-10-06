@@ -192,7 +192,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
     def __eq__(self, other: object) -> bool:
         return self is other
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
@@ -209,7 +209,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
                 stacklevel=3,
             )
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload
