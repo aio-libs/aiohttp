@@ -69,8 +69,14 @@ def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
         except TypeError:
             pass
 
-        assert m_asyncio.new_event_loop.called
         assert m_asyncio.set_event_loop.called
+
+    if isinstance(worker, base_worker.GunicornUVLoopWebWorker):
+        assert uvloop is not None
+        assert isinstance(worker.loop, uvloop.Loop)
+        worker.loop.close()
+    else:
+        assert m_asyncio.new_event_loop.called
 
 
 def test_run(
