@@ -34,7 +34,7 @@ markdown-it-py==3.0.0
     # via
     #   mdit-py-plugins
     #   myst-parser
-markupsafe==3.0.3
+markupsafe==3.0.4
     # via jinja2
 mdit-py-plugins==0.6.1
     # via myst-parser
