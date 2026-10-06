@@ -6,7 +6,7 @@
 #
 annotated-types==0.8.0
     # via pydantic
-ast-serialize==0.11.2
+ast-serialize==0.12.0
     # via mypy
 blockbuster==1.5.28
     # via -r requirements/test-common.in
