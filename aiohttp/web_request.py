@@ -208,7 +208,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             # override auto-calculating url, host, and scheme
             # all other properties should be good
             self._cache["url"] = url
-            self._cache["host"] = url.host
+            self._cache["host"] = url.host_port_subcomponent
             self._rel_url = url.relative()
         else:
             self._rel_url = url
@@ -449,6 +449,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Hostname is resolved in this order:
 
         - overridden value by .clone(host=new_host) call.
+        - host of the request-target, if the target is in absolute or
+          authority form (the Host header is ignored then, per
+          :rfc:`9112#section-3.2.2-8`); a non-default port is included.
         - HOST HTTP header
         - local socket address the request arrived on
           (transport ``sockname``)
