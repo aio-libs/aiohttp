@@ -1247,6 +1247,17 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     assert msg.compression is None
 
 
+def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
+    # RFC 9110 8.4 allows several codings, but we apply none of them, so the message
+    # has to fail here instead of reaching the caller with a body still compressed.
+    text = (
+        b"POST /test HTTP/1.1\r\nHost: a\r\n"
+        b"content-encoding: gzip,gzip\r\ncontent-length: 4\r\n\r\nbody"
+    )
+    with pytest.raises(http_exceptions.ContentEncodingError, match="gzip,gzip"):
+        parser.feed_data(text)
+
+
 def test_url_connect(parser: HttpRequestParser) -> None:
     text = b"CONNECT www.google.com HTTP/1.1\r\nHost: a\r\ncontent-length: 0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
@@ -3721,6 +3732,11 @@ class TestDeflateBuffer:
 
         dbuf.feed_eof()
         assert buf._eof
+
+    async def test_multiple_codings_raise(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        with pytest.raises(http_exceptions.ContentEncodingError, match="gzip,gzip"):
+            DeflateBuffer(buf, "gzip,gzip")
 
     @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
     async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:

@@ -536,6 +536,9 @@ cdef class HttpParser:
                 enc = enc.lower()
                 if enc in {"gzip", "deflate", "br", "zstd"}:
                     encoding = enc
+                elif "," in enc:
+                    # Kept so DeflateBuffer can report it; see http_parser.py
+                    encoding = enc
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]

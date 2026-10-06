@@ -1,0 +1,5 @@
+A response that lists more than one encoding in ``Content-Encoding`` is no longer treated as
+if it carried none. Such a body was handed over still compressed and the failure showed up
+later as an unrelated error from ``.text()`` or ``.json()``; the client now raises
+``ContentEncodingError`` naming the header. Pass ``auto_decompress=False`` to receive the
+body as sent -- by :user:`tsayin4`.

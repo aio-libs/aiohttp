@@ -641,6 +641,11 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             enc = enc.lower()
             if enc in {"gzip", "deflate", "br", "zstd"}:
                 encoding = enc
+            elif "," in enc:
+                # Several codings are legal (RFC 9110 8.4) but we apply none of them.
+                # Keep the header so DeflateBuffer can say so, rather than dropping it
+                # and letting the body reach the caller still compressed.
+                encoding = enc
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -1204,6 +1209,12 @@ class DeflateBuffer:
                     "Please install `backports.zstd`"
                 )
             self.decompressor = ZSTDDecompressor()
+        elif encoding is not None and "," in encoding:
+            raise ContentEncodingError(
+                f"Can not decode content-encoding: {encoding}. "
+                "Multiple codings are not applied. Pass auto_decompress=False to "
+                "receive the body as sent."
+            )
         else:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 
