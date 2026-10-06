@@ -63,8 +63,9 @@ class ThreadedResolver(AbstractResolver):
             )
 
         hosts: list[ResolveResult] = []
-        for family, _, proto, _, address in infos:
-            if family == socket.AF_INET6:
+        for info in infos:  # Unpacking here would lose the tagged union for typing.
+            if info[0] == socket.AF_INET6:
+                address = info[4]
                 if len(address) < 3:
                     # IPv6 is not supported by Python build,
                     # or IPv6 is not enabled in the host
@@ -80,15 +81,15 @@ class ThreadedResolver(AbstractResolver):
                 else:
                     resolved_host, port = address[:2]
             else:  # IPv4
-                assert family == socket.AF_INET
-                resolved_host, port = address  # type: ignore[misc]
+                assert info[0] == socket.AF_INET
+                resolved_host, port = info[4]
             hosts.append(
                 ResolveResult(
                     hostname=host,
                     host=resolved_host,
                     port=port,
-                    family=family,
-                    proto=proto,
+                    family=info[0],
+                    proto=info[2],
                     flags=_NUMERIC_SOCKET_FLAGS,
                 )
             )
