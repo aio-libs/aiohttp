@@ -147,7 +147,7 @@ and :ref:`aiohttp-web-signals` handlers.
 
          The host of an absolute-form or authority-form request-target
          now keeps a non-default port, brackets an IPv6 address and
-         stays in its punycode (wire) form, matching the shape of a
+         stays in its *punycode* form, matching the shape of a
          *Host* header value.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
