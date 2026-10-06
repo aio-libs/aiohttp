@@ -424,6 +424,8 @@ def _cancel_tasks(
 
 
 def run_app(
+
+        loop: the event loop to run the app. If None, a new loop is created. The loop is not closed by run_app.
     app: Application | Awaitable[Application],
     *,
     debug: bool = False,
