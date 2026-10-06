@@ -346,7 +346,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     # MutableMapping API
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: RequestKey[_T]) -> _T: ...
 
     @overload
@@ -355,7 +355,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __getitem__(self, key: str | RequestKey[_T]) -> Any:
         return self._state[key]
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: RequestKey[_T], value: _T) -> None: ...
 
     @overload
