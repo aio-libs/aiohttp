@@ -1295,6 +1295,42 @@ async def test_add_domain_matches_host_with_port(
     assert match_info.route.handler is domain_handler
 
 
+async def test_add_domain_absolute_form_ignores_host_header(
+    app: web.Application,
+) -> None:
+    """An absolute-form target overrides the Host header for domain matching.
+
+    https://www.rfc-editor.org/rfc/rfc9112#section-3.2.2-8
+    """
+    parent_handler = make_handler()
+    app.router.add_get("/", parent_handler)
+
+    subapp = web.Application()
+    domain_handler = make_handler()
+    subapp.router.add_get("/", domain_handler)
+    app.add_domain("example.com", subapp)
+
+    # The Host header names the domain, but the target's authority wins.
+    request = make_mocked_request(
+        "GET", "http://other.example/", {"host": "example.com"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is parent_handler
+
+    request = make_mocked_request(
+        "GET", "http://example.com/", {"host": "other.example"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
+
+    # A non-default target port matches like a Host header port would.
+    request = make_mocked_request(
+        "GET", "http://example.com:8080/", {"host": "other.example"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
+
+
 def test_subapp_url_for(app: web.Application) -> None:
     subapp = web.Application()
     resource = app.add_subapp("/pre", subapp)

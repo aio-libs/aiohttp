@@ -249,6 +249,31 @@ def test_absolute_url_with_tls_transport() -> None:
     assert req.host == "example.com"
 
 
+def test_absolute_url_host_ignores_host_header() -> None:
+    # https://www.rfc-editor.org/rfc/rfc9112#section-3.2.2-8
+    req = make_mocked_request(
+        "GET", "http://example.com/path", {"Host": "other.example"}
+    )
+    assert req.host == "example.com"
+    assert req.url.host == "example.com"
+
+
+def test_absolute_url_host_port() -> None:
+    # The host of an absolute-form target keeps a non-default port,
+    # matching the shape of a Host header.
+    req = make_mocked_request("GET", "http://example.com:8080/path")
+    assert req.host == "example.com:8080"
+    # ...while a default port is elided.
+    req = make_mocked_request("GET", "http://example.com:80/path")
+    assert req.host == "example.com"
+
+
+def test_absolute_url_host_ipv6() -> None:
+    # An IPv6 host stays bracketed, as it would appear in a Host header.
+    req = make_mocked_request("GET", "http://[::1]:8080/path")
+    assert req.host == "[::1]:8080"
+
+
 def test_absolute_form_raw_path() -> None:
     # An absolute-form target (RFC 9112 3.2.2) must not leak the scheme/host
     # into raw_path. The path, query and fragment are kept byte-for-byte, the
@@ -307,7 +332,9 @@ def test_connect_authority_form_url_untouched(secure: bool) -> None:
     assert str(req.url) == "//example.com:443"
     assert req.url.scheme == ""
     assert req.url.port == 443
-    assert req.host == "example.com"
+    # The schemeless target has no default port to elide, so the port is
+    # kept, matching the Host header a client sends alongside CONNECT.
+    assert req.host == "example.com:443"
     assert req.scheme == ("https" if secure else "http")
     assert req.secure is secure
 

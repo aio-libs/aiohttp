@@ -118,6 +118,10 @@ and :ref:`aiohttp-web-signals` handlers.
       Host name of the request, resolved in this order:
 
       - Overridden value by :meth:`~BaseRequest.clone` call.
+      - Host of the request-target, if the target is in absolute or
+        authority form; a non-default port is included. The *Host*
+        HTTP header is ignored for such targets, as required by
+        :rfc:`9112#section-3.2.2-8`.
       - *Host* HTTP header
       - local socket address the request arrived on
         (transport ``sockname``)
@@ -138,6 +142,13 @@ and :ref:`aiohttp-web-signals` handlers.
          calls :func:`socket.getfqdn`, which performed blocking
          reverse-DNS resolution on the event loop. The local socket
          address (transport ``sockname``) is used instead.
+
+      .. versionchanged:: 3.15
+
+         The host of an absolute-form or authority-form request-target
+         now keeps a non-default port, brackets an IPv6 address and
+         stays in its *punycode* form, matching the shape of a
+         *Host* header value.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
@@ -1681,7 +1692,9 @@ Application and Router
       Register nested sub-application that serves
       the domain name or domain name mask.
 
-      In resolving process if request.headers['host']
+      In resolving process if the host of the request (the *Host*
+      HTTP header, or the host of an absolute-form request-target,
+      which overrides the header per :rfc:`9112#section-3.2.2-8`)
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
 
@@ -1698,6 +1711,11 @@ Application and Router
       :param Application subapp: nested application.
 
       :returns: a :class:`~aiohttp.web.MatchedSubAppResource` instance.
+
+      .. versionchanged:: 3.15
+
+         The host of an absolute-form request-target now takes
+         precedence over the *Host* header when matching *domain*.
 
    .. method:: add_routes(routes_table)
 
