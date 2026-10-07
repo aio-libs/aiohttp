@@ -1,0 +1,1 @@
+Fixed handling of requests with an absolute-form target -- by :user:`Dreamsorcerer`.
