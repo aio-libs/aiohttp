@@ -832,7 +832,9 @@ class Domain(AbstractRuleMatching):
         return f"{url.raw_host}:{url.port}"
 
     async def match(self, request: Request) -> bool:
-        host = request.headers.get(hdrs.HOST)
+        # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-8
+        is_absolute = request._message.url.absolute
+        host = request.host if is_absolute else request.headers.get(hdrs.HOST)
         if not host:
             return False
         return self.match_domain(host)
