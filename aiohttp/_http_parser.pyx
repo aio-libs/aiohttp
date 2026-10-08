@@ -31,7 +31,11 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer, _has_authority
+from .http_parser import (
+    DeflateBuffer as _DeflateBuffer,
+    _has_authority,
+    parse_content_encoding as _parse_content_encoding,
+)
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -532,10 +536,7 @@ cdef class HttpParser:
         enc = self._content_encoding
         if enc is not None:
             self._content_encoding = None
-            if enc.isascii():  # Must be checked before .lower()
-                enc = enc.lower()
-                if enc in {"gzip", "deflate", "br", "zstd"}:
-                    encoding = enc
+            encoding = _parse_content_encoding(enc)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]

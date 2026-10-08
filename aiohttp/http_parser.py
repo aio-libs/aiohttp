@@ -261,6 +261,31 @@ def _is_supported_upgrade(headers: HeadersDictProxy) -> bool:
     return u.isascii() and u.lower() in {"tcp", "websocket"}
 
 
+_CONTENT_CODINGS: Final = frozenset({"gzip", "deflate", "br", "zstd"})
+
+
+def parse_content_encoding(enc: str) -> str | None:
+    """Return the content-codings to decode, or None to leave the body as-is.
+
+    RFC 9110 lists codings in the order they were applied. ``identity`` is a
+    no-op. An unknown coding disables decoding, matching the previous
+    single-token behavior.
+    """
+    if not enc.isascii():  # Must be checked before .lower()
+        return None
+    codings: list[str] = []
+    for part in enc.lower().split(","):
+        token = part.strip(" \t")
+        if not token or token == "identity":
+            continue
+        if token not in _CONTENT_CODINGS:
+            return None
+        codings.append(token)
+    if not codings:
+        return None
+    return ",".join(codings)
+
+
 class HttpParser(abc.ABC, Generic[_MsgT]):
     lax: ClassVar[bool] = False
 
@@ -637,10 +662,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii():  # Must be checked before .lower()
-            enc = enc.lower()
-            if enc in {"gzip", "deflate", "br", "zstd"}:
-                encoding = enc
+        encoding = parse_content_encoding(enc)
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -1189,25 +1211,36 @@ class DeflateBuffer:
         self.encoding = encoding
         self._started_decoding = False
 
-        self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
+        # Codings are listed in the order they were applied. The bytes on
+        # the wire are the last coding, so decode from right to left.
+        self._encodings = encoding.split(",") if encoding else []
+        if self._encodings:
+            self._decompressors = [
+                self._make_decompressor(coding) for coding in reversed(self._encodings)
+            ]
+        else:
+            self._decompressors = [ZLibDecompressor(encoding=encoding)]
+        self.decompressor = self._decompressors[0]
+        self._max_decompress_size = max_decompress_size
+
+    def _make_decompressor(
+        self, encoding: str
+    ) -> BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor:
         if encoding == "br":
             if not HAS_BROTLI:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: brotli (br). "
                     "Please install `Brotli`"
                 )
-            self.decompressor = BrotliDecompressor()
-        elif encoding == "zstd":
+            return BrotliDecompressor()
+        if encoding == "zstd":
             if not HAS_ZSTD:
                 raise ContentEncodingError(
                     "Can not decode content-encoding: zstandard (zstd). "
                     "Please install `backports.zstd`"
                 )
-            self.decompressor = ZSTDDecompressor()
-        else:
-            self.decompressor = ZLibDecompressor(encoding=encoding)
-
-        self._max_decompress_size = max_decompress_size
+            return ZSTDDecompressor()
+        return ZLibDecompressor(encoding=encoding)
 
     def set_exception(
         self,
@@ -1228,40 +1261,67 @@ class DeflateBuffer:
             # RFC1950
             # bits 0..3 = CM = 0b1000 = 8 = "deflate"
             # bits 4..7 = CINFO = 1..7 = windows size.
-            if self.encoding == "deflate" and chunk[0] & 0xF != 8:
+            # The first decompressor sees the bytes on the wire, which are
+            # the last listed coding.
+            wire_coding = self._encodings[-1] if self._encodings else self.encoding
+            if wire_coding == "deflate" and chunk[0] & 0xF != 8:
                 # Change the decoder to decompress incorrectly compressed data
                 # Actually we should issue a warning about non-RFC-compliant data.
                 self.decompressor = ZLibDecompressor(
-                    encoding=self.encoding, suppress_deflate_header=True
+                    encoding=wire_coding, suppress_deflate_header=True
                 )
+                self._decompressors[0] = self.decompressor
             self._started_decoding = True
 
         low_water = self.out._low_water
         max_length = (
             0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         )
-        try:
-            chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
-        except Exception:
-            raise ContentEncodingError(
-                "Can not decode content-encoding: %s" % self.encoding
-            )
+        # A single coding keeps using self.decompressor so callers can
+        # replace it. Multiple codings decode right to left.
+        if len(self._decompressors) == 1:
+            decoders = [self.decompressor]
+        else:
+            self._decompressors[0] = self.decompressor
+            decoders = self._decompressors
+
+        pending = False
+        for dec in decoders:
+            try:
+                chunk = dec.decompress_sync(chunk, max_length=max_length)
+            except Exception:
+                raise ContentEncodingError(
+                    "Can not decode content-encoding: %s" % self.encoding
+                )
+            if dec.data_available:
+                pending = True
 
         if chunk:
             self.out.feed_data(chunk)
-        return self.decompressor.data_available
+        return pending
 
     def feed_eof(self) -> None:
-        chunk = self.decompressor.flush()
-        # This should never contain data as we defer the call until exhausting
-        # the decompression. If .flush() is returning data, this may indicate a
-        # zip bomb vulnerability as it will decompress all remaining data at once.
-        assert not chunk
+        if len(self._decompressors) == 1:
+            decoders = [self.decompressor]
+        else:
+            self._decompressors[0] = self.decompressor
+            decoders = self._decompressors
+        for dec in decoders:
+            chunk = dec.flush()
+            # This should never contain data as we defer the call until exhausting
+            # the decompression. If .flush() is returning data, this may indicate a
+            # zip bomb vulnerability as it will decompress all remaining data at once.
+            assert not chunk
 
-        if self.size > 0:
+        if self.size > 0 and self._encodings:
             # decompressor is not brotli unless encoding is "br"
-            if self.encoding == "deflate" and not self.decompressor.eof:  # type: ignore[union-attr]
-                raise ContentEncodingError("deflate")
+            if len(decoders) == 1:
+                if self._encodings[-1] == "deflate" and not decoders[0].eof:  # type: ignore[union-attr]
+                    raise ContentEncodingError("deflate")
+            else:
+                for coding, dec in zip(reversed(self._encodings), decoders):
+                    if coding == "deflate" and not dec.eof:  # type: ignore[union-attr]
+                        raise ContentEncodingError("deflate")
 
         self.out.feed_eof()
 

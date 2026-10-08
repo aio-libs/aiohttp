@@ -1175,6 +1175,30 @@ def test_compression_deflate(parser: HttpRequestParser) -> None:
     assert msg.compression == "deflate"
 
 
+def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
+    """RFC 9110 lets Content-Encoding list more than one coding."""
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip,gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip,gzip"
+
+
+async def test_decode_multiple_content_encodings(response: HttpResponseParser) -> None:
+    """https://github.com/aio-libs/aiohttp/issues/13364"""
+    original = b'{"hello": "world"}'
+    compressed = gzip.compress(gzip.compress(original))
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: gzip,gzip\r\n"
+        b"\r\n" + compressed
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg, payload = messages[0][0], messages[0][-1]
+    assert msg.compression == "gzip,gzip"
+    assert await payload.read() == original
+
+
 def test_compression_gzip(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
