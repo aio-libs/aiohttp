@@ -1221,6 +1221,9 @@ class DeflateBuffer:
         else:
             self._decompressors = [ZLibDecompressor(encoding=encoding)]
         self.decompressor = self._decompressors[0]
+        # Inner decoders get their first bytes only once the outer one emits
+        # output, so the headerless deflate check runs per decoder.
+        self._inner_started = [False] * len(self._decompressors)
         self._max_decompress_size = max_decompress_size
 
     def _make_decompressor(
@@ -1286,7 +1289,15 @@ class DeflateBuffer:
             decoders = self._decompressors
 
         pending = False
-        for dec in decoders:
+        for i, dec in enumerate(decoders):
+            if i and chunk and not self._inner_started[i]:
+                self._inner_started[i] = True
+                coding = self._encodings[-1 - i]
+                if coding == "deflate" and chunk[0] & 0xF != 8:
+                    dec = ZLibDecompressor(
+                        encoding=coding, suppress_deflate_header=True
+                    )
+                    self._decompressors[i] = dec
             try:
                 chunk = dec.decompress_sync(chunk, max_length=max_length)
             except Exception:
