@@ -36,7 +36,7 @@ propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==5.0.1
+pycares==5.1.0
     # via aiodns
 pycparser==3.0
     # via cffi

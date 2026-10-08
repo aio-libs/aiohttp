@@ -75,7 +75,7 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pycares==5.0.1 ; sys_platform != "android" and sys_platform != "ios"
+pycares==5.1.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   aiodns
