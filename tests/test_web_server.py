@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import socket
+import weakref
 from contextlib import suppress
 from typing import Any, NoReturn
 from unittest import mock
@@ -24,6 +25,29 @@ async def test_simple_server(
     assert resp.status == 200
     txt = await resp.text()
     assert txt == "/path/to"
+
+
+async def test_completed_request_released_on_keepalive_connection(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    requests: list[weakref.ReferenceType[web.BaseRequest]] = []
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        requests.append(weakref.ref(request))
+        await request.json()
+        return web.Response(text="ok")
+
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    for request_count in range(1, 4):
+        resp = await cli.post("/image", json={"image": "x" * 65536})
+        assert resp.status == 200
+        assert await resp.text() == "ok"
+        await asyncio.sleep(0)
+        gc.collect()
+        assert len(server.handler.connections) == 1
+        assert server.handler.connections[0]._request_count == request_count
+        assert all(request() is None for request in requests)
 
 
 async def test_unsupported_upgrade(
