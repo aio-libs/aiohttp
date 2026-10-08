@@ -741,6 +741,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 finally:
                     self._waiter = None
 
+                # The connection can be lost in the same loop iteration that
+                # delivered the request which woke us; the factory is gone then.
+                if self._force_close:
+                    break
+
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so

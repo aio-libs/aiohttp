@@ -1,0 +1,1 @@
+Fixed a ``TypeError`` being logged by the server when a client disconnected in the same event loop iteration as its request was received -- by :user:`officialpm`.
