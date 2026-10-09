@@ -141,7 +141,7 @@ cdef int _write_pair(object identity, Py_hash_t _hash, object key, object value,
         return -1
     if _write_byte(writer, b'\n') < 0:
         return -1
-    return 0
+    return 1
 
 # --------------- _serialize_headers ----------------------
 
