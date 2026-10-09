@@ -1,10 +1,10 @@
 [build-system]
 requires = [
     "pkgconfig",
-    "multidict >= 7.0.0"
+    "multidict >= 7.0.0",
     # setuptools >= 77.0 required for PEP 639 SPDX license metadata
     # (it also covers the >= 67.0 floor needed for Python 3.12+ support).
-    "setuptools >= 77.0",
+    "setuptools >= 77.0"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -43,7 +43,7 @@ dependencies = [
   "multidict >= 7.0.0",
   "propcache >= 0.2.0",
   "typing_extensions >= 4.4 ; python_version < '3.13'",
-  "yarl >= 1.25.1, < 2.0",
+  "yarl >= 1.25.1, < 2.0"
 ]
 dynamic = [
   "version",
