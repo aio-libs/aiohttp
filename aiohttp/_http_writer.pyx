@@ -162,7 +162,7 @@ def _serialize_headers(str status_line, headers):
             raise
 
         MultiDict_ForEachAll(MultiDictAPI, headers, _write_pair, <void*>&writer)
-        
+
         if _write_byte(&writer, b'\r') < 0:
             raise
         if _write_byte(&writer, b'\n') < 0:
