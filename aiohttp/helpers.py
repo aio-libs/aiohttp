@@ -987,7 +987,7 @@ class ChainMapProxy(Mapping[str | AppKey[Any], Any]):
             f"Inheritance class {cls.__name__} from ChainMapProxy is forbidden"
         )
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload

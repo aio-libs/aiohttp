@@ -6,7 +6,7 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
-aiofastnet==1.1.1 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+aiofastnet==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 aiohappyeyeballs==2.7.1
     # via -r requirements/runtime-deps.in
@@ -38,7 +38,7 @@ propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==5.0.1
+pycares==5.1.0
     # via aiodns
 pycparser==3.0
     # via cffi
@@ -48,7 +48,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   aiosignal
     #   exceptiongroup
     #   multidict
-uvloop==0.22.1 ; platform_system != "Windows" and implementation_name == "cpython"
+uvloop==0.23.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via -r requirements/base.in
 yarl==1.25.1
     # via -r requirements/runtime-deps.in

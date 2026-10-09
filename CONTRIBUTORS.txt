@@ -43,8 +43,10 @@ Anas El Amraoui
 Anders Melchiorsen
 Andrei Ursulenko
 Andrej Antonov
+Andrew Krylosov
 Andrew Leech
 Andrew Lytvyn
+Andrew Stellman
 Andrew Svetlov
 Andrew Top
 Andrew Zhou
@@ -70,6 +72,7 @@ Ben Greiner
 Ben Kallus
 Ben Timby
 Benedikt Reinartz
+Birol Cin
 Bob Haddleton
 Boris Feld
 Borys Vorona
@@ -188,6 +191,7 @@ Illia Volochii
 Ilya Chichak
 Ilya Gruzinov
 Ingmar Steen
+Ishan Katoch
 istoolsfox
 Ivan Lakovic
 Ivan Larin
@@ -384,6 +388,7 @@ Sunghyun Hwang
 Sunit Deshpande
 Sviatoslav Bulbakha
 Sviatoslav Sydorenko
+Syed Mohammad Ibrahim
 Taha Jahangir
 Taras Kozlov
 Taras Voinarovskyi

@@ -504,6 +504,39 @@ class TestStreamReader:
         with pytest.raises(ValueError, match="Another exception"):
             await stream.readuntil(separator)
 
+    @pytest.mark.parametrize(
+        ("separator", "split"),
+        [
+            (separator, split)
+            for separator in (b"\r\n", b"\r\n\r\n", b"--xyz")
+            for split in range(1, len(separator))
+        ],
+    )
+    async def test_readuntil_separator_split_between_chunks(
+        self, separator: bytes, split: int
+    ) -> None:
+        stream = self._make_one()
+        stream.feed_data(b"line1" + separator[:split])
+        stream.feed_data(separator[split:] + b"line2")
+        stream.feed_eof()
+
+        line = await stream.readuntil(separator)
+        assert b"line1" + separator == line
+        assert b"line2" == await stream.read()
+
+    @pytest.mark.parametrize("separator", (b"\r\n\r\n", b"--xyz"))
+    async def test_readuntil_separator_split_one_byte_per_chunk(
+        self, separator: bytes
+    ) -> None:
+        stream = self._make_one()
+        for byte in b"line1" + separator + b"line2":
+            stream.feed_data(bytes([byte]))
+        stream.feed_eof()
+
+        line = await stream.readuntil(separator)
+        assert b"line1" + separator == line
+        assert b"line2" == await stream.read()
+
     async def test_readexactly_zero_or_less(self) -> None:
         # Read exact number of bytes (zero or less).
         stream = self._make_one()

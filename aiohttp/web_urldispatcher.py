@@ -1,6 +1,7 @@
 import abc
 import asyncio
 import base64
+import fnmatch
 import functools
 import hashlib
 import html
@@ -799,7 +800,9 @@ class Domain(AbstractRuleMatching):
         return f"{url.raw_host}:{url.port}"
 
     async def match(self, request: Request) -> bool:
-        host = request.headers.get(hdrs.HOST)
+        # https://www.rfc-editor.org/info/rfc9112/#section-3.2.2-8
+        is_absolute = request._message.url.absolute
+        host = request.host if is_absolute else request.headers.get(hdrs.HOST)
         if not host:
             return False
         return self.match_domain(host)
@@ -818,15 +821,21 @@ class MaskDomain(Domain):
 
     def __init__(self, domain: str) -> None:
         super().__init__(domain)
-        mask = self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
-        self._mask = re.compile(mask, re.I)
+        self._pattern = (
+            self._domain.replace(".", r"\.").replace("*", "[^:]*") + "(:.*)?"
+        )
+        host_mask, _, self._port = self._domain.partition(":")
+        self._mask = re.compile(fnmatch.translate(host_mask), re.I)
 
     @property
     def canonical(self) -> str:
-        return self._mask.pattern
+        return self._pattern
 
     def match_domain(self, host: str) -> bool:
-        return self._mask.fullmatch(host) is not None
+        hostname, _, port = host.partition(":")
+        if self._port and port != self._port:
+            return False
+        return self._mask.match(hostname) is not None
 
 
 class MatchedSubAppResource(PrefixedSubAppResource):

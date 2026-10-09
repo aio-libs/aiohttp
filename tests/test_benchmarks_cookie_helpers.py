@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from aiohttp._cookie_helpers import _COOKIE_PATTERN
+from aiohttp._cookie_helpers import _COOKIE_PATTERN, parse_set_cookie_headers
 
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
@@ -26,3 +26,18 @@ def test_cookie_pattern_redos_payload(benchmark: BenchmarkFixture) -> None:
     @benchmark
     def _run() -> None:
         _COOKIE_PATTERN.match(value)
+
+
+def test_parse_set_cookie_headers(benchmark: BenchmarkFixture) -> None:
+    """Benchmark parsing typical Set-Cookie fields, including a quoted value."""
+    headers = [
+        f"cookie{i}=value{i}; Path=/; Domain=example.com; Max-Age=3600; "
+        "Secure; HttpOnly; SameSite=Lax"
+        for i in range(19)
+    ]
+    headers.append('quoted="a;b"; Path=/; Expires=Wed, 21 Oct 2037 07:28:00 GMT')
+    assert len(parse_set_cookie_headers(headers)) == 20
+
+    @benchmark
+    def _run() -> None:
+        parse_set_cookie_headers(headers)

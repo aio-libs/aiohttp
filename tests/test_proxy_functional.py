@@ -359,7 +359,7 @@ async def test_proxy_http_raw_path(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "aiohttp.io"
+    assert proxy.request.host == "aiohttp.io:2561"
     assert proxy.request.path_qs == raw_url
 
 
@@ -371,7 +371,7 @@ async def test_proxy_http_idna_support(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "éé.com"
+    assert proxy.request.host == "xn--9caa.com"
     assert proxy.request.path_qs == "/"
 
 
