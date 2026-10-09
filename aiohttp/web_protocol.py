@@ -743,8 +743,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 # The connection can be lost in the same loop iteration that
                 # delivered the request which woke us; the factory is gone then.
+                # mypy narrows _force_close to False from the loop condition and
+                # does not see connection_lost() changing it during the await,
+                # see https://github.com/python/mypy/issues/9457
                 if self._force_close:
-                    break
+                    break  # type: ignore[unreachable]
 
             message, payload = self._messages.popleft()
 
