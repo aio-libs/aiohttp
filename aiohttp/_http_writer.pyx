@@ -161,23 +161,8 @@ def _serialize_headers(str status_line, headers):
         if _write_byte(&writer, b'\n') < 0:
             raise
 
-        if MultiDict_Check(MultiDictAPI, headers):
-            MultiDict_ForEachAll(MultiDictAPI, headers, _write_pair, <void*>&writer)
-        else:
-            for key, val in headers.items():
-                if _write_str_raise_on_nlcr(&writer, key) < 0:
-                    raise
-                if _write_byte(&writer, b':') < 0:
-                    raise
-                if _write_byte(&writer, b' ') < 0:
-                    raise
-                if _write_str_raise_on_nlcr(&writer, val) < 0:
-                    raise
-                if _write_byte(&writer, b'\r') < 0:
-                    raise
-                if _write_byte(&writer, b'\n') < 0:
-                    raise
-
+        MultiDict_ForEachAll(MultiDictAPI, headers, _write_pair, <void*>&writer)
+        
         if _write_byte(&writer, b'\r') < 0:
             raise
         if _write_byte(&writer, b'\n') < 0:
