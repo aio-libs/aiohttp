@@ -483,11 +483,8 @@ class WebSocketReader:
 
                 # Control frames (opcode > 0x7) may be interleaved between the
                 # fragments of a data message, so they must not touch the
-                # compression state. RFC 7692 says to fail the connection when
-                # a control frame has RSV1 set, but some clients set it on
-                # every frame once permessage-deflate is negotiated. Control
-                # frames are never decompressed, so the bit is ignored for
-                # interoperability.
+                # compression state. RSV1 on them is ignored for interop:
+                # some clients set it, and they are never decompressed.
                 # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
                 # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
                 if opcode <= 0x7:

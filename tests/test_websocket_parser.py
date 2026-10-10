@@ -758,9 +758,7 @@ def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
 def test_control_frame_with_rsv1(
     out: WebSocketDataQueue, parser: PatchableWebSocketReader, opcode: WSMsgType
 ) -> None:
-    # RFC 7692 forbids the compressed bit on control frames, but some
-    # clients set it anyway; the bit is ignored since control frames are
-    # never decompressed and the connection is kept open.
+    # RSV1 on control frames is ignored for interop.
     # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
     parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
     parser._feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
@@ -773,7 +771,7 @@ def test_control_frame_with_rsv1(
 def test_control_frame_with_rsv1_no_compress(
     out: WebSocketDataQueue, opcode: WSMsgType
 ) -> None:
-    # Without permessage-deflate RSV1 is still rejected on every frame.
+    # RSV1 is still rejected when compression was not negotiated.
     parser_no_compress = PatchableWebSocketReader(
         out, 0, compress=False, decode_text=True
     )
