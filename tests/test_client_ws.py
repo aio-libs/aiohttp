@@ -47,6 +47,29 @@ async def test_ws_connect(ws_key: str, key_data: bytes) -> None:
     assert hdrs.ORIGIN not in m_req.call_args[1]["headers"]
 
 
+async def test_ws_connect_headers(ws_key: str, key_data: bytes) -> None:
+    resp = mock.Mock()
+    resp.status = 101
+    resp.headers = {
+        hdrs.UPGRADE: "websocket",
+        hdrs.CONNECTION: "upgrade",
+        hdrs.SEC_WEBSOCKET_ACCEPT: ws_key,
+        "Set-Cookie": "session=abc123",
+    }
+    resp._upgraded = True
+    resp.connection.protocol.read_timeout = None
+    with mock.patch("aiohttp.client.os") as m_os:
+        with mock.patch("aiohttp.client.ClientSession.request") as m_req:
+            m_os.urandom.return_value = key_data
+            m_req.return_value = asyncio.get_running_loop().create_future()
+            m_req.return_value.set_result(resp)
+
+            res = await aiohttp.ClientSession().ws_connect("http://test.org")
+
+    assert res.headers == resp.headers
+    assert res.headers["Set-Cookie"] == "session=abc123"
+
+
 async def test_ws_connect_read_timeout_is_reset_to_inf(
     ws_key: str, key_data: bytes
 ) -> None:
