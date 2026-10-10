@@ -1,0 +1,1 @@
+Modernized the issue and pull request templates -- by :user:`Polandia94`.
