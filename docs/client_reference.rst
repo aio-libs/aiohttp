@@ -2535,6 +2535,11 @@ Utilities
 
    Implements cookie storage adhering to RFC 6265.
 
+   A ``Domain`` attribute made of a single label, such as ``com``, is only
+   accepted when it names the response host itself, and the cookie is then
+   stored as host-only. The jar has no public suffix list, so longer
+   suffixes such as ``co.uk`` are not detected.
+
    Cookies parsed from responses are limited to 50 valid ``Set-Cookie``
    fields per response, 4,096 octets for a cookie's name and value, 32
    attributes per field and 1,024 octets per attribute value; anything beyond
