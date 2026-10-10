@@ -773,8 +773,8 @@ def test_control_frame_with_rsv1(
     parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
     parser._feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
 
-    assert out._buffer[0].type is opcode
-    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
+    assert out._buffer[0][0].type is opcode
+    assert out._buffer[1] == (WSMessage(WSMsgType.TEXT, "hello", ""), 5)
 
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
