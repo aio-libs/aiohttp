@@ -474,17 +474,12 @@ class WebSocketReader:
                     )
 
                 # Control frames (opcode > 0x7) may be interleaved between the
-                # fragments of a data message and never carry the per-message
-                # compressed bit, so they must not touch the compression state.
+                # fragments of a data message, so they must not touch the
+                # compression state. RSV1 on them is ignored for interop:
+                # some clients set it, and they are never decompressed.
                 # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
                 # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
-                if opcode > 0x7:
-                    if rsv1:
-                        raise WebSocketError(
-                            WSCloseCode.PROTOCOL_ERROR,
-                            "Received frame with non-zero reserved bits",
-                        )
-                else:
+                if opcode <= 0x7:
                     # Set compress status if last package is FIN
                     # OR set compress status if this is first fragment
                     # Raise error if not first fragment with rsv1 = 0x1
