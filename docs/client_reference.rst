@@ -1411,9 +1411,9 @@ is controlled by *force_close* constructor's parameter).
       clear all cache otherwise.
 
 
-.. class:: UnixConnector(path, *, conn_timeout=None, \
-                         keepalive_timeout=30, limit=100, \
-                         force_close=False, loop=None)
+.. class:: UnixConnector(path, force_close=False, \
+                         keepalive_timeout=15, limit=100, \
+                         limit_per_host=0)
    :canonical: aiohttp.connector.UnixConnector
 
    Unix socket connector.
