@@ -10,6 +10,39 @@
 
 .. towncrier release notes start
 
+3.14.5 (2026-10-10)
+===================
+
+Bug fixes
+---------
+
+- Stopped failing the WebSocket connection when a control frame has RSV1 set after ``permessage-deflate`` was negotiated; some clients set the bit on every frame and control frames are never decompressed -- by :user:`bdraco`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`14007`.
+
+
+
+
+Contributor-facing changes
+--------------------------
+
+- Changed two client tests to pass with a yarl that rejects an ``http`` URL
+  with an empty host, such as ``http://``, and writes ``http:/`` without the
+  ``//`` it used to add
+  -- by :user:`asvetlov`.
+
+
+  *Related issues and pull requests on GitHub:*
+  :issue:`13964`.
+
+
+
+
+----
+
+
 3.14.4 (2026-10-04)
 ===================
 
