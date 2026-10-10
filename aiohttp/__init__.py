@@ -89,6 +89,7 @@ from .payload import (
     get_payload,
     payload_type,
 )
+from .pyodide import FetchConnector
 from .resolver import AsyncResolver, DefaultResolver, ThreadedResolver
 from .streams import EMPTY_PAYLOAD, DataQueue, EofStream, StreamReader
 from .tracing import (
@@ -141,6 +142,7 @@ __all__: tuple[str, ...] = (
     "ClientWSTimeout",
     "ConnectionTimeoutError",
     "ContentTypeError",
+    "FetchConnector",
     "Fingerprint",
     "InvalidURL",
     "InvalidUrlClientError",

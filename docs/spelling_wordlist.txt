@@ -126,6 +126,7 @@ DoS
 downstreams
 Dup
 elasticsearch
+Emscripten
 encodings
 env
 environ
@@ -183,6 +184,7 @@ iterables
 javascript
 Jinja
 jitter
+js
 json
 keepalive
 keepalived
@@ -278,6 +280,7 @@ py
 pydantic
 pyenv
 pyflakes
+Pyodide
 pypa
 PyPI
 pyright
@@ -410,6 +413,7 @@ waituntil
 wakeup
 wakeups
 webapp
+WebAssembly
 websocket
 websocket’s
 websockets
