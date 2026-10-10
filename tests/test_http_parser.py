@@ -1175,6 +1175,61 @@ def test_compression_deflate(parser: HttpRequestParser) -> None:
     assert msg.compression == "deflate"
 
 
+def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
+    """RFC 9110 lets Content-Encoding list more than one coding."""
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip,gzip\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == "gzip,gzip"
+
+
+async def test_decode_multiple_content_encodings(response: HttpResponseParser) -> None:
+    """https://github.com/aio-libs/aiohttp/issues/13364"""
+    original = b'{"hello": "world"}'
+    compressed = gzip.compress(gzip.compress(original))
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: gzip,gzip\r\n"
+        b"\r\n" + compressed
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg, payload = messages[0][0], messages[0][-1]
+    assert msg.compression == "gzip,gzip"
+    assert await payload.read() == original
+
+
+async def _feed_encoded(
+    response: HttpResponseParser, coding: bytes, body: bytes
+) -> bytes:
+    text = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+        b"Content-Encoding: " + coding + b"\r\n"
+        b"\r\n" + body
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    return await messages[0][-1].read()
+
+
+async def test_decode_content_encodings_right_to_left(
+    response: HttpResponseParser,
+) -> None:
+    """deflate was applied first, so it is decoded last."""
+    original = b'{"hello": "world"}'
+    body = gzip.compress(zlib.compress(original))
+    assert await _feed_encoded(response, b"deflate,gzip", body) == original
+
+
+async def test_decode_inner_headerless_deflate(response: HttpResponseParser) -> None:
+    """A raw deflate layer inside gzip is decoded like a lone one."""
+    original = b'{"hello": "world"}'
+    compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+    raw = compressor.compress(original) + compressor.flush()
+    body = gzip.compress(raw)
+    assert await _feed_encoded(response, b"deflate,gzip", body) == original
+
+
 def test_compression_gzip(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)

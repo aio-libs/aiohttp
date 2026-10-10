@@ -1,0 +1,1 @@
+Decoded ``Content-Encoding`` headers that list more than one coding, in reverse order of application -- by :user:`Kayvan-Zahiri`.
