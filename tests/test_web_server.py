@@ -50,6 +50,30 @@ async def test_completed_request_released_on_keepalive_connection(
         assert all(request() is None for request in requests)
 
 
+async def test_completed_response_released_on_keepalive_connection(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    responses: list[weakref.ReferenceType[web.Response]] = []
+    body = b"x" * 65536
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        response = web.Response(body=body)
+        responses.append(weakref.ref(response))
+        return response
+
+    server = await aiohttp_raw_server(handler)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    for request_count in range(1, 4):
+        resp = await cli.get("/")
+        assert resp.status == 200
+        assert await resp.read() == body
+        await asyncio.sleep(0)
+        gc.collect()
+        assert len(server.handler.connections) == 1
+        assert server.handler.connections[0]._request_count == request_count
+        assert all(response() is None for response in responses)
+
+
 async def test_unsupported_upgrade(
     aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
 ) -> None:

@@ -1,1 +1,1 @@
-Fixed completed server requests retaining their cached bodies while keep-alive connections waited for another request -- by :user:`deximple`.
+Fixed completed server requests and responses retaining their bodies while keep-alive connections waited for another request -- by :user:`deximple`.

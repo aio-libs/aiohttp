@@ -859,6 +859,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
                 del request
+                resp = None
 
             if self._keepalive and not self._close and not self._force_close:
                 # start keep-alive timer
