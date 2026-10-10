@@ -1,7 +1,9 @@
 ---
-name: Bug Report
+
+name: 🐞 Bug Report
 description: Create a report to help us improve.
-labels: [bug]
+labels:
+- bug
 assignees: aio-libs/triagers
 body:
 - type: markdown
@@ -9,14 +11,54 @@ body:
     value: |
       **Thanks for taking a minute to file a bug report!**
 
-      ⚠
-      Verify first that your issue is not [already reported on
-      GitHub][issue search].
+      > [!warning]
+      > Verify first that your issue is not [already reported on
+      > GitHub][issue search].
 
       _Please fill out the form below with as many precise
       details as possible._
 
       [issue search]: ../search?q=is%3Aissue&type=issues
+
+- type: checkboxes
+  id: terms
+  attributes:
+    label: Please confirm the following
+    description: |
+      Read the [aio-libs Code of Conduct][CoC] first. Check the existing
+      issues on the tracker. Take into account the possibility of your
+      report surfacing a security vulnerability.
+
+      [CoC]: ../../.github/blob/master/CODE_OF_CONDUCT.md
+    options:
+    - label: |
+        I agree to follow the [aio-libs Code of Conduct][CoC].
+
+        [CoC]: ../../.github/blob/master/CODE_OF_CONDUCT.md
+      required: true
+    - label: |
+        I have checked the [current issues][issue search] for
+        duplicates.
+
+        [issue search]: ../search?q=is%3Aissue&type=issues
+      required: true
+    - label: >-
+        I understand this is open source software provided for free
+        and that I might not receive a timely response.
+      required: true
+    - label: |
+        I am positive I am **NOT** reporting a (potential) security
+        vulnerability, to the best of my knowledge. _(These must be
+        shared by submitting [this report form][vulnerability report
+        form] instead, if any hesitation exists.)_
+
+        [vulnerability report form]: ../security/advisories/new
+      required: true
+    - label: >-
+        I am willing to submit a pull request with reproducers as
+        xfailing test cases or even an entire fix. _(Assign this
+        issue to me.)_
+      required: false
 
 - type: textarea
   attributes:
@@ -50,7 +92,7 @@ body:
 
 - type: textarea
   attributes:
-    label: Logs/tracebacks
+    label: Logs / tracebacks
     description: |
       If applicable, add logs/tracebacks to help explain your problem.
       Paste the output of the steps above, including the commands
@@ -61,17 +103,18 @@ body:
 
 - type: textarea
   attributes:
-    label: Python Version
-    description: Attach your version of Python.
+    label: Python version
+    description: Attach the output of `python --version`.
     render: console
     value: |
       $ python --version
   validations:
     required: true
+
 - type: textarea
   attributes:
-    label: aiohttp Version
-    description: Attach your version of aiohttp.
+    label: aiohttp version
+    description: Attach the output of `python -m pip show aiohttp`.
     render: console
     value: |
       $ python -m pip show aiohttp
@@ -79,8 +122,8 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: multidict Version
-    description: Attach your version of multidict.
+    label: multidict version
+    description: Attach the output of `python -m pip show multidict`.
     render: console
     value: |
       $ python -m pip show multidict
@@ -88,8 +131,8 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: propcache Version
-    description: Attach your version of propcache.
+    label: propcache version
+    description: Attach the output of `python -m pip show propcache`.
     render: console
     value: |
       $ python -m pip show propcache
@@ -97,8 +140,8 @@ body:
     required: true
 - type: textarea
   attributes:
-    label: yarl Version
-    description: Attach your version of yarl.
+    label: yarl version
+    description: Attach the output of `python -m pip show yarl`.
     render: console
     value: |
       $ python -m pip show yarl
@@ -136,14 +179,4 @@ body:
       Describe the environment you have that lead to your issue.
       This includes proxy server and other bits that are related to your case.
 
-- type: checkboxes
-  attributes:
-    label: Code of Conduct
-    description: |
-      Read the [aio-libs Code of Conduct][CoC] first.
-
-      [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
-    options:
-    - label: I agree to follow the aio-libs Code of Conduct
-      required: true
 ...
