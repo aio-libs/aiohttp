@@ -756,14 +756,17 @@ def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
 def test_control_frame_with_rsv1(
-    parser: PatchableWebSocketReader, opcode: WSMsgType
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader, opcode: WSMsgType
 ) -> None:
-    # Control frames never carry the per-message compressed bit.
+    # RFC 7692 forbids the compressed bit on control frames, but some
+    # clients set it anyway; the bit is ignored since control frames are
+    # never decompressed and the connection is kept open.
     # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
-    with pytest.raises(WebSocketError) as ctx:
-        parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+    parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+    parser._feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
 
-    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+    assert out._buffer[0].type is opcode
+    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
 
 
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
