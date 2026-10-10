@@ -743,3 +743,125 @@ boundary at which user-supplied strings can become wire bytes.
   urlencoded bodies (threat 4.2).
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.5. Compression codecs
+
+**Scope.** The compression abstractions used across the library:
+`ZLibCompressor` / `ZLibDecompressor` for gzip / deflate, and the
+optional brotli and zstd decompressors. Out of scope: per-caller usage
+specifics (PMCE in [§5.3](#53-websocket-framing--per-message-deflate), multipart per-part Content-Encoding in [§5.4](#54-multipart-parsing--encoding),
+HTTP body decompression in [§5.6](#56-streams--payloads) / [§5.9](#59-server-requestresponse-objects) / [§5.12](#512-client-api--request-lifecycle)). This section focuses
+on what the *codec wrapper itself* guarantees and where its sharp edges
+are.
+
+**Components covered.**
+
+- `aiohttp/compression_utils.py` — `ZLibBackend`, `ZLibBackendWrapper`,
+  `ZLibCompressor`, `ConcatDecompressionHandler`, `ZLibDecompressor`,
+  `BrotliDecompressor`, `ZSTDDecompressor`, `set_zlib_backend`.
+- Callers (referenced for trust-boundary discussion):
+  `aiohttp/http_parser.py` (`DeflateBuffer`, `HttpPayloadParser`),
+  `aiohttp/_websocket/reader_py.py` (PMCE inflate),
+  `aiohttp/_websocket/writer.py` (PMCE deflate),
+  `aiohttp/multipart.py` (per-part decompression),
+  `aiohttp/web_response.py` (response compression).
+
+**Trust boundaries & data flow.**
+
+```mermaid
+flowchart LR
+  Wire([Untrusted compressed bytes]) --> Decomp[ZLibDecompressor / BrotliDecompressor / ZSTDDecompressor]
+  Decomp -->|max_length-bounded chunk| App([Caller buffer])
+  AppSrc([Caller body]) --> Comp[ZLibCompressor]
+  Comp -->|wire bytes| WireOut([Outbound])
+```
+
+The decompressors take attacker-controlled compressed input on the server
+ingress and client response paths. The compressors take in-process
+caller bodies and emit wire bytes. The wrappers themselves are thin
+adapters around the underlying libraries (`zlib` / `brotli` /
+`zstandard`); their job is (a) policy uniformity (`max_length`,
+backend selection, async offload) and (b) cross-backend quirk handling.
+
+**Assets at risk (chunk-specific).**
+
+- **Memory boundedness of decompression** — a small compressed input
+  cannot expand to an unbounded output buffer.
+- **CPU boundedness of decompression** — decompression runs inline on
+  the event loop (`DeflateBuffer.feed_data`, `WebSocketReader`), so the
+  work one input chunk can cost must be bounded too.
+- **Compressor state integrity** — async cancellation cannot leave the
+  compressor in a state that produces invalid wire bytes downstream.
+- **Backend equivalence** — swapping `zlib` for `isal_zlib` (or another
+  ZLibBackendProtocol implementation) does not silently weaken any of
+  the above guarantees.
+
+**Threats (STRIDE).**
+
+| # | Component / Vector | STRIDE | Threat | Risk |
+| :--- | :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb (gzip / deflate / brotli / zstd) | D | A small compressed input can decompress to a large output buffer if the per-call `max_length` is not enforced or the per-stream cap is not applied across calls. | High |
+| 5.2 | Backend swap (`set_zlib_backend`) | T | An alternative backend registered via `set_zlib_backend` could have `max_length` semantics that differ from stdlib `zlib` and `isal_zlib` — e.g. silently returning more bytes than requested, or lacking the "no further data" detection that aiohttp relies on to terminate the decompress loop. That would weaken the per-call cap that defends against decompression bombs. | Low–Med |
+| 5.3 | Cancellation mid-`compress()` | T | Cancelling a compression awaitable mid-call leaves the compressor's internal state inconsistent. Subsequent `compress()` calls on the same object produce output that peers decompress as garbage — a body-corruption / framing-desync class, not a memory attack. | Medium |
+| 5.4 | Trailing data after a complete member | T | A peer appends bytes after a complete gzip / deflate member (or zstd frame). A further valid member is decoded and its output appended to the body, so an intermediary that stops at the first member (a scanning proxy, WAF or cache) sees a different body than aiohttp does. | Low |
+| 5.5 | Error message disclosure | I | `ContentEncodingError` messages that reflect attacker-supplied encoding names or backend-specific error text back to the peer could leak server-side state (path names, internal buffer contents) if constructed carelessly. | Low |
+| 5.6 | Concatenated-member flood | D | A body made of thousands of tiny members keeps every member far below the per-call `max_length`, so the bomb defences of 5.1 never engage, while each member boundary costs a fresh decompressor and a hand-off of the remaining input. Decompression runs inline on the event loop, so linear per-member cost stalls every connection on the server. | Medium |
+
+**Mitigations.**
+
+| # | Threat | Existing | Recommended |
+| :--- | :--- | :--- | :--- |
+| 5.1 | Decompression bomb | All decompressors accept a `max_length` parameter and refuse to produce more than that many bytes per call. Per-stream caps are applied by callers (`HttpPayloadParser` in [§5.6](#56-streams--payloads), `BodyPartReader` in [§5.4](#54-multipart-parsing--encoding), `WebSocketReader` in [§5.3](#53-websocket-framing--per-message-deflate)), each with their own bound. Some backends (notably `isal_zlib`) can overshoot `max_length` by a single zlib block before the next call rejects further data. | Maintain regression tests for every backend. The post-decompress per-stream cap (caller-side) is the load-bearing defence; codec-level `max_length` is best-effort. |
+| 5.2 | Backend swap | `ZLibDecompressor.data_available` and its `_last_empty` flag work around isal's lack of "no further data" detection. The wrapper's signatures (`ZLibCompressObjProtocol` / `ZLibDecompressObjProtocol` in `compression_utils.py`) define the protocol any alternative backend must satisfy. `tests/test_compression_utils.py` runs the compress / decompress round trips under `zlib`, `zlib_ng` and `isal_zlib`, but not the multi-member tests, and `isal_zlib` already diverges there: it rejects a bad gzip header only once all 10 header bytes have arrived, where `zlib` rejects at the 2-byte magic, and it swallows up to six trailing bytes after a raw-deflate member, so a second member that short is silently dropped. | **Expand the docstrings on `ZLibBackendProtocol` / `ZLibCompressObjProtocol` / `ZLibDecompressObjProtocol` to spell out (a) the strict `max_length` output contract, (b) the "no further data" detection convention aiohttp relies on to terminate the decompress loop, (c) the `eof` / `unused_data` member-boundary contract `ConcatDecompressionHandler` relies on, and (d) that new backends must be gated behind the same regression suite as `zlib` / `isal_zlib`. Parametrise the multi-member tests over `parametrize_zlib_backend`.** |
+| 5.3 | Cancellation hazard | Comments in `compress()` (`compression_utils.py:ZLibCompressor.compress`) note that cancelling mid-call corrupts compressor state. For WebSocket (`WebSocketWriter.send_frame`), where the compressor persists across frames for context takeover, small frames compress synchronously under `_send_lock` with no await before the write; large frames run compress + flush + write in `_send_compressed_frame_async_locked` as a task under `asyncio.shield`, taking the lock inside it, so a cancelled caller cannot interrupt the sequence. For HTTP (`StreamWriter.write` / `write_eof`, `MultipartPayloadWriter.write`, `Response._do_start_compression`), where there is no lock, the compressor is per message (`StreamWriter` is built per request in `RequestHandler.start` and `ClientRequest._create_writer`, `MultipartPayloadWriter` per part, `_do_start_compression` uses a local single-use object), `StreamWriter` itself does not await between `compress()` returning and the transport write (`drain()` comes after), and both cancellation exits close the connection (`ClientRequest.write_bytes` → `conn.close()`, `RequestHandler.start` → `force_close()`), so a corrupted compressor is never seen by a later message on the same keep-alive connection. | **User**: do not cancel an in-flight `StreamResponse.write()` on a compressed response (e.g. under `asyncio.wait_for`) and then keep writing to it — the executor-side `compress()` cannot be un-run, so the stream is missing that chunk; close the response instead. |
+| 5.4 | Trailing data | Members after the first are handed to a fresh decompressor (`ConcatDecompressionHandler._decompress_members`), which is the RFC 1952 §2.2 / RFC 8878 §3.1.1 reading of the stream. Bytes that cannot start a member, and a CRC / length mismatch on any member, raise in the backend and surface as `ContentEncodingError` (`DeflateBuffer.feed_data`). Stream completion is only verified for `deflate`: `DeflateBuffer.feed_eof` raises there when the stream is not at `eof`, but a gzip member truncated before its trailer, a trailing partial member / zstd frame, or a truncated brotli / zstd stream is accepted silently (brotli and zstd withhold output until a block completes, so a truncated stream can arrive as an empty body), and `BodyPartReader._decode_content` has no completion check for any encoding. The short-tail edge cases are backend-dependent (5.2). Brotli has no member concatenation; any trailing byte after a complete stream raises. |  **Verify stream completion at EOF for every codec, not just `deflate`: `DeflateBuffer.feed_eof` and `BodyPartReader._decode_content` should raise `ContentEncodingError` when the input ends mid-member. The codecs need a "complete" property that survives the gzip / zstd boundary reset (a fresh decompressor that has been fed nothing is complete; one that has been fed is not until `eof`).** **User**: an intermediary that inspects compressed bodies in front of aiohttp must decode every member, not just the first. |
+| 5.5 | Error disclosure | Generic message; no internal state. | None. |
+| 5.6 | Member flood | `ConcatDecompressionHandler._decompress_members` feeds each member through a window that starts at `MEMBER_WINDOW_MIN` (64 B) and doubles up to `MEMBER_WINDOW_MAX` (64 KiB), so a boundary doesn't copy the whole remaining input into `unused_data`, and raises `TooManyMembersError` past `MAX_DECOMPRESS_MEMBERS` (1024) members in one call. The per-call `max_length` budget spans members, with the unread remainder carried to the next call in `_pending_unused_data`. The cap is per `decompress_sync` call, i.e. per input chunk, which is what bounds one event-loop step; it is not a per-stream total. | None. |
+
+**Past advisories / hardening (recap).**
+
+- **GHSA-6mq8-rvhq-8wgg (CVE-2025-69223)** (3.13.3) — decompression DoS hardening.
+  `DeflateBuffer.feed_data` calls the underlying decompressor with
+  a strict per-call `max_length` (initial cap 32 MiB per `decompress()` call)
+  and applies a post-decompress size check;
+  `feed_eof` asserts that `flush()` produces no residual bytes.
+  This is the primary mitigation for zip-bomb attacks against the HTTP
+  body, multipart, and WebSocket auto-decompress paths, and
+  cross-cuts every chunk that uses compression ([§5.3](#53-websocket-framing--per-message-deflate), [§5.4](#54-multipart-parsing--encoding), [§5.6](#56-streams--payloads), [§5.9](#59-server-requestresponse-objects), [§5.12](#512-client-api--request-lifecycle)).
+- **PR #11966** (3.14.0) — follow-up refinement on top of previous fix:
+  valid but highly-compressed payloads that expanded past 32 MiB in
+  a single `decompress()` call were being rejected outright by the
+  initial fix, breaking legitimate traffic. #11966 tightens the
+  per-call cap from 32 MiB to 256 KiB (matching the asyncio socket
+  receive buffer) but wraps the decompress in a loop, so a valid stream
+  is reassembled from many 256 KiB chunks rather than rejected. Also
+  codifies the isal-specific "no further data" workaround in
+  `ZLibDecompressor.decompress_sync`.
+- **PR #12674** (3.14.0) — `ZLibDecompressor` stopped at the end of the
+  first gzip / deflate member and silently dropped the rest of the
+  stream. Members after the first are now handed to a fresh
+  decompressor, matching the zstd multi-frame handling added by #12290
+  (threat 5.4).
+- **GHSA-g3cq-j2xw-wf74 (CVE-2026-54278)** (3.14.1) — the per-call
+  `max_length` cap above is only a bound if consumers keep the chunks
+  apart. Draining a compressed request body the handler never read
+  (lingering close, `payload.readany()`) re-joined every 256 KiB
+  `decompress()` chunk into one `bytes`: `StreamReader.readany()` kept
+  consuming while the drain itself resumed reading and the parser fed
+  further decompressed chunks into the buffer mid-call, and
+  `client_max_size` only guards `Request.read()`. `readany()` /
+  `read_nowait()` now return only the chunks buffered when the call
+  started, so the bound survives the drain (`streams.py`,
+  [§5.6](#56-streams--payloads)).
+- **PR #13362** (3.14.4) — a body of many tiny concatenated members cost
+  a fresh decompressor per member boundary, and each boundary copied the
+  whole remaining input into `unused_data`. The member walk was factored
+  into `ConcatDecompressionHandler` (shared by `ZLibDecompressor` and
+  `ZSTDDecompressor`), which feeds members through a doubling window
+  (`MEMBER_WINDOW_MIN` 64 B → `MEMBER_WINDOW_MAX` 64 KiB) and rejects
+  more than `MAX_DECOMPRESS_MEMBERS` (1024) members in one call
+  (threat 5.6).
+
+These are all currently in place; this section assumes no regression.
