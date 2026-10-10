@@ -401,7 +401,7 @@ The client session supports the context manager protocol for self closing.
                          cookies=None, headers=None, skip_auto_headers=None, \
                          allow_redirects=True,\
                          max_redirects=10,\
-                         compress=None, chunked=None, expect100=False, raise_for_status=None,\
+                         compress=None, chunked=False, expect100=False, raise_for_status=None,\
                          read_until_eof=True, \
                          proxy=None,\
                          timeout=sentinel, ssl=True, \
@@ -490,12 +490,19 @@ The client session supports the context manager protocol for self closing.
          with a *Content-Encoding* and *Content-Length* headers.
          ``None`` by default (optional).
 
-      :param int chunked: Enable chunked transfer encoding.
+      :param bool chunked: Enable chunked transfer encoding.
          It is up to the developer
          to decide how to chunk data streams. If chunking is enabled, aiohttp
          encodes the provided chunks in the "Transfer-encoding: chunked" format.
-         If *chunked* is set, then the *Transfer-encoding* and *content-length*
-         headers are disallowed. ``None`` by default (optional).
+         If *chunked* is ``True``, then the *Transfer-encoding* and
+         *content-length* headers are disallowed. Set *chunked* instead of
+         passing a *Transfer-encoding: chunked* header, which raises
+         :exc:`ValueError`.
+
+         When ``False``, aiohttp still enables chunking if *compress* is set,
+         or if the body size is unknown (such as for an async generator)
+         and no *content-length* header is given.
+         ``False`` by default (optional).
 
       :param bool expect100: Expect 100-continue response from server.
                              ``False`` by default (optional).
@@ -907,7 +914,7 @@ certification chaining.
                         json=None,\
                         cookies=None, headers=None, skip_auto_headers=None, \
                         allow_redirects=True, max_redirects=10, \
-                        compress=False, chunked=None, expect100=False, raise_for_status=None, \
+                        compress=False, chunked=False, expect100=False, raise_for_status=None, \
                         read_until_eof=True, \
                         proxy=None, \
                         timeout=sentinel, ssl=True, \
@@ -993,12 +1000,19 @@ certification chaining.
                     This parameter cannot be combined with
                     *Content-Encoding* or *Content-Length* headers.
 
-   :param int chunked: Enables chunked transfer encoding.
+   :param bool chunked: Enables chunked transfer encoding.
       It is up to the developer
       to decide how to chunk data streams. If chunking is enabled, aiohttp
       encodes the provided chunks in the "Transfer-encoding: chunked" format.
-      If *chunked* is set, then the *Transfer-encoding* and *content-length*
-      headers are disallowed. ``None`` by default (optional).
+      If *chunked* is ``True``, then the *Transfer-encoding* and
+      *content-length* headers are disallowed. Set *chunked* instead of
+      passing a *Transfer-encoding: chunked* header, which raises
+      :exc:`ValueError`.
+
+      When ``False``, aiohttp still enables chunking if *compress* is set,
+      or if the body size is unknown (such as for an async generator)
+      and no *content-length* header is given.
+      ``False`` by default (optional).
 
    :param bool expect100: Expect 100-continue response from server.
                           ``False`` by default (optional).
@@ -2017,13 +2031,12 @@ ClientRequest
          RuntimeError when closing file-based payloads.
 
    .. attribute:: chunked
-      :type: bool | None
+      :type: bool
 
-      Whether to use chunked transfer encoding:
-
-      - ``True``: Use chunked encoding
-      - ``False``: Don't use chunked encoding
-      - ``None``: Automatically determine based on body
+      Whether to send the request body with chunked transfer encoding.
+      This is ``True`` if it was requested with the *chunked* argument,
+      or if aiohttp enabled it because the body size is unknown or
+      the body is compressed.
 
    .. attribute:: compress
       :type: str | None
