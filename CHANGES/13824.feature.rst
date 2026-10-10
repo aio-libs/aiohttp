@@ -1,0 +1,1 @@
+Upated multidict to version 7.0.0 and upgraded cython _http_writer module -- by :user:`Vizonex`.
