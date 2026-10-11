@@ -546,7 +546,7 @@ client-side, the writer adds masks to outgoing frames.
 | :--- | :--- | :--- | :--- |
 | 3.1 | Unmasked client frames accepted | None — the reader is direction-agnostic; `web_ws.py` does not enforce client-mask either. | **Recommended hardening: Enforce RFC 6455 §5.1 mask direction in strict mode only (gated on `DEBUG`, mirroring the HTTP parser's lenient-default / strict-DEBUG asymmetry): server reader rejects frames with `has_mask == 0`, client reader rejects masked server frames, both with a `PROTOCOL_ERROR`-style close. Production default stays lenient for interop.** |
 | 3.2 | Non-cryptographic mask RNG | `partial(random.getrandbits, 32)` per writer instance. | Documented design decision: WebSocket masking exists for cache-poisoning resistance against intermediaries, not as a confidentiality primitive. The mask needs to be performant — called once per outbound frame on a hot path — and does not need to be cryptographically unpredictable. `random.getrandbits(32)` is the deliberate choice. |
-| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. RSV1 on a control frame is ignored once PMCE is negotiated (RFC 7692 §6.1 says to fail the connection, but some clients set it and control frames are never decompressed). | None. |
+| 3.3 | RSV bits | `reader_py.py:WebSocketReader._feed_data` gates RSV1 on the PMCE-negotiated `_compress` flag; RSV2/3 always rejected. RSV1 on a control frame is always rejected (RFC 7692 §6.1); 3.x ignores it once PMCE is negotiated, see #14007. | None. |
 | 3.4 | Unknown opcode | Rejected. | None. |
 | 3.5–3.7 | Control-frame and fragmentation rules | All enforced at reader. | None. |
 | 3.8 | Fragment memory bound | (a) Declared byte size — `max_msg_size` enforced pre-FIN and at assembly (default 4 MiB). (b) The reader collects a frame's reads in a list and joins them once when the frame completes; if a frame arrives in more than `max(1024, max_msg_size // 256)` reads, the pending reads are folded into a single `bytearray`. | **User**: set a smaller `max_msg_size` for protocols where messages are bounded (e.g. chat); the 4 MiB default suits arbitrary payloads. |
@@ -577,6 +577,10 @@ client-side, the writer adds masks to outgoing frames.
   RFC 6455 §5.2 requires failing such frames). Fixed by passing
   `compress=bool(compress)` in `client.py:_ws_connect` and removing the
   `compress` / `decode_text` defaults on `WebSocketReader.__init__`.
+- **PR #14007** (3.x only) — ignored RSV1 on control frames
+  once PMCE was negotiated so clients that compress every frame keep working.
+  4.0 fails the connection as RFC 7692 §6.1 requires: the bit signals a
+  confused peer and an intermediary could parse the frame differently.
 - **PR #13393** — queue accounting only counted payload bytes, so a flood
   of empty/tiny frames could pin unbounded per-message object overhead in
   `WebSocketDataQueue` before the `_limit` high-water mark fired. Each

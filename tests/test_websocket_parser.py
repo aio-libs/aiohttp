@@ -641,13 +641,11 @@ def test_parse_compress_frame_multi(parser: PatchableWebSocketReader) -> None:
     assert (1, 1, b"1234", False) == (fin, opcode, payload, not not compress)
 
 
-@pytest.mark.parametrize("ping_rsv1", (0x00, 0x40), ids=("rsv1 clear", "rsv1 set"))
 def test_compressed_continuation_with_ping(
-    out: WebSocketDataQueue, parser: PatchableWebSocketReader, ping_rsv1: int
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
 ) -> None:
     # A control frame may be interleaved between the fragments of a data
-    # message. The continuation must still be decompressed, and RSV1 on
-    # the control frame must not disturb that.
+    # message. The continuation must still be decompressed.
     # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
     message = b"hello compressed world " * 4
     compressobj = ZLibBackend.compressobj(wbits=-9)
@@ -660,7 +658,7 @@ def test_compressed_continuation_with_ping(
     # first fragment: compressed binary, RSV1 set, not final
     parser.feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, half) + compressed[:half])
     # interleaved ping
-    parser.feed_data(PACK_LEN1(0x80 | ping_rsv1 | WSMsgType.PING, 0))
+    parser.feed_data(PACK_LEN1(0x80 | WSMsgType.PING, 0))
     # final continuation fragment
     parser.feed_data(
         PACK_LEN1(0x80 | WSMsgType.CONTINUATION, len(compressed) - half)
@@ -758,27 +756,36 @@ def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
 def test_control_frame_with_rsv1(
-    out: WebSocketDataQueue, parser: PatchableWebSocketReader, opcode: WSMsgType
+    parser: PatchableWebSocketReader, opcode: WSMsgType
 ) -> None:
-    # RSV1 on control frames is ignored for interop.
+    # Control frames never carry the per-message compressed bit.
     # https://datatracker.ietf.org/doc/html/rfc7692#section-6.1
-    parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
-    parser._feed_data(build_frame(b"hello", WSMsgType.TEXT, ZLibBackend=ZLibBackend))
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | opcode, 0))
 
-    assert out._buffer[0].type is opcode
-    assert out._buffer[1] == WSMessageText(data="hello", size=5, extra="")
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
 def test_control_frame_with_rsv1_no_compress(
     out: WebSocketDataQueue, opcode: WSMsgType
 ) -> None:
-    # RSV1 is still rejected when compression was not negotiated.
     parser_no_compress = PatchableWebSocketReader(
         out, 0, compress=False, decode_text=True
     )
     with pytest.raises(WebSocketError) as ctx:
         parser_no_compress._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+def test_control_frame_with_rsv1_between_fragments(
+    parser: PatchableWebSocketReader,
+) -> None:
+    # An RSV1 control frame mid-message fails the connection too.
+    parser._feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, 1) + b"\x00")
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | WSMsgType.PING, 0))
 
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
