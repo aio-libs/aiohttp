@@ -1,0 +1,4 @@
+Fixed ``RequestHandler.start()`` calling the cleared request factory when a
+request arrived in the same event-loop iteration as ``connection_lost()`` --
+the handler now exits quietly instead of raising ``TypeError`` -- by
+:user:`intertermux-code`.
