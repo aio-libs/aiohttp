@@ -1,1 +1,1 @@
-Control frames with RSV1 set now fail the WebSocket connection with close code 1002, as RFC 7692 requires; 3.x keeps accepting them for interoperability with clients that compress every frame -- by :user:`bdraco`.
+Control frames with RSV1 set now fail the WebSocket connection with close code 1002, as RFC 7692 requires -- by :user:`bdraco`.
