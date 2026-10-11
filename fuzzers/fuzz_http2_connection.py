@@ -25,10 +25,11 @@ with atheris.instrument_imports():  # type: ignore[attr-defined]
     from hpack import Encoder
     from yarl import URL
 
-    from aiohttp.http_exceptions import ContentEncodingError
     from aiohttp.http2.connection import Http2Connection, Http2Protocol
     from aiohttp.http2.errors import ProtocolError
     from aiohttp.http2.stream import Stream, StreamState
+    from aiohttp.http_exceptions import ContentEncodingError
+
 
 def _drain_future(fut) -> None:
     """Mark a future's exception as retrieved (suppresses asyncio warnings)."""
@@ -102,9 +103,9 @@ def make_frame(ftype: int, flags: int, stream_id: int, payload: bytes = b"") -> 
     """Build a single HTTP/2 frame."""
     length = len(payload)
     return (
-        struct.pack("!I", length)[1:]          # 24-bit length
-        + bytes([ftype, flags])                # type + flags
-        + struct.pack("!I", stream_id)         # 32-bit stream id
+        struct.pack("!I", length)[1:]  # 24-bit length
+        + bytes([ftype, flags])  # type + flags
+        + struct.pack("!I", stream_id)  # 32-bit stream id
         + payload
     )
 
@@ -139,7 +140,7 @@ async def fuzz_http2_async(data: bytes) -> None:  # type: ignore[misc]
     try:
         for _ in range(fdp.ConsumeIntInRange(0, 50)):
             lower_bound = 0
-            # we don't want a large queue of 
+            # we don't want a large queue of
             # pending streams
             if conn._pending_streams:
                 lower_bound = 1
@@ -318,6 +319,7 @@ async def fuzz_http2_async(data: bytes) -> None:  # type: ignore[misc]
 
         with suppress(Exception):
             conn.close()
+
 
 @atheris.instrument_func  # type: ignore[attr-defined]
 def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
