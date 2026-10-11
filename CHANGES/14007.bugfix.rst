@@ -1,1 +1,0 @@
-Stopped failing the WebSocket connection when a control frame has RSV1 set after ``permessage-deflate`` was negotiated; some clients set the bit on every frame and control frames are never decompressed -- by :user:`bdraco`.
