@@ -25,6 +25,8 @@ logger = logging.getLogger("aiohttp.http2.stream")
 # so it's important to protect
 # the client against them.
 MAX_DECOMPRESS_SIZE = 2**31 - 1
+MAX_DECOMPRESS_SIZE = 2**27 - 1  # 128 MiB
+
 
 
 # ----------------------------------------------------------------------
@@ -123,6 +125,7 @@ class Stream:
             new_state not in VALID_TRANSITIONS[self.state]
             and new_state != StreamState.CLOSED
         ):
+            # maybe consider simply resetting the streams
             raise ProtocolError(
                 f"Invalid stream state transition {self.state.name} -> {new_state.name}"
             )

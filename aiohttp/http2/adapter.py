@@ -51,6 +51,8 @@ def feed_headers(headers: Iterable[tuple[str, str]]) -> RawResponseMessage:
         raise ProtocolError("Missing :status pseudo-header")
 
     ci_headers = CIMultiDict(non_pseudo)
+    # crashes if these are not latin-1
+    # it's difficult to reset the stream here
     raw_headers = [
         (key.encode("latin-1"), value.encode("latin-1")) for key, value in non_pseudo
     ]

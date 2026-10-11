@@ -45,7 +45,7 @@ from ..helpers import (
 from ..http_parser import RawResponseMessage
 from ..http_writer import _safe_header
 from ..streams import StreamReader
-from .errors import ErrorCode
+from .errors import ErrorCode, ProtocolError
 from .settings import (
     DEFAULT_SETTINGS,
     RFC_DEFAULT_SETTINGS,
@@ -96,13 +96,19 @@ class Http2Connection:
         self._loop = loop
         self._protocol = protocol
 
-        # HPACK
-        self.hpack_encoder = Encoder()
-        self.hpack_decoder = Decoder()
-
         # Settings
         self.remote_settings: Dict[Setting, int] = RFC_DEFAULT_SETTINGS.copy()
         self.local_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
+
+        # HPACK
+        self.hpack_encoder = Encoder()
+        # set limits to prevent zip bombs
+        self.hpack_decoder = Decoder(
+            max_header_list_size=self.local_settings[Setting.MAX_HEADER_LIST_SIZE],
+        )
+        self.hpack_decoder.header_table_size = self.local_settings[
+            Setting.HEADER_TABLE_SIZE
+        ]
 
         # Flow control
         self.session_outbound_window: int = (
@@ -208,12 +214,7 @@ class Http2Connection:
         logger.debug(f"Connection lost: {exc}")
         # Cancel all pending streams (including those in the queue)
         exc = exc or ConnectionError("Connection lost")
-        for stream in list(self.streams.values()):
-            stream.cancel(exc)
-        for fut in self._pending_streams:
-            if not fut.done():
-                fut.set_exception(exc)
-        self.streams.clear()
+        self._cancel_streams(0, exc)
 
     # -------------------- Frame dispatch --------------------
     def _dispatch_frame(
@@ -319,7 +320,7 @@ class Http2Connection:
         stream = self.streams.get(stream_id)
         if stream:
             verbose = (
-                ErrorCode(error_code)
+                ErrorCode(error_code).name
                 if error_code in ErrorCode._value2member_map_
                 else ""
             )
@@ -411,12 +412,22 @@ class Http2Connection:
     def _cancel_streams(
         self, last_stream_id: int, exc: BaseException | None = None
     ) -> None:
+        # all pending streams should be cancelled
+        # if we receive a GOAWAY or any other
+        # connection-wide error
+        #
+        # must be done first so self._close_stream
+        # doesn't unblock them
         # Cancel streams with higher IDs
         exc = exc or RuntimeError("GOAWAY sent or received")
+        for fut in self._pending_streams:
+            if not fut.done():
+                fut.set_exception(exc)
+        self._pending_streams.clear()
+
         for sid, stream in list(self.streams.items()):
             if sid > last_stream_id:
                 self._close_stream(stream, exc)
-        # clear pending streams?
 
     def _handle_window_update_frame(
         self, flags: int, stream_id: int, payload: bytes
@@ -465,13 +476,12 @@ class Http2Connection:
         self._send_frame(FrameType.GOAWAY, 0, 0, payload)
         self._goaway_sent = True
 
-        # cancel all
-        self._cancel_streams(0)
+        self._cancel_streams(last_stream_id)
 
     def _send_rst_stream(self, stream_id: int, error_code: int) -> None:
         stream = self.streams.get(stream_id)
         if stream is not None:
-            self._close_stream(stream, Exception(ErrorCode(error_code)))
+            self._close_stream(stream, ProtocolError(ErrorCode(error_code).name))
 
         payload = struct.pack("!I", error_code)
 
@@ -525,6 +535,15 @@ class Http2Connection:
         """Return a new client stream, waiting if concurrency limit is reached."""
         if self._goaway_sent or self._goaway_received:
             raise ConnectionError("Connection is shutting down")
+
+        # this is a violation of the RFC (rfc9113, 6.5.2, SETTINGS_MAX_CONCURRENT_STREAMS)
+        # "A value of 0 for SETTINGS_MAX_CONCURRENT_STREAMS SHOULD NOT be treated as special by endpoints"
+        # we should set a timeout instead
+        if self.max_concurrent_streams == 0:
+            raise ConnectionError(
+                "The server does not allow the creation of new streams"
+            )
+
         if len(self.streams) < self.max_concurrent_streams:
             return self._create_stream_internal()
         # Queue the request
@@ -540,6 +559,12 @@ class Http2Connection:
         stream = self.streams[stream_id]
         offset = 0
         total = len(data)
+
+        if (
+            self.remote_settings[Setting.INITIAL_WINDOW_SIZE] == 0
+            or self.remote_settings[Setting.MAX_FRAME_SIZE] == 0
+        ):
+            raise ConnectionError("The server does not allow sending data")
 
         while offset < total or (total == 0 and end_stream):
             # Wait until both session and stream windows have capacity
