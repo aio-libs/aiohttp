@@ -1101,7 +1101,7 @@ is controlled by *force_close* constructor's parameter).
 
 .. class:: BaseConnector(*, keepalive_timeout=15, \
                          force_close=False, limit=100, limit_per_host=0, \
-                         enable_cleanup_closed=False, loop=None)
+                         enable_cleanup_closed=False, timeout_ceil_threshold=5)
    :canonical: aiohttp.connector.BaseConnector
 
    Base class for all connectors.
@@ -1135,13 +1135,6 @@ is controlled by *force_close* constructor's parameter).
       this parameter is ignored because the asyncio SSL connection
       leak is fixed in these versions of Python.
 
-
-   :param loop: :ref:`event loop<asyncio-event-loop>`
-      used for handling connections.
-      If param is ``None``, :func:`asyncio.get_event_loop`
-      is used for getting default event loop.
-
-      .. deprecated:: 2.0
 
    .. attribute:: closed
 
@@ -1226,7 +1219,7 @@ is controlled by *force_close* constructor's parameter).
                  resolver=None, keepalive_timeout=sentinel, \
                  force_close=False, limit=100, limit_per_host=0, \
                  enable_cleanup_closed=False, timeout_ceil_threshold=5, \
-                 happy_eyeballs_delay=0.25, interleave=None, loop=None, \
+                 happy_eyeballs_delay=0.25, interleave=None, \
                  socket_factory=None, ssl_shutdown_timeout=0)
    :canonical: aiohttp.connector.TCPConnector
 
@@ -2664,7 +2657,7 @@ Utilities
       .. versionadded:: 3.14.4
 
 
-.. class:: DummyCookieJar(*, loop=None)
+.. class:: DummyCookieJar()
    :canonical: aiohttp.cookiejar.DummyCookieJar
 
    Dummy cookie jar which does not store cookies but ignores them.
