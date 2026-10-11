@@ -149,7 +149,7 @@ async def start_tls(
     server_hostname: str | None,
     ssl_handshake_timeout: float | None,
     ssl_shutdown_timeout: float | None = None,
-) -> asyncio.BaseTransport | None:
+) -> asyncio.Transport | None:
     if aiofastnet is not None:
         return await aiofastnet.start_tls(
             loop,
@@ -310,7 +310,11 @@ class _TransportPlaceholder:
 class BaseConnector:
     """Base connector class.
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -345,6 +349,7 @@ class BaseConnector:
                 raise ValueError(
                     "keepalive_timeout cannot be set if force_close is True"
                 )
+            keepalive_timeout = None
         else:
             if keepalive_timeout is sentinel:
                 keepalive_timeout = 15.0
@@ -369,7 +374,7 @@ class BaseConnector:
         self._acquired_per_host: defaultdict[ConnectionKey, set[ResponseHandler]] = (
             defaultdict(set)
         )
-        self._keepalive_timeout = cast(float, keepalive_timeout)
+        self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
 
         # {host_key: FIFO list of waiters}
@@ -477,6 +482,8 @@ class BaseConnector:
 
         now = monotonic()
         timeout = self._keepalive_timeout
+        # weakref_handle() never schedules this method for a None timeout
+        assert timeout is not None
 
         if self._conns:
             connections = defaultdict(deque)
@@ -780,7 +787,9 @@ class BaseConnector:
             proto, t0 = conns.popleft()
             # We will we reuse the connection if its connected and
             # the keepalive timeout has not been exceeded
-            if proto.is_connected() and t1 - t0 <= self._keepalive_timeout:
+            if proto.is_connected() and (
+                self._keepalive_timeout is None or t1 - t0 <= self._keepalive_timeout
+            ):
                 if not conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
@@ -977,11 +986,11 @@ _SSL_CONTEXT_UNVERIFIED = _SSL_CONTEXT_MAP[(False, False)]
 class TCPConnector(BaseConnector):
     """TCP connector.
 
-    verify_ssl - Set to True to check ssl certifications.
-    fingerprint - Pass the binary sha256
-        digest of the expected certificate in DER format to verify
-        that the certificate the server presents matches. See also
-        https://en.wikipedia.org/wiki/HTTP_Public_Key_Pinning
+    ssl - DEPRECATED. Will be removed in aiohttp 5.0.
+        SSL validation mode: ``True`` for the default checks, ``False`` to
+        skip certificate validation, a Fingerprint for certificate pinning
+        or an ssl.SSLContext for custom validation. Pass ``ssl`` to
+        ClientSession or to the individual request instead.
     resolver - Enable DNS lookups and use this
         resolver
     use_dns_cache - Use memory cache for DNS lookups.
@@ -989,7 +998,11 @@ class TCPConnector(BaseConnector):
     family - socket address family
     local_addr - local tuple of (host, port) to bind socket to
 
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -1022,7 +1035,7 @@ class TCPConnector(BaseConnector):
         ttl_dns_cache: int | None = 10,
         dns_cache_max_size: int = 1000,
         family: socket.AddressFamily = socket.AddressFamily.AF_UNSPEC,
-        ssl: bool | Fingerprint | SSLContext = True,
+        ssl: bool | Fingerprint | SSLContext | _SENTINEL = sentinel,
         local_addr: tuple[str, int] | None = None,
         resolver: AbstractResolver | None = None,
         keepalive_timeout: None | float | _SENTINEL = sentinel,
@@ -1046,12 +1059,23 @@ class TCPConnector(BaseConnector):
             timeout_ceil_threshold=timeout_ceil_threshold,
         )
 
-        if not isinstance(ssl, SSL_ALLOWED_TYPES):
-            raise TypeError(
-                "ssl should be SSLContext, Fingerprint, or bool, "
-                f"got {ssl!r} instead."
+        self._ssl: bool | Fingerprint | SSLContext
+        if ssl is sentinel:
+            self._ssl = True
+        else:
+            if not isinstance(ssl, SSL_ALLOWED_TYPES):
+                raise TypeError(
+                    "ssl should be SSLContext, Fingerprint, or bool, "
+                    f"got {ssl!r} instead."
+                )
+            warnings.warn(
+                "The ssl parameter is deprecated since 4.0 and scheduled for "
+                "removal in 5.0, pass ssl to ClientSession() or to the "
+                "individual request instead",
+                DeprecationWarning,
+                stacklevel=2,
             )
-        self._ssl = ssl
+            self._ssl = ssl
 
         self._resolver: AbstractResolver
         if resolver is None:
@@ -1489,7 +1513,7 @@ class TCPConnector(BaseConnector):
                     else:
                         underlying_transport.close()
                     raise
-                if isinstance(tls_transport, asyncio.Transport):
+                if tls_transport is not None:
                     fingerprint = self._get_fingerprint(req)
                     if fingerprint:
                         try:
@@ -1650,7 +1674,11 @@ class TCPConnector(BaseConnector):
             proxy_req.url = req.url
             key = req.connection_key._replace(proxy=None, proxy_headers_hash=None)
             conn = _ConnectTunnelConnection(self, key, proto, self._loop)
-            proxy_resp = await proxy_req._send(conn)
+            try:
+                proxy_resp = await proxy_req._send(conn)
+            except BaseException:
+                conn.close()
+                raise
             try:
                 protocol = conn._protocol
                 assert protocol is not None
@@ -1705,7 +1733,11 @@ class UnixConnector(BaseConnector):
     """Unix socket connector.
 
     path - Unix socket path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.
@@ -1761,7 +1793,11 @@ class NamedPipeConnector(BaseConnector):
     See also: https://docs.python.org/3/library/asyncio-eventloop.html
 
     path - Windows named pipe path.
-    keepalive_timeout - (optional) Keep-alive timeout.
+    keepalive_timeout - (optional) Keep-alive timeout. None means a
+        reusable connection never expires from idling alone (a
+        disconnected one is discarded the next time the pool is
+        consulted for that host, not proactively). This is different
+        from force_close=True, which disables reuse entirely.
     force_close - Set to True to force close and do reconnect
         after each request (and between redirects).
     limit - The total number of simultaneous connections.

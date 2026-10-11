@@ -497,7 +497,7 @@ class StreamResponse(
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
 
     @overload
@@ -506,7 +506,7 @@ class StreamResponse(
     def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
 
     @overload

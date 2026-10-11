@@ -91,6 +91,18 @@ VERSRE: Final[Pattern[str]] = re.compile(r"HTTP/(\d)\.(\d)", re.ASCII)
 DIGITS: Final[Pattern[str]] = re.compile(r"\d+", re.ASCII)
 HEXDIGITS: Final[Pattern[bytes]] = re.compile(rb"[0-9a-fA-F]+")
 
+
+def _has_authority(target: str) -> bool:
+    """Tell if an absolute-form request target has "//" and a non-empty authority.
+
+    RFC 9110 section 4.2 requires a host for http and https. yarl's default
+    WHATWG mode reads a host from "http:host/p" or "http:///host/p", so the
+    target is checked before it is parsed.
+    """
+    rest = target.partition(":")[2]
+    return rest[:2] == "//" and rest[2:3] not in ("", "/", "?", "#")
+
+
 # RFC 9110 singleton headers — duplicates are rejected in strict mode.
 # In lax mode (response parser default), the check is skipped entirely
 # since real-world servers (e.g. Google APIs, Werkzeug) commonly send
@@ -625,8 +637,10 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
 
         # encoding
         enc = headers.get(hdrs.CONTENT_ENCODING, "")
-        if enc.isascii() and enc.lower() in {"gzip", "deflate", "br", "zstd"}:
-            encoding = enc
+        if enc.isascii():  # Must be checked before .lower()
+            enc = enc.lower()
+            if enc in {"gzip", "deflate", "br", "zstd"}:
+                encoding = enc
 
         # chunking
         te = headers.get(hdrs.TRANSFER_ENCODING)
@@ -685,7 +699,18 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         if method == "CONNECT":
             # authority-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.3
-            url = URL.build(authority=path, encoded=True)
+            try:
+                url = URL.build(authority=path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            if host is None:
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
         elif path.startswith("/"):
             # origin-form,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.1
@@ -708,10 +733,20 @@ class HttpRequestParser(HttpParser[RawRequestMessage]):
         else:
             # absolute-form for proxy maybe,
             # https://datatracker.ietf.org/doc/html/rfc7230#section-5.3.2
-            url = URL(path, encoded=True)
-            if not url.absolute:
-                # authority-form is only allowed with CONNECT
-                # https://www.rfc-editor.org/info/rfc9112/#section-3.2.3-1
+            if not _has_authority(path):
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            try:
+                url = URL(path, encoded=True)
+                host = url.raw_host
+            except ValueError:
+                # Duplicated so mypy understands that url must be defined below.
+                raise InvalidURLError(
+                    path.encode(errors="surrogateescape").decode("latin1")
+                )
+            # https://www.rfc-editor.org/rfc/rfc9110#section-4.2.1-4
+            if host is None:
                 raise InvalidURLError(
                     path.encode(errors="surrogateescape").decode("latin1")
                 )

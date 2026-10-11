@@ -58,10 +58,7 @@ else:
         trust_env: bool = False,
         **kwargs: Any,
     ) -> ClientResponse:
-        connector = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(
-            connector=connector, trust_env=trust_env
-        ) as client:
+        async with aiohttp.ClientSession(ssl=False, trust_env=trust_env) as client:
             async with client.request(method, url, **kwargs) as resp:
                 return resp
 
@@ -362,7 +359,7 @@ async def test_proxy_http_raw_path(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "aiohttp.io"
+    assert proxy.request.host == "aiohttp.io:2561"
     assert proxy.request.path_qs == raw_url
 
 
@@ -374,7 +371,7 @@ async def test_proxy_http_idna_support(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "éé.com"
+    assert proxy.request.host == "xn--9caa.com"
     assert proxy.request.path_qs == "/"
 
 

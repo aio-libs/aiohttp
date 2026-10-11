@@ -1317,6 +1317,36 @@ async def test_websocket_disable_keepalive(aiohttp_client: AiohttpClient) -> Non
     await ws.receive()  # Handle close
 
 
+async def test_websocket_disable_keepalive_no_armed_handle(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    """keep_alive(False) when no keepalive timer was armed (keepalive_timeout=0)."""
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        ws = web.WebSocketResponse()
+        assert ws.can_prepare(request)
+        # A zero timeout arms no deadline at connection_made().
+        assert request.protocol._keepalive_handle is None
+        await ws.prepare(request)
+        assert not request.protocol._keepalive
+        assert request.protocol._keepalive_handle is None
+
+        await ws.send_str("OK")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app, keepalive_timeout=0)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
+
+    ws = await client.ws_connect("/")
+    data = await ws.receive_str()
+    assert data == "OK"
+
+    await ws.receive()  # Handle close
+
+
 async def test_receive_str_nonstring(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()

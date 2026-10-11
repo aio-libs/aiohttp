@@ -87,7 +87,8 @@ class Stream(StreamReader):
         return self.content.read(size)
 
     def at_eof(self) -> bool:
-        return self.content.tell() == len(self.content.getbuffer())
+        with self.content.getbuffer() as buf:
+            return self.content.tell() == len(buf)
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return self.content.readline()
@@ -204,6 +205,14 @@ class TestPartReader:
             c3 = await obj.read_chunk(8)
         assert c1 + c2 == b"Hello, world!"
         assert c3 == b""
+
+    async def test_read_chunk_with_zero_content_length(self) -> None:
+        with Stream(b"\r\n--:--\r\n") as stream:
+            d = HeadersDictProxy(CIMultiDict({"Content-Length": "0"}))
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            result = await obj.read_chunk(4)
+            assert obj.at_eof()
+        assert b"" == result
 
     async def test_read_incomplete_chunk(self) -> None:
         with Stream(b"") as stream:
