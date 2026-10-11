@@ -743,6 +743,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
             message, payload = self._messages.popleft()
 
+            if self._force_close:
+                # The connection was lost while parked on the waiter: the
+                # queued message was never processed, and teardown has
+                # already cleared _request_factory/_parser. Drop the message
+                # and exit quietly instead of calling into torn-down state.
+                break
+
             # Free a parser slot; resume reading once drained to low water so
             # pipelining keeps flowing while this request is handled.
             # no branch: _parser is only None after connection_lost, whose path
