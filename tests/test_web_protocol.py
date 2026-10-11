@@ -232,16 +232,15 @@ def test_start_ignores_message_queued_before_connection_lost() -> None:
     event-loop iteration as a newly queued request (issue #14000).
 
     data_received() resolves the waiter and connection_lost() clears
-    _request_factory before start() resumes; without the re-check after
-    popleft(), start() calls the torn-down factory and the task dies with
+    _request_factory before start() resumes; without the re-check after the
+    waiter, start() calls the torn-down factory and the task dies with
     TypeError: 'NoneType' object is not callable.
     """
 
     async def scenario() -> None:
-        async def handler(request: BaseRequest) -> web.Response:
-            return web.Response(text="ok")
-
-        proto = web.Server(handler)()
+        # The handler is never reached: the queued request is dropped when
+        # the connection is lost before start() resumes.
+        proto = web.Server(mock.AsyncMock())()
         transport = mock.Mock()
         transport.is_closing.return_value = False
         transport.get_extra_info.return_value = None

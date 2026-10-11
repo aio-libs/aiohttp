@@ -741,14 +741,16 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 finally:
                     self._waiter = None
 
-            message, payload = self._messages.popleft()
+                # connection_lost() may have run while parked on the waiter:
+                # teardown has already cleared _request_factory/_parser, so
+                # exit quietly instead of calling into torn-down state.
+                # The explicit annotation keeps the check visible to mypy:
+                # the loop condition narrows the attribute to False.
+                force_close: bool = self._force_close
+                if force_close:
+                    break
 
-            if self._force_close:
-                # The connection was lost while parked on the waiter: the
-                # queued message was never processed, and teardown has
-                # already cleared _request_factory/_parser. Drop the message
-                # and exit quietly instead of calling into torn-down state.
-                break
+            message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so
             # pipelining keeps flowing while this request is handled.
