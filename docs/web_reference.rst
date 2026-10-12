@@ -1931,6 +1931,13 @@ Application and Router
       Shortcut for adding a DELETE handler. Calls the :meth:`add_route` with \
       ``method`` equals to ``'DELETE'``.
 
+   .. method:: add_query(path, handler, **kwargs)
+
+      Shortcut for adding a QUERY handler. Calls the :meth:`add_route` with \
+      ``method`` equals to ``'QUERY'``.
+
+      .. versionadded:: 4.0
+
    .. method:: add_view(path, handler, **kwargs)
 
       Shortcut for adding a class-based view handler. Calls the \
@@ -2582,6 +2589,14 @@ The definition is created by functions like :func:`get` or
 
    .. versionadded:: 2.3
 
+.. function:: query(path, handler, *, name=None, expect_handler=None)
+   :canonical: aiohttp.web_routedef.query
+
+   Return :class:`RouteDef` for processing ``QUERY`` requests. See
+   :meth:`UrlDispatcher.add_query` for information about parameters.
+
+   .. versionadded:: 4.0
+
 .. function:: view(path, handler, *, name=None, expect_handler=None)
    :canonical: aiohttp.web_routedef.view
 
@@ -2694,6 +2709,14 @@ A routes table definition used for describing routes by decorators
       Add a new :class:`RouteDef` item for registering ``DELETE`` web-handler.
 
       See :meth:`UrlDispatcher.add_delete` for information about parameters.
+
+   .. decoratormethod:: query(path, *, name=None, expect_handler=None)
+
+      Add a new :class:`RouteDef` item for registering ``QUERY`` web-handler.
+
+      See :meth:`UrlDispatcher.add_query` for information about parameters.
+
+      .. versionadded:: 4.0
 
    .. decoratormethod:: view(path, *, name=None, expect_handler=None)
 
