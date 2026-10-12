@@ -1135,6 +1135,12 @@ is controlled by *force_close* constructor's parameter).
       this parameter is ignored because the asyncio SSL connection
       leak is fixed in these versions of Python.
 
+   :param float timeout_ceil_threshold: threshold, in seconds, above which
+      timeout deadlines are rounded up to the next whole second. Rounding lets
+      the event loop group timer wakeups rather than scheduling one at an exact
+      moment per connection; timeouts below the threshold keep their exact
+      deadline (default: 5).
+
 
    .. attribute:: closed
 
