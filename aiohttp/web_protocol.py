@@ -740,6 +740,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     await self._waiter
                 finally:
                     self._waiter = None
+                if self._request_factory is None:
+                    # connection_lost() cleared the factory while we were parked
+                    # waiting for the next request; the connection is gone, so
+                    # there is nothing left to handle.
+                    break
 
             message, payload = self._messages.popleft()
 

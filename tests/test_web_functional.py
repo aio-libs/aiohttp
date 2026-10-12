@@ -3299,6 +3299,55 @@ async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
             assert resp.status == 200
 
 
+async def test_request_factory_after_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    protocol: RequestHandler[web.Request] | None = None
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal protocol
+        protocol = request.protocol
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+    assert protocol is not None
+
+    # start() loops back after the response and parks on a fresh keep-alive
+    # waiter, waiting for the next request on the connection.
+    for _ in range(1000):
+        if protocol._waiter is not None:
+            break
+        await asyncio.sleep(0)
+    assert protocol._waiter is not None, "start() should be waiting for the next request"
+    start_task = protocol._task_handler
+    assert start_task is not None
+
+    # Reproduce #14000 deterministically: a new request has resolved the
+    # keep-alive waiter, but the connection is lost before start() resumes, so
+    # connection_lost() has already cleared _request_factory. Resolve the
+    # waiter with the factory cleared; start() must exit the loop cleanly
+    # instead of calling the (now None) request factory.
+    #
+    # This drives the state directly rather than racing a second request
+    # against connection_lost(): connection_lost() calls force_close(), which
+    # cancels a still-pending waiter and would raise CancelledError at the
+    # await, masking the crash this test is meant to guard against.
+    protocol._request_factory = None
+    protocol._waiter.set_result(None)
+
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+    assert start_task.done(), "start() task should have finished"
+    exc = start_task.exception()
+    assert exc is None, f"start() raised {exc!r} after connection_lost()"
+
+
 async def test_keepalive_expires_on_time(aiohttp_client: AiohttpClient) -> None:
     """Test that the keepalive handle expires on time."""
 
