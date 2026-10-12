@@ -3323,7 +3323,9 @@ async def test_request_factory_after_connection_lost(
         if protocol._waiter is not None:
             break
         await asyncio.sleep(0)
-    assert protocol._waiter is not None, "start() should be waiting for the next request"
+    assert (
+        protocol._waiter is not None
+    ), "start() should be waiting for the next request"
     start_task = protocol._task_handler
     assert start_task is not None
 
