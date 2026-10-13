@@ -38,7 +38,7 @@ propcache==0.5.4
     #   yarl
 pycares==5.1.0
     # via aiodns
-pycparser==3.0
+pycparser==3.11
     # via cffi
 typing-extensions==4.16.0 ; python_version < "3.13"
     # via
