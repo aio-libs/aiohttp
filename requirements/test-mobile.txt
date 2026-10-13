@@ -53,7 +53,7 @@ gunicorn==26.2.0
     # via -r requirements/base-ft.in
 idna==3.20
     # via yarl
-iniconfig==2.3.0
+iniconfig==2.3.1
     # via pytest
 multidict==6.9.1
     # via
