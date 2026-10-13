@@ -76,7 +76,7 @@ pre-commit==4.6.2
     # via -r requirements/lint.in
 pycares==5.1.0
     # via aiodns
-pycparser==3.0
+pycparser==3.11
     # via cffi
 pydantic==2.14.0
     # via python-on-whales
