@@ -18,7 +18,7 @@ attrs==26.1.0
     # via aiohttp
 backports-asyncio-runner==1.2.0
     # via pytest-asyncio
-blockbuster==1.5.28
+blockbuster==1.5.29
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
@@ -44,7 +44,7 @@ idna==3.20
     # via
     #   trustme
     #   yarl
-iniconfig==2.3.0
+iniconfig==2.3.1
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
@@ -78,11 +78,11 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pycparser==3.0
+pycparser==3.11
     # via cffi
-pydantic==2.13.5
+pydantic==2.14.0
     # via python-on-whales
-pydantic-core==2.46.5
+pydantic-core==2.50.0
     # via pydantic
 pygments==2.21.0
     # via

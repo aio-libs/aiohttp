@@ -317,6 +317,7 @@ resolvers
 reusage
 reuseconn
 riscv64
+RSV1
 Runit
 runtime
 runtimes

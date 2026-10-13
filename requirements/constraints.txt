@@ -45,7 +45,7 @@ backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3
     # via
     #   -r requirements/lint.in
     #   -r requirements/runtime-deps.in
-blockbuster==1.5.28
+blockbuster==1.5.29
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
@@ -87,7 +87,7 @@ exceptiongroup==1.3.1
     #   pytest
 execnet==2.1.2
     # via pytest-xdist
-filelock==4.0.12
+filelock==4.1.0
     # via
     #   python-discovery
     #   virtualenv
@@ -113,7 +113,7 @@ idna==3.20
     #   yarl
 imagesize==2.0.1
     # via sphinx
-iniconfig==2.3.0
+iniconfig==2.3.1
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via
@@ -165,11 +165,11 @@ pathspec==1.1.1
     # via mypy
 pip==26.2.1
     # via pip-tools
-pip-tools==7.6.1
+pip-tools==7.6.2
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.12.3
+platformdirs==4.12.4
     # via virtualenv
 pluggy==1.6.0
     # via
@@ -188,11 +188,11 @@ proxy-py==2.4.10
     #   -r requirements/test-common-base.in
 pycares==5.1.0
     # via aiodns
-pycparser==3.0
+pycparser==3.11
     # via cffi
-pydantic==2.13.5
+pydantic==2.14.0
     # via python-on-whales
-pydantic-core==2.46.5
+pydantic-core==2.50.0
     # via pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
@@ -238,7 +238,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==2.9.0.post0
     # via freezegun
-python-discovery==1.6.1
+python-discovery==1.6.2
     # via virtualenv
 python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via
@@ -337,7 +337,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.1.1
     # via -r requirements/lint.in
-virtualenv==21.14.5
+virtualenv==21.14.6
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
