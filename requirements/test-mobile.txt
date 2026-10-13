@@ -79,7 +79,7 @@ pycares==5.1.0 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   aiodns
-pycparser==3.0
+pycparser==3.11
     # via cffi
 pygments==2.21.0
     # via pytest
