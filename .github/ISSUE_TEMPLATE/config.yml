@@ -20,7 +20,7 @@ contact_links:
   about: >-
     Please ask typical Q&A in the Discussions tab
 - name: 💬 Matrix Chat
-  url: https://matrix.to/#/#aiohttp:matrix.org
+  url: https://matrix.to/#/#aio-libs:matrix.org
   about: Chat with devs and community
 - name: 📝 Code of Conduct
   url: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
