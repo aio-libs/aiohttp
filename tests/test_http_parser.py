@@ -1230,6 +1230,29 @@ async def test_decode_inner_headerless_deflate(response: HttpResponseParser) -> 
     assert await _feed_encoded(response, b"deflate,gzip", body) == original
 
 
+@pytest.mark.parametrize("chunked", [False, True], ids=["content-length", "chunked"])
+async def test_decode_repeated_content_encoding_fields(
+    response: HttpResponseParser, chunked: bool
+) -> None:
+    """Separate Content-Encoding fields decode like one combined field."""
+    original = b'{"hello": "world"}'
+    body = gzip.compress(zlib.compress(original))
+    if chunked:
+        framing = b"Transfer-Encoding: chunked\r\n"
+        body = b"%x\r\n%s\r\n0\r\n\r\n" % (len(body), body)
+    else:
+        framing = b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+    text = (
+        b"HTTP/1.1 200 OK\r\n" + framing + b"Content-Encoding: deflate\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n" + body
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg, payload = messages[0][0], messages[0][-1]
+    assert msg.compression == "deflate,gzip"
+    assert await payload.read() == original
+
+
 def test_compression_gzip(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)

@@ -475,7 +475,11 @@ cdef class HttpParser:
                 raise BadHttpMessage("Too many headers received")
 
             if name is CONTENT_ENCODING:
-                self._content_encoding = value
+                # Repeated fields form one list, as HeadersDictProxy.get() does.
+                if self._content_encoding is None:
+                    self._content_encoding = value
+                else:
+                    self._content_encoding += ", " + value
 
             self._has_value = False
             self._header_name_size = 0
