@@ -4,12 +4,18 @@ from cpython.mem cimport PyMem_Free, PyMem_Malloc, PyMem_Realloc
 from cpython.object cimport PyObject_Str
 from libc.stdint cimport uint8_t, uint64_t
 from libc.string cimport memcpy
+from multidict cimport (
+    IStr_CheckExact,
+    MultiDict_CAPI,
+    MultiDict_Check,
+    MultiDict_ForEachAll,
+    MultiDict_GetCAPI,
+)
 
-from multidict import istr
+
+cdef MultiDict_CAPI* MultiDictAPI = MultiDict_GetCAPI()
 
 DEF BUF_SIZE = 16 * 1024  # 16KiB
-
-cdef object _istr = istr
 
 
 # ----------------- writer ---------------------------
@@ -103,7 +109,7 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
     cdef str out_str
     if type(s) is str:
         out_str = <str>s
-    elif type(s) is _istr:
+    elif IStr_CheckExact(MultiDictAPI, s):
         out_str = PyObject_Str(s)
     elif not isinstance(s, str):
         raise TypeError("Cannot serialize non-str key {!r}".format(s))
@@ -121,6 +127,21 @@ cdef inline int _write_str_raise_on_nlcr(Writer* writer, object s):
         if _write_utf8(writer, ch) < 0:
             return -1
 
+cdef int _write_pair(object identity, Py_hash_t _hash, object key, object value, void* data) except -1:
+    cdef Writer* writer = <Writer*>data
+    if _write_str_raise_on_nlcr(writer, key) < 0:
+        return -1
+    if _write_byte(writer, b':') < 0:
+        return -1
+    if _write_byte(writer, b' ') < 0:
+        return -1
+    if _write_str_raise_on_nlcr(writer, value) < 0:
+        return -1
+    if _write_byte(writer, b'\r') < 0:
+        return -1
+    if _write_byte(writer, b'\n') < 0:
+        return -1
+    return 1
 
 # --------------- _serialize_headers ----------------------
 
@@ -140,19 +161,7 @@ def _serialize_headers(str status_line, headers):
         if _write_byte(&writer, b'\n') < 0:
             raise
 
-        for key, val in headers.items():
-            if _write_str_raise_on_nlcr(&writer, key) < 0:
-                raise
-            if _write_byte(&writer, b':') < 0:
-                raise
-            if _write_byte(&writer, b' ') < 0:
-                raise
-            if _write_str_raise_on_nlcr(&writer, val) < 0:
-                raise
-            if _write_byte(&writer, b'\r') < 0:
-                raise
-            if _write_byte(&writer, b'\n') < 0:
-                raise
+        MultiDict_ForEachAll(MultiDictAPI, headers, _write_pair, <void*>&writer)
 
         if _write_byte(&writer, b'\r') < 0:
             raise
