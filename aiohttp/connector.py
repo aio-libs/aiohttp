@@ -1618,7 +1618,10 @@ class TCPConnector(BaseConnector):
 
             return transp, proto
         assert last_exc is not None
-        raise last_exc
+        try:
+            raise last_exc
+        finally:
+            last_exc = None
 
     async def _create_proxy_connection(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
