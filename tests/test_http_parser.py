@@ -1253,6 +1253,25 @@ async def test_decode_repeated_content_encoding_fields(
     assert await payload.read() == original
 
 
+async def test_trailers_do_not_leak_into_next_message(
+    response: HttpResponseParser,
+) -> None:
+    """Trailer fields do not carry over to the next message."""
+    original = b'{"hello": "world"}'
+    body = gzip.compress(original)
+    text = (
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"2\r\nhi\r\n0\r\nContent-Encoding: deflate\r\nX-Trailer: t\r\n\r\n"
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+        b"Content-Length: " + str(len(body)).encode() + b"\r\n\r\n" + body
+    )
+    messages, upgrade, tail = response.feed_data(text)
+    msg, payload = messages[1][0], messages[1][-1]
+    assert msg.compression == "gzip"
+    assert "X-Trailer" not in msg.headers
+    assert await payload.read() == original
+
+
 def test_compression_gzip(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: gzip\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)

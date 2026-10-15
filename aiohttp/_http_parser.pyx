@@ -868,6 +868,12 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except? -1:
     pyparser._headers = []
     pyparser._seen_singletons = set()
     pyparser._raw_headers = []
+    # Drop what trailer fields of the previous message left behind.
+    pyparser._raw_name = b""
+    pyparser._raw_value = b""
+    pyparser._has_value = False
+    pyparser._header_name_size = 0
+    pyparser._content_encoding = None
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
