@@ -3792,6 +3792,24 @@ class TestDeflateBuffer:
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
 
+    async def test_feed_eof_err_inner_deflate(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, "deflate,gzip")
+
+        # A complete gzip layer around a truncated deflate stream.
+        dbuf.feed_data(gzip.compress(zlib.compress(b"data" * 100)[:-4]))
+
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            dbuf.feed_eof()
+
+    async def test_no_encoding(self, protocol: BaseProtocol) -> None:
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, None)
+
+        dbuf.feed_data(zlib.compress(b"data"))
+        dbuf.feed_eof()
+        assert await buf.read() == b"data"
+
     async def test_feed_eof_no_err_gzip(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "gzip")
