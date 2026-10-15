@@ -1621,7 +1621,7 @@ class TCPConnector(BaseConnector):
         try:
             raise last_exc
         finally:
-            del last_exc
+            last_exc = None  # the traceback holds this frame: break the cycle
 
     async def _create_proxy_connection(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
