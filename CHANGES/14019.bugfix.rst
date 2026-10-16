@@ -1,0 +1,2 @@
+Fixed serialization and byte-length limits for typed, multidimensional, and
+non-contiguous memoryview payloads -- by :user:`Vaishnavi220506`.
