@@ -3329,18 +3329,19 @@ async def test_request_factory_after_connection_lost(
     start_task = protocol._task_handler
     assert start_task is not None
 
-    # Reproduce #14000 deterministically: a new request has resolved the
-    # keep-alive waiter, but the connection is lost before start() resumes, so
-    # connection_lost() has already cleared _request_factory. Resolve the
-    # waiter with the factory cleared; start() must exit the loop cleanly
-    # instead of calling the (now None) request factory.
+    # Reproduce #14000 deterministically: a second request has been parsed and
+    # has resolved the keep-alive waiter, but the connection is lost before
+    # start() resumes, so connection_lost() has already cleared _parser and
+    # _request_factory. start() must exit the loop cleanly instead of calling
+    # the (now None) request factory.
     #
     # This drives the state directly rather than racing a second request
     # against connection_lost(): connection_lost() calls force_close(), which
     # cancels a still-pending waiter and would raise CancelledError at the
     # await, masking the crash this test is meant to guard against.
+    protocol.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    protocol._parser = None
     protocol._request_factory = None
-    protocol._waiter.set_result(None)
 
     for _ in range(10):
         await asyncio.sleep(0)
