@@ -250,3 +250,12 @@ Multipart reference
       .. versionadded:: 3.4
 
          Support ``close_boundary`` argument.
+
+   .. method:: as_bytes(encoding='utf-8', errors='strict')
+      :async:
+
+      Return the multipart body as :class:`bytes`.
+
+      Part bodies are encoded according to their own ``Content-Encoding``
+      and ``Content-Transfer-Encoding`` headers, so the result matches the
+      body that ``write()`` sends on the wire.
