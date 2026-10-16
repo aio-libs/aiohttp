@@ -845,6 +845,21 @@ def test_single_forwarded_header_quoted_escaped() -> None:
     assert req.forwarded[0]["proto"] == "lala land~ 123!&"
 
 
+def test_single_forwarded_header_multiple_quoted_values() -> None:
+    # Node identifiers with a port or an IPv6 address must be quoted, so a
+    # proxy commonly emits several quoted values in one forwarded-element.
+    header = 'proto=https;host="example.com:8080";by="[::1]:443";for="[::1]:4711"'
+    req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
+    assert req.forwarded == (
+        {
+            "proto": "https",
+            "host": "example.com:8080",
+            "by": "[::1]:443",
+            "for": "[::1]:4711",
+        },
+    )
+
+
 def test_single_forwarded_header_custom_param() -> None:
     header = r'BY=identifier;PROTO=https;SOME="other, \"value\""'
     req = make_mocked_request("GET", "/", headers=CIMultiDict({"Forwarded": header}))
