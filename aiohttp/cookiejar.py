@@ -552,7 +552,7 @@ class CookieJar(AbstractCookieJar):
                     cookie["max-age"] = ""
 
             elif expires := cookie["expires"]:
-                if expire_time := self._parse_date(expires):
+                if (expire_time := self._parse_date(expires)) is not None:
                     deadline = expire_time
                 else:
                     cookie["expires"] = ""
