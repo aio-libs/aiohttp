@@ -1,0 +1,1 @@
+Decoded ``Content-Encoding`` headers that list more than one coding, in reverse order of application, and stopped the C parser from carrying trailer fields over into the next message's headers -- by :user:`Kayvan-Zahiri`.

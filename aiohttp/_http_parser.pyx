@@ -31,7 +31,11 @@ from .http_exceptions import (
     PayloadEncodingError,
     TransferEncodingError,
 )
-from .http_parser import DeflateBuffer as _DeflateBuffer, _has_authority
+from .http_parser import (
+    DeflateBuffer as _DeflateBuffer,
+    _has_authority,
+    parse_content_encoding as _parse_content_encoding,
+)
 from .http_writer import (
     HttpVersion as _HttpVersion,
     HttpVersion10 as _HttpVersion10,
@@ -471,7 +475,11 @@ cdef class HttpParser:
                 raise BadHttpMessage("Too many headers received")
 
             if name is CONTENT_ENCODING:
-                self._content_encoding = value
+                # Repeated fields form one list, as HeadersDictProxy.get() does.
+                if self._content_encoding is None:
+                    self._content_encoding = value
+                else:
+                    self._content_encoding += ", " + value
 
             self._has_value = False
             self._header_name_size = 0
@@ -532,10 +540,7 @@ cdef class HttpParser:
         enc = self._content_encoding
         if enc is not None:
             self._content_encoding = None
-            if enc.isascii():  # Must be checked before .lower()
-                enc = enc.lower()
-                if enc in {"gzip", "deflate", "br", "zstd"}:
-                    encoding = enc
+            encoding = _parse_content_encoding(enc)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
             method = <str>_http_method[self._cparser.method]
@@ -863,6 +868,12 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except? -1:
     pyparser._headers = []
     pyparser._seen_singletons = set()
     pyparser._raw_headers = []
+    # Drop what trailer fields of the previous message left behind.
+    pyparser._raw_name = b""
+    pyparser._raw_value = b""
+    pyparser._has_value = False
+    pyparser._header_name_size = 0
+    pyparser._content_encoding = None
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
