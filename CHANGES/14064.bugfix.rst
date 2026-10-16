@@ -1,0 +1,3 @@
+Fixed :class:`~aiohttp.CookieJar` keeping a cookie as a session cookie when its
+``Expires`` attribute is ``Thu, 01 Jan 1970 00:00:00 GMT``, instead of deleting
+it -- by :user:`spicysharkco`.
