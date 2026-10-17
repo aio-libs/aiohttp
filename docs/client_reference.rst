@@ -1745,6 +1745,15 @@ manually.
       Read-only property, ``True`` if :meth:`close` has been called or
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: headers
+
+      A read-only, case-insensitive mapping of the HTTP headers from the
+      server's handshake response (behaves like
+      :class:`~multidict.CIMultiDictProxy`), e.g. any cookies or custom
+      headers the server sent when accepting the connection.
+
+      .. versionadded:: 4.0
+
    .. attribute:: protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.

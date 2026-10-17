@@ -10,7 +10,12 @@ from typing import Any, Final, Generic, Literal, overload
 from ._websocket.reader import WebSocketDataQueue, WebSocketReader
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
-from .helpers import calculate_timeout_when, frozen_dataclass_decorator, set_result
+from .helpers import (
+    HeadersDictProxy,
+    calculate_timeout_when,
+    frozen_dataclass_decorator,
+    set_result,
+)
 from .http import (
     WS_CLOSED_MESSAGE,
     WS_CLOSING_MESSAGE,
@@ -251,6 +256,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     @property
     def closed(self) -> bool:
         return self._closed
+
+    @property
+    def headers(self) -> HeadersDictProxy:
+        return self._response.headers
 
     @property
     def close_code(self) -> int | None:
