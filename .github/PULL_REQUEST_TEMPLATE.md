@@ -57,10 +57,10 @@ entertain early in the review process. Thank you in advance!
       environment.
     * `.misc`: Changes that are hard to assign to any of the above
       categories.
-  * Make sure to use full sentences with correct case and punctuation,
-    for example:
+  * Make sure to use full sentences with correct case and punctuation.
+    Explain high-level effects affecting the end-users, for example:
     ```rst
-    Fixed issue with non-ascii contents in doctest text files
+    Test runner no longer crashes when loading non-ASCII contents in doctest text files.
     -- by :user:`contributor-gh-handle`.
     ```
 

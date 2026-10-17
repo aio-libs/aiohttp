@@ -1,28 +1,60 @@
 ---
+
 name: 🚀 Feature request
 description: Suggest an idea for this project.
-labels: enhancement
+labels:
+- enhancement
 body:
 - type: markdown
   attributes:
     value: |
-      **Thanks for taking a minute to file a feature for aiohttp!**
+      **Thanks for taking a minute to file a feature request!**
 
-      ⚠
-      Verify first that your feature request is not [already reported on
-      GitHub][issue search].
+      > [!warning]
+      > Verify first that your feature request is not [already
+      > reported on GitHub][issue search].
 
       _Please fill out the form below with as many precise
       details as possible._
 
       [issue search]: ../search?q=is%3Aissue&type=issues
 
+- type: checkboxes
+  id: terms
+  attributes:
+    label: Please confirm the following
+    description: |
+      Read the [aio-libs Code of Conduct][CoC] first. Check the
+      existing issues on the tracker.
+
+      [CoC]: ../../.github/blob/master/CODE_OF_CONDUCT.md
+    options:
+    - label: |
+        I agree to follow the [aio-libs Code of Conduct][CoC].
+
+        [CoC]: ../../.github/blob/master/CODE_OF_CONDUCT.md
+      required: true
+    - label: |
+        I have checked the [current issues][issue search] for
+        duplicates.
+
+        [issue search]: ../search?q=is%3Aissue&type=issues
+      required: true
+    - label: >-
+        I understand this is open source software provided for free
+        and that I might not receive a timely response.
+      required: true
+    - label: >-
+        I am willing to submit a pull request implementing the
+        feature. _(Assign this issue to me.)_
+      required: false
+
 - type: textarea
   attributes:
     label: Is your feature request related to a problem?
     description: >-
-       Please add a clear and concise description of what
-       the problem is. _Ex. I'm always frustrated when [...]_
+      Please add a clear and concise description of what the problem
+      is. _Ex. I'm always frustrated when [...]_
 
 - type: textarea
   attributes:
@@ -36,8 +68,34 @@ body:
   attributes:
     label: Describe alternatives you've considered
     description: >-
-      A clear and concise description of any alternative solutions
-      or features you've considered.
+      A clear and concise description of any alternative solutions or
+      features you've considered.
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: >-
+      Is it a substantial burden for the maintainers to support this
+      long-term?
+    description: |
+      Pause for a moment. Can you think of anything obvious that would
+      complicate the ongoing development of this project? Try to
+      consider whether you would be able to maintain it throughout
+      the next five years.
+
+      This helps us assess whether your change is something we can
+      entertain early in the review process. Thanks in advance!
+  validations:
+    required: true
+
+- type: textarea
+  attributes:
+    label: Are there changes in behavior for the existing end users?
+    description: >-
+      Outline any notable changes in behavior for end users -- both
+      direct users of aiohttp and maintainers of downstream
+      libraries and applications built on top of it.
   validations:
     required: true
 
@@ -62,14 +120,4 @@ body:
       Add any other context or screenshots about
       the feature request here.
 
-- type: checkboxes
-  attributes:
-    label: Code of Conduct
-    description: |
-      Read the [aio-libs Code of Conduct][CoC] first.
-
-      [CoC]: https://github.com/aio-libs/.github/blob/master/CODE_OF_CONDUCT.md
-    options:
-    - label: I agree to follow the aio-libs Code of Conduct
-      required: true
 ...
