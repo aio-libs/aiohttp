@@ -423,6 +423,43 @@ def test_etag_reset() -> None:
     assert resp.etag is None
 
 
+class _NoOffsetTZ(datetime.tzinfo):
+    """tzinfo whose utcoffset() is None, so datetimes using it are still naive."""
+
+    def utcoffset(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def dst(self, dt: datetime.datetime | None) -> None:
+        return None
+
+    def tzname(self, dt: datetime.datetime | None) -> None:
+        return None
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        datetime.datetime(2020, 12, 6, 15, 38, 5),
+        datetime.datetime(2020, 12, 6, 15, 38, 5, tzinfo=_NoOffsetTZ()),
+    ),
+    ids=("no-tzinfo", "tzinfo-without-offset"),
+)
+def test_last_modified_naive_datetime_deprecated(value: datetime.datetime) -> None:
+    resp = web.StreamResponse()
+
+    with pytest.warns(DeprecationWarning, match="offset-naive datetime"):
+        resp.last_modified = value
+    assert resp.headers[hdrs.LAST_MODIFIED] == "Sun, 06 Dec 2020 15:38:05 GMT"
+
+
+def test_last_modified_aware_datetime_no_warning() -> None:
+    resp = web.StreamResponse()
+    value = datetime.datetime(2020, 12, 6, 15, 38, 5, tzinfo=datetime.timezone.utc)
+
+    resp.last_modified = value
+    assert resp.headers[hdrs.LAST_MODIFIED] == "Sun, 06 Dec 2020 15:38:05 GMT"
+
+
 async def test_start() -> None:
     req = make_request("GET", "/")
     resp = web.StreamResponse()
