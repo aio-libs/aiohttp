@@ -238,8 +238,8 @@ async def test_send_compress_cancelled_connection_lost(
             await asyncio.sleep(0)
         gc.collect()
         await asyncio.sleep(0)
-        if sys.version_info[:2] == (3, 14) and not cancel_background:
-            # CPython 3.14 logs shielded errors even after exception retrieval.
+        if sys.version_info >= (3, 14) and not cancel_background:
+            # CPython 3.14+ logs shielded errors even after exception retrieval.
             # https://github.com/python/cpython/pull/158599
             for context in errors:
                 assert (
