@@ -1,0 +1,5 @@
+Added client support for running under Pyodide / Emscripten (WebAssembly in
+browsers and Node.js).  :class:`~aiohttp.ClientSession` now automatically
+uses the new :class:`~aiohttp.FetchConnector`, which dispatches requests
+through the JavaScript ``fetch()`` API instead of raw sockets -- by
+:user:`hoodmane` and :user:`bendichter`.
