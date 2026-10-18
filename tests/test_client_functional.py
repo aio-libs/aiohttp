@@ -12,13 +12,15 @@ import socket
 import ssl
 import sys
 import tarfile
+import tempfile
 import time
 import zipfile
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Sequence
 from contextlib import suppress
+from functools import partial
 from types import SimpleNamespace
-from typing import TYPE_CHECKING, Any, NoReturn
+from typing import IO, TYPE_CHECKING, Any, NoReturn, cast
 from unittest import mock
 
 if TYPE_CHECKING:
@@ -6977,3 +6979,46 @@ async def test_deprecated_upload_attributes(aiohttp_client: AiohttpClient) -> No
         with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
             assert resp.output_size >= 1024
         await resp.read()
+
+
+_TEMPORARY_FILE_FACTORIES: list[object] = [
+    tempfile.TemporaryFile,
+    tempfile.NamedTemporaryFile,
+    tempfile.SpooledTemporaryFile,
+    pytest.param(partial(tempfile.SpooledTemporaryFile, max_size=1), id="rolled-spool"),
+]
+
+
+@pytest.mark.parametrize("factory", _TEMPORARY_FILE_FACTORIES)
+@pytest.mark.parametrize("text", [False, True])
+@pytest.mark.parametrize("multipart", [False, True])
+async def test_temporary_file_upload(
+    aiohttp_client: AiohttpClient, factory: object, text: bool, multipart: bool
+) -> None:
+    content = "日本語 upload".encode()
+
+    async def handler(request: web.Request) -> web.Response:
+        if multipart:
+            reader = await request.multipart()
+            part = await reader.next()
+            assert isinstance(part, aiohttp.BodyPartReader)
+            assert part.name == "upload"
+            assert part.filename is not None
+            received = await part.read()
+        else:
+            received = await request.read()
+        return web.Response(body=received)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+    factory_callable = cast(Callable[..., IO[Any]], factory)
+    with factory_callable(
+        mode="w+" if text else "w+b", **({"encoding": "utf-8"} if text else {})
+    ) as source:
+        source.write("prefix:" + content.decode() if text else b"prefix:" + content)
+        source.seek(7)
+        data = {"upload": source} if multipart else source
+        async with client.post("/", data=data) as response:
+            assert response.status == 200
+            assert await response.read() == content

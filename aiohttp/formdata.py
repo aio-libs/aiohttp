@@ -1,4 +1,5 @@
 import io
+import tempfile
 from collections import deque
 from collections.abc import Iterable
 from typing import Any
@@ -54,14 +55,27 @@ class FormData:
         content_type: str | None = None,
         filename: str | None = None,
     ) -> None:
-        if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
+        if isinstance(
+            value,
+            (
+                io.IOBase,
+                tempfile._TemporaryFileWrapper,
+                tempfile.SpooledTemporaryFile,
+                bytes,
+                bytearray,
+                memoryview,
+            ),
+        ):
             self._is_multipart = True
 
         _safe_header(name)
         type_options: MultiDict[str] = MultiDict({"name": name})
         if filename is not None and not isinstance(filename, str):
             raise TypeError("filename must be an instance of str. Got: %s" % filename)
-        if filename is None and isinstance(value, io.IOBase):
+        if filename is None and isinstance(
+            value,
+            (io.IOBase, tempfile._TemporaryFileWrapper, tempfile.SpooledTemporaryFile),
+        ):
             filename = guess_filename(value, name)
         if filename is not None:
             _safe_header(filename)
@@ -86,7 +100,14 @@ class FormData:
         while to_add:
             rec = to_add.popleft()
 
-            if isinstance(rec, io.IOBase):
+            if isinstance(
+                rec,
+                (
+                    io.IOBase,
+                    tempfile._TemporaryFileWrapper,
+                    tempfile.SpooledTemporaryFile,
+                ),
+            ):
                 k = guess_filename(rec, "unknown")
                 self.add_field(k, rec)  # type: ignore[arg-type]
 

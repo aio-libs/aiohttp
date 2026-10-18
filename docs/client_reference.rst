@@ -2730,7 +2730,8 @@ FormData
 A :class:`FormData` object contains the form data and also handles
 encoding it into a body that is either ``multipart/form-data`` or
 ``application/x-www-form-urlencoded``. ``multipart/form-data`` is
-used if at least one field is an :class:`io.IOBase` object or was
+used if at least one field is an :class:`io.IOBase` object, a temporary file
+(such as :func:`tempfile.NamedTemporaryFile`), or was
 added with at least one optional argument to :meth:`add_field<aiohttp.FormData.add_field>`
 (``content_type``, ``filename``, or ``content_transfer_encoding``).
 Otherwise, ``application/x-www-form-urlencoded`` is used.

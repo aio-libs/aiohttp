@@ -2,11 +2,13 @@ import array
 import asyncio
 import io
 import json
+import tempfile
 import unittest.mock
-from collections.abc import AsyncIterator, Iterator
+from collections.abc import AsyncIterator, Callable, Iterator
+from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import TextIO, Union
+from typing import IO, Any, TextIO, Union, cast
 
 import pytest
 from multidict import CIMultiDict
@@ -1442,3 +1444,60 @@ async def test_empty_bytes_payload_is_reusable() -> None:
         assert empty_payload.size == 0, f"size changed on write {i+1}"
 
     assert empty_payload.headers == CIMultiDict(initial_headers)
+
+
+_TEMPORARY_FILE_FACTORIES: list[object] = [
+    tempfile.TemporaryFile,
+    tempfile.NamedTemporaryFile,
+    tempfile.SpooledTemporaryFile,
+    pytest.param(partial(tempfile.SpooledTemporaryFile, max_size=1), id="rolled-spool"),
+]
+
+
+@pytest.mark.parametrize("factory", _TEMPORARY_FILE_FACTORIES)
+@pytest.mark.parametrize("text", [False, True])
+@pytest.mark.parametrize("offset", [0, 7])
+async def test_temporary_file_payload(factory: object, text: bool, offset: int) -> None:
+    content = "prefix:日本語 upload"
+    expected = content[offset:].encode()
+    factory_callable = cast(Callable[..., IO[Any]], factory)
+    with factory_callable(
+        mode="w+" if text else "w+b", **({"encoding": "utf-8"} if text else {})
+    ) as source:
+        source.write(content if text else content.encode())
+        source.seek(offset)
+        p = payload.get_payload(source)
+        assert isinstance(p, payload.TextIOPayload if text else payload.IOBasePayload)
+        assert source.tell() == offset
+        if isinstance(source, tempfile.SpooledTemporaryFile) and not getattr(
+            source, "_rolled"
+        ):
+            assert p.size is None
+            assert not getattr(source, "_rolled")
+        elif not text:
+            assert p.size == len(expected)
+        writer = BufferWriter()
+        await p.write(writer)
+        assert bytes(writer.buffer) == expected
+        # A retained payload can be sent again, including after a redirect.
+        writer = BufferWriter()
+        await p.write(writer)
+        assert bytes(writer.buffer) == expected
+        await p.close()
+        await asyncio.gather(*payload._CLOSE_FUTURES)
+        assert source.closed
+        if factory is tempfile.NamedTemporaryFile:
+            assert not Path(source.name).exists()
+
+
+@pytest.mark.parametrize("factory", ["NamedTemporaryFile", "SpooledTemporaryFile"])
+async def test_temporary_text_file_encoding(factory: str) -> None:
+    with getattr(tempfile, factory)(mode="w+", encoding="latin-1") as source:
+        source.write("café")
+        source.seek(0)
+        p = payload.get_payload(source, encoding="utf-16-le")
+        assert p.content_type == "text/plain; charset=utf-16-le"
+        assert await p.as_bytes() == "café".encode("utf-16-le")
+        writer = BufferWriter()
+        await p.write(writer)
+        assert bytes(writer.buffer) == "café".encode("utf-16-le")
