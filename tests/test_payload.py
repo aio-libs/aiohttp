@@ -8,7 +8,7 @@ from collections.abc import AsyncIterator, Callable, Iterator
 from functools import partial
 from io import StringIO
 from pathlib import Path
-from typing import IO, Any, TextIO, Union, cast
+from typing import IO, Any, TextIO, cast
 
 import pytest
 from multidict import CIMultiDict
