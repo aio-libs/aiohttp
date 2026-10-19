@@ -171,7 +171,7 @@ pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
 platformdirs==4.12.4
     # via virtualenv
-pluggy==1.6.0
+pluggy==1.7.0
     # via
     #   pytest
     #   pytest-cov
