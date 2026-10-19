@@ -153,6 +153,25 @@ async def test_keepalive_after_head_requests_success(
     assert 1 == cnt_conn_reuse
 
 
+@pytest.mark.parametrize("method", ("HEAD", "GET"))
+@pytest.mark.parametrize("status", (200, 204, 304))
+async def test_readuntil_empty_response(
+    aiohttp_client: AiohttpClient, method: str, status: int
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=status)
+
+    app = web.Application()
+    app.router.add_route(method, "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.request(method, "/") as resp:
+        assert resp.status == status
+        assert await resp.content.readuntil() == b""
+        assert await resp.content.readuntil(b"\r\n", max_size=1) == b""
+        assert resp.content.at_eof()
+
+
 @pytest.mark.parametrize("status", (101, 204, 304))
 async def test_keepalive_after_empty_body_status(
     aiohttp_client: AiohttpClient, status: int
