@@ -7022,3 +7022,5 @@ async def test_temporary_file_upload(
         async with client.post("/", data=data) as response:
             assert response.status == 200
             assert await response.read() == content
+        # Wait for the payload's background close before the file context exits.
+        await asyncio.gather(*payload._CLOSE_FUTURES)
