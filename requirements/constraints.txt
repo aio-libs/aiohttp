@@ -75,7 +75,7 @@ cryptography==50.0.2
     # via trustme
 cython==3.3.0
     # via -r requirements/cython.in
-distlib==0.4.3
+distlib==0.4.4
     # via virtualenv
 docutils==0.21.2
     # via
