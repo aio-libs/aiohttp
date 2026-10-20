@@ -543,6 +543,32 @@ async def test_send_recv_text(aiohttp_client: AiohttpClient) -> None:
     await closed
 
 
+async def test_server_close_reason_iterator(aiohttp_client: AiohttpClient) -> None:
+    server_ws: web.WebSocketResponse | None = None
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        nonlocal server_ws
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        server_ws = ws
+        assert ws.close_reason is None
+        async for msg in ws:
+            pass
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    await resp.close(code=4002, message=b"client closed with reason")
+
+    assert server_ws is not None
+    assert server_ws.closed
+    assert server_ws.close_code == 4002
+    assert server_ws.close_reason == "client closed with reason"
+
+
 async def test_send_recv_bytes(aiohttp_client: AiohttpClient) -> None:
     closed = asyncio.get_running_loop().create_future()
 

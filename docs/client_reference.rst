@@ -1745,6 +1745,18 @@ manually.
       Read-only property, ``True`` if :meth:`close` has been called or
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: close_code
+
+      Read-only property, close code from peer. It is set to ``None`` on
+      opened connection.
+
+   .. attribute:: close_reason
+
+      Read-only property, close reason description from peer. It is set to
+      ``None`` on opened connection.
+
+      .. versionadded:: 4.0
+
    .. attribute:: protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.

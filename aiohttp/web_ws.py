@@ -87,6 +87,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _closing: bool = False
     _conn_lost: int = 0
     _close_code: int | None = None
+    _close_reason: str | None = None
     _loop: asyncio.AbstractEventLoop | None = None
     _waiting: bool = False
     _close_wait: asyncio.Future[None] | None = None
@@ -430,6 +431,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         return self._close_code
 
     @property
+    def close_reason(self) -> str | None:
+        return self._close_reason
+
+    @property
     def ws_protocol(self) -> str | None:
         return self._ws_protocol
 
@@ -563,7 +568,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                     while True:
                         msg = await reader.read()
                         if msg.type is WSMsgType.CLOSE:
-                            self._set_code_close_transport(msg.data)
+                            self._set_code_close_transport(msg.data, msg.extra)
                             return True
             except asyncio.CancelledError:
                 self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
@@ -577,15 +582,17 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             # parser and the stash it retains.
             self._parser = None
 
-    def _set_closing(self, code: int) -> None:
+    def _set_closing(self, code: int, reason: str | None = None) -> None:
         """Set the close code and mark the connection as closing."""
         self._closing = True
         self._close_code = code
+        self._close_reason = reason
         self._cancel_heartbeat()
 
-    def _set_code_close_transport(self, code: int) -> None:
+    def _set_code_close_transport(self, code: int, reason: str | None = None) -> None:
         """Set the close code and close the transport."""
         self._close_code = code
+        self._close_reason = reason
         self._close_transport()
 
     def _close_transport(self) -> None:
@@ -665,7 +672,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 return msg
 
             if msg.type is WSMsgType.CLOSE:
-                self._set_closing(msg.data)
+                self._set_closing(msg.data, msg.extra)
                 # Could be closed while awaiting reader.
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     # The client is likely going to close the

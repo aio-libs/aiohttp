@@ -1146,6 +1146,13 @@ and :ref:`aiohttp-web-signals` handlers::
       Read-only property, close code from peer. It is set to ``None`` on
       opened connection.
 
+   .. attribute:: close_reason
+
+      Read-only property, close reason description from peer. It is set to
+      ``None`` on opened connection.
+
+      .. versionadded:: 4.0
+
    .. attribute:: ws_protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.

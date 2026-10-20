@@ -87,6 +87,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         self._closed = False
         self._closing = False
         self._close_code: int | None = None
+        self._close_reason: str | None = None
         self._timeout = timeout
         self._autoclose = autoclose
         self._autoping = autoping
@@ -257,6 +258,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         return self._close_code
 
     @property
+    def close_reason(self) -> str | None:
+        return self._close_reason
+
+    @property
     def protocol(self) -> str | None:
         return self._protocol
 
@@ -375,6 +380,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
                 if msg.type is WSMsgType.CLOSE:
                     self._close_code = msg.data
+                    self._close_reason = msg.extra
                     self._response.close()
                     return True
         finally:
@@ -462,6 +468,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
             if msg.type is WSMsgType.CLOSE:
                 self._set_closing()
                 self._close_code = msg.data
+                self._close_reason = msg.extra
                 # Could be closed elsewhere while awaiting reader
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
                     await self.close()

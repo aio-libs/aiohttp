@@ -1,0 +1,1 @@
+Added :attr:`~aiohttp.ClientWebSocketResponse.close_reason` and :attr:`~aiohttp.web.WebSocketResponse.close_reason` properties to expose the close message reason received from the peer -- by :user:`NabiBukhsh-AI`.

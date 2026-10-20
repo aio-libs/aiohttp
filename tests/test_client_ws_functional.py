@@ -517,6 +517,50 @@ async def test_close(aiohttp_client: AiohttpClient) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
+async def test_close_reason_iterator(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.send_str("hello")
+        await ws.close(code=4000, message=b"custom close reason")
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    assert resp.close_reason is None
+
+    messages = []
+    async for msg in resp:
+        messages.append(msg.data)
+
+    assert messages == ["hello"]
+    assert resp.closed
+    assert resp.close_code == 4000
+    assert resp.close_reason == "custom close reason"
+
+
+async def test_close_reason_receive(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close(code=4001, message=b"error reason")
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+    assert resp.close_reason is None
+
+    msg = await resp.receive()
+    assert msg.type == aiohttp.WSMsgType.CLOSE
+    assert resp.closed
+    assert resp.close_code == 4001
+    assert resp.close_reason == "error reason"
+
+
 async def test_concurrent_task_close(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
