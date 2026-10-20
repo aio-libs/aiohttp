@@ -2466,14 +2466,14 @@ async def test_preamble_failure_on_closing_transport_not_logged(
     asyncio must not also log "Task exception was never retrieved".
     """
     loop = asyncio.get_running_loop()
-    reported: list[dict[str, Any]] = []
-    original_handler = loop.get_exception_handler()
-    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
     req = make_client_request(
         "PUT", URL("http://python.org/"), data=b"x", expect100=True, loop=loop
     )
     # The peer closed the connection after it was taken from the pool.
     transport.is_closing.return_value = True
+    reported: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
     try:
         resp = await req._send(conn)
         for _ in range(3):

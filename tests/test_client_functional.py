@@ -2504,9 +2504,6 @@ async def test_expect100_on_reused_connection_closed_by_peer(
         return web.Response(text="ok")
 
     loop = asyncio.get_running_loop()
-    reported: list[dict[str, Any]] = []
-    original_handler = loop.get_exception_handler()
-    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
     pooled_transport: asyncio.Transport | None = None
 
     async def on_reuseconn(session: object, ctx: object, params: object) -> None:
@@ -2522,6 +2519,9 @@ async def test_expect100_on_reused_connection_closed_by_peer(
     app.router.add_put("/", handler)
     server = await aiohttp_server(app)
     url = server.make_url("/")
+    reported: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
     try:
         # A plain session: the test client disables the retry on a new connection.
         async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
