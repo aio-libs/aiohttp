@@ -747,3 +747,56 @@ boundary at which user-supplied strings can become wire bytes.
   urlencoded bodies (threat 4.2).
 
 These are all currently in place; this section assumes no regression.
+
+---
+
+### 5.7. Server connection lifecycle
+
+**Scope of this addition.** The optional HTTP connection reuse lifetime in
+`RequestHandler` (`web_protocol.py`) and the response-header boundary in
+`StreamResponse._write_headers` (`web_response.py`).
+
+`keepalive_time=None` preserves unlimited reuse lifetime. A positive finite
+value sets a monotonic deadline at connection acceptance, independently of
+`keepalive_timeout` and TCP keepalive. The existing keepalive timer closes idle
+connections at the earlier deadline. Active requests and responses finish;
+expired connections do not process subsequent queued requests. Before response
+headers are serialized, expiry forces `Connection: close`, including when a
+handler prepares its own response. Already-sent streaming headers cannot be
+changed. Accepted protocol upgrades are outside this HTTP reuse policy.
+
+**Availability limits.** This is an operator-controlled reconnection policy,
+not a security deadline: a long-running handler, streaming response, or upgraded
+connection can outlive it. It neither bounds total connections nor guarantees
+load distribution. Applications still need execution limits and appropriate
+proxy protections for those threats.
+
+**Past advisories / hardening (recap).**
+
+- **Issue #7804** — tests cover lifetime independent of idle timeout,
+  completion of active and streaming responses, HTTP/1.0 and HTTP/1.1 pipelining,
+  WebSocket upgrade behavior, and cancellation of the existing deadline on
+  disconnect and shutdown. This feature changes no security default.
+
+## 6. Recommendations for the connection reuse lifetime
+
+### 6.1. Highest-leverage recommendations
+
+- Do not treat `keepalive_time` as a request execution timeout or a bound on
+  connection resources; active responses and upgrades may outlive it (§5.7).
+
+### 6.2. Operator configuration
+
+- Select a reuse lifetime for the deployment's reconnection needs and configure
+  `keepalive_timeout` independently. Reconnection does not guarantee a different
+  backend (§5.7).
+
+### 6.3. Regression coverage
+
+- Preserve the default and the request/response boundary tests when modifying
+  lifecycle or header serialization code (§5.7).
+
+### 6.4. Lifecycle cleanup
+
+- Keep lifetime scheduling on the existing keepalive handle so disconnect and
+  shutdown cancel it without an additional background task (§5.7).
