@@ -6,6 +6,7 @@ import pytest
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import BaseRequest
+from aiohttp.web_response import StreamResponse
 from aiohttp.web_server import Server
 
 
@@ -234,7 +235,7 @@ async def test_request_racing_connection_lost_is_not_dispatched() -> None:
     that is already gone.
     """
 
-    async def handler(request: BaseRequest) -> None:
+    async def handler(request: BaseRequest) -> StreamResponse:
         raise AssertionError("handler must not run for a lost connection")
 
     proto = Server(handler)()
