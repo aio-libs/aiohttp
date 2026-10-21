@@ -223,7 +223,7 @@ pytest-codspeed==5.0.3
     #   -r requirements/test-common.in
 pytest-cov==7.1.0
     # via -r requirements/test-common-base.in
-pytest-mock==3.16.0
+pytest-mock==3.17.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common-base.in
