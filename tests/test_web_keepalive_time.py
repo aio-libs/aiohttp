@@ -64,6 +64,7 @@ async def test_keepalive_time_finishes_active_response(
     aiohttp_raw_server: AiohttpRawServer,
     aiohttp_client: AiohttpClient,
     advance_time: Callable[[float], None],
+    monkeypatch: pytest.MonkeyPatch,
     streaming: bool,
 ) -> None:
     async def handler(request: web.BaseRequest) -> web.StreamResponse:
@@ -80,6 +81,16 @@ async def test_keepalive_time_finishes_active_response(
         return response
 
     server = await aiohttp_raw_server(handler, keepalive_time=5)
+    disconnected = asyncio.Event()
+    original_connection_lost = server.handler.connection_lost
+
+    def connection_lost(
+        protocol: RequestHandler[web.BaseRequest], exc: BaseException | None = None
+    ) -> None:
+        original_connection_lost(protocol, exc)
+        disconnected.set()
+
+    monkeypatch.setattr(server.handler, "connection_lost", connection_lost)
     cli: TestClient[web.BaseRequest, None] = await aiohttp_client(server)
     response = await cli.get("/")
     assert await response.text() == ("startdone" if streaming else "done")
@@ -88,6 +99,8 @@ async def test_keepalive_time_finishes_active_response(
     else:
         assert response.headers["Connection"] == "close"
     assert response.closed
+    # Receiving the body can precede the server's connection_lost callback.
+    await asyncio.wait_for(disconnected.wait(), timeout=5)
     assert not server.handler.connections
 
 
