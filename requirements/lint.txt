@@ -125,7 +125,7 @@ pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
     # via -r requirements/lint.in
-pytest-mock==3.16.0
+pytest-mock==3.17.0
     # via -r requirements/lint.in
 python-dateutil==2.9.0.post0
     # via freezegun
