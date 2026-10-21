@@ -1068,17 +1068,18 @@ async def test_chunked(conn: mock.Mock, make_client_request: _RequestMaker) -> N
     resp.close()
 
 
-async def test_chunked2(conn: mock.Mock, make_client_request: _RequestMaker) -> None:
-    req = make_client_request(
-        "post",
-        URL("http://python.org/"),
-        headers=CIMultiDict({"Transfer-encoding": "chunked"}),
-        loop=asyncio.get_running_loop(),
-    )
-    resp = await req._send(conn)
-    assert "chunked" == req.headers["TRANSFER-ENCODING"]
-    await req._close()
-    resp.close()
+@pytest.mark.parametrize("data", (None, b"data"))
+async def test_chunked_header_without_chunked(
+    make_client_request: _RequestMaker, data: bytes | None
+) -> None:
+    with pytest.raises(ValueError, match="use chunked=True instead"):
+        make_client_request(
+            "post",
+            URL("http://python.org/"),
+            data=data,
+            headers=CIMultiDict({"Transfer-encoding": "chunked"}),
+            loop=asyncio.get_running_loop(),
+        )
 
 
 async def test_chunked_empty_body(
@@ -1114,6 +1115,55 @@ async def test_chunked_explicit(
     assert "chunked" == req.headers["TRANSFER-ENCODING"]
     m_writer.return_value.enable_chunking.assert_called_with()
     await req._close()
+    resp.close()
+
+
+@pytest.mark.parametrize("data", (None, b"data"))
+async def test_chunked_false(
+    buf: bytearray,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+    data: bytes | None,
+) -> None:
+    req = make_client_request(
+        "post",
+        URL("http://python.org/"),
+        data=data,
+        chunked=False,
+        loop=asyncio.get_running_loop(),
+    )
+    conn.protocol.writing_paused = False
+    resp = await req._send(conn)
+    await req._close()
+
+    body = data or b""
+    assert hdrs.TRANSFER_ENCODING not in req.headers
+    assert req.headers[hdrs.CONTENT_LENGTH] == str(len(body))
+    assert buf.split(b"\r\n\r\n", 1)[1] == body
+    resp.close()
+
+
+@pytest.mark.parametrize("chunked", (True, False))
+@pytest.mark.parametrize("method", sorted(ClientRequest.GET_METHODS))
+async def test_chunked_no_body_get_methods(
+    buf: bytearray,
+    conn: mock.Mock,
+    make_client_request: _RequestMaker,
+    method: str,
+    chunked: bool,
+) -> None:
+    req = make_client_request(
+        method,
+        URL("http://python.org/"),
+        chunked=chunked,
+        loop=asyncio.get_running_loop(),
+    )
+    conn.protocol.writing_paused = False
+    resp = await req._send(conn)
+    await req._close()
+
+    assert hdrs.TRANSFER_ENCODING not in req.headers
+    assert buf.split(b"\r\n\r\n", 1)[1] == b""
     resp.close()
 
 
@@ -1605,7 +1655,7 @@ def test_terminate_with_closed_loop(
             cookies=BaseCookie[str](),
             version=HttpVersion11,
             compress=False,
-            chunked=None,
+            chunked=False,
             expect100=False,
             response_class=ClientResponse,
             proxy=None,

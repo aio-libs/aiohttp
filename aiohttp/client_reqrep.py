@@ -1224,7 +1224,7 @@ class ClientRequestArgs(TypedDict, total=False):
     cookies: BaseCookie[str]
     version: HttpVersion
     compress: Literal["deflate", "gzip"] | bool
-    chunked: bool | None
+    chunked: bool
     expect100: bool
     loop: asyncio.AbstractEventLoop
     response_class: type[ClientResponse]
@@ -1272,7 +1272,7 @@ class ClientRequest(ClientRequestBase):
         cookies: BaseCookie[str],
         version: HttpVersion,
         compress: Literal["deflate", "gzip"] | bool,
-        chunked: bool | None,
+        chunked: bool,
         expect100: bool,
         loop: asyncio.AbstractEventLoop,
         response_class: type[ClientResponse],
@@ -1431,6 +1431,12 @@ class ClientRequest(ClientRequestBase):
                     "chunked can not be set "
                     'if "Transfer-Encoding: chunked" header is set'
                 )
+            # Without chunked, the body is sent as is after a Content-Length
+            # header, which must not be combined with Transfer-Encoding.
+            raise ValueError(
+                '"Transfer-Encoding: chunked" header can not be set, '
+                "use chunked=True instead"
+            )
 
         elif self.chunked:
             if hdrs.CONTENT_LENGTH in self.headers:
@@ -1640,7 +1646,12 @@ class ClientRequest(ClientRequestBase):
         if self.compress:
             writer.enable_compression(self.compress)
 
-        if self.chunked is not None:
+        # A GET-like request without a body gets no Transfer-Encoding header
+        # even with chunked=True, so the header must be checked too.
+        if (
+            self.chunked
+            and "chunked" in self.headers.get(hdrs.TRANSFER_ENCODING, "").lower()
+        ):
             writer.enable_chunking()
         return writer
 

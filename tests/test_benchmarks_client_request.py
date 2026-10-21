@@ -104,7 +104,7 @@ def test_create_client_request_with_cookies(
             cookies=cookies,
             version=HttpVersion11,
             compress=False,
-            chunked=None,
+            chunked=False,
             expect100=False,
         )
 
@@ -156,7 +156,7 @@ def test_create_client_request_with_headers(
             cookies=cookies,
             version=HttpVersion11,
             compress=False,
-            chunked=None,
+            chunked=False,
             expect100=False,
         )
 
