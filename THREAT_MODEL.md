@@ -219,9 +219,11 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
   responsibility of consumers (logging, header reflection, proxying).
 - Methods are accepted as any RFC 7230 token; the parser does not canonicalise
   case.
-- Versions are accepted by the regex `HTTP/(\d)\.(\d)` — i.e. `HTTP/0.9`,
-  `HTTP/2.0`, etc. all parse without rejection, even though they cannot be
-  served correctly.
+- Versions are restricted to `HTTP/1.0` and `HTTP/1.1` by the regex
+  `HTTP/(1)\.([01])` (pure-Python parser) and an equivalent `major == 1 and
+  minor in (0, 1)` guard in the C parser's `http_version()`; anything else
+  (`HTTP/0.9`, `HTTP/2.0`, `HTTP/9.9`, etc.) is rejected with `BadStatusLine`
+  before a message is handed downstream.
 
 **Assets at risk.**
 
@@ -242,7 +244,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.2 | Header block, line endings | T | Smuggling via bare-LF, obs-fold, optional CR-before-LF on the *request* parser. Request parser is strict; lenient flags apply only to the response parser. | Medium |
 | 1.3 | Header values, CR/LF/NUL | T / I | CRLF injection enabling response splitting / header injection if downstream re-emits values verbatim. Historically [CVE-2023-37276](https://github.com/aio-libs/aiohttp/security/advisories/GHSA-45c4-8wx5-qw6w). | High |
 | 1.4 | Header values, surrogateescape decode | I / T | Non-UTF-8 bytes round-trip through `Headers` and may be reflected by user code / proxies / logs into untrusted contexts. | Medium |
-| 1.5 | HTTP version regex | T | `HTTP/0.9` and `HTTP/2.0` accepted on the wire, opening a small surface for protocol-confusion against intermediaries that handle these specially. | Low |
+| 1.5 | HTTP version regex | T | `HTTP/0.9` and `HTTP/2.0` accepted on the wire, opening a small surface for protocol-confusion against intermediaries that handle these specially. **Closed** (see Mitigations below and the recap). | Low |
 | 1.6 | Method token | I / T | Methods are not case-canonicalised; arbitrary tokens up to `max_line_size` accepted. May confuse downstream method-based authorisation if user code compares case-sensitively. | Low |
 | 1.7 | `Content-Length` parsing | T | Negative or non-decimal CL handling, multiple comma-separated CLs, CL with leading `+`/whitespace. | Medium |
 | 1.8 | `Transfer-Encoding: chunked` parsing | T | Lenient acceptance (`xchunked`, `chunked, identity`, doubled `chunked`) leading to smuggling against a non-aiohttp peer that interprets differently. | Medium |
@@ -261,14 +263,14 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.2 | Lenient response parsing | Lenient flags (`llhttp_set_lenient_headers`, `llhttp_set_lenient_optional_cr_before_lf`, `llhttp_set_lenient_spaces_after_chunk_size`) are only enabled on the **response** parser and only when `DEBUG` is False (set in `HttpResponseParser.__init__`). The **request** parser is strict. | Documented design decision: keep lenient response parsing for real-world server interop |
 | 1.3 | CRLF / NUL in header values | Bytes `\r`, `\n`, `\x00` rejected in header values (`_http_parser.pyx` callbacks; `http_parser.py:HeadersParser.parse_headers`). | Keep regression tests in `tests/test_http_parser.py` covering each forbidden byte both in name and value, and across both Cython and pure-Python parsers. |
 | 1.4 | Non-UTF-8 round-trip | None at parser layer (intentional — preserving original bytes is required for some use cases). | **Document in user-facing docs that header values are bytes-preserving.** **User**: Re-validate any header value before reflecting it into responses, logs, or sub-requests. |
-| 1.5 | HTTP version regex accepts 0.9 / 2.0 | None (regex is permissive). | **Tighten `VERSRE` (and llhttp configuration if possible) to reject anything outside `HTTP/1.0` and `HTTP/1.1`.** |
+| 1.5 | HTTP version regex accepts 0.9 / 2.0 | `VERSRE` tightened to `HTTP/(1)\.([01])`; the C parser's `http_version()` raises `BadStatusLine` for any `(major, minor)` other than `(1, 0)` / `(1, 1)` instead of falling through to an unchecked `HttpVersion(major, minor)`. Covered by `test_http_request_parser_rejects_non_1x_version` / `test_http_response_parser_rejects_non_1x_version` across both backends. | None. |
 | 1.6 | Method-case round-trip | Method token validated by regex; not canonicalised. | **Document the asymmetry.** **User**: Compare HTTP methods case-sensitively to canonical RFC tokens, or use `web.RouteTableDef` decorators (which already match canonical methods). |
 | 1.7 | `Content-Length` parsing | llhttp validates CL is decimal and non-negative; pure-Python parser validates via `DIGITS.fullmatch(r"\d+")` before `int(...)`, rejecting `+`/`-`/non-ASCII-digit forms (`test_bad_headers`, `test_headers_content_length_err_*` cover these). | None. Cross-backend parity is covered by the shared parser tests. |
 | 1.8 | `Transfer-Encoding` lenience | `_is_chunked_te` requires `chunked` to be the last value; duplicate `chunked` rejected (`#10611`). Request parser strict. | None. |
 | 1.9 | Chunk-size DoS | The parser doesn't cap chunk size, but **server-side body length is bounded by `client_max_size` (default `1 MiB`)** in `web_request.py:BaseRequest.read`. Client-side responses are bounded by user-supplied `max_body_size` / streaming reads. | None. If a cap is ever needed at the parser level, plumb it through `HttpPayloadParser`. |
 | 1.10 | Chunk-extension DoS | Chunk-extension content is bounded by the same wire-level size constraints (it shares the chunk-size line with `max_line_size`). | **Add an explicit test that chunk-extension flooding cannot blow past `max_line_size`.** |
 | 1.11 | Parser error reflection | `http_parser.py` truncates to `[:100]` only for `LineTooLong`; `BadStatusLine` / `InvalidHeader` / `TransferEncodingError` carry the offending line up to `max_line_size` / `max_field_size`. `_http_parser.pyx` bounds its snippet to 50 bytes either side of the error position, so input with no CRLF to delimit the offending line is not quoted in full (`test_c_parser_error_message_bounded_for_crlf_free_input`). | **Audit any aiohttp path where `BadHttpMessage` content is reflected to the client unsanitised.** **User**: Review custom `web_log` configurations and any middleware that reflects parser exception messages back to the peer. |
-| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`), control characters in the request target (`test_http_request_parser_ctl_in_request_target`), absolute-form targets without `//` or with an empty host (`test_url_absolute_form_empty_host_rejected`). | None. When new attack vectors emerge, add them to the parameterised tests. |
+| 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`, `test_http_request_parser_rejects_non_1x_version`, `test_http_request_parser_accepts_1x_version`, `test_http_response_parser_rejects_non_1x_version`, `test_http_response_parser_accepts_1x_version`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`), control characters in the request target (`test_http_request_parser_ctl_in_request_target`), absolute-form targets without `//` or with an empty host (`test_url_absolute_form_empty_host_rejected`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
 
@@ -297,6 +299,10 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 - **PR #12137** (3.13.4) — precautionary hardening: pure-Python parser
   now explicitly rejects duplicate `Transfer-Encoding: chunked` on
   the request parser.
+- **PR #13929** (unreleased) — closed threat 1.5: `VERSRE` and the C
+  parser's `http_version()` now reject any version outside `HTTP/1.0` /
+  `HTTP/1.1` (`HTTP/0.9`, `HTTP/2.0`, `HTTP/9.9`, etc. are rejected with
+  `BadStatusLine` on both backends, request and response).
 - **GHSA-c427-h43c-vf67 (CVE-2026-34525)** (3.13.4) — duplicate `Host` header accepted
   in request parser, bypassing `Application.add_domain()` host-based
   routing / authorisation. Fixed by adding `Host` to the strict
