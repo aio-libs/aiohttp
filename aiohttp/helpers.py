@@ -408,6 +408,51 @@ def parse_content_type(raw: str) -> tuple[str, MappingProxyType[str, str]]:
     return content_type, MappingProxyType(content_dict)
 
 
+# Accept-Encoding = #( codings [ weight ] ), weight = OWS ";" OWS "q=" qvalue
+# https://www.rfc-editor.org/rfc/rfc9110#section-12.5.3
+# https://www.rfc-editor.org/rfc/rfc9110#section-12.4.2
+_ACCEPT_ENCODING_ELEMENT_RE = re.compile(
+    r"\s*([!#$%&'*+\-.^_`|~0-9A-Za-z]+)\s*"
+    r"(?:;\s*[qQ]\s*=\s*(0(?:\.[0-9]{0,3})?|1(?:\.0{0,3})?)\s*)?"
+)
+
+
+def _parse_accept_encoding(accept_encoding: str) -> dict[str, float]:
+    """Return the codings listed in an Accept-Encoding header with their qvalue.
+
+    Codings are lower-cased; a wildcard is stored under ``"*"``.
+    Malformed elements are skipped.
+    """
+    qvalues: dict[str, float] = {}
+    for element in accept_encoding.split(","):
+        match = _ACCEPT_ENCODING_ELEMENT_RE.fullmatch(element)
+        if match is None:
+            continue
+        coding, qvalue = match.groups()
+        qvalues.setdefault(coding.lower(), 1.0 if qvalue is None else float(qvalue))
+    return qvalues
+
+
+def accepted_content_codings(accept_encoding: str, codings: Iterable[str]) -> list[str]:
+    """Return the *codings* acceptable to the client, most preferred first.
+
+    *accept_encoding* is parsed according to
+    https://www.rfc-editor.org/rfc/rfc9110#section-12.5.3: a coding
+    with ``q=0`` is not acceptable, ``*`` stands for any coding that is
+    not listed explicitly and higher qvalues are preferred.  Codings
+    with equal qvalues keep the order they have in *codings*.
+    """
+    qvalues = _parse_accept_encoding(accept_encoding)
+    wildcard = qvalues.get("*", 0.0)
+    accepted = [
+        (coding, qvalue)
+        for coding in codings
+        if (qvalue := qvalues.get(coding, wildcard)) > 0
+    ]
+    accepted.sort(key=lambda item: item[1], reverse=True)
+    return [coding for coding, _ in accepted]
+
+
 def guess_filename(obj: Any, default: str | None = None) -> str | None:
     name = getattr(obj, "name", None)
     if name and isinstance(name, str) and name[0] != "<" and name[-1] != ">":

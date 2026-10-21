@@ -438,6 +438,60 @@ async def test_static_file_custom_content_type_compress(
 
 @pytest.mark.parametrize(
     ("accept_encoding", "expect_encoding"),
+    [
+        ("gzip;q=0, br;q=0", None),
+        ("gzip;q=0, deflate", None),
+        ("identity, gzip;q=0.5, br;q=0.5", None),
+        ("x-gzip, gzip-foo", None),
+        ("br;q=0.5, gzip", "gzip"),
+        ("br;q=0, gzip", "gzip"),
+        ("br;q=0.5, gzip;q=0.2", "br"),
+        ("*", "br"),
+        ("*;q=0, gzip", "gzip"),
+    ],
+)
+async def test_static_file_accept_encoding_qvalues(
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    accept_encoding: str,
+    expect_encoding: str | None,
+) -> None:
+    """Test that pre-compressed files are chosen per Accept-Encoding qvalues."""
+    if brotli is None:
+        pytest.skip("brotli not available")
+
+    hello_txt = tmp_path / "hello.txt"
+    hello_txt.write_bytes(HELLO_AIOHTTP)
+    hello_txt.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+    hello_txt.with_suffix(".txt.br").write_bytes(brotli.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(hello_txt)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get(
+        "/", headers={"Accept-Encoding": accept_encoding}, auto_decompress=False
+    )
+    assert resp.status == 200
+    assert resp.headers.get("Content-Encoding") == expect_encoding
+    body = await resp.read()
+    if expect_encoding is None:
+        assert body == HELLO_AIOHTTP
+    elif expect_encoding == "gzip":
+        assert gzip.decompress(body) == HELLO_AIOHTTP
+    else:
+        assert brotli.decompress(body) == HELLO_AIOHTTP
+    resp.close()
+    resp.release()
+    await client.close()
+
+
+@pytest.mark.parametrize(
+    ("accept_encoding", "expect_encoding"),
     [("gzip, deflate", "gzip"), ("gzip, deflate, br", "br")],
 )
 @pytest.mark.parametrize("forced_compression", [None, web.ContentCoding.gzip])
