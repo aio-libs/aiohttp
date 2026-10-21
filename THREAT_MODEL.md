@@ -34,6 +34,15 @@ Key public APIs (non-exhaustive):
 | Client | `aiohttp.ClientSession`, `aiohttp.TCPConnector`, `aiohttp.ClientResponse`, `aiohttp.UploadTracker`, `aiohttp.WSMessage`, `aiohttp.BasicAuth` |
 | Shared | `aiohttp.MultipartReader`/`MultipartWriter`, `aiohttp.CookieJar`, `aiohttp.TraceConfig`, `aiohttp.resolver.AsyncResolver` |
 
+Serving lifecycle: `web.BaseRunner.serve_forever()` blocks until cancelled
+or until `cleanup()` wakes the pending waiter after server teardown, and
+`cleanup()` stops all registered sites before shutting down the server.
+Both calls are local lifecycle coordination by the host application, not
+attacker-reachable input handling, so no new trust boundary is introduced.
+The availability-relevant property is that a task blocked in
+`serve_forever()` returns once `cleanup()` runs instead of hanging
+indefinitely.
+
 ---
 
 ## 2. Methodology
