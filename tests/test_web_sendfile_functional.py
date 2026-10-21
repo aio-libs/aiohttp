@@ -450,6 +450,7 @@ async def test_static_file_custom_content_type_compress(
         ("*;q=0, gzip", "gzip"),
     ],
 )
+@pytest.mark.skipif(brotli is None, reason="brotli not available")
 async def test_static_file_accept_encoding_qvalues(
     tmp_path: pathlib.Path,
     aiohttp_client: AiohttpClient,
@@ -458,9 +459,6 @@ async def test_static_file_accept_encoding_qvalues(
     expect_encoding: str | None,
 ) -> None:
     """Test that pre-compressed files are chosen per Accept-Encoding qvalues."""
-    if brotli is None:
-        pytest.skip("brotli not available")
-
     hello_txt = tmp_path / "hello.txt"
     hello_txt.write_bytes(HELLO_AIOHTTP)
     hello_txt.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
