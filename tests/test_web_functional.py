@@ -3329,15 +3329,18 @@ async def test_request_factory_after_connection_lost(
     start_task = protocol._task_handler
     assert start_task is not None
 
-    # Reproduce #14000 deterministically: connection_lost() clears the parser
-    # and request factory; when start() resumes from its keep-alive waiter it
-    # must exit the loop cleanly instead of calling the (now None) factory. We
-    # wake the waiter directly rather than racing a real connection_lost(),
-    # which would force_close() the connection and cancel the pending waiter at
-    # the await -- masking the crash this test guards against.
+    # Reproduce #14000 deterministically: a pipelined request arrives and wakes
+    # the keep-alive waiter, but connection_lost() has already cleared the
+    # parser and the request factory. start() must exit the loop instead of
+    # popping the queued message and calling the (now None) factory, which is
+    # the reported TypeError. Feeding the bytes before clearing the parser
+    # keeps the ordering exact; racing a real connection_lost() instead would
+    # force_close() the connection and cancel the pending waiter at the await,
+    # masking the crash this test guards against.
+    protocol.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    assert protocol._messages, "the pipelined request should be queued"
     protocol._parser = None
     protocol._request_factory = None
-    protocol._waiter.set_result(None)
 
     for _ in range(10):
         await asyncio.sleep(0)
