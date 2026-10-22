@@ -1,0 +1,2 @@
+Fixed ``EmptyStreamReader.total_raw_bytes`` raising ``AttributeError`` on a response
+with no body instead of returning ``0`` -- by :user:`OUAO-FRANK`.
