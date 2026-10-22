@@ -829,7 +829,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
             .. versionadded:: 3.12
 
-   .. method:: del_cookie(name, *, path='/', domain=None)
+   .. method:: del_cookie(name, *, path='/', domain=None, \
+                          secure=None, httponly=None, samesite=None, \
+                          partitioned=None)
 
       Deletes cookie.
 
@@ -838,6 +840,19 @@ and :ref:`aiohttp-web-signals` handlers::
       :param str domain: optional cookie domain
 
       :param str path: optional cookie path, ``'/'`` by default
+
+      :param bool secure: optional ``Secure`` attribute, see :meth:`set_cookie`
+
+      :param bool httponly: optional ``HttpOnly`` attribute, see
+                            :meth:`set_cookie`
+
+      :param str samesite: optional ``SameSite`` attribute, see
+                           :meth:`set_cookie`
+
+      :param bool partitioned: ``True`` to delete a partitioned cookie.
+                               Browsers keep partitioned cookies separate
+                               from unpartitioned ones, so the attribute must
+                               match the one used when setting the cookie.
 
    .. attribute:: content_length
 
