@@ -850,8 +850,8 @@ and :ref:`aiohttp-web-signals` handlers::
                            :meth:`set_cookie`
 
       :param bool partitioned: ``True`` to delete a partitioned cookie.
-                               Browsers keep partitioned cookies separate
-                               from unpartitioned ones, so the attribute must
+                               Browsers store partitioned cookies separately
+                               from other cookies, so the attribute must
                                match the one used when setting the cookie.
 
    .. attribute:: content_length
