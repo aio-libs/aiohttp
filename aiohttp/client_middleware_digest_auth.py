@@ -415,32 +415,28 @@ class DigestAuthMiddleware:
         if response.status != 401:
             return False
 
-        auth_header = response.headers.get("www-authenticate", "")
-        if not auth_header:
-            return False  # No authentication header present
-
-        method, sep, headers = auth_header.partition(" ")
-        if not sep:
-            # No space found in www-authenticate header
-            return False  # Malformed auth header, missing scheme separator
-
-        if method.lower() != "digest":
-            # Not a digest auth challenge (could be Basic, Bearer, etc.)
-            return False
-
-        if not headers:
-            # We have a digest scheme but no parameters
-            return False  # Malformed digest header, missing parameters
-
-        # We have a digest auth header with content
-        if not (header_pairs := parse_header_pairs(headers)):
-            # Failed to parse any key-value pairs
-            return False  # Malformed digest header, no valid parameters
+        digest_params = None
+        # RFC 7616 4.1: challenges may be spread over multiple header fields
+        # or combined in one field; consider every Digest challenge instead of
+        # only the first (a Basic challenge in front of Digest is common on
+        # IIS/nginx and should not disable digest authentication).
+        for auth_header in response.headers.getall("www-authenticate", []):
+            method, sep, headers = auth_header.partition(" ")
+            if not sep or method.lower() != "digest" or not headers:
+                continue
+            header_pairs = parse_header_pairs(headers)
+            if not header_pairs:
+                continue
+            if {"realm", "nonce"} <= header_pairs.keys():
+                digest_params = header_pairs
+                break
+        if digest_params is None:
+            return False  # No usable digest challenge found
 
         # Extract challenge parameters
         self._challenge = {}
         for field in CHALLENGE_FIELDS:
-            if (value := header_pairs.get(field)) is not None:
+            if (value := digest_params.get(field)) is not None:
                 self._challenge[field] = value
 
         # Update protection space based on domain parameter or default to origin
