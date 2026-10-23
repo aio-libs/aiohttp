@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
+import gc
 import http.cookies
 import io
 import json
@@ -2487,6 +2488,59 @@ async def test_expect100_continue_with_none_payload(
 
     # Expect handler should still be called even with no body
     assert expect_received
+
+
+async def test_expect100_on_reused_connection_closed_by_peer(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A pooled connection closed before the 100-continue preamble logs nothing.
+
+    The request is retried on a new connection; the failed writer of the first
+    attempt must not be logged as "Task exception was never retrieved".
+    """
+
+    async def handler(request: web.Request) -> web.Response:
+        await request.read()
+        return web.Response(text="ok")
+
+    loop = asyncio.get_running_loop()
+    pooled_transport: asyncio.Transport | None = None
+
+    async def on_reuseconn(session: object, ctx: object, params: object) -> None:
+        # The peer closes the idle connection right after the pool hands it
+        # out, before the body writer sends the request headers.
+        assert pooled_transport is not None
+        loop.call_soon(pooled_transport.close)
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_put("/", handler)
+    server = await aiohttp_server(app)
+    url = server.make_url("/")
+    reported: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
+    try:
+        # A plain session: the test client disables the retry on a new connection.
+        async with aiohttp.ClientSession(trace_configs=[trace_config]) as session:
+            async with session.put(url, data=b"x") as resp:
+                await resp.read()
+            assert session.connector is not None
+            conns = next(iter(session.connector._conns.values()))
+            pooled_transport = conns[0][0].transport
+
+            async with session.put(url, data=b"x", expect100=True) as resp:
+                assert resp.status == 200
+                assert await resp.text() == "ok"
+
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    assert not reported
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")

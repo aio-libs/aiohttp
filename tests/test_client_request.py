@@ -1,4 +1,5 @@
 import asyncio
+import gc
 import hashlib
 import io
 import pathlib
@@ -2454,6 +2455,37 @@ async def test_preamble_failure_reported_to_upload_tracker(
         tracker._finalize()
         assert tracker.attempts == 1
         assert isinstance(tracker.upload_complete.exception(), RuntimeError)
+
+
+async def test_preamble_failure_on_closing_transport_not_logged(
+    conn: mock.Mock, transport: mock.Mock, make_client_request: _RequestMaker
+) -> None:
+    """A writer failing to send the 100-continue preamble logs nothing.
+
+    It has already closed the connection, so the failure reaches the response;
+    asyncio must not also log "Task exception was never retrieved".
+    """
+    loop = asyncio.get_running_loop()
+    req = make_client_request(
+        "PUT", URL("http://python.org/"), data=b"x", expect100=True, loop=loop
+    )
+    # The peer closed the connection after it was taken from the pool.
+    transport.is_closing.return_value = True
+    reported: list[dict[str, Any]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, ctx: reported.append(ctx))
+    try:
+        resp = await req._send(conn)
+        for _ in range(3):
+            await asyncio.sleep(0)
+        assert conn.close.called
+        resp.close()
+        gc.collect()
+        await asyncio.sleep(0)
+    finally:
+        loop.set_exception_handler(original_handler)
+
+    assert not reported
 
 
 @pytest.mark.skipif(
