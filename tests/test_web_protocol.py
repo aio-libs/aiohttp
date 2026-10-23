@@ -6,6 +6,7 @@ import pytest
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import BaseRequest
+from aiohttp.web_response import StreamResponse
 from aiohttp.web_server import Server
 
 
@@ -224,3 +225,30 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+async def test_request_racing_connection_lost_is_not_dispatched() -> None:
+    """A request delivered in the same iteration as connection_lost() is dropped.
+
+    connection_lost() forces the close and clears the request factory, so
+    start() must notice that instead of building a request for the connection
+    that is already gone.
+    """
+
+    async def handler(request: BaseRequest) -> StreamResponse:
+        raise AssertionError("handler must not run for a lost connection")
+
+    proto = Server(handler)()
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    transport.get_extra_info.return_value = None
+    proto.connection_made(transport)
+    task = proto._task_handler
+    assert task is not None
+    await asyncio.sleep(0)
+
+    # Same event-loop iteration: a request arrives, then the peer disconnects.
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+    proto.connection_lost(None)
+
+    await task

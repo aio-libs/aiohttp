@@ -740,6 +740,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     await self._waiter
                 finally:
                     self._waiter = None
+                # connection_lost() may have run while we were waiting for the
+                # next request: it drops the transport and clears the request
+                # factory, so do not build a request for a dead connection.
+                if self.transport is None:
+                    break
 
             message, payload = self._messages.popleft()
 

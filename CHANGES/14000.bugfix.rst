@@ -1,0 +1,4 @@
+Fixed ``RequestHandler.start()`` using the request factory after ``connection_lost()``
+had already cleared it, which logged a spurious ``TypeError: 'NoneType' object is not callable``
+traceback when a request was delivered in the same event loop iteration as the disconnect
+-- by :user:`OUAO-FRANK`.
