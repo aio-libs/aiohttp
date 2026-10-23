@@ -506,6 +506,57 @@ async def test_compression_default_coding() -> None:
     assert msg.filter is not None
 
 
+@pytest.mark.parametrize(
+    ("accept_encoding", "expected"),
+    [
+        ("gzip;q=0, deflate", "deflate"),
+        ("deflate;q=0, gzip", "gzip"),
+        ("gzip;q=1, deflate;q=0.5", "gzip"),
+        ("gzip;q=0.5, deflate;q=1", "deflate"),
+        ("*", "deflate"),
+        ("*;q=0.5, gzip", "gzip"),
+        ("deflate;q=0, *", "gzip"),
+    ],
+)
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_compression_accept_encoding_qvalues(
+    accept_encoding: str, expected: str
+) -> None:
+    req = make_request(
+        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: accept_encoding})
+    )
+    resp = web.StreamResponse()
+    resp.enable_compression()
+
+    msg = await resp.prepare(req)
+    assert msg is not None
+    msg.enable_compression.assert_called_with(expected, None)  # type: ignore[attr-defined]
+    assert resp.headers.get(hdrs.CONTENT_ENCODING) == expected
+
+
+@pytest.mark.parametrize(
+    "accept_encoding",
+    [
+        "gzip;q=0, deflate;q=0",
+        "*;q=0",
+        "identity, gzip;q=0.5, deflate;q=0.5",
+        "x-gzip, gzip-foo, xdeflate",
+        "gzip;q=abc",
+    ],
+)
+async def test_compression_not_acceptable_encoding(accept_encoding: str) -> None:
+    req = make_request(
+        "GET", "/", headers=CIMultiDict({hdrs.ACCEPT_ENCODING: accept_encoding})
+    )
+    resp = web.StreamResponse()
+    resp.enable_compression()
+
+    msg = await resp.prepare(req)
+    assert msg is not None
+    assert not msg.enable_compression.called  # type: ignore[attr-defined]
+    assert hdrs.CONTENT_ENCODING not in resp.headers
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_force_compression_deflate() -> None:
     req = make_request(
