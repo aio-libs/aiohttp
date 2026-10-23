@@ -109,7 +109,7 @@ six==1.17.0
     # via python-dateutil
 slotscheck==0.21.0
     # via -r requirements/lint.in
-tomli==2.4.1
+tomli==2.5.0
     # via
     #   mypy
     #   pytest
