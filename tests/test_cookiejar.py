@@ -483,6 +483,27 @@ async def test_ignore_domain_ending_with_dot() -> None:
     assert cookies_sent.output(header="Cookie:") == ""
 
 
+@pytest.mark.parametrize("domain", ("com", ".com"))
+def test_ignore_single_label_domain(domain: str) -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        [f"sid=1; Domain={domain}"], URL("https://attacker.com/")
+    )
+
+    assert len(jar) == 0
+    assert not jar.filter_cookies(URL("https://victim.com/"))
+
+
+def test_single_label_domain_naming_host_is_host_only() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["sid=1; Domain=localhost"], URL("http://localhost/")
+    )
+
+    assert set(jar.filter_cookies(URL("http://localhost/"))) == {"sid"}
+    assert not jar.filter_cookies(URL("http://app.localhost/"))
+
+
 class TestCookieJarSafe:
     @pytest.fixture(autouse=True)
     def setup_cookies(
@@ -2323,7 +2344,7 @@ def test_filter_cookies_limits_cookie_count(
 ) -> None:
     jar = CookieJar()
     hostname = "a.b.c.example.com"
-    domains = ("com", "example.com", "c.example.com", "b.c.example.com")
+    domains = ("example.com", "c.example.com", "b.c.example.com", hostname)
     cookies = [
         (
             f"cookie{domain_index}_{cookie_index}",
