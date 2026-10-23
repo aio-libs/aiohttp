@@ -9,12 +9,14 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
+from math import isfinite
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 import yarl
 from multidict import CIMultiDict
 from propcache import under_cached_property
 
+from . import hdrs
 from .abc import AbstractAccessLogger, AbstractAsyncAccessLogger, AbstractStreamWriter
 from .base_protocol import BaseProtocol
 from .helpers import (
@@ -142,6 +144,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
     keepalive_timeout -- number of seconds before closing an idle connection.
 
+    keepalive_time -- optional maximum connection reuse lifetime in seconds.
+
     tcp_keepalive -- TCP keep-alive is on, default is on
 
     logger -- custom logger object
@@ -177,6 +181,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         "_next_keepalive_close_time",
         "_keepalive_handle",
         "_keepalive_timeout",
+        "_keepalive_time",
+        "_keepalive_deadline",
         "_lingering_time",
         "_messages",
         "_max_msg_queue_size",
@@ -207,6 +213,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         loop: asyncio.AbstractEventLoop,
         # Default should be high enough that it's likely longer than a reverse proxy.
         keepalive_timeout: float = 3630,
+        keepalive_time: float | None = None,
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: _AnyAbstractAccessLogger = AccessLogger,
@@ -220,6 +227,10 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         auto_decompress: bool = True,
         timeout_ceil_threshold: float = 5,
     ):
+        if keepalive_time is not None and (
+            not isfinite(keepalive_time) or keepalive_time <= 0
+        ):
+            raise ValueError("keepalive_time must be a positive finite number or None")
         self._max_msg_queue_size = MAX_MSG_QUEUE_SIZE
         # Low-water mark: resume reading once the queue drains to half the limit
         # so we refill in batches instead of churning pause/resume per request.
@@ -260,6 +271,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._next_keepalive_close_time = 0.0
         self._keepalive_handle: asyncio.Handle | None = None
         self._keepalive_timeout = keepalive_timeout
+        self._keepalive_time = keepalive_time
+        self._keepalive_deadline: float | None = None
         self._lingering_time = float(lingering_time)
 
         self._messages: deque[_MsgType] = deque()
@@ -402,10 +415,19 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager.connection_made(self, real_transport)
 
         loop = self._loop
+        if self._keepalive_time is not None:
+            self._keepalive_deadline = loop.time() + self._keepalive_time
         # Need to enable keepalive timeout at start of connection, as there's no other
         # protection against a dead connection that doesn't send a request at all.
-        if self._keepalive_timeout > 0:
-            close_time = loop.time() + self._keepalive_timeout
+        if self._keepalive_timeout > 0 or self._keepalive_deadline is not None:
+            close_time = (
+                loop.time() + self._keepalive_timeout
+                if self._keepalive_timeout > 0
+                else self._keepalive_deadline
+            )
+            assert close_time is not None
+            if self._keepalive_deadline is not None:
+                close_time = min(close_time, self._keepalive_deadline)
             self._next_keepalive_close_time = close_time
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
 
@@ -662,6 +684,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         loop = self._loop
         now = loop.time()
         close_time = self._next_keepalive_close_time
+        if self._keepalive_deadline is not None:
+            close_time = min(close_time, self._keepalive_deadline)
         if now < close_time:
             # Keep alive close check fired too early, reschedule
             self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
@@ -670,6 +694,19 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # handler in idle state
         if self._waiter and not self._waiter.done():
             self.force_close()
+
+    def _keepalive_expired(self) -> bool:
+        return (
+            self._keepalive_deadline is not None
+            and self._loop.time() >= self._keepalive_deadline
+        )
+
+    def _prepare_response(self, response: StreamResponse) -> None:
+        # Upgraded connections have their own lifecycle. Run immediately before
+        # serializing headers, including for responses prepared by the handler.
+        if response.status != 101 and self._keepalive_expired():
+            response.force_close()
+            response.headers[hdrs.CONNECTION] = "close"
 
     async def _handle_request(
         self,
@@ -741,6 +778,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 finally:
                     self._waiter = None
 
+            if self._keepalive_expired():
+                break
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so
@@ -859,9 +898,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 if self.transport is None and resp is not None:
                     self.log_debug("Ignored premature client disconnection.")
 
+            if self._keepalive_expired():
+                break
             if self._keepalive and not self._close and not self._force_close:
                 # start keep-alive timer
                 close_time = loop.time() + keepalive_timeout
+                if self._keepalive_deadline is not None:
+                    close_time = min(close_time, self._keepalive_deadline)
                 self._next_keepalive_close_time = close_time
                 if self._keepalive_handle is None:
                     self._keepalive_handle = loop.call_at(

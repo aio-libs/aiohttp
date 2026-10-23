@@ -1806,6 +1806,9 @@ Application and Router
    The class is responsible for creating HTTP protocol
    objects that can handle HTTP connections.
 
+   Keyword arguments for the HTTP protocol, including ``keepalive_time``,
+   are described under :class:`AppRunner`.
+
    .. attribute:: connections
 
       List of all currently opened connections.
@@ -2905,6 +2908,31 @@ application on specific TCP or Unix socket, e.g.::
         connection. Default: ``3630`` seconds (when deployed behind a reverse proxy
         it's important for this value to be higher than the proxy's timeout. To avoid
         race conditions we always want the proxy to close the connection).
+   :param float keepalive_time: Optional connection reuse lifetime in seconds,
+        measured from accepting the connection using the event loop's monotonic
+        clock. Must be positive and finite, or ``None`` (the default, no lifetime
+        limit). Unlike ``keepalive_timeout``, this deadline is not extended by
+        requests. It is independent of TCP Keep-Alive probes.
+
+        An idle connection closes at the earlier of the idle and lifetime
+        deadlines. An active request and its response are allowed to finish;
+        subsequent requests, including already pipelined requests, are not
+        handled on that connection after expiry. If the deadline has passed
+        when response headers are serialized, the response sends
+        ``Connection: close``. Headers already sent by a streaming response
+        cannot be changed; the connection closes after that response finishes.
+        Accepted protocol upgrades, including WebSockets, are not subject to
+        this lifetime limit.
+
+        Configure this option through ``AppRunner(app, keepalive_time=...)``,
+        ``Server(handler, keepalive_time=...)``, or
+        ``Application(handler_args={"keepalive_time": ...})``. It can encourage
+        reconnection through a TCP load balancer, but does not guarantee how
+        the load balancer distributes connections. It does not impose a
+        request execution timeout or protect against long-running requests.
+
+        .. versionadded:: 4.0
+
    :param logger: Custom logger object. Default:
         :data:`aiohttp.log.server_logger`.
    :param access_log: Custom logging object. Default:
