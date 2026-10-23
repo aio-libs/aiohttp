@@ -398,9 +398,7 @@ def test_range_to_slice_tail_stop() -> None:
 
 def test_range_zero_suffix_length() -> None:
     # A zero-length suffix range is unsatisfiable (RFC 9110, Section 14.1.2)
-    req = make_mocked_request(
-        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=-0")])
-    )
+    req = make_mocked_request("GET", "/", headers=CIMultiDict([("RANGE", "bytes=-0")]))
     with pytest.raises(ValueError, match="suffix length must be non-zero"):
         req.http_range
 
