@@ -1,0 +1,1 @@
+Fixed socket read timeouts being restarted when resuming decompression completed the response or paused reading again, causing false timeouts for pooled connections and slow consumers -- by :user:`wangwillian0`.
