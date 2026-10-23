@@ -113,7 +113,7 @@ class WebSocketWriter:
                 send_task = asyncio.create_task(coro)
             # Keep a strong reference to prevent garbage collection
             self._background_tasks.add(send_task)
-            send_task.add_done_callback(self._background_tasks.discard)
+            send_task.add_done_callback(self._send_task_done)
             await asyncio.shield(send_task)
 
         # It is safe to return control to the event loop when using compression
@@ -127,6 +127,12 @@ class WebSocketWriter:
             self._output_size = 0
             if self.protocol._paused:
                 await self.protocol._drain_helper()
+
+    def _send_task_done(self, task: "asyncio.Task[None]") -> None:
+        self._background_tasks.discard(task)
+        # A cancelled caller no longer retrieves errors from the shielded task.
+        if not task.cancelled():
+            task.exception()
 
     def _write_websocket_frame(self, message: bytes, opcode: int, rsv: int) -> None:
         """
