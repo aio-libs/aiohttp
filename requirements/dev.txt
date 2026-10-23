@@ -46,7 +46,7 @@ brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != 
     # via -r requirements/runtime-deps.in
 build==1.6.1
     # via pip-tools
-certifi==2026.10.18
+certifi==2026.10.19
     # via requests
 cffi==2.1.1
     # via
