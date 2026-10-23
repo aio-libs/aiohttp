@@ -328,6 +328,37 @@ class MimeType:
     parameters: "MultiDictProxy[str]"
 
 
+_QUOTED_PAIR_RE = re.compile(r"\\(.)")
+
+
+def _split_mimetype(mimetype: str) -> list[str]:
+    """Split on the ``;`` that are outside quoted-strings (:rfc:`9110#section-5.6.4`)."""
+    parts: list[str] = []
+    start = 0
+    quoted = escaped = False
+    for i, ch in enumerate(mimetype):
+        if escaped:
+            escaped = False
+        elif quoted:
+            if ch == "\\":
+                escaped = True
+            elif ch == '"':
+                quoted = False
+        elif ch == '"':
+            quoted = True
+        elif ch == ";":
+            parts.append(mimetype[start:i])
+            start = i + 1
+    parts.append(mimetype[start:])
+    return parts
+
+
+def _unquote_mimetype_param(value: str) -> str:
+    if len(value) >= 2 and value[0] == '"' and value[-1] == '"':
+        return _QUOTED_PAIR_RE.sub(r"\1", value[1:-1])
+    return value.strip(' "')
+
+
 @functools.lru_cache(maxsize=56)
 def parse_mimetype(mimetype: str) -> MimeType:
     """Parses a MIME type into its components.
@@ -348,13 +379,13 @@ def parse_mimetype(mimetype: str) -> MimeType:
             type="", subtype="", suffix="", parameters=MultiDictProxy(MultiDict())
         )
 
-    parts = mimetype.split(";")
+    parts = _split_mimetype(mimetype) if '"' in mimetype else mimetype.split(";")
     params: MultiDict[str] = MultiDict()
     for item in parts[1:]:
         if not item.strip():
             continue
         key, _, value = item.partition("=")
-        params.add(key.lower().strip(), value.strip(' "'))
+        params.add(key.lower().strip(), _unquote_mimetype_param(value.strip()))
 
     fulltype = parts[0].strip().lower()
     if fulltype == "*":
