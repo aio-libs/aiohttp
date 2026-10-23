@@ -555,7 +555,9 @@ class IOBasePayload(Payload):
 
             # Return the total size from the start position
             # This ensures Content-Length is correct even after reading
-            return os.fstat(self._value.fileno()).st_size - self._start_position
+            size = os.fstat(self._value.fileno()).st_size - self._start_position
+            # Text stream positions may be opaque cookies, not byte offsets.
+            return size if isinstance(self._value, io.TextIOBase) else max(0, size)
         except (AttributeError, OSError):
             return None
 
@@ -845,7 +847,7 @@ class BytesIOPayload(IOBasePayload):
     def __init__(self, value: io.BytesIO, *args: Any, **kwargs: Any) -> None:
         super().__init__(value, *args, **kwargs)
         with self._value.getbuffer() as buf:
-            self._size = len(buf) - self._value.tell()
+            self._size = max(0, len(buf) - self._value.tell())
 
     @property
     def size(self) -> int:

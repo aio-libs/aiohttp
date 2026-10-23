@@ -1989,6 +1989,40 @@ async def test_upload_tracker_compressed_body(aiohttp_client: AiohttpClient) -> 
     assert tracker.upload_complete.result() is None
 
 
+@pytest.mark.parametrize("kind", ["memory", "buffered", "raw"])
+@pytest.mark.parametrize(
+    ("position", "expected"), [(0, b"abc"), (1, b"bc"), (3, b""), (10, b"")]
+)
+async def test_file_payload_at_or_past_eof(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    kind: str,
+    position: int,
+    expected: bytes,
+) -> None:
+    async def echo(request: web.Request) -> web.Response:
+        return web.Response(
+            body=await request.read(),
+            headers={"X-Received-Length": request.headers[hdrs.CONTENT_LENGTH]},
+        )
+
+    app = web.Application()
+    app.router.add_post("/", echo)
+    client = await aiohttp_client(app)
+    path = tmp_path / "body.bin"
+    path.write_bytes(b"abc")
+    with (
+        io.BytesIO(b"abc")
+        if kind == "memory"
+        else path.open("rb", buffering=0 if kind == "raw" else -1)
+    ) as body:
+        body.seek(position)
+        async with client.post("/", data=body) as response:
+            assert response.status == 200
+            assert response.headers["X-Received-Length"] == str(len(expected))
+            assert await response.read() == expected
+
+
 async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:
     content1 = fname.read_bytes()
 

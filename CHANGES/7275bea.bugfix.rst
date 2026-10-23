@@ -1,0 +1,2 @@
+Fixed binary file uploads failing with a negative Content-Length when the file
+position is beyond the end of the file -- by :user:`jipeng6036-del`.
