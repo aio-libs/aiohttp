@@ -1075,6 +1075,17 @@ async def test_cookie_jar_filter_cookies_expires() -> None:
     assert len(jar) == 0
 
 
+def test_cookie_jar_epoch_expires_deletes_cookie() -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies_from_headers(["sid=old"], url)
+    jar.update_cookies_from_headers(
+        ["sid=; Expires=Thu, 01 Jan 1970 00:00:00 GMT"], url
+    )
+
+    assert len(jar.filter_cookies(url)) == 0
+
+
 async def test_cookie_jar_heap_cleanup() -> None:
     """Test that the heap gets cleaned up when there are many old expirations."""
     jar = CookieJar()
