@@ -683,6 +683,8 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return (b"", True)
 
     async def readexactly(self, n: int) -> bytes:
+        if n <= 0:
+            return b""
         raise asyncio.IncompleteReadError(b"", n)
 
     def read_nowait(self, n: int = -1) -> bytes:
