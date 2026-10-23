@@ -135,8 +135,10 @@ _QDTEXT: Final[str] = r"[{}]".format(
 # qdtext excludes obs-text (because obsoleted, and encoding not specified)
 
 # This does not have a ReDOS/performance concern as long as it used with re.match().
+# HeadersDictProxy.getall() has already removed the quoted-pair escapes, so a
+# quoted value ends at the first '"' that is followed by the end of the pair.
 _FORWARDED_PAIR: Final[str] = (
-    rf'[ \t]*({_TOKEN})=({_TOKEN}|".*")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
+    rf'[ \t]*({_TOKEN})=({_TOKEN}|".*?")(:\d{{1,4}})?[ \t]*(?:\Z|;)'
 )
 _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 
