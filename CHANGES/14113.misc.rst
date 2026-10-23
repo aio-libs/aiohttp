@@ -1,4 +1,4 @@
-Improved test coverage of :mod:`aiohttp.multipart` edge cases, including
+Improved test coverage of the ``aiohttp.multipart`` edge cases, including
 async iteration of the response wrapper, truncated ``Content-Length`` parts,
 missing boundaries in the ``multipart/*`` content type and encoded part sizes
 -- by :user:`vineoy`.
