@@ -19,6 +19,7 @@ from aiohttp.compression_utils import ZLibBackend
 from aiohttp.hdrs import (
     CONTENT_DISPOSITION,
     CONTENT_ENCODING,
+    CONTENT_LENGTH,
     CONTENT_TRANSFER_ENCODING,
     CONTENT_TYPE,
 )
@@ -160,6 +161,15 @@ class TestMultipartResponseWrapper:
         assert m_stream.next.called
         assert m_resp.release.called
 
+    async def test_aiter(self) -> None:
+        m_resp = mock.create_autospec(aiohttp.ClientResponse, spec_set=True)
+        m_stream = mock.create_autospec(MultipartReader, spec_set=True)
+        wrapper = MultipartResponseWrapper(m_resp, m_stream)
+        first = object()
+        m_stream.next.side_effect = [first, None]
+        m_stream.at_eof.return_value = False
+        assert [part async for part in wrapper] == [first]
+
 
 class TestPartReader:
     async def test_next(self) -> None:
@@ -195,6 +205,22 @@ class TestPartReader:
             obj._at_eof = True
             result = await obj.read_chunk()
         assert b"" == result
+
+    async def test_readline_at_eof(self) -> None:
+        with Stream(b"--:") as stream:
+            d = HeadersDictProxy(CIMultiDict())
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            obj._at_eof = True
+            result = await obj.readline()
+        assert b"" == result
+
+    async def test_read_chunk_truncated_content_length(self) -> None:
+        d = HeadersDictProxy(CIMultiDict({CONTENT_LENGTH: "100"}))
+        with Stream(b"0123456789") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, d, stream)
+            with pytest.raises(ValueError):
+                await obj.read_chunk()
+            assert obj.at_eof()
 
     async def test_read_chunk_without_content_length(self) -> None:
         with Stream(b"Hello, world!\r\n--:") as stream:
@@ -841,6 +867,12 @@ class TestMultipartReader:
             with pytest.raises(ValueError):
                 aiohttp.MultipartReader.from_response(resp)  # type: ignore[arg-type]
 
+    def test_missing_boundary(self) -> None:
+        h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "multipart/mixed"}))
+        with Stream(b"") as stream:
+            with pytest.raises(ValueError, match="boundary missed"):
+                aiohttp.MultipartReader(h, stream)
+
     def test_dispatch(self) -> None:
         h = HeadersDictProxy(CIMultiDict({CONTENT_TYPE: "text/plain"}))
         with Stream(b"--:\r\n\r\necho\r\n--:--") as stream:
@@ -924,6 +956,16 @@ class TestMultipartReader:
             )
             with pytest.raises(ValueError):
                 await reader.next()
+
+    async def test_read_boundary_invalid_line(self) -> None:
+        with Stream(b"--:\r\nJUNK\r\n") as stream:
+            reader = aiohttp.MultipartReader(
+                {CONTENT_TYPE: 'multipart/related;boundary=":"'},
+                stream,
+            )
+            await reader._read_until_first_boundary()
+            with pytest.raises(ValueError, match="Invalid boundary"):
+                await reader._read_boundary()
 
     async def test_read_boundary_across_chunks(self) -> None:
         class SplitBoundaryStream(StreamReader):
@@ -1534,6 +1576,10 @@ class TestMultipartWriter:
         assert 1 == len(writer)
         part = writer._parts[0][0]
         assert part.headers[CONTENT_TYPE] == "test/passed"
+
+    def test_size_of_encoded_part(self, writer: aiohttp.MultipartWriter) -> None:
+        writer.append("hello", {CONTENT_TRANSFER_ENCODING: "base64"})
+        assert writer.size is None
 
     def test_append_multipart(self, writer: aiohttp.MultipartWriter) -> None:
         subwriter = aiohttp.MultipartWriter(boundary=":")
