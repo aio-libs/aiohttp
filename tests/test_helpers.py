@@ -177,6 +177,13 @@ def test_encode_basic_auth_rejects_colon_in_login() -> None:
         helpers.encode_basic_auth("user:1", "pwd")
 
 
+def test_encode_basic_auth_non_ascii_encoding() -> None:
+    # Base64 output is always ASCII, even when credentials use another encoding.
+    result = helpers.encode_basic_auth("user", "pass", encoding="utf-16")
+    assert result.isascii()
+    assert result == "Basic //51AHMAZQByADoAcABhAHMAcwA="
+
+
 def test_strip_auth_from_url() -> None:
     url, auth = helpers.strip_auth_from_url(URL("http://user:pass@example.com/"))
     assert url == URL("http://example.com/")
