@@ -197,6 +197,23 @@ def test_date_parsing() -> None:
     assert parse_func("Tue, 1 Jan 1970 ٠٠:٠٠:٠٠ GMT") is None
 
 
+@pytest.mark.parametrize(
+    "expires",
+    [
+        "Thu, 01 Jan 1970 00:00:00 GMT",
+        "Thu, 01-Jan-70 00:00:00 GMT",
+    ],
+)
+def test_expires_at_epoch_discards_cookie(expires: str) -> None:
+    # The expiry-time parses to exactly 0, which is a date in the past and
+    # not a parse failure (https://datatracker.ietf.org/doc/html/rfc6265#section-5.3)
+    jar = CookieJar()
+    jar.update_cookies(
+        SimpleCookie(f"gone=1; Expires={expires}"), URL("http://expirestest.com/")
+    )
+    assert "gone" not in jar.filter_cookies(URL("http://expirestest.com/"))
+
+
 def test_domain_matching() -> None:
     test_func = CookieJar._is_domain_match
 
