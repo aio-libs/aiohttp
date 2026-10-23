@@ -1040,6 +1040,18 @@ def test_cookies_mixin_partitioned() -> None:
     assert str(sut.cookies) == "Set-Cookie: name=value; Partitioned; Path=/"
 
 
+@pytest.mark.skipif(sys.version_info < (3, 14), reason="No partitioned support")
+def test_cookies_mixin_del_cookie_partitioned() -> None:
+    sut = CookieImplementation()
+
+    sut.set_cookie("name", "value", secure=True, samesite="None", partitioned=True)
+    sut.del_cookie("name", secure=True, samesite="None", partitioned=True)
+    assert str(sut.cookies) == (
+        'Set-Cookie: name=""; expires=Thu, 01 Jan 1970 00:00:00 GMT; '
+        "Max-Age=0; Partitioned; Path=/; SameSite=None; Secure"
+    )
+
+
 def test_sutonse_cookie__issue_del_cookie() -> None:
     sut = CookieImplementation()
 
