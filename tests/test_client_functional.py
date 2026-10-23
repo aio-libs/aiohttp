@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY311): Remove
 
 import asyncio
 import datetime
+import gzip
 import http.cookies
 import io
 import json
@@ -2021,6 +2022,37 @@ async def test_file_payload_at_or_past_eof(
             assert response.status == 200
             assert response.headers["X-Received-Length"] == str(len(expected))
             assert await response.read() == expected
+
+
+@pytest.mark.parametrize("buffered", [False, True])
+@pytest.mark.parametrize("chunked", [None, True])
+async def test_compressed_file_payload_with_nonbyte_position(
+    aiohttp_client: AiohttpClient,
+    tmp_path: pathlib.Path,
+    buffered: bool,
+    chunked: bool | None,
+) -> None:
+    async def echo(request: web.Request) -> web.Response:
+        return web.Response(body=await request.read())
+
+    app = web.Application()
+    app.router.add_post("/", echo)
+    client = await aiohttp_client(app)
+    content = b"x" * 100_000
+    compressed_content = gzip.compress(content, mtime=0)
+    path = tmp_path / "body.gz"
+    path.write_bytes(compressed_content)
+    position = len(compressed_content) + 1
+    assert position < len(content)
+
+    with gzip.open(path, "rb") as compressed:
+        with io.BufferedReader(compressed) if buffered else compressed as body:
+            body.seek(position)
+            async with client.post(
+                "/", data=body, chunked=chunked, timeout=aiohttp.ClientTimeout(total=5)
+            ) as response:
+                assert response.status == 200
+                assert await response.read() == content[position:]
 
 
 async def test_POST_FILES(aiohttp_client: AiohttpClient, fname: pathlib.Path) -> None:

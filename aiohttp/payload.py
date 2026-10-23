@@ -556,8 +556,15 @@ class IOBasePayload(Payload):
             # Return the total size from the start position
             # This ensures Content-Length is correct even after reading
             size = os.fstat(self._value.fileno()).st_size - self._start_position
-            # Text stream positions may be opaque cookies, not byte offsets.
-            return size if isinstance(self._value, io.TextIOBase) else max(0, size)
+            if size < 0 and not isinstance(self._value, io.TextIOBase):
+                # Only ordinary files use the descriptor's byte offsets.
+                if isinstance(self._value, io.FileIO) or (
+                    isinstance(self._value, (io.BufferedReader, io.BufferedRandom))
+                    and isinstance(self._value.raw, io.FileIO)
+                ):
+                    return 0
+                return None
+            return size
         except (AttributeError, OSError):
             return None
 
