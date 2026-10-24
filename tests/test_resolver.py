@@ -205,7 +205,9 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _ARES_NI_NUMERIC_FLAGS)
+        mock().getnameinfo.assert_called_with(
+            ("fe80::1", 0, 0, 3), _ARES_NI_NUMERIC_FLAGS
+        )
         await resolver.close()
 
 
