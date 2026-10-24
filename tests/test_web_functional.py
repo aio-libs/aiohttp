@@ -264,6 +264,22 @@ async def test_post_form(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
+async def test_query_form(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        data = await request.post()
+        assert {"a": "1", "b": "2", "c": ""} == data
+        return web.Response(body=b"OK")
+
+    app = web.Application()
+    app.router.add_query("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.request("QUERY", "/", data={"a": "1", "b": "2", "c": ""}) as resp:
+        assert 200 == resp.status
+        txt = await resp.text()
+        assert "OK" == txt
+
+
 async def test_post_text(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.text()
