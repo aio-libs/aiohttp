@@ -18,7 +18,7 @@ try:
     # aiodns forwards the flags to c-ares unchanged, so AsyncResolver must use the
     # ARES_* values rather than the socket ones. pycares is aiodns's own
     # dependency and is re-exported as aiodns.pycares.
-    _ARES_NI_NUMERIC_FLAGS = (
+    _ARES_NI_NUMERIC_FLAGS = (  # type: ignore[attr-defined]
         aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
     )
 except ImportError:
