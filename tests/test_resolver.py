@@ -10,6 +10,7 @@ from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 import pytest
 
 from aiohttp.resolver import (
+    _ARES_NI_NUMERIC_FLAGS,
     _NAME_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
@@ -204,7 +205,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _ARES_NI_NUMERIC_FLAGS)
         await resolver.close()
 
 
