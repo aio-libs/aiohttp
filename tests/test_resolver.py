@@ -21,9 +21,13 @@ try:
     import aiodns
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
+    _EXPECTED_NI_FLAGS = (  # type: ignore[attr-defined]
+        aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
+    )
 except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
+    _EXPECTED_NI_FLAGS = 0
 
 _AddrInfo4 = list[
     tuple[socket.AddressFamily, None, socket.SocketKind, None, tuple[str, int]]
@@ -204,7 +208,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _EXPECTED_NI_FLAGS)
         await resolver.close()
 
 
