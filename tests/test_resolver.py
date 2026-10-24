@@ -19,10 +19,11 @@ from aiohttp.resolver import (
 
 try:
     import aiodns
-    import pycares
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
-    _EXPECTED_NI_FLAGS = pycares.ARES_NI_NUMERICHOST | pycares.ARES_NI_NUMERICSERV
+    _EXPECTED_NI_FLAGS = (
+        aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
+    )
 except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False

@@ -11,14 +11,16 @@ __all__ = ("ThreadedResolver", "AsyncResolver", "DefaultResolver")
 
 try:
     import aiodns
-    import pycares
 
     aiodns_default = hasattr(aiodns.DNSResolver, "getaddrinfo")
     # c-ares getnameinfo flags are not POSIX flags: on Linux socket.NI_NUMERICHOST
     # is 0x1 but pycares.ARES_NI_NUMERICHOST is 0x2 (and NI_NUMERICSERV 0x2 vs 0x8).
     # aiodns forwards the flags to c-ares unchanged, so AsyncResolver must use the
-    # ARES_* values rather than the socket ones.
-    _ARES_NI_NUMERIC_FLAGS = pycares.ARES_NI_NUMERICHOST | pycares.ARES_NI_NUMERICSERV
+    # ARES_* values rather than the socket ones. pycares is aiodns's own
+    # dependency and is re-exported as aiodns.pycares.
+    _ARES_NI_NUMERIC_FLAGS = (
+        aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
+    )
 except ImportError:
     aiodns = None  # type: ignore[assignment]
     aiodns_default = False
