@@ -319,6 +319,7 @@ def test_closed_after_ctor() -> None:
     ws = web.WebSocketResponse()
     assert not ws.closed
     assert ws.close_code is None
+    assert ws.close_reason is None
 
 
 async def test_raise_writer_limit(make_request: _RequestMaker) -> None:

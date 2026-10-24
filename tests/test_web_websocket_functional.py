@@ -1223,7 +1223,9 @@ async def test_heartbeat_no_pong_receive_many_messages(
 
 
 async def test_server_ws_async_for(aiohttp_server: AiohttpServer) -> None:
-    closed = asyncio.get_running_loop().create_future()
+    closed: asyncio.Future[tuple[int | None, str | None]] = (
+        asyncio.get_running_loop().create_future()
+    )
 
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -1233,7 +1235,7 @@ async def test_server_ws_async_for(aiohttp_server: AiohttpServer) -> None:
             s = msg.data
             await ws.send_str(s + "/answer")
         await ws.close()
-        closed.set_result(1)
+        closed.set_result((ws.close_code, ws.close_reason))
         return ws
 
     app = web.Application()
@@ -1249,8 +1251,8 @@ async def test_server_ws_async_for(aiohttp_server: AiohttpServer) -> None:
                 assert msg.type == aiohttp.WSMsgType.TEXT
                 assert item + "/answer" == msg.data
 
-            await resp.close()
-            await closed
+            await resp.close(code=WSCloseCode.GOING_AWAY, message=b"client done")
+            assert await closed == (WSCloseCode.GOING_AWAY, "client done")
 
 
 async def test_closed_async_for(aiohttp_client: AiohttpClient) -> None:
@@ -1286,6 +1288,32 @@ async def test_closed_async_for(aiohttp_client: AiohttpClient) -> None:
 
     await ws.close()
     await closed
+
+
+async def test_server_close_reason_from_close_reply(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    result: asyncio.Future[tuple[int | None, str | None]] = (
+        asyncio.get_running_loop().create_future()
+    )
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.close()
+        result.set_result((ws.close_code, ws.close_reason))
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoclose=False)
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.CLOSE
+    await ws.close(code=WSCloseCode.GOING_AWAY, message=b"client reply")
+
+    assert await result == (WSCloseCode.GOING_AWAY, "client reply")
 
 
 async def test_websocket_disable_keepalive(aiohttp_client: AiohttpClient) -> None:

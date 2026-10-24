@@ -517,6 +517,26 @@ async def test_close(aiohttp_client: AiohttpClient) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
+async def test_close_reason_from_close_reply(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse(autoclose=False)
+        await ws.prepare(request)
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.CLOSE
+        await ws.close(code=WSCloseCode.GOING_AWAY, message=b"server reply")
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/")
+
+    closed = await resp.close()
+    assert closed
+    assert resp.close_code == WSCloseCode.GOING_AWAY
+    assert resp.close_reason == "server reply"
+
+
 async def test_concurrent_task_close(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -1309,7 +1329,7 @@ async def test_ws_client_async_for(aiohttp_client: AiohttpClient) -> None:
         await ws.prepare(request)
         for i in items:
             await ws.send_str(i)
-        await ws.close()
+        await ws.close(code=WSCloseCode.GOING_AWAY, message=b"server shutdown")
         return ws
 
     app = web.Application()
@@ -1317,6 +1337,7 @@ async def test_ws_client_async_for(aiohttp_client: AiohttpClient) -> None:
 
     client = await aiohttp_client(app)
     resp = await client.ws_connect("/")
+    assert resp.close_reason is None
     it = iter(items)
     async for msg in resp:
         assert msg.data == next(it)
@@ -1325,6 +1346,8 @@ async def test_ws_client_async_for(aiohttp_client: AiohttpClient) -> None:
         next(it)
 
     assert resp.closed
+    assert resp.close_code == WSCloseCode.GOING_AWAY
+    assert resp.close_reason == "server shutdown"
 
 
 async def test_ws_async_with(aiohttp_server: AiohttpServer) -> None:
@@ -1481,6 +1504,7 @@ async def test_peer_connection_lost_iter(aiohttp_client: AiohttpClient) -> None:
     async for msg in resp:
         assert "answer" == msg.data
 
+    assert resp.close_reason is None
     await resp.close()
 
 
