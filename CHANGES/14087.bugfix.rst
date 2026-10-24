@@ -1,3 +1,3 @@
 ``AsyncResolver`` now passes c-ares (``ARES_NI_*``) flags to ``getnameinfo``
 instead of the POSIX ``socket.NI_*`` flags, which map to unrelated bits in
-c-ares.
+c-ares -- by :user:`OUAO-FRANK`.

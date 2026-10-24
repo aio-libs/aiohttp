@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 import pytest
 
 from aiohttp.resolver import (
-    _ARES_NI_NUMERIC_FLAGS,
     _NAME_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
@@ -20,11 +19,14 @@ from aiohttp.resolver import (
 
 try:
     import aiodns
+    import pycares
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
+    _EXPECTED_NI_FLAGS = pycares.ARES_NI_NUMERICHOST | pycares.ARES_NI_NUMERICSERV
 except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
+    _EXPECTED_NI_FLAGS = 0
 
 _AddrInfo4 = list[
     tuple[socket.AddressFamily, None, socket.SocketKind, None, tuple[str, int]]
@@ -206,7 +208,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             type=socket.SOCK_STREAM,
         )
         mock().getnameinfo.assert_called_with(
-            ("fe80::1", 0, 0, 3), _ARES_NI_NUMERIC_FLAGS
+            ("fe80::1", 0, 0, 3), _EXPECTED_NI_FLAGS
         )
         await resolver.close()
 
