@@ -21,9 +21,8 @@ try:
     import aiodns
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
-    _EXPECTED_NI_FLAGS = (  # type: ignore[attr-defined]
-        aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
-    )
+    _pycares = aiodns.pycares  # type: ignore[attr-defined]
+    _EXPECTED_NI_FLAGS = _pycares.ARES_NI_NUMERICHOST | _pycares.ARES_NI_NUMERICSERV
 except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
