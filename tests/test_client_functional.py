@@ -5893,9 +5893,11 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
     # Create a new client session with our fake resolver
     resolver = FakeResolver(port)
 
+    # The server is plain HTTP, but it sets Secure cookies.
+    jar = aiohttp.CookieJar(treat_as_secure_origin=f"http://www.amazon.it:{port}")
     async with (
         aiohttp.TCPConnector(resolver=resolver, force_close=True) as connector,
-        aiohttp.ClientSession(connector=connector) as session,
+        aiohttp.ClientSession(connector=connector, cookie_jar=jar) as session,
     ):
         # Make request to www.amazon.it which will resolve to
         # 127.0.0.1:port. This allows cookies for both .amazon.it
