@@ -981,6 +981,88 @@ async def test_static_file_range_tail(
     await client.close()
 
 
+@pytest.mark.parametrize(
+    "range_header",
+    [
+        "bytes=0-1,4-5",
+        "bytes=0-1, 4-5",
+        "bytes=0-1,\t4-5",
+        "BYTES=0-1,4-5",
+        "bytes=100-200,0-1",
+        "bytes=0-1,100-200",
+        "bytes=100-,4-",
+        "bytes=100-,-2",
+        "bytes=-0,0-1",
+    ],
+)
+async def test_static_file_multiple_ranges_fall_back_to_full_response(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    range_header: str,
+) -> None:
+    filepath = tmp_path / "ten.bin"
+    filepath.write_bytes(b"0123456789")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath, chunk_size=16)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", headers={"Range": range_header}) as response:
+        assert response.status == 200
+        assert "Content-Range" not in response.headers
+        assert response.headers["Content-Length"] == "10"
+        assert await response.read() == b"0123456789"
+
+    await client.close()
+
+
+@pytest.mark.parametrize(
+    "range_header",
+    [
+        "blocks=0-1,4-5",
+        "bytes=0-1,a-b",
+        "bytes=0-1,5-4",
+        "bytes=0-1,0--1",
+        "bytes=0-1,-",
+        "bytes=0-1,",
+        "bytes=,0-1",
+        "bytes=0-1,,4-5",
+        "bytes=0-1, 4 -5",
+        "bytes=0-1,+4-5",
+        "bytes=0-1,\u0664-\u0665",
+        "bytes=10-11,20-21",
+        "bytes=10-,20-",
+        "bytes=-0,10-",
+        "bytes=-0,-0",
+    ],
+)
+async def test_static_file_invalid_multiple_ranges(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    range_header: str,
+) -> None:
+    filepath = tmp_path / "ten.bin"
+    filepath.write_bytes(b"0123456789")
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath, chunk_size=16)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", headers={"Range": range_header}) as response:
+        assert response.status == 416
+        assert response.headers["Content-Range"] == "bytes */10"
+
+    await client.close()
+
+
 async def test_static_file_invalid_range(
     aiohttp_client: AiohttpClient, sender: _Sender
 ) -> None:

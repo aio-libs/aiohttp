@@ -3,6 +3,7 @@ import io
 import math
 import os
 import pathlib
+import re
 import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
@@ -160,6 +161,30 @@ class FileResponse(StreamResponse):
             etag.value == etag_value for etag in etags if weak or not etag.is_weak
         )
 
+    @staticmethod
+    def _is_satisfiable_multi_range(range_header: str, file_size: int) -> bool:
+        unit, _, ranges = range_header.partition("=")
+        if unit.lower() != "bytes" or "," not in ranges:
+            return False
+
+        satisfiable = False
+        for byte_range in ranges.split(","):
+            match = re.fullmatch(r"([0-9]*)-([0-9]*)", byte_range.strip(" \t"))
+            if match is None:
+                return False
+            first, last = match.groups()
+            if first:
+                start = int(first)
+                if last and start > int(last):
+                    return False
+                satisfiable |= start < file_size
+            elif last:
+                satisfiable |= int(last) > 0 and file_size > 0
+            else:
+                return False
+
+        return satisfiable
+
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
     ) -> AbstractStreamWriter | None:
@@ -310,6 +335,7 @@ class FileResponse(StreamResponse):
         file_mtime: float = st.st_mtime
         count: int = file_size
         start: int | None = None
+        end: int | None = None
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
         # https://www.rfc-editor.org/info/rfc9110/#name-if-range
@@ -336,9 +362,15 @@ class FileResponse(StreamResponse):
             # if True but Range header missing
             #   return 200
             try:
-                rng = request.http_range
-                start = rng.start
-                end: int | None = rng.stop
+                if self._is_satisfiable_multi_range(
+                    request.headers.get(hdrs.RANGE, ""), file_size
+                ):
+                    # Multipart responses are unsupported, so ignore valid ranges.
+                    start = end = None
+                else:
+                    rng = request.http_range
+                    start = rng.start
+                    end = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to

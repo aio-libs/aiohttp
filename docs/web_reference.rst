@@ -979,6 +979,10 @@ and :ref:`aiohttp-web-signals` handlers::
 
    Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
 
+   Valid requests for multiple byte ranges are ignored and the entire file is
+   served when at least one range is satisfiable. Malformed or wholly
+   unsatisfiable range sets receive a ``416`` response.
+
    The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
 
    :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.
