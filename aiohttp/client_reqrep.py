@@ -976,6 +976,14 @@ class ClientResponse(HeadersMixin):
         await self.wait_for_close()
 
 
+def _retrieve_writer_exception(task: asyncio.Task[None]) -> None:
+    # A writer that fails has already closed the connection, which the response
+    # reports; mark the error as retrieved to avoid a spurious
+    # "Task exception was never retrieved" warning.
+    if not task.cancelled():
+        task.exception()
+
+
 class ClientRequestBase:
     """An internal class for proxy requests."""
 
@@ -1038,8 +1046,9 @@ class ClientRequestBase:
                 url.user or "", url.password or ""
             )
 
-    def _reset_writer(self, _: object = None) -> None:
+    def _reset_writer(self, task: asyncio.Task[None]) -> None:
         self._writer_task = None
+        _retrieve_writer_exception(task)
 
     def _get_content_length(self) -> int | None:
         """Extract and validate Content-Length header value.
@@ -1188,6 +1197,7 @@ class ClientRequestBase:
             else:
                 task = asyncio.create_task(coro)
             if task.done():
+                _retrieve_writer_exception(task)
                 task = None
             else:
                 self._writer = task
