@@ -977,7 +977,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
    The response class used to send files, inherited from :class:`StreamResponse`.
 
-   Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
+   Supports ``Range`` and ``If-Range`` headers on ``GET`` requests that would
+   otherwise receive a ``200`` response.
 
    The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
 

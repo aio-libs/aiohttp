@@ -327,7 +327,9 @@ class FileResponse(StreamResponse):
             # so only an absent header lets the Range through.
             range_applies = hdrs.IF_RANGE not in request.headers
 
-        if range_applies:
+        # Range applies only to GET responses that would otherwise be 200.
+        # https://www.rfc-editor.org/rfc/rfc9110#section-14.2
+        if range_applies and request.method == hdrs.METH_GET and status == 200:
             # If-Range header check:
             # condition = cached validator matches current representation.
             # return 206 if True else 200.
@@ -421,9 +423,8 @@ class FileResponse(StreamResponse):
 
         self._headers[hdrs.ACCEPT_RANGES] = "bytes"
 
-        if status == HTTPPartialContent.status_code:
+        if start is not None:
             real_start = start
-            assert real_start is not None
             self._headers[hdrs.CONTENT_RANGE] = (
                 f"bytes {real_start}-{real_start + count - 1}/{file_size}"
             )

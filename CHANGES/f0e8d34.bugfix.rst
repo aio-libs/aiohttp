@@ -1,0 +1,4 @@
+Fixed :class:`~aiohttp.web.FileResponse` to process ``Range`` only for ``GET``
+responses that would otherwise return ``200``, preserving other response
+statuses and bodies and the full file length for ``HEAD`` requests
+-- by :user:`umtong`.

@@ -885,6 +885,104 @@ async def test_static_file_range(
     await client.close()
 
 
+@pytest.mark.parametrize("method", ("HEAD", "POST"))
+@pytest.mark.parametrize("range_header", ("bytes=0-4", "bytes=999-", "bytes=invalid"))
+async def test_static_file_range_ignored_for_non_get(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    method: str,
+    range_header: str,
+) -> None:
+    filepath = tmp_path / "hello.txt"
+    filepath.write_bytes(HELLO_AIOHTTP)
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_route(method, "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.request(method, "/", headers={"Range": range_header}) as resp:
+        assert resp.status == 200
+        assert "Content-Range" not in resp.headers
+        assert resp.content_length == len(HELLO_AIOHTTP)
+        assert await resp.read() == (b"" if method == "HEAD" else HELLO_AIOHTTP)
+
+
+@pytest.mark.parametrize(
+    ("status", "body"),
+    (
+        (201, HELLO_AIOHTTP),
+        (203, HELLO_AIOHTTP),
+        (204, b""),
+        (302, HELLO_AIOHTTP),
+        (304, b""),
+        (403, HELLO_AIOHTTP),
+        (404, HELLO_AIOHTTP),
+        (500, HELLO_AIOHTTP),
+    ),
+)
+@pytest.mark.parametrize("range_header", ("bytes=0-4", "bytes=999-", "bytes=invalid"))
+async def test_static_file_range_preserves_response_status(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    status: int,
+    body: bytes,
+    range_header: str,
+) -> None:
+    filepath = tmp_path / "hello.txt"
+    filepath.write_bytes(HELLO_AIOHTTP)
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        resp = sender(filepath)
+        resp.set_status(status)
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get(
+        "/", headers={"Range": range_header}, allow_redirects=False
+    ) as resp:
+        assert resp.status == status
+        assert "Content-Range" not in resp.headers
+        assert await resp.read() == body
+        if body:
+            assert resp.content_length == len(body)
+
+
+@pytest.mark.parametrize("range_header", ("bytes=0-4", "bytes=999-", "bytes=invalid"))
+async def test_static_file_range_preserves_explicit_partial_response(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    range_header: str,
+) -> None:
+    filepath = tmp_path / "hello.txt"
+    filepath.write_bytes(HELLO_AIOHTTP)
+    content_range = f"bytes 0-{len(HELLO_AIOHTTP) - 1}/{len(HELLO_AIOHTTP)}"
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        resp = sender(filepath)
+        resp.set_status(206)
+        resp.headers["Content-Range"] = content_range
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", headers={"Range": range_header}) as resp:
+        assert resp.status == 206
+        assert resp.headers["Content-Range"] == content_range
+        assert resp.content_length == len(HELLO_AIOHTTP)
+        assert await resp.read() == HELLO_AIOHTTP
+
+
 async def test_static_file_range_end_bigger_than_size(
     aiohttp_client: AiohttpClient, sender: _Sender
 ) -> None:
