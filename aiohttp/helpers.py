@@ -49,11 +49,6 @@ from . import hdrs
 from .log import client_logger
 from .typedefs import PathLike  # noqa
 
-if sys.version_info >= (3, 11):
-    import asyncio as async_timeout
-else:
-    import async_timeout
-
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
 else:
@@ -69,43 +64,24 @@ __all__ = ("ChainMapProxy", "ETag", "frozen_dataclass_decorator", "reify")
 DEFAULT_CHUNK_SIZE = 2**18  # 256 KiB
 COOKIE_MAX_LENGTH = 4096
 _QUOTED_PAIR_SUB = re.compile(r"\\(.)")
-if sys.version_info >= (3, 11):
-    _QUOTED_STRING_CONTENT = r'(?:[^"\\]++|\\.)*+'
-    _ESCAPED_COMMENT = r"(?:[^()\\]++|\\.)*+"
-    _LIST_ELEMENT = rf"""
-    [ \t]*
-    (?:
-      "( {_QUOTED_STRING_CONTENT} )"  # group 1: top-level quoted-string
-      [ \t]* (?:,|\Z)
-      | (  # group 2: unquoted element
-          (?:
-            (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted value
-            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
-            | [^,"(\\]++  # run of ordinary characters
-            | [^,]  # quote, paren or backslash the branches above rejected
-          )++
-        )
-      (?:,|\Z)
+_QUOTED_STRING_CONTENT = r'(?:[^"\\]++|\\.)*+'
+_ESCAPED_COMMENT = r"(?:[^()\\]++|\\.)*+"
+_LIST_ELEMENT = rf"""
+[ \t]*
+(?:
+  "( {_QUOTED_STRING_CONTENT} )"  # group 1: top-level quoted-string
+  [ \t]* (?:,|\Z)
+  | (  # group 2: unquoted element
+      (?:
+        (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted value
+        | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
+        | [^,"(\\]++  # run of ordinary characters
+        | [^,]  # quote, paren or backslash the branches above rejected
+      )++
     )
-    """
-else:
-    _QUOTED_STRING_CONTENT = r'(?:[^"\\]|\\.)*'
-    _ESCAPED_COMMENT = r"(?:[^()\\]|\\.)*"
-    _LIST_ELEMENT = rf"""
-    [ \t]*
-    (?:
-      "( {_QUOTED_STRING_CONTENT} )"  # group 1: top-level quoted-string
-      [ \t]* (?:,|\Z)
-      | (  # group 2: unquoted element
-          (?:
-            (?<=[^\s]=) "{_QUOTED_STRING_CONTENT}"  # parameter quoted value
-            | (?<=\s) \( {_ESCAPED_COMMENT} \)  # comment
-            | [^,]  # any non-comma character
-          )+?
-        )
-      (?:,|\Z)
-    )
-    """
+  (?:,|\Z)
+)
+"""
 # Matches one element in a comma-separated header list.
 # Group 1: content of a top-level quoted-string (quotes stripped).
 # Group 2: an unquoted element (may contain parameter quoted-strings / comments).
@@ -266,18 +242,7 @@ def _auth_header_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> str:
         raise LookupError(f"No entry for {host!s} found in the `.netrc` file.")
     login, account, password = auth_from_netrc
 
-    # TODO(PY311): username = login or account
-    # Up to python 3.10, account could be None if not specified,
-    # and login will be empty string if not specified. From 3.11,
-    # login and account will be empty string if not specified.
-    username = login if (login or account is None) else account
-
-    # TODO(PY311): Remove this, as password will be empty string
-    # if not specified
-    if password is None:
-        password = ""  # type: ignore[unreachable]
-
-    return encode_basic_auth(username, password)
+    return encode_basic_auth(login or account, password)
 
 
 def proxies_from_env() -> dict[str, ProxyInfo]:
@@ -716,21 +681,20 @@ class TimerContext(BaseTimerContext):
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timer has already been cancelled."""
         if self._cancelled:
-            raise asyncio.TimeoutError from None
+            raise TimeoutError from None
 
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
         if task is None:
             raise RuntimeError("Timeout context manager should be used inside a task")
 
-        if sys.version_info >= (3, 11):
-            # Remember if the task was already cancelling
-            # so when we __exit__ we can decide if we should
-            # raise asyncio.TimeoutError or let the cancellation propagate
-            self._cancelling = task.cancelling()
+        # Remember if the task was already cancelling
+        # so when we __exit__ we can decide if we should
+        # raise TimeoutError or let the cancellation propagate
+        self._cancelling = task.cancelling()
 
         if self._cancelled:
-            raise asyncio.TimeoutError from None
+            raise TimeoutError from None
 
         self._tasks.append(task)
         return self
@@ -750,13 +714,12 @@ class TimerContext(BaseTimerContext):
             # The timeout was hit, and the task was cancelled
             # so we need to uncancel the last task that entered the context manager
             # since the cancellation should not leak out of the context manager
-            if sys.version_info >= (3, 11):
-                # If the task was already cancelling don't raise
-                # asyncio.TimeoutError and instead return None
-                # to allow the cancellation to propagate
-                if enter_task.uncancel() > self._cancelling:
-                    return None
-            raise asyncio.TimeoutError from exc_val
+            # If the task was already cancelling don't raise
+            # TimeoutError and instead return None
+            # to allow the cancellation to propagate
+            if enter_task.uncancel() > self._cancelling:
+                return None
+            raise TimeoutError from exc_val
         return None
 
     def timeout(self) -> None:
@@ -767,18 +730,16 @@ class TimerContext(BaseTimerContext):
             self._cancelled = True
 
 
-def ceil_timeout(
-    delay: float | None, ceil_threshold: float = 5
-) -> async_timeout.Timeout:
+def ceil_timeout(delay: float | None, ceil_threshold: float = 5) -> asyncio.Timeout:
     if delay is None or delay <= 0:
-        return async_timeout.timeout(None)
+        return asyncio.timeout(None)
 
     loop = asyncio.get_running_loop()
     now = loop.time()
     when = now + delay
     if delay > ceil_threshold:
         when = ceil(when)
-    return async_timeout.timeout_at(when)
+    return asyncio.timeout_at(when)
 
 
 class HeadersDictProxy(Mapping[str, str]):
@@ -1173,7 +1134,7 @@ def parse_http_date(date_str: str | None) -> datetime.datetime | None:
         timetuple = parsedate(date_str)
         if timetuple is not None:
             with suppress(ValueError):
-                return datetime.datetime(*timetuple[:6], tzinfo=datetime.timezone.utc)
+                return datetime.datetime(*timetuple[:6], tzinfo=datetime.UTC)
     return None
 
 

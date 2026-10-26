@@ -361,13 +361,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             try:
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._handler_waiter = None
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         # Then cancel handler and wait
         try:
@@ -377,12 +373,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 if self._task_handler is not None and not self._task_handler.done():
                     await asyncio.shield(self._task_handler)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            if (
-                sys.version_info >= (3, 11)
-                and (task := asyncio.current_task())
-                and task.cancelling()
-            ):
+        except (asyncio.CancelledError, TimeoutError):
+            if (task := asyncio.current_task()) and task.cancelling():
                 raise
 
         # force-close non-idle handler
@@ -699,7 +691,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             resp, reset = await self.finish_response(request, resp, start_time)
         except asyncio.CancelledError:
             raise
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self.log_debug("Request handler timed out.", exc_info=exc)
             resp = self.handle_error(request, 504)
             resp, reset = await self.finish_response(request, resp, start_time)
@@ -825,12 +817,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
-                        except (asyncio.CancelledError, asyncio.TimeoutError):
-                            if (
-                                sys.version_info >= (3, 11)
-                                and (t := asyncio.current_task())
-                                and t.cancelling()
-                            ):
+                        except (asyncio.CancelledError, TimeoutError):
+                            if (t := asyncio.current_task()) and t.cancelling():
                                 raise
 
                     # if payload still uncompleted

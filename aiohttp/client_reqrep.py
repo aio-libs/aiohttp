@@ -832,11 +832,7 @@ class ClientResponse(HeadersMixin):
             try:
                 await self.__writer
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         self._release_connection()
 
@@ -866,11 +862,7 @@ class ClientResponse(HeadersMixin):
             try:
                 await self.__writer
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         self.release()
 
@@ -1752,11 +1744,7 @@ class ClientRequest(ClientRequestBase):
             try:
                 await self._writer_task
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
 
     def _terminate(self) -> None:

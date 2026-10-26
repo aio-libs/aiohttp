@@ -52,8 +52,7 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-# TODO(py311): Convert to StrEnum for wider use
-class ContentCoding(enum.Enum):
+class ContentCoding(enum.StrEnum):
     # The content codings that we have support for.
     #
     # Additional registered codings are listed at:

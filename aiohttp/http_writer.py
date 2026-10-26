@@ -3,17 +3,8 @@
 import asyncio
 import re
 import sys
-from typing import (  # noqa
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Iterable,
-    List,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from collections.abc import Awaitable, Callable, Iterable
+from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Union  # noqa
 
 from multidict import CIMultiDict
 

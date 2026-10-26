@@ -6,7 +6,7 @@ import json
 import sys
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable
-from typing import Any, Final, Generic, Literal, Union, overload
+from typing import Any, Final, Generic, Literal, Self, Union, overload
 
 from multidict import CIMultiDict
 
@@ -47,13 +47,6 @@ if sys.version_info >= (3, 13):
     from typing import TypeVar
 else:
     from typing_extensions import TypeVar
-
-if sys.version_info >= (3, 11):
-    import asyncio as async_timeout
-    from typing import Self
-else:
-    import async_timeout
-    from typing_extensions import Self
 
 __all__ = (
     "WebSocketResponse",
@@ -535,7 +528,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 assert writer is not None
                 if drain:
                     await writer.drain()
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._set_code_close_transport(WSCloseCode.ABNORMAL_CLOSURE)
                 raise
             except Exception as exc:
@@ -559,7 +552,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 return True
 
             try:
-                async with async_timeout.timeout(self._timeout):
+                async with asyncio.timeout(self._timeout):
                     while True:
                         msg = await reader.read()
                         if msg.type is WSMsgType.CLOSE:
@@ -635,7 +628,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                         # Timeout() object can take almost 50% of the
                         # run time in this loop so we avoid it if
                         # there is no read timeout.
-                        async with async_timeout.timeout(receive_timeout):
+                        async with asyncio.timeout(receive_timeout):
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
@@ -643,7 +636,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                     self._waiting = False
                     if self._close_wait:
                         set_result(self._close_wait, None)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 raise
             except EofStream:
                 self._close_code = WSCloseCode.OK

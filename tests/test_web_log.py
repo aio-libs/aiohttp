@@ -3,7 +3,7 @@ import logging
 import platform
 import sys
 from contextvars import ContextVar
-from typing import NoReturn
+from typing import NoReturn, Self
 from unittest import mock
 
 import pytest
@@ -16,11 +16,6 @@ from aiohttp.test_utils import make_mocked_request
 from aiohttp.typedefs import Handler
 from aiohttp.web_log import AccessLogger
 from aiohttp.web_response import Response
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing import Any as Self
 
 IS_PYPY = platform.python_implementation() == "PyPy"
 
@@ -96,7 +91,7 @@ def test_access_logger_atoms(
         def now(cls, tz: datetime.tzinfo | None = None) -> Self:
             assert tz is not None
             # Simulate: real UTC time is 1842-12-31 16:30, convert to local tz
-            utc = datetime.datetime(1842, 12, 31, 16, 30, tzinfo=datetime.timezone.utc)
+            utc = datetime.datetime(1842, 12, 31, 16, 30, tzinfo=datetime.UTC)
             local = utc.astimezone(tz)
             return cls(
                 local.year,
@@ -154,7 +149,7 @@ def test_access_logger_dst_timezone(monkeypatch: pytest.MonkeyPatch) -> None:
         def now(cls, tz: datetime.tzinfo | None = None) -> Self:
             assert tz is not None
             # Simulate: real UTC time is 07:00, convert to local tz
-            utc = datetime.datetime(2024, 3, 10, 7, 0, 0, tzinfo=datetime.timezone.utc)
+            utc = datetime.datetime(2024, 3, 10, 7, 0, 0, tzinfo=datetime.UTC)
             local = utc.astimezone(tz)
             return cls(
                 local.year,
