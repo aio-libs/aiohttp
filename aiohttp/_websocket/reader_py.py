@@ -196,7 +196,6 @@ class WebSocketReader:
         decode_text: bool,
     ) -> None:
         self.queue = queue
-        self._max_msg_size = max_msg_size
         self._decode_text = decode_text
         # Parked on the queue while parsing is stalled; created once so
         # stalling does not allocate.
@@ -211,9 +210,7 @@ class WebSocketReader:
         self._frame_opcode: int = OP_CODE_NOT_SET
         # Reads of an in-flight frame, joined once when it completes.
         self._payload_fragments: list[bytes] = []
-        # Fold reads into _payload_buffer past this count to bound the object
-        # count (bytes are bounded by max_msg_size).
-        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
+        self.set_max_msg_size(max_msg_size)
         self._payload_buffer = bytearray()
         self._frame_payload_len = 0
 
@@ -225,6 +222,13 @@ class WebSocketReader:
         self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: ZLibDecompressor | None = None
         self._compress = compress
+
+    def set_max_msg_size(self, max_msg_size: int) -> None:
+        """Set the maximum message size."""
+        self._max_msg_size = max_msg_size
+        # Fold reads into _payload_buffer past this count to bound the object
+        # count (bytes are bounded by max_msg_size).
+        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
 
     def feed_eof(self) -> None:
         self.queue.feed_eof()

@@ -430,6 +430,19 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     def compress(self) -> int | bool:
         return self._compress
 
+    @property
+    def max_msg_size(self) -> int:
+        return self._max_msg_size
+
+    def set_max_msg_size(self, max_msg_size: int) -> None:
+        """Set the maximum size of a received message.
+
+        Can be called before or after prepare().
+        """
+        self._max_msg_size = max_msg_size
+        if self._parser is not None:
+            self._parser.set_max_msg_size(max_msg_size)
+
     def get_extra_info(self, name: str, default: Any = None) -> Any:
         """Get optional transport information.
 
