@@ -3,7 +3,6 @@ import io
 import math
 import os
 import pathlib
-import re
 import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
@@ -163,25 +162,38 @@ class FileResponse(StreamResponse):
 
     @staticmethod
     def _is_satisfiable_multi_range(range_header: str, file_size: int) -> bool:
-        unit, _, ranges = range_header.partition("=")
-        if unit.lower() != "bytes" or "," not in ranges:
+        unit, separator, ranges = range_header.partition("=")
+        if separator != "=" or unit.lower() != "bytes" or "," not in ranges:
             return False
 
+        def is_ascii_digits(value: str) -> bool:
+            return value.isascii() and value.isdecimal()
+
+        def less_than(left: str, right: str) -> bool:
+            left = left.lstrip("0") or "0"
+            right = right.lstrip("0") or "0"
+            return (len(left), left) < (len(right), right)
+
         satisfiable = False
+        file_size_text = str(file_size)
+
         for byte_range in ranges.split(","):
-            match = re.fullmatch(r"([0-9]*)-([0-9]*)", byte_range.strip(" \t"))
-            if match is None:
+            first, dash, last = byte_range.strip(" \t").partition("-")
+
+            if not dash or "-" in last or not (first or last):
                 return False
-            first, last = match.groups()
+
+            if (first and not is_ascii_digits(first)) or (
+                last and not is_ascii_digits(last)
+            ):
+                return False
+
             if first:
-                start = int(first)
-                if last and start > int(last):
+                if last and less_than(last, first):
                     return False
-                satisfiable |= start < file_size
-            elif last:
-                satisfiable |= int(last) > 0 and file_size > 0
+                satisfiable |= less_than(first, file_size_text)
             else:
-                return False
+                satisfiable |= file_size > 0 and bool(last.lstrip("0"))
 
         return satisfiable
 
