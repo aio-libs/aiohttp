@@ -4,7 +4,7 @@ import asyncio
 import re
 import sys
 from collections.abc import Awaitable, Callable, Iterable
-from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional, Union  # noqa
+from typing import TYPE_CHECKING, NamedTuple, Optional, Union
 
 from multidict import CIMultiDict
 
