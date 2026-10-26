@@ -319,6 +319,7 @@ class FileResponse(StreamResponse):
         file_mtime: float = st.st_mtime
         count: int = file_size
         start: int | None = None
+        end: int | None = None
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
         # https://www.rfc-editor.org/info/rfc9110/#name-if-range
@@ -344,10 +345,6 @@ class FileResponse(StreamResponse):
             #   Range header would not be processed, return 200
             # if True but Range header missing
             #   return 200
-            # Default to no range so a multi-range ignore path can fall
-            # through to a full 200 without leaving start/end unbound.
-            start: int | None = None
-            end: int | None = None
             try:
                 rng = request.http_range
                 start = rng.start
