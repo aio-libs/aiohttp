@@ -344,10 +344,14 @@ class FileResponse(StreamResponse):
             #   Range header would not be processed, return 200
             # if True but Range header missing
             #   return 200
+            # Default to no range so a multi-range ignore path can fall
+            # through to a full 200 without leaving start/end unbound.
+            start: int | None = None
+            end: int | None = None
             try:
                 rng = request.http_range
                 start = rng.start
-                end: int | None = rng.stop
+                end = rng.stop
             except ValueError:
                 # http_range only accepts a single byte range. A well-formed
                 # multi-range set (e.g. bytes=0-1,4-5) is still a valid Range
