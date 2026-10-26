@@ -16,7 +16,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType
-from typing import Union, cast
+from typing import cast
 
 from yarl import URL
 
@@ -34,7 +34,7 @@ from .typedefs import LooseCookies, PathLike, StrOrURL
 __all__ = ("CookieJar", "DummyCookieJar")
 
 
-CookieItem = Union[str, "Morsel[str]"]
+CookieItem = str | Morsel[str]
 _JarKey = tuple[str, str]  # (domain, path)
 _CookieKey = tuple[str, str, str]  # (domain, path, name)
 # A built morsel, its encoded name=value length and the cookie's key.
@@ -128,9 +128,7 @@ class CookieJar(AbstractCookieJar):
 
     # calendar.timegm() fails for timestamps after datetime.datetime.max
     # Minus one as a loss of precision occurs when timestamp() is called.
-    MAX_TIME = (
-        int(datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()) - 1
-    )
+    MAX_TIME = int(datetime.datetime.max.replace(tzinfo=datetime.UTC).timestamp()) - 1
     try:
         calendar.timegm(time.gmtime(MAX_TIME))
     except OSError:

@@ -969,7 +969,6 @@ class TCPConnector(BaseConnector):
                            This parameter allowed for a clean SSL shutdown by
                            notifying the remote peer of connection closure,
                            while avoiding excessive delays during connector cleanup.
-                           Note: Only takes effect on Python 3.11+.
     """
 
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET | frozenset({"tcp"})
@@ -1033,7 +1032,6 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: set[asyncio.Task[list[ResolveResult]]] = set()
         self._socket_factory = socket_factory
         self._ssl_shutdown_timeout: float | None
-        # Handle ssl_shutdown_timeout with warning for Python < 3.11
         if ssl_shutdown_timeout is sentinel:
             self._ssl_shutdown_timeout = 0
         else:
@@ -1043,17 +1041,6 @@ class TCPConnector(BaseConnector):
                 DeprecationWarning,
                 stacklevel=2,
             )
-            if (
-                sys.version_info < (3, 11)
-                and ssl_shutdown_timeout is not None
-                and ssl_shutdown_timeout != 0
-            ):
-                warnings.warn(
-                    f"ssl_shutdown_timeout={ssl_shutdown_timeout} is ignored on Python < 3.11; "
-                    "only ssl_shutdown_timeout=0 is supported. The timeout will be ignored.",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
             self._ssl_shutdown_timeout = ssl_shutdown_timeout
 
     def _close(self, *, abort_ssl: bool = False) -> list[Awaitable[object]]:
@@ -1327,12 +1314,7 @@ class TCPConnector(BaseConnector):
                     loop=self._loop,
                     socket_factory=self._socket_factory,
                 )
-                # Add ssl_shutdown_timeout for Python 3.11+ when SSL is used
-                if (
-                    kwargs.get("ssl")
-                    and self._ssl_shutdown_timeout
-                    and sys.version_info >= (3, 11)
-                ):
+                if kwargs.get("ssl") and self._ssl_shutdown_timeout:
                     kwargs["ssl_shutdown_timeout"] = self._ssl_shutdown_timeout
                 return await self._loop.create_connection(*args, **kwargs, sock=sock)
         except cert_errors as exc:
@@ -1409,55 +1391,6 @@ class TCPConnector(BaseConnector):
         else:
             return True
 
-    def _warn_about_tls_in_tls(
-        self,
-        underlying_transport: asyncio.Transport,
-        req: ClientRequest,
-    ) -> None:
-        """Issue a warning if the requested URL has HTTPS scheme."""
-        if req.request_info.url.scheme != "https":
-            return
-
-        # TLS-in-TLS only applies when the proxy itself is HTTPS.
-        # When the proxy is HTTP, start_tls upgrades a plain TCP connection,
-        # which is standard TLS and works on all event loops and Python versions.
-        if req.proxy is None or req.proxy.scheme != "https":
-            return
-
-        # Check if uvloop is being used, which supports TLS in TLS,
-        # otherwise assume that asyncio's native transport is being used.
-        if type(underlying_transport).__module__.startswith("uvloop"):
-            return
-
-        # Support in asyncio was added in Python 3.11 (bpo-44011)
-        asyncio_supports_tls_in_tls = sys.version_info >= (3, 11) or getattr(
-            underlying_transport,
-            "_start_tls_compatible",
-            False,
-        )
-
-        if asyncio_supports_tls_in_tls:
-            return
-
-        warnings.warn(
-            "An HTTPS request is being sent through an HTTPS proxy. "
-            "This support for TLS in TLS is known to be disabled "
-            "in the stdlib asyncio (Python <3.11). This is why you'll probably see "
-            "an error in the log below.\n\n"
-            "It is possible to enable it via monkeypatching. "
-            "For more details, see:\n"
-            "* https://bugs.python.org/issue37179\n"
-            "* https://github.com/python/cpython/pull/28073\n\n"
-            "You can temporarily patch this as follows:\n"
-            "* https://docs.aiohttp.org/en/stable/client_advanced.html#proxy-support\n"
-            "* https://github.com/aio-libs/aiohttp/discussions/6044\n",
-            RuntimeWarning,
-            source=self,
-            # Why `4`? At least 3 of the calls in the stack originate
-            # from the methods in this class.
-            stacklevel=3,
-        )
-
     async def _start_tls_connection(
         self,
         underlying_transport: asyncio.Transport,
@@ -1478,8 +1411,7 @@ class TCPConnector(BaseConnector):
                 timeout.sock_connect, ceil_threshold=timeout.ceil_threshold
             ):
                 try:
-                    # ssl_shutdown_timeout is only available in Python 3.11+
-                    if sys.version_info >= (3, 11) and self._ssl_shutdown_timeout:
+                    if self._ssl_shutdown_timeout:
                         tls_transport = await self._loop.start_tls(
                             underlying_transport,
                             tls_proto,
@@ -1616,7 +1548,7 @@ class TCPConnector(BaseConnector):
                     req=req,
                     client_error=client_error,
                 )
-            except (ClientConnectorError, asyncio.TimeoutError) as exc:
+            except (ClientConnectorError, TimeoutError) as exc:
                 last_exc = exc
                 aiohappyeyeballs.pop_addr_infos_interleave(addr_infos, self._interleave)
                 continue
@@ -1653,9 +1585,6 @@ class TCPConnector(BaseConnector):
         )
 
         if req.is_ssl():
-            if runtime_has_start_tls:
-                self._warn_about_tls_in_tls(transport, req)
-
             # For HTTPS requests over HTTP proxy
             # we must notify proxy to tunnel connection
             # so we send CONNECT command:

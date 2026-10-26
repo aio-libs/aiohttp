@@ -9,7 +9,7 @@ import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Self, TypeVar, Union, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict, CIMultiDictProxy
@@ -37,11 +37,6 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    Self = TypeVar("Self", bound="BodyPartReader")
 
 if sys.version_info >= (3, 12):
     from collections.abc import Buffer

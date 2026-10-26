@@ -26,7 +26,7 @@ from functools import wraps
 from pathlib import Path
 from re import Pattern
 from types import MappingProxyType
-from typing import TYPE_CHECKING, Any, Final, NoReturn, Optional, TypedDict, cast
+from typing import TYPE_CHECKING, Any, Final, NoReturn, TypedDict, cast
 
 from yarl import URL, __version__ as yarl_version
 
@@ -83,7 +83,7 @@ PATH_SEP: Final[str] = re.escape("/")
 IS_WINDOWS: Final[bool] = platform.system() == "Windows"
 
 _ExpectHandler = Callable[[Request], Awaitable[StreamResponse | None]]
-_Resolve = tuple[Optional["UrlMappingMatchInfo"], set[str]]
+_Resolve = tuple["UrlMappingMatchInfo | None", set[str]]
 
 html_escape = functools.partial(html.escape, quote=True)
 

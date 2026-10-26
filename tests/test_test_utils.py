@@ -1,9 +1,8 @@
 import asyncio
 import gzip
-import sys
 from collections.abc import Iterator
 from socket import socket
-from typing import Any
+from typing import Any, assert_type
 from unittest import mock
 
 import pytest
@@ -23,9 +22,6 @@ from aiohttp.test_utils import (
     make_mocked_request,
     unittest_run_loop,
 )
-
-if sys.version_info >= (3, 11):
-    from typing import assert_type
 
 _TestClient = TestClient[web.Request, web.Application]
 
@@ -269,8 +265,7 @@ async def test_test_client_props(loop) -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
-        if sys.version_info >= (3, 11):
-            assert_type(client.app, web.Application)
+        assert_type(client.app, web.Application)
         assert client.app is not None
     assert client.port is None
 
@@ -285,8 +280,7 @@ async def test_test_client_raw_server_props(loop) -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
-        if sys.version_info >= (3, 11):
-            assert_type(client.app, None)
+        assert_type(client.app, None)
         assert client.app is None
     assert client.port is None
 

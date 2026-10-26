@@ -4,7 +4,6 @@ import datetime
 import gc
 import ipaddress
 import itertools
-import sys
 import warnings
 import weakref
 from math import ceil, modf
@@ -489,9 +488,6 @@ def test_timer_context_not_cancelled() -> None:
         assert not m_asyncio.current_task.return_value.cancel.called
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11), reason="Python 3.11+ is required for .cancelling()"
-)
 async def test_timer_context_timeout_does_not_leak_upward() -> None:
     """Verify that the TimerContext does not leak cancellation outside the context manager."""
     loop = asyncio.get_running_loop()
@@ -508,9 +504,6 @@ async def test_timer_context_timeout_does_not_leak_upward() -> None:
     assert current_task.cancelling() == 0
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11), reason="Python 3.11+ is required for .cancelling()"
-)
 async def test_timer_context_timeout_does_swallow_cancellation() -> None:
     """Verify that the TimerContext does not swallow cancellation."""
     loop = asyncio.get_running_loop()
@@ -578,31 +571,20 @@ async def test_weakref_handle_weak(loop) -> None:
 
 async def test_ceil_timeout() -> None:
     async with helpers.ceil_timeout(None) as timeout:
-        if sys.version_info >= (3, 11):
-            assert timeout.when() is None
-        else:
-            assert timeout.deadline is None
+        assert timeout.when() is None
 
 
 async def test_ceil_timeout_round() -> None:
     async with helpers.ceil_timeout(7.5) as cm:
-        if sys.version_info >= (3, 11):
-            assert cm.when() is not None
-            frac, integer = modf(cm.when())
-        else:
-            assert cm.deadline is not None
-            frac, integer = modf(cm.deadline)
+        assert cm.when() is not None
+        frac, integer = modf(cm.when())
         assert frac == 0
 
 
 async def test_ceil_timeout_small() -> None:
     async with helpers.ceil_timeout(1.1) as cm:
-        if sys.version_info >= (3, 11):
-            assert cm.when() is not None
-            frac, integer = modf(cm.when())
-        else:
-            assert cm.deadline is not None
-            frac, integer = modf(cm.deadline)
+        assert cm.when() is not None
+        frac, integer = modf(cm.when())
         # a chance for exact integer with zero fraction is negligible
         assert frac != 0
 
@@ -624,18 +606,12 @@ def test_ceil_call_later_no_timeout() -> None:
 
 async def test_ceil_timeout_none(loop) -> None:
     async with helpers.ceil_timeout(None) as cm:
-        if sys.version_info >= (3, 11):
-            assert cm.when() is None
-        else:
-            assert cm.deadline is None
+        assert cm.when() is None
 
 
 async def test_ceil_timeout_small_with_overriden_threshold(loop) -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
-        if sys.version_info >= (3, 11):
-            frac, integer = modf(cm.when())
-        else:
-            frac, integer = modf(cm.deadline)
+        frac, integer = modf(cm.when())
         assert frac == 0
 
 
@@ -966,12 +942,12 @@ class TestChainMapProxy:
         # OK
         pytest.param(
             "Tue, 08 Oct 2000 00:56:40 GMT",
-            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.UTC),
         ),
         # OK (ignore timezone and overwrite to UTC)
         pytest.param(
             "Tue, 08 Oct 2000 00:56:40 +0900",
-            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.UTC),
         ),
     ],
 )

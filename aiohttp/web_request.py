@@ -1,13 +1,12 @@
 import asyncio
 import datetime
-import io
 import re
 import string
-import sys
 import types
 import warnings
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
+from tempfile import SpooledTemporaryFile
 from types import MappingProxyType
 from typing import IO, TYPE_CHECKING, Any, Final, Optional, TypeVar, cast, overload
 
@@ -52,30 +51,6 @@ from .typedefs import (
 )
 from .web_exceptions import HTTPRequestEntityTooLarge, NotAppKeyWarning
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 11):
-    from tempfile import SpooledTemporaryFile
-else:
-    import tempfile
-
-    class SpooledTemporaryFile(tempfile.SpooledTemporaryFile[bytes], io.IOBase):
-        """Make the spooled file satisfy the documented `FileField.file` type.
-
-        `tempfile.SpooledTemporaryFile` only became an `io.IOBase` subclass in
-        3.11 (python/cpython#70363), and never grew the three capability
-        predicates before then. Both underlying files (`io.BytesIO` before
-        rollover, a `w+b` temp file after) are readable, writable and seekable.
-        """
-
-        def readable(self) -> bool:
-            return True
-
-        def writable(self) -> bool:
-            return True
-
-        def seekable(self) -> bool:
-            return True
-
 
 __all__ = ("BaseRequest", "FileField", "Request")
 

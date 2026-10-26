@@ -714,7 +714,7 @@ class DataQueue(Generic[_T]):
             self._waiter = self._loop.create_future()
             try:
                 await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._waiter = None
                 raise
         if self._buffer:
@@ -757,7 +757,7 @@ class FlowControlDataQueue(DataQueue[_T]):
             self._waiter = self._loop.create_future()
             try:
                 await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._waiter = None
                 raise
         if self._buffer:

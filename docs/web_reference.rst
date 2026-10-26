@@ -3322,7 +3322,7 @@ Constants
 
 .. class:: ContentCoding
 
-   An :class:`enum.Enum` class of available Content Codings.
+   An :class:`enum.StrEnum` class of available Content Codings.
 
    .. attribute:: deflate
 

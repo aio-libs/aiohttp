@@ -476,9 +476,9 @@ class ClientResponse(HeadersMixin):
     _resolve_charset: Callable[["ClientResponse", bytes], str] = lambda *_: "utf-8"
 
     __writer: Optional["asyncio.Task[None]"] = None
-    _stream_writer: Optional[AbstractStreamWriter] = None
+    _stream_writer: AbstractStreamWriter | None = None
     _output_size: int = 0
-    _upload_complete: Optional[asyncio.Future[None]] = None
+    _upload_complete: asyncio.Future[None] | None = None
 
     def __init__(
         self,
@@ -860,11 +860,7 @@ class ClientResponse(HeadersMixin):
             try:
                 await self.__writer
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         self._release_connection()
 
@@ -887,11 +883,7 @@ class ClientResponse(HeadersMixin):
             try:
                 await self.__writer
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         self.release()
 
@@ -1756,11 +1748,7 @@ class ClientRequest:
             try:
                 await self.__writer
             except asyncio.CancelledError:
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
 
     def terminate(self) -> None:

@@ -366,7 +366,6 @@ class TestPartReader:
             result = await obj.read(decode=True)
         assert b"Time to Relax!" == result
 
-    @pytest.mark.skipif(sys.version_info < (3, 11), reason="wbits not available")
     async def test_read_with_content_encoding_deflate(self) -> None:
         content = b"A" * 1_000_000  # Large enough to exceed max_length.
         compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
@@ -1956,7 +1955,6 @@ async def test_body_part_reader_payload_as_bytes() -> None:
         payload.decode()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="No wbits parameter")
 async def test_body_part_reader_payload_write() -> None:
     content = b"A" * 1_000_000  # Large enough to exceed max_length.
     compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)

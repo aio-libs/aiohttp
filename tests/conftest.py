@@ -42,7 +42,7 @@ except ImportError:
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # On Windows with Python 3.11, proxy.py's threaded mode can leave
     # sockets not fully released by the time pytest's unraisableexception
     # plugin collects warnings during teardown. Suppress these warnings
     # since they are not actionable and only affect older Python versions.
