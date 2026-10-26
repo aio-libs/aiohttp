@@ -42,7 +42,7 @@ blockbuster==1.5.29
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-brotli==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
+brotli==1.2.1 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via -r requirements/runtime-deps.in
 build==1.6.1
     # via pip-tools
