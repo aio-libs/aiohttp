@@ -239,6 +239,42 @@ def test_setting_charset() -> None:
     assert "text/html; charset=koi8-r" == resp.headers["content-type"]
 
 
+@pytest.mark.parametrize(
+    "parameter",
+    [
+        "token",
+        '""',
+        '"one two"',
+        '"one\ttwo"',
+        '"\t"',
+        '"one;two"',
+        '"https://example.org/profile"',
+        '"caf\xe9"',
+        r'"one\"two\\three"',
+    ],
+)
+@pytest.mark.parametrize("attribute", ["charset", "content_type"])
+def test_content_type_parameters_preserved(parameter: str, attribute: str) -> None:
+    header = f"text/plain; profile={parameter}"
+    resp = web.StreamResponse(headers={"Content-Type": header})
+
+    if attribute == "charset":
+        resp.charset = "utf-8"
+        expected = f"{header}; charset=utf-8"
+    else:
+        resp.content_type = "text/html"
+        expected = f"text/html; profile={parameter}"
+
+    assert resp.headers["Content-Type"] == expected
+
+
+def test_response_text_preserves_content_type_parameters() -> None:
+    header = 'application/ld+json; profile="https://example.org/a;b"'
+    resp = web.Response(text="{}", headers={"Content-Type": header})
+
+    assert resp.headers["Content-Type"] == f"{header}; charset=utf-8"
+
+
 def test_default_charset() -> None:
     resp = web.StreamResponse()
 
