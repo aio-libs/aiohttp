@@ -531,7 +531,17 @@ async def test_static_file_if_modified_since(
     await client.close()
 
 
-@pytest.mark.parametrize("encoding", ("identity", "gzip", "br"))
+@pytest.mark.parametrize(
+    "encoding",
+    (
+        "identity",
+        "gzip",
+        pytest.param(
+            "br",
+            marks=pytest.mark.skipif(brotli is None, reason="brotli not available"),
+        ),
+    ),
+)
 @pytest.mark.parametrize(
     ("condition", "validator"),
     (("If-None-Match", "ETag"), ("If-Modified-Since", "Last-Modified")),
@@ -544,13 +554,11 @@ async def test_static_file_vary_on_revalidation(
     condition: str,
     validator: str,
 ) -> None:
-    if encoding == "br" and brotli is None:
-        pytest.skip("brotli not available")
-
     filepath = tmp_path / "hello.txt"
     filepath.write_bytes(HELLO_AIOHTTP)
     filepath.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
-    if brotli is not None:
+    if encoding == "br":
+        assert brotli is not None
         filepath.with_suffix(".txt.br").write_bytes(brotli.compress(HELLO_AIOHTTP))
 
     async def handler(request: web.Request) -> web.FileResponse:
