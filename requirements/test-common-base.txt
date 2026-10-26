@@ -36,7 +36,7 @@ pytest-mock==3.17.0
     # via -r requirements/test-common-base.in
 pytest-timeout==2.4.0
     # via -r requirements/test-common-base.in
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
     # via freezegun
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
@@ -48,3 +48,5 @@ tomli==2.4.1
     #   pytest
 typing-extensions==4.16.0
     # via exceptiongroup
+tzdata==2026.5
+    # via python-dateutil
