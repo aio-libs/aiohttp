@@ -3,6 +3,7 @@ import io
 import math
 import os
 import pathlib
+import re
 import sys
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
@@ -41,6 +42,14 @@ _T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
+
+# Well-formed multi-range set (RFC 9110 §14.1). FileResponse only serves a
+# single range; a satisfiable multi-range must not become 416 (RFC 9110 §14.2
+# allows ignoring Range and returning 200 with the full representation).
+_MULTI_BYTE_RANGE_RE = re.compile(
+    r"^bytes=(?:\d+-\d*|-\d+)(?:,(?:\d+-\d*|-\d+))+$",
+    re.ASCII | re.IGNORECASE,
+)
 
 CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
 
@@ -340,18 +349,29 @@ class FileResponse(StreamResponse):
                 start = rng.start
                 end: int | None = rng.stop
             except ValueError:
-                # https://tools.ietf.org/html/rfc7233:
-                # A server generating a 416 (Range Not Satisfiable) response to
-                # a byte-range request SHOULD send a Content-Range header field
-                # with an unsatisfied-range value.
-                # The complete-length in a 416 response indicates the current
-                # length of the selected representation.
-                #
-                # Will do the same below. Many servers ignore this and do not
-                # send a Content-Range header with HTTP 416
-                self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
-                self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
-                return await super().prepare(request)
+                # http_range only accepts a single byte range. A well-formed
+                # multi-range set (e.g. bytes=0-1,4-5) is still a valid Range
+                # per RFC 9110; answering 416 would be wrong for a satisfiable
+                # set. Ignore the header and fall through to a full 200 instead
+                # (RFC 9110 §14.2 / RFC 7233). Malformed ranges keep 416.
+                range_hdr = request.headers.get(hdrs.RANGE)
+                if range_hdr is not None and _MULTI_BYTE_RANGE_RE.fullmatch(
+                    range_hdr
+                ):
+                    pass
+                else:
+                    # https://tools.ietf.org/html/rfc7233:
+                    # A server generating a 416 (Range Not Satisfiable) response to
+                    # a byte-range request SHOULD send a Content-Range header field
+                    # with an unsatisfied-range value.
+                    # The complete-length in a 416 response indicates the current
+                    # length of the selected representation.
+                    #
+                    # Will do the same below. Many servers ignore this and do not
+                    # send a Content-Range header with HTTP 416
+                    self._headers[hdrs.CONTENT_RANGE] = f"bytes */{file_size}"
+                    self.set_status(HTTPRequestRangeNotSatisfiable.status_code)
+                    return await super().prepare(request)
 
             # If a range request has been made, convert start, end slice
             # notation into file pointer offset and count
