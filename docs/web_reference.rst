@@ -1163,7 +1163,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
       Change the maximum size of a received message, for example to accept
       only small messages until the peer has authenticated. Can be called
-      before or after :meth:`prepare`. To disable the size limit use ``0``.
+      before or after :meth:`prepare`; a message that is still being
+      received is checked against the new limit too. To disable the size
+      limit use ``0``.
 
       :param int max_msg_size: maximum size of a received message.
 
