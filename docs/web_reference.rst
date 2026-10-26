@@ -3315,7 +3315,7 @@ Constants
 .. class:: ContentCoding
    :canonical: aiohttp.web_response.ContentCoding
 
-   An :class:`enum.Enum` class of available Content Codings.
+   An :class:`enum.StrEnum` class of available Content Codings.
 
    .. attribute:: deflate
 

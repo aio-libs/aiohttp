@@ -1,9 +1,8 @@
 import asyncio
 import gzip
 import socket
-import sys
 from collections.abc import AsyncIterator, Mapping
-from typing import NoReturn
+from typing import NoReturn, assert_type
 from unittest import mock
 
 import pytest
@@ -22,9 +21,6 @@ from aiohttp.test_utils import (
     TestServer,
     make_mocked_request,
 )
-
-if sys.version_info >= (3, 11):
-    from typing import assert_type
 
 HAS_IPV6: bool = socket.has_ipv6
 if HAS_IPV6:  # pragma: no branch
@@ -244,8 +240,7 @@ async def test_test_client_props() -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
-        if sys.version_info >= (3, 11):
-            assert_type(client.app, web.Application)
+        assert_type(client.app, web.Application)
         assert client.app is not None
     assert client.port == 0
 
@@ -262,8 +257,7 @@ async def test_test_client_raw_server_props() -> None:
     async with client:
         assert isinstance(client.port, int)
         assert client.server is not None
-        if sys.version_info >= (3, 11):
-            assert_type(client.app, None)
+        assert_type(client.app, None)
         assert client.app is None
     assert client.port == 0
 

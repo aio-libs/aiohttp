@@ -10,7 +10,7 @@ from enum import Enum, auto
 from mimetypes import MimeTypes
 from stat import S_ISREG
 from types import MappingProxyType
-from typing import TYPE_CHECKING, BinaryIO, Final, Optional
+from typing import TYPE_CHECKING, BinaryIO, Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
@@ -37,7 +37,7 @@ except ImportError:
     aiofastnet = None  # type: ignore[assignment]
 
 
-_T_OnChunkSent = Optional[Callable[[bytes], Awaitable[None]]]
+_T_OnChunkSent = Callable[[bytes], Awaitable[None]] | None
 
 
 NOSENDFILE: Final[bool] = bool(os.environ.get("AIOHTTP_NOSENDFILE"))
