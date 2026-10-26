@@ -82,7 +82,7 @@ pytest-timeout==2.4.0
     # via -r requirements/test-common-base.in
 pytest-xdist==3.8.0
     # via -r requirements/test-common.in
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
     # via freezegun
 python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
@@ -110,5 +110,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
+tzdata==2026.5
+    # via python-dateutil
 zlib-ng==1.0.0
     # via -r requirements/test-common.in
