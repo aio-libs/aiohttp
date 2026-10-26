@@ -979,6 +979,12 @@ and :ref:`aiohttp-web-signals` handlers::
 
    Supports the ``Content-Range`` and ``If-Range`` HTTP Headers in requests.
 
+   Selects precompressed ``.br`` or ``.gz`` files according to the request's
+   ``Accept-Encoding`` header. Adds ``Accept-Encoding`` to ``Vary`` for all
+   responses, including uncompressed files and ``304 Not Modified`` responses,
+   while preserving existing ``Vary`` fields. An existing ``Vary: *`` is
+   preserved without adding ``Accept-Encoding``.
+
    The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
 
    :param path: Path to file. Accepts both :class:`str` and :class:`pathlib.Path`.

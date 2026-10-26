@@ -531,6 +531,127 @@ async def test_static_file_if_modified_since(
     await client.close()
 
 
+@pytest.mark.parametrize("encoding", ("identity", "gzip", "br"))
+@pytest.mark.parametrize(
+    ("condition", "validator"),
+    (("If-None-Match", "ETag"), ("If-Modified-Since", "Last-Modified")),
+)
+async def test_static_file_vary_on_revalidation(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    encoding: str,
+    condition: str,
+    validator: str,
+) -> None:
+    if encoding == "br" and brotli is None:
+        pytest.skip("brotli not available")
+
+    filepath = tmp_path / "hello.txt"
+    filepath.write_bytes(HELLO_AIOHTTP)
+    filepath.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+    if brotli is not None:
+        filepath.with_suffix(".txt.br").write_bytes(brotli.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    headers = {"Accept-Encoding": encoding}
+    async with client.get("/", headers=headers) as resp:
+        assert resp.status == 200
+        assert await resp.read() == HELLO_AIOHTTP
+        assert resp.headers.get("Content-Encoding") == (
+            None if encoding == "identity" else encoding
+        )
+        assert resp.headers.getall("Vary") == ("Accept-Encoding",)
+        headers[condition] = resp.headers[validator]
+        original_etag = resp.headers["ETag"]
+
+    async with client.get("/", headers=headers) as resp:
+        assert resp.status == 304
+        assert await resp.read() == b""
+        assert resp.headers["ETag"] == original_etag
+        assert resp.headers.getall("Vary") == ("Accept-Encoding",)
+
+
+@pytest.mark.parametrize("encoding", ("identity", "gzip"))
+@pytest.mark.parametrize(
+    ("vary", "expected"),
+    (
+        (("Origin",), ("Origin", "Accept-Encoding")),
+        (
+            ("Origin", "Accept-Language"),
+            ("Origin", "Accept-Language", "Accept-Encoding"),
+        ),
+        (("Origin, aCcEpT-EnCoDiNg",), ("Origin", "aCcEpT-EnCoDiNg")),
+        (("Origin", "Accept-Encoding"), ("Origin", "Accept-Encoding")),
+        (("*",), ("*",)),
+        (("Origin", "*"), ("Origin", "*")),
+    ),
+)
+async def test_static_file_preserves_vary(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+    encoding: str,
+    vary: tuple[str, ...],
+    expected: tuple[str, ...],
+) -> None:
+    filepath = tmp_path / "hello.txt"
+    filepath.write_bytes(HELLO_AIOHTTP)
+    filepath.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        resp = sender(filepath)
+        resp.headers.extend(("Vary", value) for value in vary)
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    headers = {"Accept-Encoding": encoding}
+    async with client.head("/", headers=headers) as resp:
+        assert resp.status == 200
+        assert await resp.read() == b""
+        assert resp.headers.getall("Vary") == expected
+        headers["If-None-Match"] = resp.headers["ETag"]
+
+    async with client.head("/", headers=headers) as resp:
+        assert resp.status == 304
+        assert await resp.read() == b""
+        assert resp.headers.getall("Vary") == expected
+
+
+async def test_static_file_missing_identity_varies(
+    aiohttp_client: AiohttpClient,
+    sender: _Sender,
+    tmp_path: pathlib.Path,
+) -> None:
+    filepath = tmp_path / "hello.txt"
+    filepath.with_suffix(".txt.gz").write_bytes(gzip.compress(HELLO_AIOHTTP))
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/", headers={"Accept-Encoding": "identity"}) as resp:
+        assert resp.status == 404
+        assert resp.headers.getall("Vary") == ("Accept-Encoding",)
+
+    async with client.get("/", headers={"Accept-Encoding": "gzip"}) as resp:
+        assert resp.status == 200
+        assert await resp.read() == HELLO_AIOHTTP
+        assert resp.headers.getall("Vary") == ("Accept-Encoding",)
+
+
 async def test_static_file_if_modified_since_past_date(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:

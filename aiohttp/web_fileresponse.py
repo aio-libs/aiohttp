@@ -258,6 +258,16 @@ class FileResponse(StreamResponse):
         # Encoding comparisons should be case-insensitive
         # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
         accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+
+        # Representation selection depends on Accept-Encoding, including for
+        # identity responses and cache revalidation. Preserve other Vary fields.
+        if not any(
+            field.strip().lower() in ("accept-encoding", "*")
+            for value in self._headers.getall(hdrs.VARY, ())
+            for field in value.split(",")
+        ):
+            self._headers.add(hdrs.VARY, hdrs.ACCEPT_ENCODING)
+
         try:
             response_result, fobj, st, file_encoding = await loop.run_in_executor(
                 None, self._make_response, request, accept_encoding
@@ -409,7 +419,6 @@ class FileResponse(StreamResponse):
 
         if file_encoding:
             self._headers[hdrs.CONTENT_ENCODING] = file_encoding
-            self._headers[hdrs.VARY] = hdrs.ACCEPT_ENCODING
             # Disable compression if we are already sending
             # a compressed file since we don't want to double
             # compress.
