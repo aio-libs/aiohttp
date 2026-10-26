@@ -355,9 +355,7 @@ class FileResponse(StreamResponse):
                 # set. Ignore the header and fall through to a full 200 instead
                 # (RFC 9110 §14.2 / RFC 7233). Malformed ranges keep 416.
                 range_hdr = request.headers.get(hdrs.RANGE)
-                if range_hdr is not None and _MULTI_BYTE_RANGE_RE.fullmatch(
-                    range_hdr
-                ):
+                if range_hdr is not None and _MULTI_BYTE_RANGE_RE.fullmatch(range_hdr):
                     pass
                 else:
                     # https://tools.ietf.org/html/rfc7233:
