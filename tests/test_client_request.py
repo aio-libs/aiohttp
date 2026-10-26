@@ -2,7 +2,6 @@ import asyncio
 import hashlib
 import io
 import pathlib
-import sys
 import urllib.parse
 import warnings
 from collections.abc import AsyncIterator, Callable, Iterable
@@ -1377,7 +1376,6 @@ async def test_oserror_on_write_bytes(loop, conn) -> None:
     await req.close()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_close(loop: asyncio.AbstractEventLoop, conn: mock.Mock) -> None:
     req = ClientRequest("get", URL("http://python.org"), loop=loop)
     req._writer = asyncio.Future()  # type: ignore[assignment]
@@ -2479,9 +2477,6 @@ async def test_preamble_failure_reported_to_upload_tracker(
         assert isinstance(tracker.upload_complete.exception(), RuntimeError)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11), reason="TimeoutError is OSError only on 3.11+"
-)
 async def test_timeout_on_write_bytes_not_wrapped(
     conn: mock.Mock, make_request: Any
 ) -> None:

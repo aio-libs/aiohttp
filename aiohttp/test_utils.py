@@ -12,7 +12,17 @@ import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Iterator
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Generic, Literal, TypeVar, cast, overload
+from typing import (
+    TYPE_CHECKING,
+    Any,
+    Generic,
+    Literal,
+    Self,
+    TypeVar,
+    Unpack,
+    cast,
+    overload,
+)
 from unittest import IsolatedAsyncioTestCase, mock
 
 from aiosignal import Signal
@@ -52,14 +62,6 @@ if TYPE_CHECKING:
     from ssl import SSLContext
 else:
     SSLContext = Any
-
-if sys.version_info >= (3, 11) and TYPE_CHECKING:
-    from typing import Unpack
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    Self = Any
 
 _ApplicationNone = TypeVar("_ApplicationNone", Application, None)
 _Request = TypeVar("_Request", bound=BaseRequest)
@@ -349,7 +351,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         self._responses.append(resp)
         return resp
 
-    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def request(
             self, method: str, path: StrOrURL, **kwargs: Unpack[_RequestOptions]

@@ -1,6 +1,7 @@
 import asyncio
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Any, Callable
+from typing import Any
 
 from .base_protocol import BaseProtocol
 from .client_exceptions import (
