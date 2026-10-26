@@ -103,7 +103,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v7.0.0
+      uses: actions/setup-python@v7.1.0
     - name: Install build tooling and cython
       run: >-
         python -m
@@ -145,7 +145,7 @@ jobs:
       with:
         submodules: true
     - name: Setup Python
-      uses: actions/setup-python@v7.0.0
+      uses: actions/setup-python@v7.1.0
       with:
         python-version: 3.11
     - name: >-
@@ -190,7 +190,7 @@ jobs:
         name: dist-pure
         path: dist/
     - name: Setup Python
-      uses: actions/setup-python@v7.0.0
+      uses: actions/setup-python@v7.1.0
       with:
         python-version: 3.11
     - name: Cache PyPI
@@ -511,7 +511,7 @@ jobs:
         path: dist/
     - name: Setup Python 3.13.2
       id: python-install
-      uses: actions/setup-python@v7.0.0
+      uses: actions/setup-python@v7.1.0
       with:
         python-version: 3.13.2
         cache: pip
@@ -581,7 +581,7 @@ jobs:
         submodules: true
     - name: Setup Python
       id: python-install
-      uses: actions/setup-python@v7.0.0
+      uses: actions/setup-python@v7.1.0
       with:
         python-version: '3.12'
     - name: Install dependencies
