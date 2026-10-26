@@ -517,6 +517,33 @@ async def test_close(aiohttp_client: AiohttpClient) -> None:
     assert msg.type == aiohttp.WSMsgType.CLOSED
 
 
+async def test_close_rejected_for_invalid_frame(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.ws_connect("/") as resp:
+        with pytest.raises(ValueError, match="Invalid close code: 1006"):
+            await resp.close(code=WSCloseCode.ABNORMAL_CLOSURE)
+        with pytest.raises(ValueError, match="Close reason must be valid UTF-8"):
+            await resp.close(code=WSCloseCode.OK, message=b"\xff")
+        with pytest.raises(ValueError, match="Control frame payload"):
+            await resp.ping(b"x" * 126)
+        # Rejected frames must not leave the connection half-closed.
+        assert not resp.closed
+        closed = await resp.close(code=WSCloseCode.OK)
+        assert closed
+        assert resp.close_code == WSCloseCode.OK
+
+
 async def test_concurrent_task_close(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()

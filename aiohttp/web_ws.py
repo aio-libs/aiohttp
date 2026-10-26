@@ -11,6 +11,7 @@ from typing import Any, Final, Generic, Literal, Union, overload
 from multidict import CIMultiDict
 
 from . import hdrs
+from ._websocket.helpers import validate_close_frame
 from ._websocket.reader import WebSocketDataQueue
 from .abc import AbstractStreamWriter
 from .client_exceptions import WSMessageTypeError
@@ -526,6 +527,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         if self._closed:
             return False
+        # Reject invalid arguments before the response flips to the closed
+        # state; otherwise the ValueError below would be recorded as an
+        # abnormal closure instead of reaching the caller.
+        validate_close_frame(code, message)
         self._set_closed()
 
         try:

@@ -7,7 +7,7 @@ from struct import Struct
 from typing import TYPE_CHECKING, Final
 
 from ..helpers import NO_EXTENSIONS
-from .models import WSHandshakeError
+from .models import WSCloseCode, WSHandshakeError
 
 UNPACK_LEN3 = Struct("!Q").unpack_from
 UNPACK_CLOSE_CODE = Struct("!H").unpack
@@ -20,6 +20,58 @@ MSG_SIZE: Final[int] = 2**14
 MASK_LEN: Final[int] = 4
 
 WS_KEY: Final[bytes] = b"258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+
+# https://datatracker.ietf.org/doc/html/rfc6455#section-5.5
+MAX_CONTROL_FRAME_PAYLOAD: Final[int] = 125
+
+# Close codes a peer accepts on the wire.  This mirrors ALLOWED_CLOSE_CODES in
+# reader_py.py, which cannot be reused here because the compiled reader
+# declares it as a cdef set: ABNORMAL_CLOSURE is generated locally and must
+# never be sent, and RFC 6455 reserves everything outside 1000-4999.
+SENDABLE_CLOSE_CODES: Final[frozenset[int]] = frozenset(
+    int(code) for code in WSCloseCode if code is not WSCloseCode.ABNORMAL_CLOSURE
+)
+
+
+def validate_close_code(code: int) -> None:
+    """Validate a close status code as required by RFC 6455 section 7.4."""
+    if not 0 <= code <= 65535:
+        raise ValueError(f"Invalid close code: {code}")
+    if code > 4999 or (code < 3000 and code not in SENDABLE_CLOSE_CODES):
+        raise ValueError(f"Invalid close code: {code}")
+
+
+def validate_close_payload(payload: bytes) -> None:
+    """Validate the payload of a Close frame before it is written.
+
+    A peer applies the checks from RFC 6455 sections 5.5 and 7.4 that our own
+    reader applies, so an invalid Close frame only gets the connection torn
+    down with 1002 instead of closing it cleanly.
+    """
+    if len(payload) > MAX_CONTROL_FRAME_PAYLOAD:
+        raise ValueError(
+            "Control frame payload cannot be larger than "
+            f"{MAX_CONTROL_FRAME_PAYLOAD} bytes"
+        )
+    if not payload:
+        # A Close frame without a body is valid and carries no status code.
+        return
+    if len(payload) < 2:
+        raise ValueError("Close frame payload must be empty or at least 2 bytes")
+    validate_close_code(UNPACK_CLOSE_CODE(payload[:2])[0])
+    try:
+        payload[2:].decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Close reason must be valid UTF-8") from exc
+
+
+def validate_close_frame(code: int, message: bytes | str = b"") -> bytes:
+    """Validate a Close frame given its status code and reason."""
+    if isinstance(message, str):
+        message = message.encode("utf-8")
+    validate_close_code(code)
+    validate_close_payload(PACK_CLOSE_CODE(code) + message)
+    return message
 
 
 # Used by _websocket_mask_python

@@ -1,0 +1,6 @@
+Reject WebSocket frames that the protocol forbids instead of writing them and
+letting the peer tear the connection down: ``ping()``/``pong()`` payloads longer
+than 125 bytes, close status codes that may not appear on the wire (including
+1006), and close reasons that are not valid UTF-8 now raise ``ValueError`` before
+anything is sent, matching the checks the reader already applies.
+-- by :user:`Omarinho12345`.

@@ -812,6 +812,63 @@ async def test_ping(aiohttp_client: AiohttpClient) -> None:
     await closed
 
 
+async def test_close_rejected_for_invalid_frame(aiohttp_client: AiohttpClient) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        # None of these can be put on the wire, so the writer refuses them and
+        # the connection stays open for a valid close.
+        with pytest.raises(ValueError, match="Invalid close code: 1006"):
+            await ws.close(code=WSCloseCode.ABNORMAL_CLOSURE)
+        with pytest.raises(ValueError, match="Close reason must be valid UTF-8"):
+            await ws.close(code=WSCloseCode.OK, message=b"\xff")
+        with pytest.raises(ValueError, match="Control frame payload"):
+            await ws.close(code=WSCloseCode.OK, message=b"x" * 124)
+        assert not ws.closed
+
+        await ws.send_str("still open")
+        await ws.close(code=WSCloseCode.OK, message=b"done")
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    assert await ws.receive_str() == "still open"
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.OK
+    assert msg.extra == "done"
+    assert ws.close_code == WSCloseCode.OK
+
+
+async def test_ping_rejected_for_oversized_payload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+
+        with pytest.raises(ValueError, match="Control frame payload"):
+            await ws.ping(b"x" * 126)
+        await ws.ping(b"x" * 125)
+        await ws.send_str("still open")
+        return ws
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoping=False)
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.PING
+    assert msg.data == b"x" * 125
+    assert await ws.receive_str() == "still open"
+    await ws.close()
+
+
 async def test_client_ping(aiohttp_client: AiohttpClient) -> None:
     closed = asyncio.get_running_loop().create_future()
 
