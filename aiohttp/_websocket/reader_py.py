@@ -144,7 +144,7 @@ class WebSocketDataQueue:
             self._waiter = self._loop.create_future()
             try:
                 await self._waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._waiter = None
                 raise
         return self._read_from_buffer()

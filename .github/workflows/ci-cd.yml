@@ -265,7 +265,7 @@ jobs:
     - build-pure-python-dists
     strategy:
       matrix:
-        pyver: ['3.10', '3.11', '3.12', '3.13', '3.14', '3.15']
+        pyver: ['3.11', '3.12', '3.13', '3.14', '3.15']
         no-extensions: ['', 'Y']
         os: [ubuntu, macos, windows]
         experimental: [false]

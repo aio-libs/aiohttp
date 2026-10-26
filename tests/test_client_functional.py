@@ -1,5 +1,5 @@
 # HTTP client functional tests against aiohttp.web server
-from __future__ import annotations  # TODO(PY311): Remove
+from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
@@ -754,9 +754,6 @@ async def test_server_hostname_override_not_reused(
             await session.get(url, server_hostname="second.example")
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11), reason="ssl_shutdown_timeout requires Python 3.11+"
-)
 async def test_ssl_client_shutdown_timeout(
     aiohttp_server: AiohttpServer,
     ssl_ctx: ssl.SSLContext,
@@ -3239,12 +3236,10 @@ async def test_set_cookies_max_age_overflow(aiohttp_client: AiohttpClient) -> No
         )
         return ret
 
-    overflow = int(
-        datetime.datetime.max.replace(tzinfo=datetime.timezone.utc).timestamp()
-    )
+    overflow = int(datetime.datetime.max.replace(tzinfo=datetime.UTC).timestamp())
     empty = None
     try:
-        empty = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        empty = datetime.datetime.now(datetime.UTC) + datetime.timedelta(
             seconds=overflow
         )
     except OverflowError as ex:
@@ -4106,7 +4101,6 @@ async def test_aiohttp_request_ctx_manager_close_sess_on_error(
 
     assert cm._session.closed
     # Allow event loop to process transport cleanup
-    # on Python < 3.11
     await asyncio.sleep(0)
 
 
