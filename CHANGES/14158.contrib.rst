@@ -1,0 +1,5 @@
+Changed ``test_url_with_many_slashes`` to send its ``///a`` request path as
+written instead of building the URL with ``URL.join()``, which turned it into
+``/a``; the router answers it with 404, as it does not merge slashes. The test
+no longer depends on how yarl joins a reference such as ``///a``
+-- by :user:`asvetlov`.
