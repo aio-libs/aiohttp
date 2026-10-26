@@ -438,6 +438,7 @@ class StreamResponse(
         assert request is not None
         writer = self._payload_writer
         assert writer is not None
+        request.protocol._prepare_response(self)
         # status line
         version = request.version
         status_line = f"HTTP/{version[0]}.{version[1]} {self._status} {self._reason}"

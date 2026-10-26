@@ -1,0 +1,2 @@
+Added an optional server-side ``keepalive_time`` connection reuse lifetime, independent of the idle timeout, that lets active responses finish before closing expired connections
+-- by :user:`cjyhjy`.
