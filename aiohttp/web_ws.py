@@ -439,9 +439,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         Can be called before or after prepare().
         """
-        self._max_msg_size = max_msg_size
+        if max_msg_size < 0:
+            raise ValueError("max_msg_size must be 0 or positive")
         if self._parser is not None:
             self._parser.set_max_msg_size(max_msg_size)
+        self._max_msg_size = max_msg_size
 
     def get_extra_info(self, name: str, default: Any = None) -> Any:
         """Get optional transport information.

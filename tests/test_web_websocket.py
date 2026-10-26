@@ -72,6 +72,24 @@ def make_request(
     return maker
 
 
+def test_set_max_msg_size_negative() -> None:
+    ws = web.WebSocketResponse(max_msg_size=1024)
+
+    with pytest.raises(ValueError, match="max_msg_size must be 0 or positive"):
+        ws.set_max_msg_size(-1)
+    assert ws.max_msg_size == 1024
+
+
+def test_set_max_msg_size_rejected_by_parser() -> None:
+    ws = web.WebSocketResponse(max_msg_size=1024)
+    ws._parser = mock.Mock()
+    ws._parser.set_max_msg_size.side_effect = OverflowError
+
+    with pytest.raises(OverflowError):
+        ws.set_max_msg_size(2**32)
+    assert ws.max_msg_size == 1024
+
+
 async def test_nonstarted_ping() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
