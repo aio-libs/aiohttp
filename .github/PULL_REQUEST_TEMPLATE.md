@@ -24,46 +24,51 @@ entertain early in the review process. Thank you in advance!
 
 ## Related issue number
 
-<!-- Will this resolve any open issues? -->
-<!-- Remember to prefix with 'Fixes' if it closes an issue (e.g. 'Fixes #123'). -->
+<!--
+Are there any issues opened that will be resolved by merging this change?
+Remember to prefix with 'Fixes' if it closes an issue (e.g. 'Fixes #123').
+-->
 
 ## Checklist
 
 - [ ] I think the code is well written
 - [ ] Unit tests for the changes exist
 - [ ] Documentation reflects the changes
-- [ ] If you provide code modification, please add yourself to `CONTRIBUTORS.txt`
+- [ ] If you provide code modifications, please add yourself to
+  `CONTRIBUTORS.txt`
   * The format is &lt;Name&gt; &lt;Surname&gt;.
-  * Please keep alphabetical order, the file is sorted by names.
+  * Please keep the list in alphabetical order, the file is sorted by name.
 - [ ] Add a new news fragment into the `CHANGES/` folder
-  * name it `<issue_or_pr_num>.<type>.rst` (e.g. `588.bugfix.rst`)
+  * name it `<issue_or_pr_num>.<category>.rst` for example
+    (`14006.contrib.rst`)
   * if you don't have an issue number, change it to the pull request
     number after creating the PR
-    * `.bugfix`: A bug fix for something the maintainers deemed an
+  * ensure category is one of the following:
+    * `bugfix`: A bug fix for something the maintainers deemed an
       improper undesired behavior that got corrected to match
       pre-agreed expectations.
-    * `.feature`: A new behavior, public APIs. That sort of stuff.
-    * `.deprecation`: A declaration of future API removals and breaking
+    * `feature`: A new behavior, public APIs. That sort of stuff.
+    * `deprecation`: A declaration of future API removals and breaking
       changes in behavior.
-    * `.breaking`: When something public is removed in a breaking way.
+    * `breaking`: When something public is removed in a breaking way.
       Could be deprecated in an earlier release.
-    * `.doc`: Notable updates to the documentation structure or build
+    * `doc`: Notable updates to the documentation structure or build
       process.
-    * `.packaging`: Notes for downstreams about unobvious side effects
+    * `packaging`: Notes for downstreams about unobvious side effects
       and tooling. Changes in the test invocation considerations and
       runtime assumptions.
-    * `.contrib`: Stuff that affects the contributor experience. e.g.
+    * `contrib`: Stuff that affects the contributor experience. e.g.
       Running tests, building the docs, setting up the development
       environment.
-    * `.misc`: Changes that are hard to assign to any of the above
+    * `misc`: Changes that are hard to assign to any of the above
       categories.
   * Make sure to use full sentences with correct case and punctuation.
     Explain high-level effects affecting the end-users, for example:
     ```rst
-    Test runner no longer crashes when loading non-ASCII contents in doctest text files.
-    -- by :user:`contributor-gh-handle`.
+    Test runner no longer crashes when loading non-ASCII contents
+    in doctest text files -- by :user:`contributor-gh-handle`.
     ```
 
-    Use the past tense or the present tense a non-imperative mood,
+    Use the past tense or the present tense in a non-imperative mood,
     referring to what's changed compared to the last released version
     of this project.
