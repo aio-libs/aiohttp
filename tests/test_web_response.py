@@ -249,7 +249,7 @@ def test_setting_charset() -> None:
         '"\t"',
         '"one;two"',
         '"https://example.org/profile"',
-        '"caf\xe9"',
+        '"text\xe9"',
         r'"one\"two\\three"',
     ],
 )
