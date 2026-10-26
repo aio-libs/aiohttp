@@ -1,0 +1,1 @@
+Prevented server WebSocket heartbeat timers from being rearmed by incoming data after the socket was closed -- by :user:`Vmnebula`.
