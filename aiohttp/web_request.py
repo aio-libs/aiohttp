@@ -12,7 +12,6 @@ from typing import (
     TYPE_CHECKING,
     Any,
     Final,
-    Optional,
     Self,
     TypedDict,
     TypeVar,
@@ -931,7 +930,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    _match_info: Optional["UrlMappingMatchInfo"] = None
+    _match_info: "UrlMappingMatchInfo | None" = None
 
     def clone(
         self,

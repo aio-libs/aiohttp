@@ -33,7 +33,6 @@ from typing import (
     Generic,
     Protocol,
     TypeVar,
-    Union,
     final,
     get_args,
     overload,
@@ -848,7 +847,7 @@ class ErrorableProtocol(Protocol):
 
 
 def set_exception(
-    fut: Union["asyncio.Future[_T]", ErrorableProtocol],
+    fut: "asyncio.Future[_T] | ErrorableProtocol",
     exc: type[BaseException] | BaseException,
     exc_cause: BaseException = _EXC_SENTINEL,
 ) -> None:

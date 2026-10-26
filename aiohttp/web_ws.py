@@ -6,7 +6,7 @@ import json
 import sys
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable, Iterable
-from typing import Any, Final, Generic, Literal, Self, Union, overload
+from typing import Any, Final, Generic, Literal, Self, overload
 
 from multidict import CIMultiDict
 
@@ -745,7 +745,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         return loads(data)  # type: ignore[arg-type]
 
     async def write(
-        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, data: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         raise RuntimeError("Cannot call .write() for websocket")
 

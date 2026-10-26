@@ -14,7 +14,7 @@ from collections import defaultdict
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from http.cookies import BaseCookie, Morsel, SimpleCookie
 from types import MappingProxyType
-from typing import Union, cast
+from typing import cast
 
 from yarl import URL
 
@@ -32,7 +32,7 @@ from .typedefs import LooseCookies, PathLike, StrOrURL
 __all__ = ("CookieJar", "DummyCookieJar")
 
 
-CookieItem = Union[str, "Morsel[str]"]
+CookieItem = str | Morsel[str]
 _JarKey = tuple[str, str]  # (domain, path)
 _CookieKey = tuple[str, str, str]  # (domain, path, name)
 # A built morsel, its encoded name=value length and the cookie's key.

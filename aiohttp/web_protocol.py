@@ -9,7 +9,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
 
 import yarl
 from multidict import CIMultiDict
@@ -66,10 +66,7 @@ _RequestFactory = Callable[
 ]
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
-_AnyAbstractAccessLogger = Union[
-    type[AbstractAsyncAccessLogger],
-    type[AbstractAccessLogger],
-]
+_AnyAbstractAccessLogger = type[AbstractAsyncAccessLogger] | type[AbstractAccessLogger]
 
 ERROR = RawRequestMessage(
     "UNKNOWN",
@@ -307,7 +304,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         )
 
     @under_cached_property
-    def ssl_context(self) -> Optional["ssl.SSLContext"]:
+    def ssl_context(self) -> "ssl.SSLContext | None":
         """Return SSLContext if available."""
         return (
             None

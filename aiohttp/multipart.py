@@ -9,7 +9,7 @@ import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Self, Union, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict
@@ -259,7 +259,7 @@ class MultipartResponseWrapper:
 
     async def __anext__(
         self,
-    ) -> Union["MultipartReader", "BodyPartReader"]:
+    ) -> "MultipartReader | BodyPartReader":
         part = await self.next()
         if part is None:
             raise StopAsyncIteration
@@ -271,7 +271,7 @@ class MultipartResponseWrapper:
 
     async def next(
         self,
-    ) -> Union["MultipartReader", "BodyPartReader"] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         """Emits next multipart reader object."""
         item = await self.stream.next()
         if self.stream.at_eof():
@@ -750,7 +750,7 @@ class MultipartReader:
 
     async def __anext__(
         self,
-    ) -> Union["MultipartReader", BodyPartReader] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         part = await self.next()
         if part is None:
             raise StopAsyncIteration
@@ -776,7 +776,7 @@ class MultipartReader:
 
     async def next(
         self,
-    ) -> Union["MultipartReader", BodyPartReader] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         """Emits the next multipart body part."""
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
@@ -820,7 +820,7 @@ class MultipartReader:
 
     async def fetch_next_part(
         self,
-    ) -> Union["MultipartReader", BodyPartReader]:
+    ) -> "MultipartReader | BodyPartReader":
         """Returns the next body part reader."""
         headers = await self._read_headers()
         return self._get_part_reader(headers)
@@ -828,7 +828,7 @@ class MultipartReader:
     def _get_part_reader(
         self,
         headers: HeadersDictProxy,
-    ) -> Union["MultipartReader", BodyPartReader]:
+    ) -> "MultipartReader | BodyPartReader":
         """Dispatches the response by the `Content-Type` header.
 
         Returns a suitable reader instance.
