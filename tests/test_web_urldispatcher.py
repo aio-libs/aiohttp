@@ -1000,10 +1000,14 @@ async def test_url_with_many_slashes(aiohttp_client: AiohttpClient) -> None:
 
     app.router.add_routes([web.view("/a", MyView)])
 
-    client = await aiohttp_client(app)
+    # Send "///a" as written: URL.join() would turn it into "/a" or, as the
+    # WHATWG URL Standard does, into a URL with the host "a".
+    client = await aiohttp_client(app, server_kwargs={"skip_url_asserts": True})
 
     r = await client.get("///a")
-    assert r.status == 200
+    assert r.url.raw_path == "///a"
+    # The router does not merge slashes, see normalize_path_middleware().
+    assert r.status == 404
     await r.release()
 
 
