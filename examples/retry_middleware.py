@@ -227,7 +227,7 @@ async def run_tests() -> None:
                 print(f"Status: {resp.status}")
                 data = await resp.json()
                 print(f"Response received after delay: {data}\n")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             print("Request timed out\n")
 
 

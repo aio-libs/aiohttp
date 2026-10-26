@@ -5,10 +5,6 @@ import sys
 from setuptools import Extension, setup
 from setuptools.command.build_ext import build_ext
 
-if sys.version_info < (3, 10):
-    raise RuntimeError("aiohttp 3.x requires Python 3.10+")
-
-
 USE_SYSTEM_DEPS = bool(
     os.environ.get("AIOHTTP_USE_SYSTEM_DEPS", os.environ.get("USE_SYSTEM_DEPS"))
 )

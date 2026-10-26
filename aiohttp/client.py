@@ -26,6 +26,7 @@ from typing import (
     Literal,
     TypedDict,
     TypeVar,
+    Unpack,
     overload,
 )
 
@@ -168,9 +169,6 @@ if TYPE_CHECKING:
     from ssl import SSLContext
 else:
     SSLContext = Any
-
-if sys.version_info >= (3, 11) and TYPE_CHECKING:
-    from typing import Unpack
 
 
 # URL parsers strip leading and trailing C0 control characters and spaces and
@@ -540,7 +538,7 @@ class ClientSession:
                 context["source_traceback"] = self._source_traceback
             self._loop.call_exception_handler(context)
 
-    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def request(
             self,
@@ -868,7 +866,7 @@ class ClientSession:
                             conn = await self._connector.connect(
                                 req, traces=traces, timeout=real_timeout
                             )
-                        except asyncio.TimeoutError as exc:
+                        except TimeoutError as exc:
                             raise ConnectionTimeoutError(
                                 f"Connection timeout to host {req.url}"
                             ) from exc
@@ -1106,7 +1104,7 @@ class ClientSession:
                 )
             raise
 
-    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @overload
         def ws_connect(
@@ -1191,7 +1189,7 @@ class ClientSession:
             )
         )
 
-    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         @overload
         async def _ws_connect(
@@ -1495,7 +1493,7 @@ class ClientSession:
         except LookupError:
             return None
 
-    if sys.version_info >= (3, 11) and TYPE_CHECKING:
+    if TYPE_CHECKING:
 
         def get(
             self,
@@ -1820,7 +1818,7 @@ class _SessionRequestContextManager:
         await self._session.close()
 
 
-if sys.version_info >= (3, 11) and TYPE_CHECKING:
+if TYPE_CHECKING:
 
     def request(
         method: str,

@@ -148,7 +148,7 @@ def cookies_to_receive():
 
 def test_date_parsing() -> None:
     parse_func = CookieJar._parse_date
-    utc = datetime.timezone.utc
+    utc = datetime.UTC
 
     assert parse_func("") is None
 
@@ -763,13 +763,9 @@ class TestCookieJarSafe(TestCookieJarBase):
         self.assertEqual(cookies_received["wrong-path-cookie"]["path"], "/")
 
     def test_expires(self) -> None:
-        ts_before = datetime.datetime(
-            1975, 1, 1, tzinfo=datetime.timezone.utc
-        ).timestamp()
+        ts_before = datetime.datetime(1975, 1, 1, tzinfo=datetime.UTC).timestamp()
 
-        ts_after = datetime.datetime(
-            2030, 1, 1, tzinfo=datetime.timezone.utc
-        ).timestamp()
+        ts_after = datetime.datetime(2030, 1, 1, tzinfo=datetime.UTC).timestamp()
 
         cookies_sent = self.timed_request(
             "http://expirestest.com/", ts_before, ts_before
@@ -1151,9 +1147,7 @@ async def test_cookie_jar_heap_cleanup() -> None:
     with freeze_time() as freezer:
         freezer.move_to("1990-01-01 09:00:00+00:00")
 
-        start_time = datetime.datetime(
-            1990, 1, 1, 10, 0, 0, tzinfo=datetime.timezone.utc
-        )
+        start_time = datetime.datetime(1990, 1, 1, 10, 0, 0, tzinfo=datetime.UTC)
         for i in range(min_cookies_to_cleanup):
             cookie = SimpleCookie()
             cookie["foo"] = "bar"
@@ -2248,7 +2242,7 @@ async def test_cookie_jar_load_session_replacement_drops_old_expiry(
     tmp_path: Path,
 ) -> None:
     with freeze_time("2030-01-01") as freezer:
-        deadline = datetime.datetime.now(datetime.timezone.utc).timestamp() + 60
+        deadline = datetime.datetime.now(datetime.UTC).timestamp() + 60
         file_path = _write_saved(
             tmp_path,
             {

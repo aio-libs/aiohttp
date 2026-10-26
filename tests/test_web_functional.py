@@ -205,7 +205,6 @@ async def test_response_before_complete(aiohttp_client: Any) -> None:
     await resp.release()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_shutdown(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         t = asyncio.create_task(request.protocol.shutdown())

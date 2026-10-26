@@ -25,7 +25,6 @@ classifiers = [
   "Operating System :: Microsoft :: Windows",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
@@ -33,11 +32,10 @@ classifiers = [
   "Programming Language :: Python :: 3.15",
   "Topic :: Internet :: WWW/HTTP",
 ]
-requires-python = ">= 3.10"
+requires-python = ">= 3.11"
 dependencies = [
   "aiohappyeyeballs >= 2.5.0",
   "aiosignal >= 1.4.0",
-  "async-timeout >= 4.0, < 6.0 ; python_version < '3.11'",
   "attrs >= 17.3.0",
   "frozenlist >= 1.1.1",
   "multidict >= 4.5, < 8.0",

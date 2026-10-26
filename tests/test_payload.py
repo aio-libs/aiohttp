@@ -6,7 +6,7 @@ import unittest.mock
 from collections.abc import AsyncIterator
 from io import StringIO
 from pathlib import Path
-from typing import TextIO, Union
+from typing import TextIO
 
 import pytest
 from multidict import CIMultiDict
@@ -23,7 +23,7 @@ class BufferWriter(AbstractStreamWriter):
         self.buffer = bytearray()
 
     async def write(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         self.buffer.extend(bytes(chunk))
 
@@ -190,7 +190,7 @@ class MockStreamWriter(AbstractStreamWriter):
         self.written: list[bytes] = []
 
     async def write(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         """Store the chunk in the written list."""
         self.written.append(bytes(chunk))
@@ -984,7 +984,7 @@ async def test_async_iterable_payload_consumed_on_interrupted_write() -> None:
     class FailingWriter(MockStreamWriter):
         async def write(
             self,
-            chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
+            chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]",
         ) -> None:
             if self.written:
                 raise ConnectionResetError("connection lost")
