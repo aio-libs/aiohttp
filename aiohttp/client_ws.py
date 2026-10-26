@@ -5,7 +5,7 @@ import sys
 from asyncio.base_events import BaseEventLoop
 from collections.abc import Callable
 from types import TracebackType
-from typing import Any, Generic, Literal, Optional, cast, overload
+from typing import Any, Generic, Literal, Optional, Self, cast, overload
 
 import attr
 
@@ -37,13 +37,6 @@ if sys.version_info >= (3, 13):
     from typing import TypeVar
 else:
     from typing_extensions import TypeVar
-
-if sys.version_info >= (3, 11):
-    import asyncio as async_timeout
-    from typing import Self
-else:
-    import async_timeout
-    from typing_extensions import Self
 
 # TypeVar for whether text messages are decoded to str (True) or kept as bytes (False)
 # Covariant because it only affects return types, not input types
@@ -362,7 +355,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
 
             while True:
                 try:
-                    async with async_timeout.timeout(self._timeout.ws_close):
+                    async with asyncio.timeout(self._timeout.ws_close):
                         msg = await self._reader.read()
                 except asyncio.CancelledError:
                     self._close_code = WSCloseCode.ABNORMAL_CLOSURE
@@ -421,7 +414,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                         # Timeout() object can take almost 50% of the
                         # run time in this loop so we avoid it if
                         # there is no read timeout.
-                        async with async_timeout.timeout(receive_timeout):
+                        async with asyncio.timeout(receive_timeout):
                             msg = await self._reader.read()
                     else:
                         msg = await self._reader.read()
@@ -429,7 +422,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
                     self._waiting = False
                     if self._close_wait:
                         set_result(self._close_wait, None)
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._close_code = WSCloseCode.ABNORMAL_CLOSURE
                 raise
             except EofStream:

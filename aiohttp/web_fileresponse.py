@@ -3,6 +3,7 @@ import io
 import os
 import pathlib
 import sys
+from collections.abc import Awaitable, Callable
 from contextlib import suppress
 from enum import Enum, auto
 from mimetypes import MimeTypes
@@ -12,10 +13,7 @@ from typing import (  # noqa
     IO,
     TYPE_CHECKING,
     Any,
-    Awaitable,
-    Callable,
     Final,
-    Iterator,
     List,
     Optional,
     Set,
