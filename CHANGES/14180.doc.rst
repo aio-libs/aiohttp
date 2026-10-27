@@ -1,0 +1,3 @@
+Added a rate-limiting recipe to the :ref:`aiohttp-client-middleware-cookbook`,
+with a separate limit for each host or for each resolved IP address
+-- by :user:`loic-bellinger`.
