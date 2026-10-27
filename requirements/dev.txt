@@ -6,21 +6,21 @@
 #
 aiodns==4.0.4 ; sys_platform != "android" and sys_platform != "ios"
     # via
-    #   -r lint.in
-    #   -r runtime-deps.in
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 aiofastnet==1.2.0 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
     # via
-    #   -r lint.in
-    #   -r runtime-deps.in
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 aiohappyeyeballs==2.7.1
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
 aiohttp-theme==0.1.7
-    # via -r doc.in
+    # via -r requirements/doc.in
 aiosignal==1.4.0
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
 alabaster==1.0.0
     # via sphinx
@@ -29,21 +29,21 @@ annotated-types==0.8.0
 ast-serialize==0.13.1
     # via mypy
 atheris==3.0.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
 babel==2.18.0
     # via sphinx
 backports-zstd==1.3.0 ; platform_python_implementation == "CPython" and python_version < "3.14" and sys_platform != "android" and sys_platform != "ios"
     # via
-    #   -r lint.in
-    #   -r runtime-deps.in
+    #   -r requirements/lint.in
+    #   -r requirements/runtime-deps.in
 blockbuster==1.5.29
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 brotli==1.2.1 ; platform_python_implementation == "CPython" and sys_platform != "android" and sys_platform != "ios"
-    # via -r runtime-deps.in
+    # via -r requirements/runtime-deps.in
 build==1.6.1
     # via pip-tools
 certifi==2026.10.19
@@ -62,7 +62,7 @@ click==8.5.0
     #   towncrier
 coverage==7.16.2
     # via
-    #   -r test-common.in
+    #   -r requirements/test-common.in
     #   pytest-cov
 cryptography==50.0.2
     # via trustme
@@ -82,15 +82,15 @@ forbiddenfruit==0.1.4
     # via blockbuster
 freezegun==1.5.5
     # via
-    #   -r lint.in
-    #   -r test-common-base.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common-base.in
 frozenlist==1.8.0
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
 gunicorn==26.2.0
-    # via -r base.in
+    # via -r requirements/base.in
 identify==2.6.20
     # via pre-commit
 idna==3.20
@@ -104,8 +104,8 @@ iniconfig==2.3.1
     # via pytest
 isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 jinja2==3.1.6
     # via
     #   myst-parser
@@ -127,17 +127,17 @@ mdurl==0.1.2
     # via markdown-it-py
 multidict==7.1.0
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
     #   yarl
 mypy==2.4.0 ; implementation_name == "cpython"
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
 myst-parser==4.0.1
-    # via -r doc.in
+    # via -r requirements/doc.in
 nodeenv==1.11.0
     # via pre-commit
 packaging==26.3
@@ -152,9 +152,9 @@ pathspec==1.1.1
 pip==26.2.2
     # via pip-tools
 pip-tools==7.6.2
-    # via -r dev.in
+    # via -r requirements/dev.in
 pkgconfig==1.6.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 platformdirs==4.12.4
     # via virtualenv
 pluggy==1.7.0
@@ -162,19 +162,19 @@ pluggy==1.7.0
     #   pytest
     #   pytest-cov
 pre-commit==4.6.2
-    # via -r lint.in
+    # via -r requirements/lint.in
 propcache==0.5.4
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
     #   yarl
 proxy-py==2.4.10
     # via
-    #   -r lint.in
-    #   -r test-common-base.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common-base.in
 pycares==5.1.0
     # via aiodns
-pycparser==3.11
+pycparser==3.12
     # via cffi
 pydantic==2.14.1
     # via python-on-whales
@@ -191,8 +191,8 @@ pyproject-hooks==1.3.3
     #   pip-tools
 pytest==9.1.1
     # via
-    #   -r lint.in
-    #   -r test-common-base.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common-base.in
     #   pytest-aiohttp
     #   pytest-asyncio
     #   pytest-codspeed
@@ -202,32 +202,32 @@ pytest==9.1.1
     #   pytest-xdist
 pytest-aiohttp==1.1.1
     # via
-    #   -r lint.in
-    #   -r test-common-base.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common-base.in
 pytest-asyncio==1.4.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 pytest-cov==7.1.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-mock==3.17.0
     # via
-    #   -r lint.in
-    #   -r test-common-base.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common-base.in
 pytest-timeout==2.4.0
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 pytest-xdist==3.8.0
-    # via -r test-common.in
+    # via -r requirements/test-common.in
 python-dateutil==3.0.0
     # via freezegun
 python-discovery==1.6.4
     # via virtualenv
 python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 pyyaml==6.0.3
     # via
     #   myst-parser
@@ -240,22 +240,22 @@ rich==15.0.0
 setuptools==84.2.1
     # via pip-tools
 setuptools-git==1.2
-    # via -r test-common-base.in
+    # via -r requirements/test-common-base.in
 six==1.17.0
     # via python-dateutil
 slotscheck==0.21.0
-    # via -r lint.in
+    # via -r requirements/lint.in
 snowballstemmer==3.1.1
     # via sphinx
 sphinx==8.1.3
     # via
-    #   -r doc.in
+    #   -r requirements/doc.in
     #   myst-parser
     #   sphinx-issues
     #   sphinxcontrib-mermaid
     #   sphinxcontrib-towncrier
 sphinx-issues==6.0.0
-    # via -r doc.in
+    # via -r requirements/doc.in
 sphinxcontrib-applehelp==2.0.0
     # via sphinx
 sphinxcontrib-devhelp==2.0.0
@@ -265,24 +265,24 @@ sphinxcontrib-htmlhelp==2.1.0
 sphinxcontrib-jsmath==2.0.0
     # via sphinx
 sphinxcontrib-mermaid==2.1.1
-    # via -r doc.in
+    # via -r requirements/doc.in
 sphinxcontrib-qthelp==2.0.0
     # via sphinx
 sphinxcontrib-serializinghtml==2.0.0
     # via sphinx
 sphinxcontrib-towncrier==0.5.0a0
-    # via -r doc.in
+    # via -r requirements/doc.in
 towncrier==26.9.0
     # via
-    #   -r doc.in
+    #   -r requirements/doc.in
     #   sphinxcontrib-towncrier
 trustme==1.2.1 ; platform_machine != "i686" and implementation_name == "cpython"
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 typing-extensions==4.16.0 ; python_version < "3.13"
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
     #   mypy
@@ -299,22 +299,22 @@ urllib3==2.8.0
     # via requests
 uvloop==0.23.0 ; platform_system != "Windows" and implementation_name == "cpython"
     # via
-    #   -r base.in
-    #   -r lint.in
+    #   -r requirements/base.in
+    #   -r requirements/lint.in
 valkey==6.1.1
-    # via -r lint.in
+    # via -r requirements/lint.in
 virtualenv==21.14.13
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
 yarl==1.25.1
     # via
-    #   -r runtime-deps.in
+    #   -r requirements/runtime-deps.in
     #   aiohttp
 zlib-ng==1.0.0
     # via
-    #   -r lint.in
-    #   -r test-common.in
+    #   -r requirements/lint.in
+    #   -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:
 aiohttp==3.14.5
