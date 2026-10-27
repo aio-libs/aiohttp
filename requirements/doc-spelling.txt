@@ -30,7 +30,7 @@ jinja2==3.1.6
     #   sphinx
     #   sphinxcontrib-mermaid
     #   towncrier
-markdown-it-py==3.0.0
+markdown-it-py==4.2.0
     # via
     #   mdit-py-plugins
     #   myst-parser
@@ -40,7 +40,7 @@ mdit-py-plugins==0.6.1
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
-myst-parser==4.0.1
+myst-parser==5.1.0
     # via -r requirements/doc.in
 packaging==26.3
     # via sphinx
