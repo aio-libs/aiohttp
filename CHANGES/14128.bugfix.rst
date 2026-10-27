@@ -1,1 +1,1 @@
-The WebSocket server heartbeat is no longer rearmed during the close handshake: peer data arriving after ``_set_closed()`` cannot schedule a new heartbeat timer that survives the completed close and ``AppRunner.cleanup()``. -- by :user:`perfectmodelslab`.
+14125.bugfix.rst
