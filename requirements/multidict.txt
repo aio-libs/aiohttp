@@ -4,5 +4,5 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/multidict.txt --resolver=backtracking --strip-extras requirements/multidict.in
 #
-multidict==7.1.0
+multidict==7.2.0
     # via -r requirements/multidict.in
