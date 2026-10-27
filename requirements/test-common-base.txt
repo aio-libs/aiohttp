@@ -4,7 +4,7 @@
 #
 #    pip-compile --allow-unsafe --output-file=requirements/test-common-base.txt --strip-extras requirements/test-common-base.in
 #
-coverage==7.16.2
+coverage==7.17.0
     # via pytest-cov
 freezegun==1.5.5
     # via -r requirements/test-common-base.in
