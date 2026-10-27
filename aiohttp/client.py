@@ -247,6 +247,36 @@ _RetType_co = TypeVar(
 _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
+class _SessionOptions(TypedDict, total=False):
+    base_url: StrOrURL | None
+    connector: BaseConnector | None
+    cookies: LooseCookies | None
+    headers: LooseHeaders | None
+    proxy: StrOrURL | None
+    ssl: SSLContext | bool | Fingerprint
+    skip_auto_headers: Iterable[str] | None
+    json_serialize: JSONEncoder
+    json_serialize_bytes: JSONBytesEncoder | None
+    request_class: type[ClientRequest]
+    response_class: type[ClientResponse]
+    ws_response_class: type[ClientWebSocketResponse]
+    version: HttpVersion
+    connector_owner: bool
+    raise_for_status: bool | Callable[[ClientResponse], Awaitable[None]]
+    timeout: "_SENTINEL | ClientTimeout | None"
+    auto_decompress: bool
+    trust_env: bool
+    requote_redirect_url: bool
+    trace_configs: list[TraceConfig[object]] | None
+    read_bufsize: int
+    max_line_size: int
+    max_field_size: int
+    max_headers: int
+    fallback_charset_resolver: _CharsetResolver
+    middlewares: Sequence[ClientMiddlewareType]
+    ssl_shutdown_timeout: _SENTINEL | None | float
+
+
 # Module-level (not a closure) so it has a stable identity for the
 # ``_cached_build_client_middlewares`` cache key.
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:

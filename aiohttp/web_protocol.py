@@ -9,7 +9,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Generic, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, TypedDict, TypeVar, cast
 
 import yarl
 from multidict import CIMultiDict
@@ -67,6 +67,26 @@ _RequestFactory = Callable[
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
 _AnyAbstractAccessLogger = type[AbstractAsyncAccessLogger] | type[AbstractAccessLogger]
+
+
+class _HandlerKwargs(TypedDict, total=False):
+    keepalive_timeout: float
+    tcp_keepalive: bool
+    logger: Logger
+    access_log: Logger | None
+    access_log_format: str
+    max_line_size: int
+    max_headers: int
+    max_field_size: int
+    lingering_time: float
+    read_bufsize: int
+    auto_decompress: bool
+    timeout_ceil_threshold: float
+
+
+class _RequestHandlerKwargs(_HandlerKwargs, total=False):
+    access_log_class: _AnyAbstractAccessLogger
+
 
 ERROR = RawRequestMessage(
     "UNKNOWN",
