@@ -262,6 +262,20 @@ async def test_test_client_raw_server_props() -> None:
     assert client.port == 0
 
 
+async def test_raw_test_server_shutdown_timeout() -> None:
+    async def hello(request: web.BaseRequest) -> NoReturn:
+        assert False
+
+    server = RawTestServer(hello)
+    await server.start_server(shutdown_timeout=5, keepalive_timeout=1)
+    try:
+        assert server.runner is not None
+        assert server.runner._shutdown_timeout == 5
+        assert server.handler._kwargs == {"keepalive_timeout": 1}
+    finally:
+        await server.close()
+
+
 async def test_test_server_context_manager() -> None:
     app = _create_example_app()
     async with TestServer(app) as server:

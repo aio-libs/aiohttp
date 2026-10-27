@@ -20,6 +20,7 @@ from aiohttp.client import (
     _BaseRequestContextManager,
     _RequestContextManager,
     _RequestOptions,
+    _SessionOptions,
     _WSRequestContextManager,
 )
 
@@ -44,6 +45,8 @@ from .web import (
     UrlMappingMatchInfo,
 )
 from .web_protocol import _RequestHandler
+from .web_runner import _RunnerKwargs
+from .web_server import _ServerOptions
 
 if TYPE_CHECKING:
     from ssl import SSLContext
@@ -111,9 +114,10 @@ class BaseTestServer(ABC, Generic[_Request]):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner[_Request]:
+    async def _make_runner(
+        self, **kwargs: Unpack[_RunnerKwargs]
+    ) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
-        # TODO(PY311): Use Unpack to specify Server kwargs.
 
     def make_url(self, path: StrOrURL) -> URL:
         assert self._root is not None
@@ -186,8 +190,7 @@ class TestServer(BaseTestServer[Request]):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, **kwargs: Any) -> AppRunner:
-        # TODO(PY311): Use Unpack to specify Server kwargs.
+    async def _make_runner(self, **kwargs: Unpack[_RunnerKwargs]) -> AppRunner:
         return AppRunner(self.app, **kwargs)
 
 
@@ -204,10 +207,11 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         self._handler = handler
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, **kwargs: Any) -> ServerRunner:
-        # TODO(PY311): Use Unpack to specify Server kwargs.
+    async def _make_runner(
+        self, *, shutdown_timeout: float = 60.0, **kwargs: Unpack[_ServerOptions]
+    ) -> ServerRunner:
         srv = Server(self._handler, **kwargs)
-        return ServerRunner(srv, **kwargs)
+        return ServerRunner(srv, shutdown_timeout=shutdown_timeout)
 
 
 class TestClient(Generic[_Request, _ApplicationNone]):
@@ -226,7 +230,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         server: TestServer,
         *,
         cookie_jar: AbstractCookieJar | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None: ...
     @overload
     def __init__(
@@ -234,16 +238,15 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         server: BaseTestServer[_ServerRequest],
         *,
         cookie_jar: AbstractCookieJar | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None: ...
     def __init__(  # type: ignore[misc]
         self,
         server: BaseTestServer[_Request],
         *,
         cookie_jar: AbstractCookieJar | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None:
-        # TODO(PY311): Use Unpack to specify ClientSession kwargs.
         if not isinstance(server, BaseTestServer):
             raise TypeError(
                 "server must be TestServer instance, found type: %r" % type(server)
