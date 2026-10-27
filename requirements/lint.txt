@@ -118,7 +118,7 @@ tzdata==2026.5
     # via python-dateutil
 uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-valkey==6.1.1
+valkey==6.2.0
     # via -r requirements/lint.in
 virtualenv==21.14.13
     # via pre-commit
