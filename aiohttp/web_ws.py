@@ -439,8 +439,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         Can be called before or after prepare().
         """
-        if max_msg_size < 0:
-            raise ValueError("max_msg_size must be 0 or positive")
+        # The C reader stores the limit as an unsigned 32-bit int.
+        if not 0 <= max_msg_size < 2**32:
+            raise ValueError("max_msg_size must be between 0 and 2**32 - 1")
         if self._parser is not None:
             self._parser.set_max_msg_size(max_msg_size)
         self._max_msg_size = max_msg_size

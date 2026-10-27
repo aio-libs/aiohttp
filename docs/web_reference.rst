@@ -1167,7 +1167,10 @@ and :ref:`aiohttp-web-signals` handlers::
       received is checked against the new limit too. To disable the size
       limit use ``0``.
 
-      :param int max_msg_size: maximum size of a received message.
+      :param int max_msg_size: maximum size of a received message, from
+                               ``0`` up to ``2**32 - 1``.
+
+      :raises ValueError: if *max_msg_size* is out of range.
 
       .. versionadded:: 3.15
 
