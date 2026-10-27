@@ -34,6 +34,7 @@ from aiohttp.client import (
     _BaseRequestContextManager,
     _RequestContextManager,
     _RequestOptions,
+    _SessionOptions,
     _WSRequestContextManager,
 )
 
@@ -57,6 +58,8 @@ from .web import (
     UrlMappingMatchInfo,
 )
 from .web_protocol import _RequestHandler
+from .web_runner import _RunnerKwargs
+from .web_server import _ServerOptions
 
 if TYPE_CHECKING:
     from ssl import SSLContext
@@ -154,7 +157,9 @@ class BaseTestServer(ABC):
         self._root = URL(f"{self.scheme}://{absolute_host}:{self.port}")
 
     @abstractmethod  # pragma: no cover
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner:
+    async def _make_runner(
+        self, *, handle_signals: bool = False, **kwargs: Unpack[_RunnerKwargs]
+    ) -> BaseRunner:
         pass
 
     def make_url(self, path: StrOrURL) -> URL:
@@ -240,8 +245,10 @@ class TestServer(BaseTestServer):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, **kwargs: Any) -> BaseRunner:
-        return AppRunner(self.app, **kwargs)
+    async def _make_runner(
+        self, *, handle_signals: bool = False, **kwargs: Unpack[_RunnerKwargs]
+    ) -> BaseRunner:
+        return AppRunner(self.app, handle_signals=handle_signals, **kwargs)
 
 
 class RawTestServer(BaseTestServer):
@@ -257,9 +264,18 @@ class RawTestServer(BaseTestServer):
         self._handler = handler
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, debug: bool = True, **kwargs: Any) -> ServerRunner:
-        srv = Server(self._handler, loop=self._loop, debug=debug, **kwargs)
-        return ServerRunner(srv, debug=debug, **kwargs)
+    async def _make_runner(
+        self,
+        *,
+        handle_signals: bool = False,
+        shutdown_timeout: float = 60.0,
+        **kwargs: Unpack[_ServerOptions],
+    ) -> ServerRunner:
+        kwargs.setdefault("debug", True)
+        srv = Server(self._handler, loop=self._loop, **kwargs)
+        return ServerRunner(
+            srv, handle_signals=handle_signals, shutdown_timeout=shutdown_timeout
+        )
 
 
 class TestClient(Generic[_Request, _ApplicationNone]):
@@ -278,7 +294,8 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         server: TestServer,
         *,
         cookie_jar: AbstractCookieJar | None = None,
-        **kwargs: Any,
+        loop: asyncio.AbstractEventLoop | None = None,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None: ...
     @overload
     def __init__(
@@ -286,7 +303,8 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         server: BaseTestServer,
         *,
         cookie_jar: AbstractCookieJar | None = None,
-        **kwargs: Any,
+        loop: asyncio.AbstractEventLoop | None = None,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None: ...
     def __init__(
         self,
@@ -294,7 +312,7 @@ class TestClient(Generic[_Request, _ApplicationNone]):
         *,
         cookie_jar: AbstractCookieJar | None = None,
         loop: asyncio.AbstractEventLoop | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[_SessionOptions],
     ) -> None:
         if not isinstance(server, BaseTestServer):
             raise TypeError(

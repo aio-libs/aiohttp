@@ -1,15 +1,29 @@
 """Low level HTTP server."""
 
 import asyncio
-from typing import Any, Dict, List, Optional  # noqa
+from typing import Any, Dict, List, Optional, Unpack  # noqa
 
-from .abc import AbstractStreamWriter
+from .abc import AbstractAccessLogger, AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
-from .web_protocol import RequestHandler, _RequestFactory, _RequestHandler
+from .web_protocol import (
+    RequestHandler,
+    _HandlerKwargs,
+    _RequestFactory,
+    _RequestHandler,
+    _RequestHandlerKwargs,
+)
 from .web_request import BaseRequest
 
 __all__ = ("Server",)
+
+
+class _ServerOptions(_HandlerKwargs, total=False):
+    handler_cancellation: bool
+
+
+class _ServerKwargs(_ServerOptions, total=False):
+    access_log_class: type[AbstractAccessLogger]
 
 
 class Server:
@@ -20,7 +34,7 @@ class Server:
         request_factory: _RequestFactory | None = None,
         handler_cancellation: bool = False,
         loop: asyncio.AbstractEventLoop | None = None,
-        **kwargs: Any,
+        **kwargs: Unpack[_RequestHandlerKwargs],
     ) -> None:
         self._loop = loop or asyncio.get_running_loop()
         self._connections: dict[RequestHandler, asyncio.Transport] = {}
@@ -76,7 +90,7 @@ class Server:
             return RequestHandler(self, loop=self._loop, **self._kwargs)
         except TypeError:
             # Failsafe creation: remove all custom handler_args
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 k: v
                 for k, v in self._kwargs.items()
                 if k in ["debug", "access_log_class"]
