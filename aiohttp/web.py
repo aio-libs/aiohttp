@@ -8,7 +8,7 @@ from argparse import ArgumentParser
 from collections.abc import Awaitable, Callable, Iterable, Iterable as TypingIterable
 from contextlib import suppress
 from importlib import import_module
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any, Unpack, cast
 
 from .abc import AbstractAccessLogger
 from .helpers import AppKey, RequestKey, ResponseKey
@@ -125,6 +125,7 @@ from .web_runner import (
     SockSite as SockSite,
     TCPSite as TCPSite,
     UnixSite as UnixSite,
+    _AppRunnerKwargs,
 )
 from .web_server import Server as Server
 from .web_urldispatcher import (
@@ -306,7 +307,7 @@ async def _run_app(
     backlog: int = 128,
     reuse_address: bool | None = None,
     reuse_port: bool | None = None,
-    **kwargs: Any,  # TODO(PY311): Use Unpack
+    **kwargs: Unpack[_AppRunnerKwargs],
 ) -> None:
     # An internal function to actually do all dirty job for application running
     if asyncio.iscoroutine(app):

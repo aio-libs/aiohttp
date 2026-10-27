@@ -3,7 +3,7 @@ import signal
 import socket
 import warnings
 from abc import ABC, abstractmethod
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Unpack
 
 from yarl import URL
 
@@ -11,7 +11,7 @@ from .abc import AbstractAccessLogger
 from .typedefs import PathLike
 from .web_app import Application
 from .web_log import AccessLogger
-from .web_server import Server
+from .web_server import Server, _ServerKwargs, _ServerOptions
 
 if TYPE_CHECKING:
     from ssl import SSLContext
@@ -260,6 +260,19 @@ class SockSite(BaseSite):
         )
 
 
+class _RunnerKwargs(_ServerOptions, total=False):
+    shutdown_timeout: float
+
+
+class _AppRunnerKwargs(_RunnerKwargs, total=False):
+    handle_signals: bool
+    access_log_class: type[AbstractAccessLogger]
+
+
+class _ServerRunnerKwargs(_ServerKwargs, total=False):
+    shutdown_timeout: float
+
+
 class BaseRunner(ABC):
     __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
@@ -268,7 +281,7 @@ class BaseRunner(ABC):
         *,
         handle_signals: bool = False,
         shutdown_timeout: float = 60.0,
-        **kwargs: Any,
+        **kwargs: Unpack[_ServerKwargs],
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
@@ -369,7 +382,11 @@ class ServerRunner(BaseRunner):
     __slots__ = ("_web_server",)
 
     def __init__(
-        self, web_server: Server, *, handle_signals: bool = False, **kwargs: Any
+        self,
+        web_server: Server,
+        *,
+        handle_signals: bool = False,
+        **kwargs: Unpack[_ServerRunnerKwargs],
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
@@ -395,7 +412,7 @@ class AppRunner(BaseRunner):
         *,
         handle_signals: bool = False,
         access_log_class: type[AbstractAccessLogger] = AccessLogger,
-        **kwargs: Any,
+        **kwargs: Unpack[_RunnerKwargs],
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         if not isinstance(app, Application):
