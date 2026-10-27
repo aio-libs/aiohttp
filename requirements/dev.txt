@@ -220,6 +220,8 @@ requests==2.34.2
     # via sphinx
 rich==15.0.0
     # via pytest-codspeed
+roman-numerals==4.1.0
+    # via sphinx
 setuptools==84.2.1
     # via pip-tools
 setuptools-git==1.2
@@ -230,7 +232,7 @@ slotscheck==0.21.0
     # via -r requirements/lint.in
 snowballstemmer==3.1.1
     # via sphinx
-sphinx==8.1.3
+sphinx==9.0.4
     # via
     #   -r requirements/doc.in
     #   myst-parser
