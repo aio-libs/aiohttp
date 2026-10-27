@@ -285,6 +285,23 @@ async def test_test_client_raw_server_props(loop) -> None:
     assert client.port is None
 
 
+async def test_raw_test_server_runner_kwargs(loop) -> None:
+    async def hello(request):
+        return web.Response()  # pragma: no cover
+
+    server = _RawTestServer(hello, loop=loop)
+    await server.start_server(
+        loop=loop, handle_signals=True, shutdown_timeout=5, keepalive_timeout=1
+    )
+    try:
+        assert server.runner is not None
+        assert server.runner._handle_signals is True
+        assert server.runner._shutdown_timeout == 5
+        assert server.handler._kwargs == {"debug": True, "keepalive_timeout": 1}
+    finally:
+        await server.close()
+
+
 async def test_test_server_context_manager(loop) -> None:
     app = _create_example_app()
     async with TestServer(app, loop=loop) as server:

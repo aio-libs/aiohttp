@@ -10,7 +10,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, TypedDict, cast
 
 import attr
 import yarl
@@ -61,6 +61,27 @@ _RequestFactory = Callable[
 ]
 
 _RequestHandler = Callable[[BaseRequest], Awaitable[StreamResponse]]
+
+
+class _HandlerKwargs(TypedDict, total=False):
+    keepalive_timeout: float
+    tcp_keepalive: bool
+    logger: Logger
+    access_log: Logger | None
+    access_log_format: str
+    debug: bool
+    max_line_size: int
+    max_headers: int
+    max_field_size: int
+    lingering_time: float
+    read_bufsize: int
+    auto_decompress: bool
+    timeout_ceil_threshold: float
+
+
+class _RequestHandlerKwargs(_HandlerKwargs, total=False):
+    access_log_class: type[AbstractAccessLogger]
+
 
 ERROR = RawRequestMessage(
     "UNKNOWN",
@@ -183,7 +204,7 @@ class RequestHandler(BaseProtocol):
         tcp_keepalive: bool = True,
         logger: Logger = server_logger,
         access_log_class: type[AbstractAccessLogger] = AccessLogger,
-        access_log: Logger = access_logger,
+        access_log: Logger | None = access_logger,
         access_log_format: str = AccessLogger.LOG_FORMAT,
         debug: bool = False,
         max_line_size: int = 8190,
