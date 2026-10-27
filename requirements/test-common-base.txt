@@ -10,7 +10,7 @@ aiosignal==1.4.0
     # via aiohttp
 attrs==26.1.0
     # via aiohttp
-coverage==7.16.2
+coverage==7.17.0
     # via pytest-cov
 freezegun==1.5.5
     # via -r requirements/test-common-base.in
