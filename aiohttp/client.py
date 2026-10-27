@@ -248,6 +248,7 @@ _CharsetResolver = Callable[[ClientResponse, bytes], str]
 
 
 class _SessionOptions(TypedDict, total=False):
+    base_url: StrOrURL | None
     connector: BaseConnector | None
     cookies: LooseCookies | None
     headers: LooseHeaders | None

@@ -115,7 +115,7 @@ class BaseTestServer(ABC, Generic[_Request]):
 
     @abstractmethod
     async def _make_runner(
-        self, **kwargs: Unpack[_RunnerKwargs]
+        self, *, handle_signals: bool = False, **kwargs: Unpack[_RunnerKwargs]
     ) -> BaseRunner[_Request]:
         """Return a new runner for the server."""
 
@@ -190,8 +190,10 @@ class TestServer(BaseTestServer[Request]):
         self.app = app
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
-    async def _make_runner(self, **kwargs: Unpack[_RunnerKwargs]) -> AppRunner:
-        return AppRunner(self.app, **kwargs)
+    async def _make_runner(
+        self, *, handle_signals: bool = False, **kwargs: Unpack[_RunnerKwargs]
+    ) -> AppRunner:
+        return AppRunner(self.app, handle_signals=handle_signals, **kwargs)
 
 
 class RawTestServer(BaseTestServer[BaseRequest]):
@@ -208,10 +210,16 @@ class RawTestServer(BaseTestServer[BaseRequest]):
         super().__init__(scheme=scheme, host=host, port=port, **kwargs)
 
     async def _make_runner(
-        self, *, shutdown_timeout: float = 60.0, **kwargs: Unpack[_ServerOptions]
+        self,
+        *,
+        handle_signals: bool = False,
+        shutdown_timeout: float = 60.0,
+        **kwargs: Unpack[_ServerOptions],
     ) -> ServerRunner:
         srv = Server(self._handler, **kwargs)
-        return ServerRunner(srv, shutdown_timeout=shutdown_timeout)
+        return ServerRunner(
+            srv, handle_signals=handle_signals, shutdown_timeout=shutdown_timeout
+        )
 
 
 class TestClient(Generic[_Request, _ApplicationNone]):

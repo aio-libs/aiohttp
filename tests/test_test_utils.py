@@ -262,14 +262,17 @@ async def test_test_client_raw_server_props() -> None:
     assert client.port == 0
 
 
-async def test_raw_test_server_shutdown_timeout() -> None:
+async def test_raw_test_server_runner_kwargs() -> None:
     async def hello(request: web.BaseRequest) -> NoReturn:
         assert False
 
     server = RawTestServer(hello)
-    await server.start_server(shutdown_timeout=5, keepalive_timeout=1)
+    await server.start_server(
+        handle_signals=True, shutdown_timeout=5, keepalive_timeout=1
+    )
     try:
         assert server.runner is not None
+        assert server.runner._handle_signals is True
         assert server.runner._shutdown_timeout == 5
         assert server.handler._kwargs == {"keepalive_timeout": 1}
     finally:
