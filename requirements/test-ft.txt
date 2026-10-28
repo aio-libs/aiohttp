@@ -65,7 +65,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.2.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
