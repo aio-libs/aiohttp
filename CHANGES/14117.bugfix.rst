@@ -1,0 +1,4 @@
+Fixed :func:`aiohttp.encode_basic_auth` returning non-ASCII output
+when a non-UTF-8 encoding (e.g. ``utf-16``) is used for the credentials --
+the Base64-encoded value is now always decoded as ASCII, keeping the
+``Authorization`` header valid -- by :user:`pei711`.
