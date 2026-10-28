@@ -1077,6 +1077,7 @@ class CookieMixin:
         secure: bool | None = None,
         httponly: bool | None = None,
         samesite: str | None = None,
+        partitioned: bool | None = None,
     ) -> None:
         """Delete cookie.
 
@@ -1095,6 +1096,7 @@ class CookieMixin:
             secure=secure,
             httponly=httponly,
             samesite=samesite,
+            partitioned=partitioned,
         )
 
 
