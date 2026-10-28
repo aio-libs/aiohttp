@@ -1,0 +1,3 @@
+Added the ``headers`` property to :class:`~aiohttp.ClientWebSocketResponse`,
+exposing the HTTP headers from the server's handshake response
+-- by :user:`eliahu-frusin`.
