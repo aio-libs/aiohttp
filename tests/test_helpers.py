@@ -95,6 +95,27 @@ from aiohttp.helpers import (
                 MultiDictProxy(MultiDict({"charset": "utf-8"})),
             ),
         ),
+        (
+            'text/plain; a="b;c"; d=e',
+            helpers.MimeType(
+                "text",
+                "plain",
+                "",
+                MultiDictProxy(MultiDict({"a": "b;c", "d": "e"})),
+            ),
+        ),
+        (
+            'text/plain; a="b=c"',
+            helpers.MimeType(
+                "text", "plain", "", MultiDictProxy(MultiDict({"a": "b=c"}))
+            ),
+        ),
+        (
+            'text/plain; name="a\\"b\\\\c"',
+            helpers.MimeType(
+                "text", "plain", "", MultiDictProxy(MultiDict({"name": 'a"b\\c'}))
+            ),
+        ),
     ],
 )
 def test_parse_mimetype(mimetype: str, expected: helpers.MimeType) -> None:
