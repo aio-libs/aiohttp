@@ -62,6 +62,9 @@ _BASE64_CHARS = frozenset(
 )
 _NON_BASE64_BYTES = bytes(b for b in range(256) if b not in _BASE64_CHARS)
 
+# https://www.rfc-editor.org/info/rfc9110/#section-5.6.4
+_QUOTED_STRING_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
+
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
@@ -167,12 +170,13 @@ def parse_content_disposition(
             elif is_token(value):
                 failed = False
             elif parts:
-                # maybe just ; in filename, in any case this is just
-                # one case fix, for proper fix we need to redesign parser
-                _value = f"{value};{parts[0]}"
-                if is_quoted(_value):
-                    parts.pop(0)
-                    value = unescape(_value[1:-1].lstrip("\\/"))
+                # The quoted value contains ";", so find its closing quote in
+                # the rest of the header.
+                rest = ";".join((value, *parts))
+                match = _QUOTED_STRING_RE.match(rest)
+                if match and not rest[match.end() :].split(";", 1)[0].strip():
+                    del parts[: match.group().count(";")]
+                    value = unescape(match.group()[1:-1].lstrip("\\/"))
                     failed = False
 
             if failed:
