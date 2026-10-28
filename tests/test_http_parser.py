@@ -1248,8 +1248,6 @@ def test_compression_unknown(parser: HttpRequestParser) -> None:
     assert msg.compression is None
 
 
-
-
 def test_compression_multiple_codings(parser: HttpRequestParser) -> None:
     # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: deflate, gzip\r\n\r\n"
