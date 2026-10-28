@@ -123,12 +123,11 @@ def test_simple_web_file_response(
     app.router.add_route("GET", "/", handler)
 
     async def run_file_response_benchmark() -> None:
-        async with await aiohttp_client_sync(
-            app, server_kwargs=conn_type.s_kwargs
-        ) as client:
-            for request_number in range(benchmark_file.response_count):
-                async with client.get("/", **conn_type.c_kwargs):
-                    pass
+        client = await aiohttp_client_sync(app, server_kwargs=conn_type.s_kwargs)
+        for request_number in range(benchmark_file.response_count):
+            async with client.get("/", **conn_type.c_kwargs):
+                pass
+        await client.close()
 
     @benchmark
     def _run() -> None:
