@@ -410,16 +410,7 @@ def test_etag_reset() -> None:
 
 
 class _NoOffsetTZ(datetime.tzinfo):
-    """tzinfo whose utcoffset() is None, so datetimes using it are still naive."""
-
-    def utcoffset(self, dt: datetime.datetime | None) -> None:
-        return None
-
-    def dst(self, dt: datetime.datetime | None) -> None:
-        return None
-
-    def tzname(self, dt: datetime.datetime | None) -> None:
-        return None
+    utcoffset = dst = tzname = lambda self, dt=None: None  # type: ignore[misc]
 
 
 @pytest.mark.parametrize(
