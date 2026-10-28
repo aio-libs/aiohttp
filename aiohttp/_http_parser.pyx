@@ -600,7 +600,9 @@ cdef class HttpParser:
             elif parser.http_minor == 1:
                 return HttpVersion11
 
-        return HttpVersion(parser.http_major, parser.http_minor)
+        raise BadStatusLine(
+            error=f"Unsupported HTTP version: {parser.http_major}.{parser.http_minor}"
+        )
 
     ### Public API ###
 
