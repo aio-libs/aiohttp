@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, overload
 
 from aiosignal import Signal
-from multidict import CIMultiDict
+from multidict import CIMultiDict, CIMultiDictProxy
 from yarl import URL
 
 from .client_reqrep import ClientResponse
@@ -30,6 +30,7 @@ __all__ = (
     "TraceRequestChunkSentParams",
     "TraceResponseChunkReceivedParams",
     "TraceRequestHeadersSentParams",
+    "TraceResponseHeadersReceivedParams",
 )
 
 _T = TypeVar("_T", covariant=True)
@@ -97,6 +98,9 @@ class TraceConfig(Generic[_T]):
         self._on_request_headers_sent: _TracingSignal[
             _T, TraceRequestHeadersSentParams
         ] = Signal(self)
+        self._on_response_headers_received: _TracingSignal[
+            _T, TraceResponseHeadersReceivedParams
+        ] = Signal(self)
 
         self._trace_config_ctx_factory: _Factory[_T] = trace_config_ctx_factory
 
@@ -121,6 +125,7 @@ class TraceConfig(Generic[_T]):
         self._on_dns_cache_hit.freeze()
         self._on_dns_cache_miss.freeze()
         self._on_request_headers_sent.freeze()
+        self._on_response_headers_received.freeze()
 
     @property
     def on_request_start(self) -> "_TracingSignal[_T, TraceRequestStartParams]":
@@ -209,6 +214,12 @@ class TraceConfig(Generic[_T]):
         self,
     ) -> "_TracingSignal[_T, TraceRequestHeadersSentParams]":
         return self._on_request_headers_sent
+
+    @property
+    def on_response_headers_received(
+        self,
+    ) -> "_TracingSignal[_T, TraceResponseHeadersReceivedParams]":
+        return self._on_response_headers_received
 
 
 @frozen_dataclass_decorator
@@ -328,6 +339,15 @@ class TraceRequestHeadersSentParams:
     method: str
     url: URL
     headers: "CIMultiDict[str]"
+
+
+@frozen_dataclass_decorator
+class TraceResponseHeadersReceivedParams:
+    """Parameters sent by the `on_response_headers_received` signal"""
+
+    method: str
+    url: URL
+    headers: "CIMultiDictProxy[str]"
 
 
 class Trace:
@@ -465,4 +485,13 @@ class Trace:
             self._session,
             self._trace_config_ctx,
             TraceRequestHeadersSentParams(method, url, headers),
+        )
+
+    async def send_response_headers_received(
+        self, method: str, url: URL, headers: "CIMultiDictProxy[str]"
+    ) -> None:
+        return await self._trace_config.on_response_headers_received.send(
+            self._session,
+            self._trace_config_ctx,
+            TraceResponseHeadersReceivedParams(method, url, headers),
         )
