@@ -411,6 +411,12 @@ methods::
            elif msg.type == aiohttp.WSMsgType.ERROR:
                break
 
+The loop ends without yielding the :const:`~aiohttp.WSMsgType.CLOSE`
+message. After the loop, use
+:attr:`~aiohttp.ClientWebSocketResponse.close_code` and
+:attr:`~aiohttp.ClientWebSocketResponse.close_reason` to inspect the close
+code and reason.
+
 
 You **must** use the only websocket task for both reading (e.g. ``await
 ws.receive()`` or ``async for msg in ws:``) and writing but may have

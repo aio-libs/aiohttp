@@ -80,6 +80,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
     _closing: bool = False
     _conn_lost: int = 0
     _close_code: int | None = None
+    _close_reason: str | None = None
     _loop: asyncio.AbstractEventLoop | None = None
     _waiting: bool = False
     _close_wait: asyncio.Future[None] | None = None
@@ -423,6 +424,10 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         return self._close_code
 
     @property
+    def close_reason(self) -> str | None:
+        return self._close_reason
+
+    @property
     def ws_protocol(self) -> str | None:
         return self._ws_protocol
 
@@ -556,6 +561,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                     while True:
                         msg = await reader.read()
                         if msg.type is WSMsgType.CLOSE:
+                            self._close_reason = msg.extra
                             self._set_code_close_transport(msg.data)
                             return True
             except asyncio.CancelledError:
@@ -658,6 +664,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
                 return msg
 
             if msg.type is WSMsgType.CLOSE:
+                self._close_reason = msg.extra
                 self._set_closing(msg.data)
                 # Could be closed while awaiting reader.
                 if not self._closed and self._autoclose:  # type: ignore[redundant-expr]
