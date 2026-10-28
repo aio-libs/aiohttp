@@ -2,7 +2,7 @@ import asyncio
 import socket
 import sys
 import weakref
-from typing import Any, Optional
+from typing import Any
 
 from .abc import AbstractResolver, ResolveResult
 
@@ -200,7 +200,7 @@ class _DNSResolverManager:
     with no custom arguments across different event loops.
     """
 
-    _instance: Optional["_DNSResolverManager"] = None
+    _instance: "_DNSResolverManager | None" = None
 
     def __new__(cls) -> "_DNSResolverManager":
         if cls._instance is None:

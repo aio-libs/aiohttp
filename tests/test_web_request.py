@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import ssl
-import sys
 import time
 import weakref
 from collections.abc import Iterator, MutableMapping
@@ -718,34 +717,20 @@ def test_requestkey_repr_concrete() -> None:
 
 def test_requestkey_repr_nonconcrete() -> None:
     key = web.RequestKey("key", Iterator[int])
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test_requestkey_repr_annotated() -> None:
     key = web.RequestKey[Iterator[int]]("key")
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test___repr__() -> None:
@@ -1653,7 +1638,7 @@ def test_etag_headers(
         pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
         pytest.param(
             "Tue, 08 Oct 2000 00:56:40 GMT",
-            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.UTC),
         ),
     ),
 )

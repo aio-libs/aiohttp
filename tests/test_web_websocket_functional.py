@@ -1010,7 +1010,7 @@ async def test_receive_timeout(aiohttp_client: AiohttpClient) -> None:
 
         try:
             await ws.receive()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             nonlocal raised
             raised = True
 
@@ -1036,7 +1036,7 @@ async def test_custom_receive_timeout(aiohttp_client: AiohttpClient) -> None:
 
         try:
             await ws.receive(0.1)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             nonlocal raised
             raised = True
 
