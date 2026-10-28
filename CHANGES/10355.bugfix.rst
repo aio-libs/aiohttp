@@ -1,0 +1,5 @@
+Fixed missing CRLF in a malformed chunked encoded message body -- by
+:user:`xdegaye`.
+
+A missing CRLF in a chunked encoded message now raises an exception instead of
+silently discarding the following part of the message.
