@@ -141,6 +141,7 @@ fallback
 fallbacks
 filename
 finalizers
+Firefox
 formatter
 formatters
 frontend
@@ -316,6 +317,7 @@ resolvers
 reusage
 reuseconn
 riscv64
+RSV1
 Runit
 runtime
 runtimes
@@ -378,6 +380,7 @@ un
 unawaited
 unclosed
 undercounting
+unencrypted
 unescaped
 unhandled
 unicode

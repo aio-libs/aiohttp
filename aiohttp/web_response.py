@@ -8,7 +8,7 @@ import warnings
 from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
 from http import HTTPStatus
-from typing import TYPE_CHECKING, Any, Optional, TypeVar, Union, cast, overload
+from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
 from multidict import CIMultiDict, istr
 
@@ -52,8 +52,7 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
-# TODO(py311): Convert to StrEnum for wider use
-class ContentCoding(enum.Enum):
+class ContentCoding(enum.StrEnum):
     # The content codings that we have support for.
     #
     # Additional registered codings are listed at:
@@ -82,7 +81,7 @@ class StreamResponse(
     _compression: bool = False
     _compression_strategy: int | None = None
     _compression_force: ContentCoding | None = None
-    _req: Optional["BaseRequest"] = None
+    _req: "BaseRequest | None" = None
     _payload_writer: AbstractStreamWriter | None = None
     _eof_sent: bool = False
     _must_be_empty_body: bool | None = None
@@ -448,7 +447,7 @@ class StreamResponse(
             writer.send_headers()
 
     async def write(
-        self, data: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, data: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         assert isinstance(
             data, (bytes, bytearray, memoryview)
@@ -497,7 +496,7 @@ class StreamResponse(
             info = "not prepared"
         return f"<{self.__class__.__name__} {self.reason} {info}>"
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: ResponseKey[_T]) -> _T: ...
 
     @overload
@@ -506,7 +505,7 @@ class StreamResponse(
     def __getitem__(self, key: str | ResponseKey[_T]) -> Any:
         return self._state[key]
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: ResponseKey[_T], value: _T) -> None: ...
 
     @overload

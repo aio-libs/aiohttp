@@ -88,6 +88,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         "_on_shutdown",
         "_on_cleanup",
         "_client_max_size",
+        "_client_max_fields",
         "_cleanup_ctx",
     )
 
@@ -98,6 +99,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         middlewares: Iterable[Middleware] = (),
         handler_args: Mapping[str, Any] | None = None,
         client_max_size: int = 1024**2,
+        client_max_fields: int = 1000,
         debug: Any = ...,  # mypy doesn't support ellipsis
     ) -> None:
         if debug is not ...:
@@ -130,6 +132,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
         self._on_startup.append(self._cleanup_ctx._on_startup)
         self._on_cleanup.append(self._cleanup_ctx._on_cleanup)
         self._client_max_size = client_max_size
+        self._client_max_fields = client_max_fields
 
     def __init_subclass__(cls: type["Application"]) -> None:
         raise TypeError(
@@ -141,7 +144,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
     def __eq__(self, other: object) -> bool:
         return self is other
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: AppKey[_T]) -> _T: ...
 
     @overload
@@ -156,7 +159,7 @@ class Application(MutableMapping[str | AppKey[Any], Any]):
                 "Changing state of started or joined application is forbidden"
             )
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: AppKey[_T], value: _T) -> None: ...
 
     @overload

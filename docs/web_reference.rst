@@ -118,6 +118,10 @@ and :ref:`aiohttp-web-signals` handlers.
       Host name of the request, resolved in this order:
 
       - Overridden value by :meth:`~BaseRequest.clone` call.
+      - Host of the request-target, if the target is in absolute or
+        authority form; a non-default port is included. The *Host*
+        HTTP header is ignored for such targets, as required by
+        :rfc:`9112#section-3.2.2-8`.
       - *Host* HTTP header
       - local socket address the request arrived on
         (transport ``sockname``)
@@ -138,6 +142,13 @@ and :ref:`aiohttp-web-signals` handlers.
          calls :func:`socket.getfqdn`, which performed blocking
          reverse-DNS resolution on the event loop. The local socket
          address (transport ``sockname``) is used instead.
+
+      .. versionchanged:: 3.15
+
+         The host of an absolute-form or authority-form request-target
+         now keeps a non-default port, brackets an IPv6 address and
+         stays in its *punycode* form, matching the shape of a
+         *Host* header value.
 
       .. seealso:: :ref:`aiohttp-web-forwarded-support`
 
@@ -166,6 +177,17 @@ and :ref:`aiohttp-web-signals` handlers.
       The value could be overridden by :meth:`~BaseRequest.clone`.
 
       Read-only :class:`int` property.
+
+   .. attribute:: client_max_fields
+
+      The maximum number of form fields accepted by :meth:`~BaseRequest.post`,
+      ``0`` disables the limit.
+
+      The value could be overridden by :meth:`~BaseRequest.clone`.
+
+      Read-only :class:`int` property.
+
+      .. versionadded:: 3.14.4
 
    .. attribute:: pre_handler_error
 
@@ -374,14 +396,19 @@ and :ref:`aiohttp-web-signals` handlers.
 
    .. attribute:: if_range
 
-      Read-only property that returns the date specified in the
+      Read-only property that returns the value specified in the
       *If-Range* header.
 
-      Returns :class:`datetime.datetime` or ``None`` if
-      *If-Range* header is absent or is not a valid
-      HTTP date.
+      Returns :class:`datetime.datetime` for the HTTP-date form, an
+      :class:`~aiohttp.ETag` for the entity-tag form, or ``None`` if the
+      *If-Range* header is absent or malformed.
 
       .. versionadded:: 3.1
+
+      .. versionchanged:: 4.0
+
+         The entity-tag form is now parsed and returned as an
+         :class:`~aiohttp.ETag`.
 
    .. method:: clone(*, method=..., rel_url=..., headers=...)
 
@@ -497,6 +524,10 @@ and :ref:`aiohttp-web-signals` handlers.
       :attr:`content_type` is not empty or
       *application/x-www-form-urlencoded* or *multipart/form-data*
       returns empty multidict.
+
+      Raises :exc:`HTTPRequestEntityTooLarge` if the body exceeds
+      :attr:`client_max_size` or the form has more than
+      :attr:`client_max_fields` fields.
 
       .. note::
 
@@ -1477,7 +1508,7 @@ Application and Router
 
 .. class:: Application(*, logger=<default>, middlewares=(), \
                        handler_args=None, client_max_size=1024**2, \
-                       debug=...)
+                       client_max_fields=1000, debug=...)
    :canonical: aiohttp.web_app.Application
 
    Application is a synonym for web-server.
@@ -1521,6 +1552,18 @@ Application and Router
                            bytes.  If a POST request exceeds this
                            value, it raises an
                            `HTTPRequestEntityTooLarge` exception.
+
+   :param client_max_fields: maximum number of form fields accepted by
+                             :meth:`BaseRequest.post`, counting both
+                             urlencoded pairs and multipart parts.  For
+                             urlencoded bodies every ``&``-separated
+                             segment counts, including empty ones, so the
+                             check runs before any field is decoded.  If a
+                             POST request exceeds this value, it raises an
+                             `HTTPRequestEntityTooLarge` exception.
+                             ``0`` disables the limit.  Default is ``1000``.
+
+                             .. versionadded:: 3.14.4
 
    :param debug: Switches debug mode.
 
@@ -1649,7 +1692,9 @@ Application and Router
       Register nested sub-application that serves
       the domain name or domain name mask.
 
-      In resolving process if request.headers['host']
+      In resolving process if the host of the request (the *Host*
+      HTTP header, or the host of an absolute-form request-target,
+      which overrides the header per :rfc:`9112#section-3.2.2-8`)
       matches the pattern *domain* then
       further resolving is passed to *subapp*.
 
@@ -1666,6 +1711,11 @@ Application and Router
       :param Application subapp: nested application.
 
       :returns: a :class:`~aiohttp.web.MatchedSubAppResource` instance.
+
+      .. versionchanged:: 3.15
+
+         The host of an absolute-form request-target now takes
+         precedence over the *Host* header when matching *domain*.
 
    .. method:: add_routes(routes_table)
 
@@ -3107,7 +3157,7 @@ Utilities
 
 .. function:: run_app(app, *, debug=False, host=None, port=None, \
                       path=None, sock=None, shutdown_timeout=60.0, \
-                      keepalive_timeout=3630, ssl_context=None, \
+                      keepalive_timeout=75.0, ssl_context=None, \
                       print=print, backlog=128, \
                       access_log_class=aiohttp.helpers.AccessLogger, \
                       access_log_format=aiohttp.helpers.AccessLogger.LOG_FORMAT, \
@@ -3176,6 +3226,10 @@ Utilities
    :param float keepalive_timeout: a delay before a TCP connection is
                                    closed after a HTTP request. The delay
                                    allows for reuse of a TCP connection.
+                                   The same delay bounds how long a newly
+                                   accepted connection may take to deliver
+                                   its first complete request; connections
+                                   that stay idle or incomplete are closed.
 
                                    When deployed behind a reverse proxy
                                    it's important for this value to be
@@ -3184,6 +3238,11 @@ Utilities
                                    to handle connection closing.
 
       .. versionadded:: 3.8
+
+      .. versionchanged:: 3.14.4
+
+         The timeout is now also applied while waiting for the first
+         request, closing connections that never send a complete request.
 
    :param ssl_context: :class:`ssl.SSLContext` for HTTPS server,
                        ``None`` for HTTP connection.
@@ -3252,7 +3311,7 @@ Constants
 .. class:: ContentCoding
    :canonical: aiohttp.web_response.ContentCoding
 
-   An :class:`enum.Enum` class of available Content Codings.
+   An :class:`enum.StrEnum` class of available Content Codings.
 
    .. attribute:: deflate
 

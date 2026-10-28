@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from .typedefs import StrOrURL
 
@@ -41,6 +41,7 @@ __all__ = (
     "WSServerHandshakeError",
     "ContentTypeError",
     "ClientPayloadError",
+    "UploadAbortedError",
     "InvalidURL",
     "InvalidUrlClientError",
     "RedirectClientError",
@@ -161,7 +162,7 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Union[SSLContext, bool, "Fingerprint"]:
+    def ssl(self) -> "SSLContext | bool | Fingerprint":
         return self._conn_key.ssl
 
     def __str__(self) -> str:
@@ -259,6 +260,10 @@ class ServerFingerprintMismatch(ServerConnectionError):
 
 class ClientPayloadError(ClientError):
     """Response payload error."""
+
+
+class UploadAbortedError(ClientError):
+    """The request body was never fully sent."""
 
 
 class InvalidURL(ClientError, ValueError):

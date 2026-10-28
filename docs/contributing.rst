@@ -102,11 +102,12 @@ Install pre-commit hooks:
 
 .. warning::
 
-  If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``:
+  If you plan to use temporary ``print()``, ``pdb`` or ``ipdb`` within the test suite, execute it with ``-s``
+  and without the parallel ``pytest-xdist`` workers that are enabled by default:
 
   .. code-block:: shell
 
-     $ pytest tests -s
+     $ pytest tests -s --numprocesses=0
 
   in order to run the tests without output capturing.
 

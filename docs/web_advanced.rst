@@ -1312,8 +1312,9 @@ That's why *aiohttp server* should setup *forwarded* headers in custom
 middleware in tight conjunction with *reverse proxy configuration*.
 
 For changing :attr:`BaseRequest.scheme` :attr:`BaseRequest.host`
-:attr:`BaseRequest.remote` and :attr:`BaseRequest.client_max_size`
-the middleware might use :meth:`BaseRequest.clone`.
+:attr:`BaseRequest.remote`, :attr:`BaseRequest.client_max_size` and
+:attr:`BaseRequest.client_max_fields` the middleware might use
+:meth:`BaseRequest.clone`.
 
 .. seealso::
 

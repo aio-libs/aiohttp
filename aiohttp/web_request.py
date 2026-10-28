@@ -1,28 +1,26 @@
 import asyncio
 import datetime
-import io
 import re
 import string
-import sys
 import types
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
+from tempfile import SpooledTemporaryFile
 from types import MappingProxyType
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     Final,
-    Optional,
+    Self,
     TypedDict,
     TypeVar,
     cast,
     overload,
 )
-from urllib.parse import parse_qsl
 
 from multidict import CIMultiDict, MultiDict, MultiDictProxy
-from yarl import URL
+from yarl import URL, query_to_pairs
 
 from . import hdrs
 from ._cookie_helpers import parse_cookie_header
@@ -32,6 +30,7 @@ from .helpers import (
     DEFAULT_CHUNK_SIZE,
     ETAG_ANY,
     LIST_QUOTED_ETAG_RE,
+    QUOTED_ETAG_RE,
     ChainMapProxy,
     ETag,
     HeadersDictProxy,
@@ -61,33 +60,6 @@ from .web_exceptions import (
     HTTPUnsupportedMediaType,
 )
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 11):
-    from tempfile import SpooledTemporaryFile
-    from typing import Self
-else:
-    import tempfile
-
-    Self = Any
-
-    class SpooledTemporaryFile(tempfile.SpooledTemporaryFile[bytes], io.IOBase):
-        """Make the spooled file satisfy the documented `FileField.file` type.
-
-        `tempfile.SpooledTemporaryFile` only became an `io.IOBase` subclass in
-        3.11 (python/cpython#70363), and never grew the three capability
-        predicates before then. Both underlying files (`io.BytesIO` before
-        rollover, a `w+b` temp file after) are readable, writable and seekable.
-        """
-
-        def readable(self) -> bool:
-            return True
-
-        def writable(self) -> bool:
-            return True
-
-        def seekable(self) -> bool:
-            return True
-
 
 __all__ = ("BaseRequest", "FileField", "Request")
 
@@ -145,6 +117,12 @@ _FORWARDED_PAIR_RE: Final[Pattern[str]] = re.compile(_FORWARDED_PAIR)
 ############################################################
 
 
+def _too_many_fields(max_fields: int) -> HTTPRequestEntityTooLarge:
+    return HTTPRequestEntityTooLarge(
+        max_fields, text=f"Maximum number of form fields {max_fields} exceeded."
+    )
+
+
 class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     POST_METHODS = {
         hdrs.METH_PATCH,
@@ -168,6 +146,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         loop: asyncio.AbstractEventLoop,
         *,
         client_max_size: int = 1024**2,
+        client_max_fields: int = 1000,
         state: dict[RequestKey[Any] | str, Any] | None = None,
         scheme: str | None = None,
         host: str | None = None,
@@ -187,16 +166,21 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._cache: dict[str, Any] = {}
         url = message.url
         if url.absolute:
+            if scheme is None and url.scheme:
+                # Absolute URL is peer-controlled, use the protocol.
+                scheme = "https" if protocol.ssl_context else "http"
             if scheme is not None:
+                # Authority-form (CONNECT) has no scheme: leave the target
+                # unchanged unless clone(scheme=...) overrides it.
                 url = url.with_scheme(scheme)
+                self._cache["scheme"] = scheme
             if host is not None:
                 url = url.with_host(host)
             # absolute URL is given,
             # override auto-calculating url, host, and scheme
             # all other properties should be good
             self._cache["url"] = url
-            self._cache["host"] = url.host
-            self._cache["scheme"] = url.scheme
+            self._cache["host"] = url.host_port_subcomponent
             self._rel_url = url.relative()
         else:
             self._rel_url = url
@@ -208,6 +192,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._state = {} if state is None else state
         self._task = task
         self._client_max_size = client_max_size
+        self._client_max_fields = client_max_fields
         self._loop = loop
 
         self._transport_sslcontext = protocol.ssl_context
@@ -227,6 +212,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "BaseRequest":
         """Clone itself with replacement some attributes.
 
@@ -264,6 +250,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             kwargs["remote"] = remote
         if client_max_size is sentinel:
             client_max_size = self._client_max_size
+        if client_max_fields is sentinel:
+            client_max_fields = self._client_max_fields
 
         return self.__class__(
             message,
@@ -273,6 +261,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._task,
             self._loop,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
             state=self._state.copy(),
             pre_handler_error=self._pre_handler_error,
             **kwargs,
@@ -299,6 +288,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._client_max_size
 
     @property
+    def client_max_fields(self) -> int:
+        return self._client_max_fields
+
+    @property
     def pre_handler_error(self) -> HTTPBadRequest | None:
         return self._pre_handler_error
 
@@ -308,7 +301,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     # MutableMapping API
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: RequestKey[_T]) -> _T: ...
 
     @overload
@@ -317,7 +310,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __getitem__(self, key: str | RequestKey[_T]) -> Any:
         return self._state[key]
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: RequestKey[_T], value: _T) -> None: ...
 
     @overload
@@ -428,6 +421,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Hostname is resolved in this order:
 
         - overridden value by .clone(host=new_host) call.
+        - host of the request-target, if the target is in absolute or
+          authority form (the Host header is ignored then, per
+          :rfc:`9112#section-3.2.2-8`); a non-default port is included.
         - HOST HTTP header
         - local socket address the request arrived on
           (transport ``sockname``)
@@ -605,12 +601,21 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         return self._if_match_or_none_impl(self.headers.get(hdrs.IF_NONE_MATCH))
 
     @reify
-    def if_range(self) -> datetime.datetime | None:
+    def if_range(self) -> datetime.datetime | ETag | None:
         """The value of If-Range HTTP header, or None.
 
-        This header is represented as a `datetime` object.
+        This header is represented as a `datetime` (HTTP-date form) or an
+        `ETag` (entity-tag form) object.
         """
-        return parse_http_date(self.headers.get(hdrs.IF_RANGE))
+        if_range = self.headers.get(hdrs.IF_RANGE)
+        if if_range is None:
+            return None
+        if (date := parse_http_date(if_range)) is not None:
+            return date
+        match = QUOTED_ETAG_RE.fullmatch(if_range.strip())
+        if match is None:
+            return None
+        return ETag(is_weak=bool(match.group(1)), value=match.group(2))
 
     @reify
     def keep_alive(self) -> bool:
@@ -768,11 +773,13 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             self._post = MultiDictProxy(MultiDict())
             return self._post
 
-        out: MultiDict[str | bytes | FileField] = MultiDict()
+        out: MultiDict[str | bytes | FileField]
 
         if content_type == "multipart/form-data":
+            out = MultiDict()
             multipart = await self.multipart()
             max_size = self._client_max_size
+            max_fields = self._client_max_fields
 
             payload = self._payload
             while (field := await multipart.next()) is not None:
@@ -780,6 +787,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 # overhead without entering the loop and the check below.
                 if 0 < max_size < payload.total_bytes:
                     raise HTTPRequestEntityTooLarge(max_size)
+                if 0 < max_fields <= len(out):
+                    raise _too_many_fields(max_fields)
 
                 field_ct = field.headers.get(hdrs.CONTENT_TYPE)
 
@@ -859,18 +868,26 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                     raise ValueError(
                         "To decode nested multipart you need to use custom reader",
                     )
+        elif not (data := await self.read()):
+            out = MultiDict()
         else:
-            data = await self.read()
-            if data:
-                charset = self.charset or "utf-8"
-                bytes_query = data.rstrip()
-                try:
-                    query = bytes_query.decode(charset)
-                except (LookupError, UnicodeDecodeError):
-                    raise HTTPUnsupportedMediaType()
-                out.extend(
-                    parse_qsl(qs=query, keep_blank_values=True, encoding=charset)
+            charset = self.charset or "utf-8"
+            bytes_query = data.rstrip()
+            try:
+                query = bytes_query.decode(charset)
+            except (LookupError, UnicodeDecodeError):
+                raise HTTPUnsupportedMediaType()
+            max_fields = self._client_max_fields
+            try:
+                out = MultiDict(
+                    query_to_pairs(
+                        query,
+                        max_fields=max_fields if max_fields > 0 else None,
+                        encoding=charset,
+                    )
                 )
+            except ValueError:
+                raise _too_many_fields(max_fields) from None
 
         self._post = MultiDictProxy(out)
         return self._post
@@ -913,7 +930,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    _match_info: Optional["UrlMappingMatchInfo"] = None
+    _match_info: "UrlMappingMatchInfo | None" = None
 
     def clone(
         self,
@@ -925,6 +942,7 @@ class Request(BaseRequest):
         host: str | _SENTINEL = sentinel,
         remote: str | _SENTINEL = sentinel,
         client_max_size: int | _SENTINEL = sentinel,
+        client_max_fields: int | _SENTINEL = sentinel,
     ) -> "Request":
         ret = super().clone(
             method=method,
@@ -934,6 +952,7 @@ class Request(BaseRequest):
             host=host,
             remote=remote,
             client_max_size=client_max_size,
+            client_max_fields=client_max_fields,
         )
         new_ret = cast(Request, ret)
         new_ret._match_info = self._match_info
