@@ -1,0 +1,1 @@
+Fixed ``StreamReader.total_raw_bytes`` raising :exc:`AttributeError` on responses without a body, such as a ``204`` or a reply to ``HEAD`` -- by :user:`officialpm`.
