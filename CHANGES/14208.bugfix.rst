@@ -1,1 +1,1 @@
-Fixed :func:`~aiohttp.multipart.parse_content_disposition` rejecting a quoted parameter value that contains more than one ``;`` -- by :user:`canblmz1`.
+Fixed ``parse_content_disposition`` rejecting a quoted ``Content-Disposition`` parameter value that contains more than one ``;`` -- by :user:`canblmz1`.
