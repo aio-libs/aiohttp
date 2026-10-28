@@ -1,5 +1,6 @@
 mode: enforce
 allow:
+  - cli.codecov.io
   - files.pythonhosted.org
   - pypi.org
   - raw.githubusercontent.com
