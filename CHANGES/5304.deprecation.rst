@@ -3,4 +3,4 @@ Deprecated passing an offset-naive :class:`datetime.datetime` to
 UTC and will raise an error in a future version -- by :user:`greshilov`.
 
 Pass a timezone-aware :class:`datetime.datetime` instead, e.g.
-``datetime.now(timezone.utc)``.
+``datetime.datetime.now(datetime.UTC)``.
