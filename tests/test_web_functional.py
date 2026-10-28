@@ -3318,10 +3318,10 @@ async def test_request_factory_after_connection_lost(
     assert protocol is not None
 
     # start() loops back after the response and parks on a fresh keep-alive
-    # waiter, waiting for the next request on the connection.
+    # waiter, waiting for the next request on the connection. Give the server
+    # loop enough passes to get there; the waiter is normally ready almost
+    # immediately, and the assertion below fails if it never appears.
     for _ in range(1000):
-        if protocol._waiter is not None:
-            break
         await asyncio.sleep(0)
     assert (
         protocol._waiter is not None
