@@ -1,0 +1,2 @@
+Retrieved exceptions from compressed WebSocket send tasks after their caller was cancelled.
+-- by :user:`abdull-ah-med`.
