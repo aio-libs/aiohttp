@@ -5,7 +5,6 @@ import json
 import os
 import pathlib
 import socket
-import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
@@ -212,7 +211,6 @@ async def test_response_before_complete(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_shutdown(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         t = asyncio.create_task(request.protocol.shutdown())
@@ -2061,7 +2059,10 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
 
         for _ in range(frames):
             await ws_writer.send_frame(frame_payload.encode(), WSMsgType.TEXT)
-        writer.write(encoded)
+        # Write an immutable snapshot: zero-copy selector transports hold
+        # buffer exports of the written object until flushed, which would
+        # make the clear() below raise BufferError.
+        writer.write(bytes(encoded))
         await writer.drain()
         await asyncio.wait_for(reading_paused.wait(), 5)
 
@@ -2069,7 +2070,7 @@ async def test_upgrade_tail_resumes_reading_after_websocket_prepare(
         # handover to the websocket resumes the transport.
         encoded.clear()
         await ws_writer.send_frame(b"last", WSMsgType.TEXT)
-        writer.write(encoded)
+        writer.write(bytes(encoded))
         await writer.drain()
         release_handler.set()
 
@@ -2341,6 +2342,48 @@ async def test_unread_compressed_body_drain_is_bounded(
     # Bounded by the buffer, not the decompressed size.
     assert max(drain_reads) <= 3 * DEFAULT_CHUNK_SIZE
     assert max(drain_reads) < decompressed_size
+
+
+async def test_absolute_form_target_does_not_spoof_scheme(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A plaintext absolute-form target with https must not look secure."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.json_response(
+            {
+                "scheme": request.scheme,
+                "secure": request.secure,
+                "url": str(request.url),
+                "host": request.host,
+            }
+        )
+
+    app = web.Application()
+    app.router.add_get("/probe", handler)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET https://trusted.example/probe HTTP/1.1\r\n"
+            b"Host: trusted.example\r\n"
+            b"Connection: close\r\n\r\n"
+        )
+        await writer.drain()
+        raw = await asyncio.wait_for(reader.read(), 5)
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    assert raw.startswith(b"HTTP/1.1 200 ")
+    assert json.loads(raw.split(b"\r\n\r\n", 1)[1]) == {
+        "scheme": "http",
+        "secure": False,
+        "url": "http://trusted.example/probe",
+        "host": "trusted.example",
+    }
 
 
 async def test_app_max_client_size(aiohttp_client: AiohttpClient) -> None:

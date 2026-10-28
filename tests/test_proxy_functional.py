@@ -6,7 +6,6 @@ import ssl
 import sys
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import ExitStack, suppress
-from re import match as match_regex
 from typing import TYPE_CHECKING, TypedDict
 from unittest import mock
 from uuid import uuid4
@@ -20,15 +19,12 @@ from yarl import URL
 import aiohttp
 from aiohttp import ClientResponse, web
 from aiohttp.client import _RequestOptions
-from aiohttp.client_exceptions import ClientConnectionError
 from aiohttp.test_utils import TestServer
 
 if TYPE_CHECKING:
     import proxy
 else:
     proxy = pytest.importorskip("proxy")
-
-ASYNCIO_SUPPORTS_TLS_IN_TLS = sys.version_info >= (3, 11)
 
 
 class _ResponseArgs(TypedDict):
@@ -37,7 +33,7 @@ class _ResponseArgs(TypedDict):
     body: bytes | None
 
 
-if sys.version_info >= (3, 11) and TYPE_CHECKING:
+if TYPE_CHECKING:
     from typing import Unpack
 
     async def get_request(
@@ -58,10 +54,7 @@ else:
         trust_env: bool = False,
         **kwargs: Any,
     ) -> ClientResponse:
-        connector = aiohttp.TCPConnector(ssl=False)
-        async with aiohttp.ClientSession(
-            connector=connector, trust_env=trust_env
-        ) as client:
+        async with aiohttp.ClientSession(ssl=False, trust_env=trust_env) as client:
             async with client.request(method, url, **kwargs) as resp:
                 return resp
 
@@ -130,10 +123,6 @@ async def web_server_endpoint_url(
     )
 
 
-@pytest.mark.skipif(
-    not ASYNCIO_SUPPORTS_TLS_IN_TLS,
-    reason="asyncio on this python does not support TLS in TLS",
-)
 @pytest.mark.parametrize("web_server_endpoint_type", ("http", "https"))
 @pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
 # Filter out the warning from
@@ -159,83 +148,6 @@ async def test_secure_https_proxy_absolute_path(
 
     await sess.close()
     await conn.close()
-    await asyncio.sleep(0.1)
-
-
-@pytest.mark.parametrize("web_server_endpoint_type", ("https",))
-@pytest.mark.skipif(
-    ASYNCIO_SUPPORTS_TLS_IN_TLS, reason="asyncio on this python supports TLS in TLS"
-)
-@pytest.mark.filterwarnings(r"ignore:.*ssl.OP_NO_SSL*")
-# Filter out the warning from
-# https://github.com/abhinavsingh/proxy.py/blob/30574fd0414005dfa8792a6e797023e862bdcf43/proxy/common/utils.py#L226
-# otherwise this test will fail because the proxy will die with an error.
-async def test_https_proxy_unsupported_tls_in_tls(
-    client_ssl_ctx: ssl.SSLContext,
-    secure_proxy_url: URL,
-    web_server_endpoint_type: str,
-) -> None:
-    """Ensure connecting to TLS endpoints w/ HTTPS proxy needs patching.
-
-    This also checks that a helpful warning on how to patch the env
-    is displayed.
-    """
-    url = URL.build(scheme=web_server_endpoint_type, host="python.org")
-
-    assert url.host is not None
-    escaped_host_port = ":".join((url.host.replace(".", r"\."), str(url.port)))
-    escaped_proxy_url = str(secure_proxy_url).replace(".", r"\.")
-
-    conn = aiohttp.TCPConnector()
-    sess = aiohttp.ClientSession(connector=conn)
-
-    expected_warning_text = (
-        r"^"
-        r"An HTTPS request is being sent through an HTTPS proxy\. "
-        "This support for TLS in TLS is known to be disabled "
-        r"in the stdlib asyncio\. This is why you'll probably see "
-        r"an error in the log below\.\n\n"
-        r"It is possible to enable it via monkeypatching\. "
-        r"For more details, see:\n"
-        r"\* https://bugs\.python\.org/issue37179\n"
-        r"\* https://github\.com/python/cpython/pull/28073\n\n"
-        r"You can temporarily patch this as follows:\n"
-        r"\* https://docs\.aiohttp\.org/en/stable/client_advanced\.html#proxy-support\n"
-        r"\* https://github\.com/aio-libs/aiohttp/discussions/6044\n$"
-    )
-    type_err = (
-        r"transport <asyncio\.sslproto\._SSLProtocolTransport object at "
-        r"0x[\d\w]+> is not supported by start_tls\(\)"
-    )
-    expected_exception_reason = (
-        r"^"
-        "Cannot initialize a TLS-in-TLS connection to host "
-        f"{escaped_host_port!s} through an underlying connection "
-        f"to an HTTPS proxy {escaped_proxy_url!s} ssl:{client_ssl_ctx!s} "
-        f"[{type_err!s}]"
-        r"$"
-    )
-
-    with (
-        mock.patch.object(aiohttp.connector, "aiofastnet", None),
-        pytest.warns(
-            RuntimeWarning,
-            match=expected_warning_text,
-        ),
-        pytest.raises(
-            ClientConnectionError,
-            match=expected_exception_reason,
-        ) as conn_err,
-    ):
-        async with sess.get(url, proxy=secure_proxy_url, ssl=client_ssl_ctx):
-            pass
-
-    assert isinstance(conn_err.value.__cause__, TypeError)
-    assert match_regex(f"^{type_err!s}$", str(conn_err.value.__cause__))
-
-    await sess.close()
-    await conn.close()
-
     await asyncio.sleep(0.1)
 
 
@@ -362,7 +274,7 @@ async def test_proxy_http_raw_path(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "aiohttp.io"
+    assert proxy.request.host == "aiohttp.io:2561"
     assert proxy.request.path_qs == raw_url
 
 
@@ -374,7 +286,7 @@ async def test_proxy_http_idna_support(
 
     await get_request(url=url, proxy=proxy.url)
 
-    assert proxy.request.host == "éé.com"
+    assert proxy.request.host == "xn--9caa.com"
     assert proxy.request.path_qs == "/"
 
 

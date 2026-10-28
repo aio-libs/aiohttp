@@ -9,7 +9,7 @@ from contextlib import suppress
 from html import escape as html_escape
 from http import HTTPStatus
 from logging import Logger
-from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Generic, TypedDict, TypeVar, cast
 
 import yarl
 from multidict import CIMultiDict
@@ -66,10 +66,27 @@ _RequestFactory = Callable[
 ]
 
 _RequestHandler = Callable[[_Request], Awaitable[StreamResponse]]
-_AnyAbstractAccessLogger = Union[
-    type[AbstractAsyncAccessLogger],
-    type[AbstractAccessLogger],
-]
+_AnyAbstractAccessLogger = type[AbstractAsyncAccessLogger] | type[AbstractAccessLogger]
+
+
+class _HandlerKwargs(TypedDict, total=False):
+    keepalive_timeout: float
+    tcp_keepalive: bool
+    logger: Logger
+    access_log: Logger | None
+    access_log_format: str
+    max_line_size: int
+    max_headers: int
+    max_field_size: int
+    lingering_time: float
+    read_bufsize: int
+    auto_decompress: bool
+    timeout_ceil_threshold: float
+
+
+class _RequestHandlerKwargs(_HandlerKwargs, total=False):
+    access_log_class: _AnyAbstractAccessLogger
+
 
 ERROR = RawRequestMessage(
     "UNKNOWN",
@@ -140,8 +157,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
     status line, bad headers or incomplete payload. If any error occurs,
     connection gets closed.
 
-    keepalive_timeout -- number of seconds before closing
-                         keep-alive connection
+    keepalive_timeout -- number of seconds before closing an idle connection.
 
     tcp_keepalive -- TCP keep-alive is on, default is on
 
@@ -240,7 +256,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         super().__init__(loop, parser)
 
         self._request_count = 0
-        self._keepalive = False
+        # True from the start so the deadline armed in connection_made()
+        # closes connections that never deliver a complete first request.
+        self._keepalive = True
         self._current_request: _Request | None = None
         self._manager: Server[_Request] | None = manager
         self._request_handler: _RequestHandler[_Request] | None = (
@@ -306,7 +324,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         )
 
     @under_cached_property
-    def ssl_context(self) -> Optional["ssl.SSLContext"]:
+    def ssl_context(self) -> "ssl.SSLContext | None":
         """Return SSLContext if available."""
         return (
             None
@@ -360,13 +378,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             try:
                 async with ceil_timeout(timeout):
                     await self._handler_waiter
-            except (asyncio.CancelledError, asyncio.TimeoutError):
+            except (asyncio.CancelledError, TimeoutError):
                 self._handler_waiter = None
-                if (
-                    sys.version_info >= (3, 11)
-                    and (task := asyncio.current_task())
-                    and task.cancelling()
-                ):
+                if (task := asyncio.current_task()) and task.cancelling():
                     raise
         # Then cancel handler and wait
         try:
@@ -376,12 +390,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 if self._task_handler is not None and not self._task_handler.done():
                     await asyncio.shield(self._task_handler)
-        except (asyncio.CancelledError, asyncio.TimeoutError):
-            if (
-                sys.version_info >= (3, 11)
-                and (task := asyncio.current_task())
-                and task.cancelling()
-            ):
+        except (asyncio.CancelledError, TimeoutError):
+            if (task := asyncio.current_task()) and task.cancelling():
                 raise
 
         # force-close non-idle handler
@@ -401,6 +411,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         self._manager.connection_made(self, real_transport)
 
         loop = self._loop
+        # Need to enable keepalive timeout at start of connection, as there's no other
+        # protection against a dead connection that doesn't send a request at all.
+        if self._keepalive_timeout > 0:
+            close_time = loop.time() + self._keepalive_timeout
+            self._next_keepalive_close_time = close_time
+            self._keepalive_handle = loop.call_at(close_time, self._process_keepalive)
+
         if sys.version_info >= (3, 14):
             if isinstance(loop, BaseEventLoop):
                 task = asyncio.create_task(self.start(), eager_start=True)
@@ -691,7 +708,7 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             resp, reset = await self.finish_response(request, resp, start_time)
         except asyncio.CancelledError:
             raise
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self.log_debug("Request handler timed out.", exc_info=exc)
             resp = self.handle_error(request, 504)
             resp, reset = await self.finish_response(request, resp, start_time)
@@ -817,12 +834,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                                     # read and ignore
                                     await payload.readany()
                                 now = loop.time()
-                        except (asyncio.CancelledError, asyncio.TimeoutError):
-                            if (
-                                sys.version_info >= (3, 11)
-                                and (t := asyncio.current_task())
-                                and t.cancelling()
-                            ):
+                        except (asyncio.CancelledError, TimeoutError):
+                            if (t := asyncio.current_task()) and t.cancelling():
                                 raise
 
                     # if payload still uncompleted

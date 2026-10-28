@@ -1166,7 +1166,7 @@ def test_domain_validation_error(domain: str | None, error: type[Exception]) -> 
 
 def test_domain_valid() -> None:
     assert Domain("example.com:81").canonical == "example.com:81"
-    assert MaskDomain("*.example.com").canonical == r".*\.example\.com"
+    assert MaskDomain("*.example.com").canonical == r"[^:]*\.example\.com(:.*)?"
     assert Domain("пуни.код").canonical == "xn--h1ajfq.xn--d1alm"
 
 
@@ -1180,6 +1180,32 @@ def test_domain_valid() -> None:
         ("*.example.com", "jpg.example.com", True),
         ("*.example.com", "a.example.com", True),
         ("*.example.com", "example.com", False),
+        # Registered without a port, a domain matches the Host on any port.
+        ("example.com", "example.com:80", True),
+        ("example.com", "EXAMPLE.COM:8080", True),
+        ("*.example.com", "a.example.com:8080", True),
+        ("*.example.com", "A.EXAMPLE.COM", True),
+        # Registered with a port, it matches that port only.
+        ("example.com:81", "example.com:8080", False),
+        ("*.example.com:81", "a.example.com:81", True),
+        ("*.example.com:81", "a.example.com", False),
+        ("*.example.com:81", "a.example.com:8181", False),
+        # A wildcard spans labels, but never a colon.
+        ("*.example.com", "a.b.example.com", True),
+        ("*.example.com", ".example.com", True),
+        ("*.example.com", "a:b.example.com", False),
+        ("*", "a:b", True),
+        # Several wildcards, including adjacent and infix ones.
+        ("*.*.example.com", "a.b.example.com", True),
+        ("*.*.example.com", "a.example.com", False),
+        ("**.example.com", "a.example.com", True),
+        ("a*b.example.com", "axxb.example.com", True),
+        ("x*x.example.com", "x.example.com", False),
+        # Matching splits at the first colon, like ``Domain``: a portless
+        # rule ignores the port entirely; a rule with a port requires that
+        # exact port, so a malformed multi-colon Host cannot match it.
+        ("*.example.com", "a.example.com:81:9", True),
+        ("*.example.com:81", "a.example.com:81:9", False),
     ],
 )
 def test_match_domain(a: str, b: str, result: bool) -> None:
@@ -1249,6 +1275,60 @@ async def test_add_domain(app: web.Application) -> None:
     request = make_mocked_request("POST", "/", {"host": "example.com"})
     match_info = await app.router.resolve(request)
     assert isinstance(match_info.http_exception, web.HTTPMethodNotAllowed)
+
+
+@pytest.mark.parametrize("host", ("example.com:80", "EXAMPLE.COM:8080"))
+async def test_add_domain_matches_host_with_port(
+    app: web.Application, host: str
+) -> None:
+    """A Host with a port must reach the domain app, not the parent's route."""
+    parent_handler = make_handler()
+    app.router.add_get("/", parent_handler)
+
+    subapp = web.Application()
+    domain_handler = make_handler()
+    subapp.router.add_get("/", domain_handler)
+    app.add_domain("example.com", subapp)
+
+    request = make_mocked_request("GET", "/", {"host": host})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
+
+
+async def test_add_domain_absolute_form_ignores_host_header(
+    app: web.Application,
+) -> None:
+    """An absolute-form target overrides the Host header for domain matching.
+
+    https://www.rfc-editor.org/rfc/rfc9112#section-3.2.2-8
+    """
+    parent_handler = make_handler()
+    app.router.add_get("/", parent_handler)
+
+    subapp = web.Application()
+    domain_handler = make_handler()
+    subapp.router.add_get("/", domain_handler)
+    app.add_domain("example.com", subapp)
+
+    # The Host header names the domain, but the target's authority wins.
+    request = make_mocked_request(
+        "GET", "http://other.example/", {"host": "example.com"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is parent_handler
+
+    request = make_mocked_request(
+        "GET", "http://example.com/", {"host": "other.example"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
+
+    # A non-default target port matches like a Host header port would.
+    request = make_mocked_request(
+        "GET", "http://example.com:8080/", {"host": "other.example"}
+    )
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is domain_handler
 
 
 def test_subapp_url_for(app: web.Application) -> None:

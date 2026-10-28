@@ -1,0 +1,3 @@
+Fixed ``GunicornWebWorker`` ignoring the Gunicorn ``backlog`` setting;
+listening sockets were re-listened with aiohttp's default backlog of 128
+-- by :user:`krylosov-aa`.

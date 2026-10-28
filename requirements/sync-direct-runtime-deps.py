@@ -1,13 +1,8 @@
 #!/usr/bin/env python
 """Sync direct runtime dependencies from pyproject.toml to runtime-deps.in."""
 
-import sys
+import tomllib
 from pathlib import Path
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    raise RuntimeError("Use Python 3.11+ to run 'make sync-direct-runtime-deps'")
 
 data = tomllib.loads(Path("pyproject.toml").read_text())
 reqs = (

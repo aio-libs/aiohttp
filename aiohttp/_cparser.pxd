@@ -67,7 +67,8 @@ cdef extern from "llhttp.h":
         HTTP_RESPONSE
 
     enum llhttp_method:
-        HTTP_CONNECT
+        HTTP_CONNECT,
+        HTTP_OPTIONS
 
     void llhttp_settings_init(llhttp_settings_t* settings)
     void llhttp_init(llhttp_t* parser, llhttp_type type,

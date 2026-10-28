@@ -6,6 +6,6 @@ isal; python_version < "3.14" and implementation_name == "cpython" # no wheel fo
 mypy; implementation_name == "cpython"
 pytest-xdist
 pytest_codspeed
-python-on-whales
-trustme; platform_machine != "i686" # no 32-bit wheels
+python-on-whales; implementation_name == "cpython" # Used for autobahn, not run on PyPy
+trustme; platform_machine != "i686" and implementation_name == "cpython" # TODO: include on PyPy once new release is out
 zlib_ng

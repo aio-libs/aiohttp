@@ -742,8 +742,7 @@ async def test_static_file_ssl(
     app = web.Application()
     app.router.add_static("/static", dirname)
     server = await aiohttp_server(app, ssl=ssl_ctx)
-    conn = aiohttp.TCPConnector(ssl=client_ssl_ctx)
-    client = await aiohttp_client(server, connector=conn)  # type: ignore[var-annotated]
+    client = await aiohttp_client(server, ssl=client_ssl_ctx)  # type: ignore[var-annotated]
 
     resp = await client.get("/static/" + filename)
     assert 200 == resp.status
@@ -755,7 +754,6 @@ async def test_static_file_ssl(
 
     resp.release()
     await client.close()
-    await conn.close()
 
 
 async def test_static_file_directory_traversal_attack(

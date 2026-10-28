@@ -1,4 +1,4 @@
-from __future__ import annotations  # TODO(PY311): Remove
+from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import base64
@@ -14,7 +14,7 @@ from hashlib import md5, sha1, sha256
 from http.cookies import BaseCookie
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Any, Protocol, Unpack
 from unittest import mock
 from uuid import uuid4
 
@@ -42,7 +42,7 @@ from aiohttp.test_utils import REUSE_ADDRESS
 
 
 def pytest_configure(config: pytest.Config) -> None:
-    # On Windows with Python 3.10/3.11, proxy.py's threaded mode can leave
+    # On Windows with Python 3.11, proxy.py's threaded mode can leave
     # sockets not fully released by the time pytest's unraisableexception
     # plugin collects warnings during teardown. Suppress these warnings
     # since they are not actionable and only affect older Python versions.
@@ -61,18 +61,11 @@ try:
 except ImportError:
     uvloop = None  # type: ignore[assignment]
 
-if sys.version_info >= (3, 11):
-    from typing import Unpack
 
-    class _RequestMaker(Protocol):
-        def __call__(
-            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
-        ) -> ClientRequest: ...
-
-else:
-    from typing import Any as Unpack
-
-    _RequestMaker = Any
+class _RequestMaker(Protocol):
+    def __call__(
+        self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest: ...
 
 
 # We require pytest-aiohttp to avoid confusing debugging if it's not installed.

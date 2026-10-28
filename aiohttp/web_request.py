@@ -1,19 +1,18 @@
 import asyncio
 import datetime
-import io
 import re
 import string
-import sys
 import types
 from collections.abc import Iterator, Mapping, MutableMapping
 from re import Pattern
+from tempfile import SpooledTemporaryFile
 from types import MappingProxyType
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
     Final,
-    Optional,
+    Self,
     TypedDict,
     TypeVar,
     cast,
@@ -61,33 +60,6 @@ from .web_exceptions import (
     HTTPUnsupportedMediaType,
 )
 from .web_response import StreamResponse
-
-if sys.version_info >= (3, 11):
-    from tempfile import SpooledTemporaryFile
-    from typing import Self
-else:
-    import tempfile
-
-    Self = Any
-
-    class SpooledTemporaryFile(tempfile.SpooledTemporaryFile[bytes], io.IOBase):
-        """Make the spooled file satisfy the documented `FileField.file` type.
-
-        `tempfile.SpooledTemporaryFile` only became an `io.IOBase` subclass in
-        3.11 (python/cpython#70363), and never grew the three capability
-        predicates before then. Both underlying files (`io.BytesIO` before
-        rollover, a `w+b` temp file after) are readable, writable and seekable.
-        """
-
-        def readable(self) -> bool:
-            return True
-
-        def writable(self) -> bool:
-            return True
-
-        def seekable(self) -> bool:
-            return True
-
 
 __all__ = ("BaseRequest", "FileField", "Request")
 
@@ -194,16 +166,21 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         self._cache: dict[str, Any] = {}
         url = message.url
         if url.absolute:
+            if scheme is None and url.scheme:
+                # Absolute URL is peer-controlled, use the protocol.
+                scheme = "https" if protocol.ssl_context else "http"
             if scheme is not None:
+                # Authority-form (CONNECT) has no scheme: leave the target
+                # unchanged unless clone(scheme=...) overrides it.
                 url = url.with_scheme(scheme)
+                self._cache["scheme"] = scheme
             if host is not None:
                 url = url.with_host(host)
             # absolute URL is given,
             # override auto-calculating url, host, and scheme
             # all other properties should be good
             self._cache["url"] = url
-            self._cache["host"] = url.host
-            self._cache["scheme"] = url.scheme
+            self._cache["host"] = url.host_port_subcomponent
             self._rel_url = url.relative()
         else:
             self._rel_url = url
@@ -324,7 +301,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
     # MutableMapping API
 
-    @overload  # type: ignore[override]
+    @overload
     def __getitem__(self, key: RequestKey[_T]) -> _T: ...
 
     @overload
@@ -333,7 +310,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
     def __getitem__(self, key: str | RequestKey[_T]) -> Any:
         return self._state[key]
 
-    @overload  # type: ignore[override]
+    @overload
     def __setitem__(self, key: RequestKey[_T], value: _T) -> None: ...
 
     @overload
@@ -444,6 +421,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         Hostname is resolved in this order:
 
         - overridden value by .clone(host=new_host) call.
+        - host of the request-target, if the target is in absolute or
+          authority form (the Host header is ignored then, per
+          :rfc:`9112#section-3.2.2-8`); a non-default port is included.
         - HOST HTTP header
         - local socket address the request arrived on
           (transport ``sockname``)
@@ -950,7 +930,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
 class Request(BaseRequest):
 
-    _match_info: Optional["UrlMappingMatchInfo"] = None
+    _match_info: "UrlMappingMatchInfo | None" = None
 
     def clone(
         self,

@@ -766,6 +766,30 @@ def test_control_frame_with_rsv1(
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
+@pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
+def test_control_frame_with_rsv1_no_compress(
+    out: WebSocketDataQueue, opcode: WSMsgType
+) -> None:
+    parser_no_compress = PatchableWebSocketReader(
+        out, 0, compress=False, decode_text=True
+    )
+    with pytest.raises(WebSocketError) as ctx:
+        parser_no_compress._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+def test_control_frame_with_rsv1_between_fragments(
+    parser: PatchableWebSocketReader,
+) -> None:
+    # An RSV1 control frame mid-message fails the connection too.
+    parser._feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, 1) + b"\x00")
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | WSMsgType.PING, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b01000001, 0b00000001))
     parser.parse_frame(b"1")

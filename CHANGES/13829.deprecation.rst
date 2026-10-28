@@ -1,0 +1,5 @@
+Deprecated the ``ssl`` parameter of :class:`~aiohttp.TCPConnector`, scheduled for
+removal in 5.0 -- by :user:`Dreamsorcerer`.
+
+Pass ``ssl`` to :class:`~aiohttp.ClientSession` for a session-wide default, or to
+:meth:`~aiohttp.ClientSession.get` and the other request methods per request.
