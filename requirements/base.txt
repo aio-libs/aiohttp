@@ -28,7 +28,7 @@ gunicorn==26.2.0
     # via -r requirements/base.in
 idna==3.20
     # via yarl
-multidict==7.2.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
