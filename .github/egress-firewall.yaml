@@ -1,5 +1,6 @@
 mode: enforce
 allow:
+  - files.pythonhosted.org
   - pypi.org
   - raw.githubusercontent.com
   - releases.astral.sh
