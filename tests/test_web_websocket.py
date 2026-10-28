@@ -134,6 +134,37 @@ async def test_cancel_heartbeat_cancels_pending_heartbeat_reset_handle() -> None
     assert handle.cancelled()
 
 
+@pytest.mark.parametrize("via_data_received", (False, True))
+async def test_closed_websocket_does_not_rearm_heartbeat(
+    via_data_received: bool,
+) -> None:
+    ws = web.WebSocketResponse(heartbeat=55)
+    ws._loop = asyncio.get_running_loop()
+    ws._reset_heartbeat()
+    heartbeat = ws._heartbeat_cb
+    assert heartbeat is not None
+    ws._set_closed()
+    assert heartbeat.cancelled()
+
+    try:
+        if via_data_received:
+            ws._on_data_received()
+            drained = ws._loop.create_future()
+            ws._loop.call_soon(drained.set_result, None)
+            await drained
+        else:
+            ws._reset_heartbeat()
+
+        assert ws.closed
+        assert ws._heartbeat_cb is None
+        assert ws._pong_response_cb is None
+        assert ws._ping_task is None
+        assert ws._heartbeat_reset_handle is None
+        assert not ws._need_heartbeat_reset
+    finally:
+        ws._cancel_heartbeat()
+
+
 async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
     ws = web.WebSocketResponse(heartbeat=0.05)
     ws._need_heartbeat_reset = False

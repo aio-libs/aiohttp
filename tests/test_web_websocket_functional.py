@@ -938,6 +938,36 @@ async def test_server_close_handshake(aiohttp_client: AiohttpClient) -> None:
     await closed
 
 
+async def test_server_close_handshake_does_not_rearm_heartbeat(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    closed = asyncio.get_running_loop().create_future()
+    ws_server = web.WebSocketResponse(heartbeat=55)
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        await ws_server.prepare(request)
+        await ws_server.close()
+        closed.set_result(None)
+        return ws_server
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/", autoclose=False)
+    assert (await ws.receive()).type == WSMsgType.CLOSE
+    await ws.close()
+    await closed
+    await client.close()
+
+    assert ws_server.closed
+    assert ws_server._heartbeat_cb is None
+    assert ws_server._pong_response_cb is None
+    assert ws_server._ping_task is None
+    assert ws_server._heartbeat_reset_handle is None
+    assert not ws_server._need_heartbeat_reset
+
+
 async def test_client_close_handshake(aiohttp_client: AiohttpClient) -> None:
     closed = asyncio.get_running_loop().create_future()
 
