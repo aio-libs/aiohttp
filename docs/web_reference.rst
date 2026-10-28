@@ -1153,6 +1153,27 @@ and :ref:`aiohttp-web-signals` handlers::
       May be ``None`` if server and client protocols are
       not overlapping.
 
+   .. attribute:: max_msg_size
+
+      Read-only property, the maximum size of a received message.
+
+      .. versionadded:: 3.15
+
+   .. method:: set_max_msg_size(max_msg_size)
+
+      Change the maximum size of a received message, for example to accept
+      only small messages until the peer has authenticated. Can be called
+      before or after :meth:`prepare`; a message that is still being
+      received is checked against the new limit too. To disable the size
+      limit use ``0``.
+
+      :param int max_msg_size: maximum size of a received message, from
+                               ``0`` up to ``2**32 - 1``.
+
+      :raises ValueError: if *max_msg_size* is out of range.
+
+      .. versionadded:: 3.15
+
    .. method:: get_extra_info(name, default=None)
 
       Reads optional extra information from the writer's transport.
