@@ -1,0 +1,1 @@
+Added a firewall config to CI tests to ensure that tests do not use the network, making packaging more reliable -- by :user:`Dreamsorcerer`.
