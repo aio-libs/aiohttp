@@ -1275,6 +1275,27 @@ def test_compression_multiple_codings_identity(parser: HttpRequestParser) -> Non
     assert msg.compression == "gzip"
 
 
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        (b"gzip,,gzip", "gzip,gzip"),
+        (b"gzip,", "gzip"),
+        (b",gzip", "gzip"),
+        (b"identity,,gzip", "gzip"),
+        (b", ,", None),
+    ),
+)
+def test_compression_empty_list_elements(
+    parser: HttpRequestParser, value: bytes, expected: str | None
+) -> None:
+    # Empty list elements are ignored, not read as an unknown coding:
+    # https://www.rfc-editor.org/rfc/rfc9110.html#name-recipient-requirements
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: " + value + b"\r\n\r\n"
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.compression == expected
+
+
 def test_compression_multiple_codings_unknown(parser: HttpRequestParser) -> None:
     # An unsupported coding anywhere in the chain disables decoding.
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: compress, gzip\r\n\r\n"

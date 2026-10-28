@@ -150,7 +150,10 @@ def parse_content_encoding(value: str, auto_decompress: bool) -> str | None:
     if "," not in enc:
         return None
     # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
-    codings = [c for c in (t.strip(" \t") for t in enc.split(",")) if c != "identity"]
+    # https://www.rfc-editor.org/rfc/rfc9110.html#name-recipient-requirements
+    codings = [
+        c for c in (t.strip(" \t") for t in enc.split(",")) if c and c != "identity"
+    ]
     if not codings or not SUPPORTED_CONTENT_CODINGS.issuperset(codings):
         return None
     if len(codings) > MAX_CONTENT_CODINGS:
