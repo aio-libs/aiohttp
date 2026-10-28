@@ -2833,8 +2833,12 @@ application on specific TCP or Unix socket, e.g.::
     await runner.setup()
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
-    # wait for finish signal
-    await runner.cleanup()
+
+    try:
+        # wait for finish signal
+        await runner.serve_forever()
+    finally:
+        await runner.cleanup()
 
 
 .. versionadded:: 3.0
@@ -2872,6 +2876,16 @@ application on specific TCP or Unix socket, e.g.::
       :async:
 
       Initialize the server. Should be called before adding sites.
+
+   .. method:: serve_forever()
+      :async:
+
+      Wait forever. Make sure to call :meth:`setup` prior to calling this
+      method. Only one :meth:`serve_forever` task is allowed per runner object.
+      Call :meth:`cleanup` to stop serving, typically from a ``finally``
+      block around :meth:`serve_forever`.
+
+      .. versionadded:: 4.0
 
    .. method:: cleanup()
       :async:
