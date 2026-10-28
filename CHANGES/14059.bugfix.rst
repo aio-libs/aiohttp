@@ -1,0 +1,1 @@
+Fixed a refused connection keeping its error alive in a reference cycle until the next full garbage collection -- by :user:`MorningLightMountain713`.
