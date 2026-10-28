@@ -982,6 +982,7 @@ and :ref:`aiohttp-web-signals` handlers::
    Valid requests for multiple byte ranges are ignored and the entire file is
    served when at least one range is satisfiable. Malformed or wholly
    unsatisfiable range sets receive a ``416`` response.
+   A limited number of empty range-list members are ignored.
 
    The actual :attr:`body` sending happens in overridden :meth:`~StreamResponse.prepare`.
 

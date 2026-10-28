@@ -177,8 +177,17 @@ class FileResponse(StreamResponse):
         satisfiable = False
         file_size_text = str(file_size)
 
+        empty_members = 0
         for byte_range in ranges.split(","):
-            first, dash, last = byte_range.strip(" \t").partition("-")
+            byte_range = byte_range.strip(" \t")
+            if not byte_range:
+                # RFC 9110 permits a reasonable number of empty list members.
+                empty_members += 1
+                if empty_members > 8:
+                    return False
+                continue
+
+            first, dash, last = byte_range.partition("-")
 
             if not dash or "-" in last or not (first or last):
                 return False
