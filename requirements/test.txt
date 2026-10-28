@@ -32,7 +32,7 @@ cffi==2.1.1
     # via
     #   cryptography
     #   pycares
-coverage==7.16.2
+coverage==7.17.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -65,7 +65,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -91,7 +91,7 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pycares==5.1.0
+pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi

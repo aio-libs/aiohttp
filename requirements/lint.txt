@@ -62,7 +62,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   aiohttp
     #   yarl
@@ -78,11 +78,11 @@ packaging==26.3
     #   virtualenv
 pathspec==1.1.1
     # via mypy
-platformdirs==4.12.4
+platformdirs==4.13.5
     # via virtualenv
 pluggy==1.7.0
     # via pytest
-pre-commit==4.6.2
+pre-commit==4.7.0
     # via -r requirements/lint.in
 propcache==0.5.4
     # via
@@ -90,7 +90,7 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/lint.in
-pycares==5.1.0
+pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
@@ -149,7 +149,7 @@ tzdata==2026.5
     # via python-dateutil
 uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
-valkey==6.1.1
+valkey==6.2.0
     # via -r requirements/lint.in
 virtualenv==21.14.13
     # via pre-commit

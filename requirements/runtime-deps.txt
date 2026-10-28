@@ -24,7 +24,7 @@ frozenlist==1.8.0
     #   aiosignal
 idna==3.20
     # via yarl
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -32,7 +32,7 @@ propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==5.1.0
+pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi

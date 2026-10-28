@@ -6,5 +6,5 @@
 #
 cython==3.3.0
     # via -r requirements/cython.in
-multidict==7.1.0
+multidict==7.2.1
     # via -r requirements/multidict.in

@@ -18,7 +18,7 @@ blockbuster==1.5.29
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
-coverage==7.16.2
+coverage==7.17.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -48,7 +48,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   aiohttp
     #   yarl

@@ -46,7 +46,7 @@ brotli==1.2.1 ; platform_python_implementation == "CPython" and sys_platform != 
     # via -r requirements/runtime-deps.in
 build==1.6.1
     # via pip-tools
-certifi==2026.10.19
+certifi==2026.10.23
     # via requests
 cffi==2.1.1
     # via
@@ -60,7 +60,7 @@ click==8.5.0
     # via
     #   pip-tools
     #   towncrier
-coverage==7.16.2
+coverage==7.17.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -116,7 +116,7 @@ jinja2==3.1.6
     #   towncrier
 librt==0.16.0
     # via mypy
-markdown-it-py==3.0.0
+markdown-it-py==4.2.0
     # via
     #   mdit-py-plugins
     #   myst-parser
@@ -127,7 +127,7 @@ mdit-py-plugins==0.6.1
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   -r requirements/multidict.in
     #   -r requirements/runtime-deps.in
@@ -139,7 +139,7 @@ mypy==2.4.0 ; implementation_name == "cpython"
     #   -r requirements/test-common.in
 mypy-extensions==1.1.0
     # via mypy
-myst-parser==4.0.1
+myst-parser==5.1.0
     # via -r requirements/doc.in
 nodeenv==1.11.0
     # via pre-commit
@@ -158,13 +158,13 @@ pip-tools==7.6.2
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.12.4
+platformdirs==4.13.5
     # via virtualenv
 pluggy==1.7.0
     # via
     #   pytest
     #   pytest-cov
-pre-commit==4.6.2
+pre-commit==4.7.0
     # via -r requirements/lint.in
 propcache==0.5.4
     # via
@@ -175,7 +175,7 @@ proxy-py==2.4.10
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common-base.in
-pycares==5.1.0
+pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
@@ -311,7 +311,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     # via
     #   -r requirements/base.in
     #   -r requirements/lint.in
-valkey==6.1.1
+valkey==6.2.0
     # via -r requirements/lint.in
 virtualenv==21.14.13
     # via pre-commit
