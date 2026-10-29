@@ -34,7 +34,7 @@ cryptography==50.0.2
     # via trustme
 distlib==0.4.4
     # via virtualenv
-filelock==4.2.1
+filelock==4.2.4
     # via
     #   python-discovery
     #   virtualenv
@@ -111,7 +111,7 @@ pytest==9.1.1
     #   pytest-mock
 pytest-aiohttp==1.1.1
     # via -r requirements/lint.in
-pytest-asyncio==1.4.0
+pytest-asyncio==1.4.1
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
     # via -r requirements/lint.in
