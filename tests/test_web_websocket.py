@@ -153,6 +153,42 @@ async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
     assert ws._ping_task is None
 
 
+async def test_on_data_received_returns_early_when_closed() -> None:
+    # Data arriving during the close handshake must not rearm the heartbeat
+    # on a connection whose close already completed (GH-14125).
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = asyncio.get_running_loop()
+    ws._closed = True
+
+    ws._on_data_received()
+
+    assert ws._heartbeat_reset_handle is None
+    assert ws._need_heartbeat_reset is False
+
+
+async def test_reset_heartbeat_returns_early_when_closed() -> None:
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = asyncio.get_running_loop()
+    ws._closed = True
+
+    ws._reset_heartbeat()
+
+    assert ws._heartbeat_cb is None
+
+
+async def test_send_heartbeat_returns_early_when_closed() -> None:
+    # A timer scheduled before close must not resurrect the heartbeat.
+    ws = web.WebSocketResponse(heartbeat=0.05)
+    ws._loop = asyncio.get_running_loop()
+    ws._closed = True
+
+    ws._send_heartbeat()
+
+    assert ws._pong_response_cb is None
+    assert ws._ping_task is None
+    assert ws._heartbeat_cb is None
+
+
 async def test_nonstarted_receive_bytes() -> None:
     ws = web.WebSocketResponse()
     with pytest.raises(RuntimeError):
