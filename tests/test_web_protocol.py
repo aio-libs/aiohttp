@@ -234,9 +234,12 @@ async def test_request_racing_connection_lost_is_not_dispatched() -> None:
     start() must notice that instead of building a request for the connection
     that is already gone.
     """
+    dispatched = False
 
     async def handler(request: BaseRequest) -> StreamResponse:
-        raise AssertionError("handler must not run for a lost connection")
+        nonlocal dispatched
+        dispatched = True
+        return StreamResponse()
 
     proto = Server(handler)()
     transport = mock.Mock()
@@ -252,3 +255,4 @@ async def test_request_racing_connection_lost_is_not_dispatched() -> None:
     proto.connection_lost(None)
 
     await task
+    assert not dispatched
