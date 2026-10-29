@@ -4,8 +4,8 @@ import logging
 import os
 import re
 import time as time_mod
-from collections.abc import Iterable
-from typing import Callable, ClassVar, NamedTuple
+from collections.abc import Callable, Iterable
+from typing import ClassVar, NamedTuple
 
 from .abc import AbstractAccessLogger
 from .web_request import BaseRequest

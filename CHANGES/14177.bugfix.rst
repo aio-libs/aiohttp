@@ -1,0 +1,3 @@
+Fixed :py:class:`~aiohttp.test_utils.RawTestServer` passing ``shutdown_timeout``
+to the request handler, which made it drop all custom handler arguments
+-- by :user:`asvetlov`.

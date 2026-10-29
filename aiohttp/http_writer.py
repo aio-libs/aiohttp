@@ -3,17 +3,8 @@
 import asyncio
 import re
 import sys
-from typing import (  # noqa
-    TYPE_CHECKING,
-    Any,
-    Awaitable,
-    Callable,
-    Iterable,
-    List,
-    NamedTuple,
-    Optional,
-    Union,
-)
+from collections.abc import Awaitable, Callable, Iterable
+from typing import TYPE_CHECKING, NamedTuple
 
 from multidict import CIMultiDict
 
@@ -46,13 +37,14 @@ HttpVersion10 = HttpVersion(1, 0)
 HttpVersion11 = HttpVersion(1, 1)
 
 
-_T_OnChunkSent = Optional[
+_T_OnChunkSent = (
     Callable[
-        [Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]],
+        ["bytes | bytearray | memoryview[int] | memoryview[bytes]"],
         Awaitable[None],
     ]
-]
-_T_OnHeadersSent = Optional[Callable[["CIMultiDict[str]"], Awaitable[None]]]
+    | None
+)
+_T_OnHeadersSent = Callable[["CIMultiDict[str]"], Awaitable[None]] | None
 
 
 class StreamWriter(AbstractStreamWriter):
@@ -94,7 +86,7 @@ class StreamWriter(AbstractStreamWriter):
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
 
     def _write(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         size = len(chunk)
         self.buffer_size += size
@@ -106,9 +98,7 @@ class StreamWriter(AbstractStreamWriter):
 
     def _writelines(
         self,
-        chunks: Iterable[
-            Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
-        ],
+        chunks: Iterable["bytes | bytearray | memoryview[int] | memoryview[bytes]"],
     ) -> None:
         size = 0
         for chunk in chunks:
@@ -124,7 +114,7 @@ class StreamWriter(AbstractStreamWriter):
             transport.writelines(chunks)
 
     def _write_chunked_payload(
-        self, chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"]
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
     ) -> None:
         """Write a chunk with proper chunked encoding."""
         chunk_len_pre = f"{len(chunk):x}\r\n".encode("ascii")
@@ -132,7 +122,7 @@ class StreamWriter(AbstractStreamWriter):
 
     def _send_headers_with_payload(
         self,
-        chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
+        chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]",
         is_eof: bool,
     ) -> None:
         """Send buffered headers with payload, coalescing into single write."""
@@ -168,7 +158,7 @@ class StreamWriter(AbstractStreamWriter):
 
     async def write(
         self,
-        chunk: Union[bytes, bytearray, "memoryview[int]", "memoryview[bytes]"],
+        chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]",
         *,
         drain: bool = True,
         LIMIT: int = 0x10000,

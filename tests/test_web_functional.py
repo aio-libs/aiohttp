@@ -5,7 +5,6 @@ import json
 import os
 import pathlib
 import socket
-import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable, Generator
 from contextlib import suppress
@@ -212,7 +211,6 @@ async def test_response_before_complete(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_shutdown(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         t = asyncio.create_task(request.protocol.shutdown())

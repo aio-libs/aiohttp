@@ -263,16 +263,13 @@ The client session supports the context manager protocol for self closing.
       peer which can help prevent "connection reset" errors at the cost of
       additional cleanup time. This timeout is passed to the underlying
       :class:`TCPConnector` when one is created automatically.
-      Note: On Python versions prior to 3.11, only a value of ``0`` is supported;
-      other values will trigger a warning.
 
       .. versionadded:: 3.12.5
 
       .. versionchanged:: 3.12.11
          Changed default from ``0.1`` to ``0`` to abort SSL connections
          immediately when the connector is closed. Added support for
-         ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
-         is issued when non-zero values are passed on Python < 3.11.
+         ``ssl_shutdown_timeout=0`` on all Python versions.
 
       .. deprecated:: 3.12.11
          This parameter is deprecated and will be removed in aiohttp 4.0.
@@ -1370,16 +1367,14 @@ is controlled by *force_close* constructor's parameter).
       behavior. Setting this to a positive value (e.g., ``0.1``) will perform
       a graceful shutdown when closing the connector, notifying the remote
       server which can help prevent "connection reset" errors at the cost of
-      additional cleanup time. Note: On Python versions prior to 3.11, only
-      a value of ``0`` is supported; other values will trigger a warning.
+      additional cleanup time.
 
         .. versionadded:: 3.12.5
 
         .. versionchanged:: 3.12.11
            Changed default from ``0.1`` to ``0`` to abort SSL connections
            immediately when the connector is closed. Added support for
-           ``ssl_shutdown_timeout=0`` on all Python versions. A :exc:`RuntimeWarning`
-           is issued when non-zero values are passed on Python < 3.11.
+           ``ssl_shutdown_timeout=0`` on all Python versions.
 
         .. deprecated:: 3.12.11
            This parameter is deprecated and will be removed in aiohttp 4.0.

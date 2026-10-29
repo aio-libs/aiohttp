@@ -5,7 +5,6 @@ import gzip
 import io
 import json
 import re
-import sys
 import weakref
 from collections.abc import AsyncIterator, Iterator
 from concurrent.futures import ThreadPoolExecutor
@@ -156,34 +155,20 @@ def test_responsekey_repr_concrete() -> None:
 
 def test_responsekey_repr_nonconcrete() -> None:
     key = web.ResponseKey("key", Iterator[int])
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test_responsekey_repr_annotated() -> None:
     key = web.ResponseKey[Iterator[int]]("key")
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<ResponseKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<ResponseKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<ResponseKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test_content_length() -> None:
@@ -277,7 +262,7 @@ def test_last_modified_initial() -> None:
 def test_last_modified_string() -> None:
     resp = web.StreamResponse()
 
-    dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.timezone.utc)
+    dt = datetime.datetime(1990, 1, 2, 3, 4, 5, 0, datetime.UTC)
     resp.last_modified = "Mon, 2 Jan 1990 03:04:05 GMT"
     assert resp.last_modified == dt
 
@@ -285,7 +270,7 @@ def test_last_modified_string() -> None:
 def test_last_modified_timestamp() -> None:
     resp = web.StreamResponse()
 
-    dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.timezone.utc)
+    dt = datetime.datetime(1970, 1, 1, 0, 0, 0, 0, datetime.UTC)
 
     resp.last_modified = 0
     assert resp.last_modified == dt
@@ -297,13 +282,13 @@ def test_last_modified_timestamp() -> None:
 def test_last_modified_datetime() -> None:
     resp = web.StreamResponse()
 
-    dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.timezone.utc)
+    dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.UTC)
     resp.last_modified = dt
     assert resp.last_modified == dt
 
 
 def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
-    dt = datetime.datetime(2020, 12, 2, 9, 51, 2, 500000, datetime.timezone.utc)
+    dt = datetime.datetime(2020, 12, 2, 9, 51, 2, 500000, datetime.UTC)
 
     resp_dt = web.StreamResponse()
     resp_dt.last_modified = dt
@@ -315,7 +300,7 @@ def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
     # Both should round up to the next whole second, so that Last-Modified
     # is never earlier than the file's true st_mtime, invalidating the caching.
     assert resp_dt.last_modified == datetime.datetime(
-        2020, 12, 2, 9, 51, 3, 0, datetime.timezone.utc
+        2020, 12, 2, 9, 51, 3, 0, datetime.UTC
     )
 
 
