@@ -234,13 +234,7 @@ async def test_request_racing_connection_lost_is_not_dispatched() -> None:
     start() must notice that instead of building a request for the connection
     that is already gone.
     """
-    dispatched = False
-
-    async def handler(request: BaseRequest) -> StreamResponse:
-        nonlocal dispatched
-        dispatched = True
-        return StreamResponse()
-
+    handler = mock.AsyncMock(return_value=StreamResponse())
     proto = Server(handler)()
     transport = mock.Mock()
     transport.is_closing.return_value = False
@@ -255,4 +249,22 @@ async def test_request_racing_connection_lost_is_not_dispatched() -> None:
     proto.connection_lost(None)
 
     await task
-    assert not dispatched
+    handler.assert_not_called()
+
+
+async def test_request_after_waiting_on_live_connection_is_dispatched() -> None:
+    handler = mock.AsyncMock(return_value=StreamResponse())
+    proto = Server(handler)()
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    transport.get_extra_info.return_value = None
+    proto.connection_made(transport)
+    task = proto._task_handler
+    assert task is not None
+    await asyncio.sleep(0)
+
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: x\r\nConnection: close\r\n\r\n")
+    await task
+
+    handler.assert_awaited_once()
+    proto.connection_lost(None)
