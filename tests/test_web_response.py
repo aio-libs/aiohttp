@@ -323,6 +323,7 @@ def test_last_modified_datetime() -> None:
     dt = datetime.datetime(2001, 2, 3, 4, 5, 6, 0, datetime.UTC)
     resp.last_modified = dt
     assert resp.last_modified == dt
+    assert resp.headers[hdrs.LAST_MODIFIED] == "Sat, 03 Feb 2001 04:05:06 GMT"
 
 
 def test_last_modified_datetime_and_timestamp_round_consistently() -> None:
@@ -444,6 +445,26 @@ def test_etag_reset() -> None:
     resp.etag = "*"
     resp.etag = None
     assert resp.etag is None
+
+
+class _NoOffsetTZ(datetime.tzinfo):
+    utcoffset = dst = tzname = lambda self, dt=None: None  # type: ignore[misc]
+
+
+@pytest.mark.parametrize(
+    "value",
+    (
+        datetime.datetime(2020, 12, 6, 15, 38, 5),
+        datetime.datetime(2020, 12, 6, 15, 38, 5, tzinfo=_NoOffsetTZ()),
+    ),
+    ids=("no-tzinfo", "tzinfo-without-offset"),
+)
+def test_last_modified_naive_datetime_deprecated(value: datetime.datetime) -> None:
+    resp = web.StreamResponse()
+
+    with pytest.warns(DeprecationWarning, match="offset-naive datetime"):
+        resp.last_modified = value
+    assert resp.headers[hdrs.LAST_MODIFIED] == "Sun, 06 Dec 2020 15:38:05 GMT"
 
 
 async def test_start() -> None:
