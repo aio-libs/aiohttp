@@ -868,6 +868,13 @@ and :ref:`aiohttp-web-signals` handlers::
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+      Naive :class:`datetime.datetime` objects are interpreted as UTC.
+
+      .. deprecated:: 3.15
+
+         Naive :class:`datetime.datetime` objects, pass a timezone-aware
+         one instead.
+
    .. attribute:: etag
 
       *ETag* header for outgoing response.

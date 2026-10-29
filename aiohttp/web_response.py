@@ -370,6 +370,16 @@ class StreamResponse(MutableMapping[str | ResponseKey[Any], Any], HeadersMixin):
                 "%a, %d %b %Y %H:%M:%S GMT", time.gmtime(math.ceil(value))
             )
         elif isinstance(value, datetime.datetime):
+            if value.utcoffset() is None:
+                warnings.warn(
+                    DeprecationWarning(
+                        "'last_modified' property received an offset-naive datetime, "
+                        "which is interpreted as UTC. This will raise an error in "
+                        "a future version. Please specify a timezone for your "
+                        "datetime object."
+                    ),
+                    stacklevel=2,
+                )
             if value.microsecond:
                 value = value.replace(microsecond=0) + datetime.timedelta(seconds=1)
             self._headers[hdrs.LAST_MODIFIED] = time.strftime(
