@@ -183,12 +183,26 @@ def test_date_parsing() -> None:
 
     # Invalid day of month
     assert parse_func("Tue, 0 Jan 1970 00:00:00 GMT") is None
+    assert parse_func("Tue, 30 Feb 2026 00:00:00 GMT") is None
+    assert (
+        parse_func("Tue, 29 Feb 2024 00:00:00 GMT")
+        == datetime.datetime(2024, 2, 29, tzinfo=utc).timestamp()
+    )
 
     # Invalid year
     assert parse_func("Tue, 1 Jan 1500 00:00:00 GMT") is None
 
     # Invalid time
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
+
+    # A field can't be followed by more digits, so a year isn't a day of month
+    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
+    assert (
+        parse_func("Tue, 2026 Jan 15 00:00:00 GMT")
+        == datetime.datetime(2026, 1, 15, tzinfo=utc).timestamp()
+    )
+    assert parse_func("Tue, 115 Jan 1970 00:00:00 GMT") is None
+    assert parse_func("Tue, 1 Jan 1970 00:00:001 GMT") is None
 
     # Invalid digits
     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
