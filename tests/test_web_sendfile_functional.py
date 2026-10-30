@@ -1032,6 +1032,45 @@ async def test_static_file_invalid_range(
     await client.close()
 
 
+async def test_static_file_multi_range_ignored(
+    aiohttp_client: AiohttpClient, sender: _Sender
+) -> None:
+    """A well-formed multi-range request gets 200 with the full file.
+
+    FileResponse only implements a single byte range. Per RFC 9110 §14.2 a
+    server may ignore Range; answering 416 for a satisfiable multi-range set
+    is incorrect (see #14124).
+    """
+    filepath = pathlib.Path(__file__).parent / "aiohttp.png"
+    body = filepath.read_bytes()
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return sender(filepath, chunk_size=16)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/", headers={"Range": "bytes=0-1,4-5"})
+    assert resp.status == 200
+    assert "Content-Range" not in resp.headers
+    assert await resp.read() == body
+    resp.release()
+
+    # Still a multi-range set (suffix + open range); ignore rather than 416.
+    resp = await client.get("/", headers={"Range": "bytes=-3,0-"})
+    assert resp.status == 200
+    assert await resp.read() == body
+    resp.release()
+
+    # Malformed ranges that happen to contain a comma stay 416.
+    resp = await client.get("/", headers={"Range": "bytes=0-1,a-b"})
+    assert resp.status == 416
+    resp.release()
+
+    await client.close()
+
+
 async def test_static_file_if_unmodified_since_past_with_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
