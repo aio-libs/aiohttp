@@ -158,7 +158,7 @@ pip-tools==7.6.2
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.13.5
+platformdirs==4.13.6
     # via virtualenv
 pluggy==1.7.0
     # via
