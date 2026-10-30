@@ -1,0 +1,1 @@
+Fixed cookie ``Expires`` dates being misread when a field is followed by more digits, such as a year before the day of month, and rejected dates that don't exist -- by :user:`canblmz1`.
