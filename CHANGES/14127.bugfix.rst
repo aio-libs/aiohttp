@@ -1,0 +1,3 @@
+Fixed :class:`~aiohttp.CookieJar` letting an insecure origin set a ``Secure``
+cookie or replace an existing one, as required by RFC 6265bis and done by
+browsers -- by :user:`insaf021`.
