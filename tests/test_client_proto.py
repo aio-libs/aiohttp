@@ -13,6 +13,7 @@ from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimerNoop
 from aiohttp.http_parser import HttpParser, RawResponseMessage
+from aiohttp.streams import StreamReader
 
 
 async def test_force_close() -> None:
@@ -276,6 +277,123 @@ async def test_reschedule_timeout() -> None:
     assert proto._read_timeout_handle is not h
 
 
+async def test_resume_reading_reaches_payload_eof() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    proto._parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    payload = StreamReader(proto, limit=100, loop=loop)
+    proto._payload = payload
+    payload.on_eof(proto._drop_timeout)
+    try:
+        proto.start_timeout()
+        payload.feed_data(b"x" * 300)
+        assert proto._read_timeout_handle is None
+
+        # Resuming buffered parsing can finish the payload synchronously.
+        with mock.patch.object(
+            proto, "data_received", side_effect=lambda data: payload.feed_eof()
+        ) as data_received:
+            assert await payload.readexactly(300) == b"x" * 300
+
+        data_received.assert_called_once_with(b"")
+        assert payload.is_eof()
+        assert not proto._reading_paused
+        assert proto._read_timeout_handle is None
+    finally:
+        proto.close()
+
+
+async def test_resume_reading_refills_payload_and_pauses_again() -> None:
+    loop = asyncio.get_running_loop()
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    proto._parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    payload = StreamReader(proto, limit=100, loop=loop)
+    proto._payload = payload
+    try:
+        proto.start_timeout()
+        payload.feed_data(b"x" * 300)
+        assert proto._reading_paused
+        assert proto._read_timeout_handle is None
+
+        # Decompression can refill the buffer beyond its high-water mark.
+        with mock.patch.object(
+            proto,
+            "data_received",
+            side_effect=lambda data: payload.feed_data(b"y" * 900),
+        ) as data_received:
+            assert await payload.readexactly(300) == b"x" * 300
+
+        data_received.assert_called_once_with(b"")
+        assert proto._reading_paused
+        assert not payload.is_eof()
+        assert payload._size == 900
+        transport.resume_reading.assert_not_called()
+        assert proto._read_timeout_handle is None
+    finally:
+        proto.close()
+
+
+@pytest.mark.parametrize("has_payload", [False, True])
+async def test_resume_reading_restarts_timeout_for_incomplete_response(
+    has_payload: bool,
+) -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
+    parser.feed_data.return_value = ([], False, b"")
+    proto._parser = parser
+    if has_payload:
+        proto._payload = StreamReader(proto, limit=100, loop=loop)
+    try:
+        proto.start_timeout()
+        proto.pause_reading()
+        paused_handle = proto._read_timeout_handle
+        assert paused_handle is None
+
+        proto.resume_reading()
+
+        assert not proto._reading_paused
+        assert proto._read_timeout_handle is not None
+        assert not proto._read_timeout_handle.cancelled()
+    finally:
+        proto.close()
+
+
+async def test_reading_prior_eof_payload_preserves_active_timeout() -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    payload = StreamReader(proto, limit=100, loop=loop)
+    proto._payload = payload
+    try:
+        payload.feed_data(b"body")
+        payload.feed_eof()
+        # The next request has started while the previous body is buffered.
+        proto.start_timeout()
+        handle = proto._read_timeout_handle
+        assert handle is not None
+        deadline = handle.when()
+
+        assert await payload.read() == b"body"
+
+        assert proto._read_timeout_handle is handle
+        assert not handle.cancelled()
+        assert handle.when() == deadline
+    finally:
+        proto.close()
+
+
 async def test_eof_received() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.set_response_params(read_timeout=1)
@@ -530,13 +648,18 @@ async def test_drain_elsewhere_does_not_lift_the_tail_pause() -> None:
     """
     transport = mock.Mock()
     proto = _upgraded_proto(asyncio.get_running_loop(), transport, read_bufsize=1024)
+    proto.read_timeout = 30
     proto.data_received(b"x" * 2048)
     transport.pause_reading.assert_called_once_with()
 
+    proto.pause_reading()
     proto.resume_reading()
 
     assert proto._buffer_paused
+    assert not proto._reading_paused
     transport.resume_reading.assert_not_called()
+    assert proto._read_timeout_handle is None
+    proto.close()
 
 
 async def test_discarded_data_does_not_hold_off_the_read_timeout() -> None:
