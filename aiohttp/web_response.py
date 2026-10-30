@@ -7,6 +7,7 @@ import time
 import warnings
 from collections.abc import Iterator, MutableMapping
 from concurrent.futures import Executor
+from email.utils import quote
 from http import HTTPStatus
 from typing import TYPE_CHECKING, Any, TypeVar, cast, overload
 
@@ -18,6 +19,7 @@ from .compression_utils import MAX_SYNC_CHUNK_SIZE, ZLibCompressor
 from .helpers import (
     ETAG_ANY,
     QUOTED_ETAG_RE,
+    TOKEN,
     CookieMixin,
     ETag,
     HeadersMixin,
@@ -329,7 +331,14 @@ class StreamResponse(
     ) -> None:
         assert self._content_dict is not None
         assert self._content_type is not None
-        params = "; ".join(f"{k}={v}" for k, v in self._content_dict.items())
+        params = "; ".join(
+            (
+                f"{k}={v}"
+                if v and TOKEN.issuperset(v) and "\t" not in v
+                else f'{k}="{quote(v)}"'
+            )
+            for k, v in self._content_dict.items()
+        )
         if params:
             ctype = self._content_type + "; " + params
         else:
