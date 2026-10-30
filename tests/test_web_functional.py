@@ -645,7 +645,7 @@ async def test_100_continue_custom(aiohttp_client: AiohttpClient) -> None:
 async def test_100_continue_custom_response(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         data = await request.post()
-        assert b"123", data["name"]
+        assert data["name"] == b"123"
         return web.Response()
 
     async def expect_handler(request: web.Request) -> None:
@@ -3249,7 +3249,7 @@ async def test_no_body_for_1xx_204_304_responses(
     resp = await client.get("/")
     assert CONTENT_TYPE not in resp.headers
     assert TRANSFER_ENCODING not in resp.headers
-    await resp.read() == b""
+    assert await resp.read() == b""
     resp.release()
 
 
