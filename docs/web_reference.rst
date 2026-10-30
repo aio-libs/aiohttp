@@ -2304,6 +2304,11 @@ Resource classes hierarchy::
          E.g. for ``'/path/{to}/{param}'`` pattern the method should
          be called as ``resource.url_for(to='val1', param='val2')``
 
+      A ``/`` in the value of a plain ``{var}`` is encoded as ``%2F``, so
+      the value stays a single path segment and the URL resolves back to
+      this resource. Variables with a custom regex, e.g. ``{tail:.+}``, keep
+      ``/`` as is.
+
 
 .. class:: StaticResource
    :canonical: aiohttp.web_urldispatcher.StaticResource
