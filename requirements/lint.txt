@@ -91,7 +91,7 @@ pytest-mock==3.17.0
     # via -r requirements/lint.in
 python-dateutil==3.0.0
     # via freezegun
-python-discovery==1.6.4
+python-discovery==1.6.5
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
