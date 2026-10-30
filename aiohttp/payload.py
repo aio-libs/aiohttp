@@ -455,6 +455,7 @@ class IOBasePayload(Payload):
     _value: io.IOBase
     # _consumed = False (inherited) - File can be re-read from the same position
     _start_position: int | None = None
+    _close_scheduled: bool = False
     # _autoclose = False (inherited) - Has file handle that needs explicit closing
 
     def __init__(
@@ -672,9 +673,10 @@ class IOBasePayload(Payload):
         WARNING: This method MUST be called from within an event loop.
         Calling it outside an event loop will raise RuntimeError.
         """
-        # Skip if already consumed
-        if self._consumed:
+        # Non-seekable streams can be consumed while still needing cleanup.
+        if self._close_scheduled:
             return
+        self._close_scheduled = True
         self._consumed = True  # Mark as consumed to prevent further writes
         # Schedule file closing without awaiting to prevent cancellation issues
         loop = asyncio.get_running_loop()
