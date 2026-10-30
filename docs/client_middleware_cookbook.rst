@@ -96,6 +96,65 @@ create a custom resolver:
 
 Using both of these together in a session should provide full SSRF protection.
 
+Rate Limiting
+-------------
+
+To stay within a server's rate limit, a middleware can delay the requests that would
+exceed it. The following middleware sends at most ``limit`` requests every ``period``
+seconds for each key. By default, the key is the request's host:
+
+.. literalinclude:: code/client_middleware_cookbook.py
+   :pyobject: by_host
+
+.. literalinclude:: code/client_middleware_cookbook.py
+   :pyobject: RateLimitMiddleware
+
+Each request occupies one of its key's ``limit`` slots until ``period`` seconds after
+it's sent. The first ``limit`` requests therefore go at once, and no window of ``period``
+seconds ever holds more. For example, ``RateLimitMiddleware(10, 60)`` sends a burst of 10
+requests immediately, and then never more than 10 in any minute. To space requests
+evenly, use a ``limit`` of 1. A request that's cancelled while it waits, for example by
+the ``total`` timeout, takes no slot.
+
+The key can be any value usable as a dictionary key. To make the hostnames that resolve
+to the same addresses share one limit, key requests by address:
+
+.. literalinclude:: code/client_middleware_cookbook.py
+   :pyobject: by_resolved_ip
+
+``by_resolved_ip`` keeps each hostname's key from its first successful lookup on, even
+if the DNS records change. Requests sent through a proxy keep their hostname as key,
+because the proxy resolves it. Otherwise, hostnames that resolve to the same IPv4
+addresses share a limit, and so do hostnames that resolve to the same IPv6 addresses
+and have no IPv4 address. Hostnames whose answers only partly overlap can get separate
+limits.
+
+Pass ``by_resolved_ip`` the connector's resolver. Close that resolver yourself, because a
+connector only closes the resolvers that it creates:
+
+.. code-block:: python
+
+   resolver = ThreadedResolver()
+   rate_limit = RateLimitMiddleware(5, 1, key=by_resolved_ip(resolver))
+   async with ClientSession(
+       connector=TCPConnector(resolver=resolver), middlewares=(rate_limit,)
+   ) as session:
+       ...
+   await resolver.close()
+
+.. note::
+
+   - To also count the requests that other middlewares send again, such as retries,
+     place the rate limiter last in ``middlewares``. Redirects go through the
+     middlewares too, so each hop counts as a request.
+   - Time spent waiting for a slot counts toward the ``total`` timeout.
+   - The limit holds when a request leaves the middleware, not when it reaches the
+     server. Connection setup times can still bring requests closer together, so leave
+     some headroom below the server's limit.
+   - Share one instance between sessions, otherwise each session has its own allowance.
+     Don't share it between event loops, because its semaphores bind to the event loop
+     that first waits on them.
+
 
 Best Practices
 --------------
