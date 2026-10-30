@@ -491,10 +491,11 @@ class CookieJar(AbstractCookieJar):
         if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
-        # Shared cookies (no response URL) have no origin to check.
-        is_not_secure = bool(response_url.scheme) and not self._is_secure_url(
-            response_url
-        )
+        # Shared cookies (no response host) have no origin to check.
+        is_not_secure = hostname is not None and not self._is_secure_url(response_url)
+        if is_not_secure:
+            # An expired Secure cookie must not count as stored below.
+            self._do_expiration()
 
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
