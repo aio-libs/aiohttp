@@ -257,15 +257,19 @@ def test_zlib_deflate_members_one_over_limit() -> None:
         d.decompress_sync(empty_member * (MAX_DECOMPRESS_MEMBERS + 1))
 
 
-@pytest.mark.parametrize("max_length", (0, 262144), ids=("unlimited", "capped"))
+@pytest.mark.parametrize("max_length", (0, 4096), ids=("unlimited", "capped"))
 def test_zlib_gzip_many_members(max_length: int) -> None:
     """A call may decode up to the member limit, resuming across calls."""
     member = gzip.compress(b"A" * 64)
     count = MAX_DECOMPRESS_MEMBERS
     d = ZLibDecompressor(encoding="gzip")
     out = d.decompress_sync(member * count, max_length=max_length)
+    # The capped walk stops on budget with input still pending, so the
+    # stream must not report complete until that input is drained.
+    assert d.stream_complete == (max_length == 0)
     while d.data_available:
         out += d.decompress_sync(b"", max_length=max_length)
+    assert d.stream_complete
     assert out == b"A" * 64 * count
 
 
@@ -289,3 +293,13 @@ def test_zstd_many_frames() -> None:
     count = MAX_DECOMPRESS_MEMBERS
     d = ZSTDDecompressor()
     assert d.decompress_sync(frame * count) == b"B" * 64 * count
+
+
+@pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
+def test_zstd_empty_input_after_completed_frame() -> None:
+    """An empty pump after a cleanly-ended frame is a no-op, not an EOFError."""
+    d = ZSTDDecompressor()
+    assert d.decompress_sync(zstandard.compress(b"payload")) == b"payload"
+    assert d.stream_complete
+    assert d.decompress_sync(b"") == b""
+    assert d.stream_complete
