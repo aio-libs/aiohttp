@@ -3297,6 +3297,57 @@ async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
             assert resp.status == 200
 
 
+async def test_request_factory_after_connection_lost(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    protocol: RequestHandler[web.Request] | None = None
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal protocol
+        protocol = request.protocol
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+    assert protocol is not None
+
+    # start() loops back after the response and parks on a fresh keep-alive
+    # waiter, waiting for the next request on the connection. Give the server
+    # loop enough passes to get there; the waiter is normally ready almost
+    # immediately, and the assertion below fails if it never appears.
+    for _ in range(1000):
+        await asyncio.sleep(0)
+    assert (
+        protocol._waiter is not None
+    ), "start() should be waiting for the next request"
+    start_task = protocol._task_handler
+    assert start_task is not None
+
+    # Reproduce #14000 deterministically: a pipelined request arrives and wakes
+    # the keep-alive waiter, but connection_lost() has already cleared the
+    # parser and the request factory. start() must exit the loop instead of
+    # popping the queued message and calling the (now None) factory, which is
+    # the reported TypeError. Feeding the bytes before clearing the parser
+    # keeps the ordering exact; racing a real connection_lost() instead would
+    # force_close() the connection and cancel the pending waiter at the await,
+    # masking the crash this test guards against.
+    protocol.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    assert protocol._messages, "the pipelined request should be queued"
+    protocol._parser = None
+    protocol._request_factory = None
+
+    for _ in range(10):
+        await asyncio.sleep(0)
+
+    assert start_task.done(), "start() task should have finished"
+    exc = start_task.exception()
+    assert exc is None, f"start() raised {exc!r} after connection_lost()"
+
+
 async def test_keepalive_expires_on_time(aiohttp_client: AiohttpClient) -> None:
     """Test that the keepalive handle expires on time."""
 
