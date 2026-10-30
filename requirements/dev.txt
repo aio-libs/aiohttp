@@ -284,7 +284,7 @@ uvloop==0.23.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.14.13
+virtualenv==21.15.0
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
