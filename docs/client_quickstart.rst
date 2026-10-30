@@ -352,6 +352,9 @@ As a simple case, simply provide a file-like object for your body::
     with open("massive-body", "rb") as f:
        await session.post("https://httpbin.org/post", data=f)
 
+Binary file uploads start at the current file position. A position at or
+beyond the end of the file produces an empty request body.
+
 
 Or you can provide an *asynchronous generator*, for example to generate
 data on the fly::
