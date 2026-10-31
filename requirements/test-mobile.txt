@@ -26,7 +26,7 @@ cffi==2.1.1 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
-coverage==7.16.2
+coverage==7.17.0
     # via pytest-cov
 execnet==2.1.2
     # via pytest-xdist
@@ -43,7 +43,7 @@ idna==3.20
     # via yarl
 iniconfig==2.3.1
     # via pytest
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
@@ -63,11 +63,11 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pycares==5.1.0 ; sys_platform != "android" and sys_platform != "ios"
+pycares==5.2.1 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   aiodns
-pycparser==3.11
+pycparser==3.12
     # via cffi
 pygments==2.21.0
     # via pytest
@@ -82,7 +82,7 @@ pytest==9.1.1
     #   pytest-xdist
 pytest-aiohttp==1.1.1
     # via -r requirements/test-common-base.in
-pytest-asyncio==1.4.0
+pytest-asyncio==1.4.1
     # via pytest-aiohttp
 pytest-cov==7.1.0
     # via -r requirements/test-common-base.in

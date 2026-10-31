@@ -18,7 +18,7 @@ blockbuster==1.5.29
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
-coverage==7.16.2
+coverage==7.17.0
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -48,7 +48,7 @@ markdown-it-py==4.2.0
     # via rich
 mdurl==0.1.2
     # via markdown-it-py
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   aiohttp
     #   yarl
@@ -72,7 +72,7 @@ propcache==0.5.4
     #   yarl
 proxy-py==2.4.10
     # via -r requirements/test-common-base.in
-pycparser==3.11
+pycparser==3.12
     # via cffi
 pydantic==2.14.1
     # via python-on-whales
@@ -94,7 +94,7 @@ pytest==9.1.1
     #   pytest-xdist
 pytest-aiohttp==1.1.1
     # via -r requirements/test-common-base.in
-pytest-asyncio==1.4.0
+pytest-asyncio==1.4.1
     # via pytest-aiohttp
 pytest-codspeed==5.0.3
     # via -r requirements/test-common.in

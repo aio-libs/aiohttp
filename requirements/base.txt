@@ -26,7 +26,7 @@ gunicorn==26.2.0
     # via -r requirements/base.in
 idna==3.20
     # via yarl
-multidict==7.1.0
+multidict==7.2.1
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
@@ -34,9 +34,9 @@ propcache==0.5.4
     # via
     #   -r requirements/runtime-deps.in
     #   yarl
-pycares==5.1.0
+pycares==5.2.1
     # via aiodns
-pycparser==3.11
+pycparser==3.12
     # via cffi
 typing-extensions==4.16.0 ; python_version < "3.13"
     # via
