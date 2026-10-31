@@ -1,0 +1,2 @@
+Fixed ``HeadersDictProxy`` treating mixed-case duplicate header names
+as distinct mapping keys -- by :user:`00200200`.
