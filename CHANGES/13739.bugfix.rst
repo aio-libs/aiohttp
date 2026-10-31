@@ -1,0 +1,11 @@
+Fixed the client framing a request body as chunked without sending
+``Transfer-Encoding: chunked``: ``chunked=False`` chunk-encoded the body behind
+a ``Content-Length`` header, and a ``GET``, ``HEAD``, ``OPTIONS`` or ``TRACE``
+request without a body sent a stray ``0\r\n\r\n`` terminator when ``chunked``
+was set (for example, the ``GET`` following a ``303`` redirect of a
+``chunked=True`` ``POST``), which servers rejected with ``400 Bad Request``.
+A ``Transfer-Encoding: chunked`` header passed in *headers* now raises
+:exc:`ValueError` instead of being sent alongside ``Content-Length``; use
+``chunked=True`` instead. The *chunked* parameter is now a :class:`bool`
+defaulting to ``False``, which behaves like the previous ``None`` default
+-- by :user:`HelmiDev03`.
