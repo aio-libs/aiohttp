@@ -1,0 +1,1 @@
+Fixed :py:attr:`EmptyStreamReader.total_raw_bytes` raising :py:exc:`AttributeError` due to missing ``total_compressed_bytes`` attribute -- by :user:`saisarans2007`.

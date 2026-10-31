@@ -1631,6 +1631,11 @@ async def test_on_eof_exc_in_callback_empty_stream_reader() -> None:
     assert on_eof.called
 
 
+def test_empty_stream_reader_total_raw_bytes() -> None:
+    reader = streams.EmptyStreamReader()
+    assert reader.total_raw_bytes == 0
+
+
 async def test_on_eof_eof_is_set(protocol: BaseProtocol) -> None:
     loop = asyncio.get_running_loop()
     reader = streams.StreamReader(protocol, 2**16, loop=loop)
