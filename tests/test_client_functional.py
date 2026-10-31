@@ -593,6 +593,36 @@ async def test_post_data_textio_encoding(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
+@pytest.mark.parametrize(
+    "view",
+    [
+        memoryview(b"abcdefgh"),
+        memoryview(b"abcdefgh").cast("H"),
+        memoryview(b"abcdefgh").cast("B", shape=(2, 4)),
+        memoryview(b"abcdefgh")[::2],
+        memoryview(b"a").cast("B", shape=()),
+    ],
+    ids=["byte-view", "wide-view", "matrix", "strided", "scalar"],
+)
+async def test_memoryview_request_and_response(
+    aiohttp_client: AiohttpClient, view: memoryview
+) -> None:
+    expected = view.tobytes()
+
+    async def handler(request: web.Request) -> web.Response:
+        assert request.content_length == len(expected)
+        assert await request.read() == expected
+        return web.Response(body=view)
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+    async with client.post("/", data=aiohttp.BytesPayload(view)) as response:
+        assert response.status == 200
+        assert response.content_length == len(expected)
+        assert await response.read() == expected
+
+
 async def test_post_data_zipfile_filelike(aiohttp_client: AiohttpClient) -> None:
     data = b"This is a zip file payload text file."
 

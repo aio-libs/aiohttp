@@ -1,5 +1,6 @@
 import array
 import asyncio
+import ctypes
 import io
 import json
 import unittest.mock
@@ -128,6 +129,70 @@ def test_bytes_payload_memoryview_correct_size() -> None:
     mv = memoryview(array.array("H", [1, 2, 3]))
     p = payload.BytesPayload(mv)
     assert p.size == 6
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        b"abcdefgh",
+        bytearray(b"abcdefgh"),
+        memoryview(b"abcdefgh"),
+        memoryview(b"abcdefgh").cast("H"),
+        memoryview(b"abcdefgh").cast("B", shape=(2, 4)),
+        memoryview(b"abcdefgh")[::2],
+        memoryview(b"a").cast("B", shape=()),
+    ],
+    ids=["bytes", "bytearray", "byte-view", "wide-view", "matrix", "strided", "scalar"],
+)
+async def test_bytes_payload_buffer_representation(
+    value: bytes | bytearray | memoryview,
+) -> None:
+    expected = bytes(value)
+    p = payload.BytesPayload(value)
+    assert p.size == len(expected)
+    assert p.decode() == expected.decode()
+    serialized = await p.as_bytes()
+    assert isinstance(serialized, bytes)
+    assert serialized == expected
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        memoryview(b"abcdefgh").cast("H"),
+        memoryview(b"abcdefgh").cast("B", shape=(2, 4)),
+        memoryview(b"abcdefgh")[::2],
+        memoryview(b"a").cast("B", shape=()),
+        memoryview(b""),
+        memoryview(((ctypes.c_ubyte * 0) * 2)()),
+    ],
+    ids=["wide-view", "matrix", "strided", "scalar", "empty", "empty-matrix"],
+)
+@pytest.mark.parametrize("length", [None, 0, 1, 3, 20])
+async def test_bytes_payload_memoryview_write_with_length(
+    value: memoryview, length: int | None
+) -> None:
+    writer = BufferWriter()
+    await payload.BytesPayload(value).write_with_length(writer, length)
+    assert writer.buffer == value.tobytes()[:length]
+
+
+async def test_bytes_payload_contiguous_view_remains_live() -> None:
+    data = bytearray(b"abcdefgh")
+    p = payload.BytesPayload(memoryview(data).cast("H"))
+    data[0] = ord("z")
+    writer = BufferWriter()
+    await p.write(writer)
+    assert writer.buffer == data
+
+
+async def test_bytes_payload_strided_view_is_snapshotted() -> None:
+    data = bytearray(b"abcdefgh")
+    p = payload.BytesPayload(memoryview(data)[::2])
+    data[0] = ord("z")
+    writer = BufferWriter()
+    await p.write(writer)
+    assert writer.buffer == b"aceg"
 
 
 def test_string_payload() -> None:
