@@ -7,7 +7,7 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import WSMsgType
+from aiohttp import WSCloseCode, WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
 from aiohttp.compression_utils import ZLibBackend
@@ -77,6 +77,101 @@ async def test_close(writer: WebSocketWriter) -> None:
     # Test that Service Restart close code is also supported
     await writer.close(1012, b"msg")
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xf4msg")  # type: ignore[attr-defined]
+
+
+async def test_control_frame_max_payload(writer: WebSocketWriter) -> None:
+    await writer.send_frame(b"p" * 125, WSMsgType.PING)
+    writer.transport.write.assert_called_with(b"\x89\x7d" + b"p" * 125)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG))
+async def test_control_frame_payload_too_long(
+    writer: WebSocketWriter, opcode: WSMsgType
+) -> None:
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.5
+    with pytest.raises(
+        ValueError, match="Control frame payload cannot be larger than 125 bytes"
+    ):
+        await writer.send_frame(b"p" * 126, opcode)
+    writer.transport.write.assert_not_called()  # type: ignore[attr-defined]
+
+
+async def test_close_frame_max_reason(writer: WebSocketWriter) -> None:
+    await writer.close(WSCloseCode.OK, b"r" * 123)
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\x88\x7d\x03\xe8" + b"r" * 123
+    )
+
+
+async def test_close_frame_reason_too_long(writer: WebSocketWriter) -> None:
+    with pytest.raises(
+        ValueError, match="Control frame payload cannot be larger than 125 bytes"
+    ):
+        await writer.close(WSCloseCode.OK, b"r" * 124)
+    writer.transport.write.assert_not_called()  # type: ignore[attr-defined]
+
+
+async def test_close_frame_str_reason(writer: WebSocketWriter) -> None:
+    await writer.close(WSCloseCode.OK, "reason")
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\x88\x08\x03\xe8reason"
+    )
+
+
+@pytest.mark.parametrize(
+    "code", (0, 999, 1004, 1005, 1006, 1015, 1016, 2000, 2999, 5000, 65536)
+)
+async def test_close_frame_invalid_code(writer: WebSocketWriter, code: int) -> None:
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-7.4
+    with pytest.raises(ValueError, match=f"Invalid close code: {code}"):
+        await writer.close(code)
+    writer.transport.write.assert_not_called()  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "code",
+    (
+        1000,
+        1001,
+        1002,
+        1003,
+        1007,
+        1008,
+        1009,
+        1010,
+        1011,
+        1012,
+        1013,
+        1014,
+        3000,
+        4999,
+    ),
+)
+async def test_close_frame_valid_code(writer: WebSocketWriter, code: int) -> None:
+    await writer.close(code)
+    writer.transport.write.assert_called_with(  # type: ignore[attr-defined]
+        b"\x88\x02" + code.to_bytes(2, "big")
+    )
+
+
+async def test_close_frame_invalid_reason(writer: WebSocketWriter) -> None:
+    with pytest.raises(ValueError, match="Close reason must be valid UTF-8"):
+        await writer.close(WSCloseCode.OK, b"\xff")
+    writer.transport.write.assert_not_called()  # type: ignore[attr-defined]
+
+
+async def test_close_frame_one_byte_payload(writer: WebSocketWriter) -> None:
+    with pytest.raises(ValueError, match="empty or at least 2 bytes"):
+        await writer.send_frame(b"\x03", WSMsgType.CLOSE)
+    writer.transport.write.assert_not_called()  # type: ignore[attr-defined]
+
+
+async def test_invalid_close_keeps_writer_usable(writer: WebSocketWriter) -> None:
+    with pytest.raises(ValueError, match="Invalid close code: 1006"):
+        await writer.close(WSCloseCode.ABNORMAL_CLOSURE)
+    assert not writer._closing
+    await writer.send_frame(b"text", WSMsgType.TEXT)
+    writer.transport.write.assert_called_with(b"\x81\x04text")  # type: ignore[attr-defined]
 
 
 async def test_send_text_masked(

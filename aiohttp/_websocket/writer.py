@@ -13,12 +13,15 @@ from ..compression_utils import ZLibBackend, ZLibCompressor
 from ..helpers import DEFAULT_CHUNK_SIZE
 from .helpers import (
     MASK_LEN,
+    MAX_CONTROL_FRAME_PAYLOAD,
     MSG_SIZE,
     PACK_CLOSE_CODE,
     PACK_LEN1,
     PACK_LEN2,
     PACK_LEN3,
     PACK_RANDBITS,
+    validate_close_frame,
+    validate_close_payload,
     websocket_mask,
 )
 from .models import WS_DEFLATE_TRAILING, WSMsgType
@@ -77,6 +80,20 @@ class WebSocketWriter:
         """Send a frame over the websocket with message as its payload."""
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
+
+        if opcode >= WS_CONTROL_FRAME_OPCODE:
+            # https://datatracker.ietf.org/doc/html/rfc6455#section-5.5
+            # Control frames MUST NOT be fragmented and MUST have a payload
+            # length of 125 bytes or less. The reader rejects frames that
+            # break either rule, so writing one only gets the connection
+            # terminated with 1002.
+            if len(message) > MAX_CONTROL_FRAME_PAYLOAD:
+                raise ValueError(
+                    "Control frame payload cannot be larger than "
+                    f"{MAX_CONTROL_FRAME_PAYLOAD} bytes"
+                )
+            if opcode == WSMsgType.CLOSE:
+                validate_close_payload(message)
 
         if not (compress or self.compress) or opcode >= WS_CONTROL_FRAME_OPCODE:
             # Non-compressed frames don't need lock or shield
@@ -259,8 +276,9 @@ class WebSocketWriter:
 
     async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""
-        if isinstance(message, str):
-            message = message.encode("utf-8")
+        # Reject invalid arguments before touching the transport or the closing
+        # flag so that a bad call leaves the connection usable.
+        message = validate_close_frame(code, message)
         try:
             await self.send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE
