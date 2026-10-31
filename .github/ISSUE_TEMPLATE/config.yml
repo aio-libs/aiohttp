@@ -1,5 +1,6 @@
 ---
 
+# yamllint disable-line rule:line-length
 # Ref: https://help.github.com/en/github/building-a-strong-community/configuring-issue-templates-for-your-repository#configuring-the-template-chooser
 blank_issues_enabled: false  # default: true
 contact_links:
@@ -14,6 +15,9 @@ contact_links:
 
     For more information, see
     https://github.com/aio-libs/.github/security/policy
+- name: 🤷💻🤦 StackOverflow
+  url: https://stackoverflow.com/questions/tagged/aiohttp
+  about: Please ask typical Q&A here
 - name: >-
     🤷💻🤦 GitHub Discussions
   url: https://github.com/aio-libs/aiohttp/discussions

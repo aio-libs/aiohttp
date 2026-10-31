@@ -117,7 +117,6 @@ body:
   attributes:
     label: Additional context
     description: >-
-      Add any other context or screenshots about
-      the feature request here.
+      Add any other context about the feature request here.
 
 ...
