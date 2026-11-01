@@ -339,6 +339,13 @@ and :ref:`aiohttp-web-signals` handlers.
       bound*, ``.stop`` is *right exclusive bound* and ``.step`` is
       ``1``.
 
+      Multi-range requests (e.g. ``Range: bytes=0-100, 200-300``) are not
+      supported. When a valid multi-range request is received, the *Range*
+      header is ignored and a slice representing the full resource
+      (``slice(None, None, 1)``) is returned per :rfc:`9110#section-14.2`,
+      allowing :class:`~aiohttp.web.FileResponse` to serve the complete file
+      with ``200 OK``.
+
       The property might be used in two manners:
 
       1. Attribute-access style (example assumes that both left and
