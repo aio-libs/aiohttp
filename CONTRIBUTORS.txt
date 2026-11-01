@@ -257,6 +257,7 @@ Lars P. Søndergaard
 Lee LieWhite
 Liu Hua
 Louis-Philippe Huberdeau
+Loïc Bellinger
 Loïc Lajeanne
 Lu Gong
 Lubomir Gelo
