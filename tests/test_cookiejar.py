@@ -1228,6 +1228,106 @@ async def test_filter_cookies_with_secure_shared_cookie() -> None:
     assert set(filtered.keys()) == {"shared-cookie"}
 
 
+@pytest.mark.parametrize("response_url", ("http://example.com/", "//example.com:80/"))
+async def test_insecure_origin_cannot_set_secure_cookie(response_url: str) -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["token=attacker; Secure; Path=/", "plain=1; Path=/"],
+        URL(response_url),
+    )
+
+    filtered = jar.filter_cookies(URL("https://example.com/"))
+    assert set(filtered.keys()) == {"plain"}
+
+
+@pytest.mark.parametrize(
+    ("set_cookie", "response_url"),
+    (
+        ("sid=attacker; Path=/", "http://example.com/"),
+        ("sid=attacker; Path=/app", "http://example.com/app/"),
+        ("sid=attacker; Domain=example.com; Path=/", "http://sub.example.com/"),
+        ("sid=attacker; Path=/", "http://sub.example.com/"),
+        ("sid=; Max-Age=0; Path=/", "http://example.com/"),
+        ("sid=attacker; Path=/", "ws://example.com/"),
+        ("sid=attacker; Path=/", "//example.com:80/"),
+    ),
+)
+async def test_insecure_origin_cannot_shadow_secure_cookie(
+    set_cookie: str, response_url: str
+) -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["sid=real; Secure; Path=/"], URL("https://example.com/")
+    )
+
+    jar.update_cookies_from_headers([set_cookie], URL(response_url))
+
+    assert len(jar) == 1
+    filtered = jar.filter_cookies(URL("https://example.com/app/"))
+    assert filtered["sid"].value == "real"
+
+
+async def test_insecure_origin_cannot_shadow_secure_cookie_on_subdomain() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["sid=real; Secure; Path=/"], URL("https://sub.example.com/")
+    )
+
+    jar.update_cookies_from_headers(
+        ["sid=attacker; Path=/"], URL("http://example.com/")
+    )
+
+    assert len(jar) == 1
+    assert jar.filter_cookies(URL("https://sub.example.com/"))["sid"].value == "real"
+
+
+async def test_insecure_origin_can_set_cookie_outside_secure_cookie_path() -> None:
+    jar = CookieJar()
+    jar.update_cookies_from_headers(
+        ["sid=real; Secure; Path=/admin"], URL("https://example.com/")
+    )
+
+    jar.update_cookies_from_headers(["sid=other; Path=/"], URL("http://example.com/"))
+
+    assert len(jar) == 2
+
+
+async def test_insecure_origin_can_replace_expired_secure_cookie() -> None:
+    jar = CookieJar()
+    with freeze_time("2030-01-01") as freezer:
+        jar.update_cookies_from_headers(
+            ["sid=real; Secure; Path=/; Max-Age=1"], URL("https://example.com/")
+        )
+        freezer.tick(2)
+
+        jar.update_cookies_from_headers(
+            ["sid=plain; Path=/"], URL("http://example.com/")
+        )
+
+    assert len(jar) == 1
+    assert jar.filter_cookies(URL("http://example.com/"))["sid"].value == "plain"
+
+
+async def test_treat_as_secure_origin_can_replace_secure_cookie() -> None:
+    endpoint = URL("http://127.0.0.1/")
+    jar = CookieJar(unsafe=True, treat_as_secure_origin=[endpoint])
+    jar.update_cookies_from_headers(["sid=first; Secure; Path=/"], endpoint)
+
+    jar.update_cookies_from_headers(["sid=second; Path=/"], endpoint)
+
+    assert jar.filter_cookies(endpoint)["sid"].value == "second"
+
+
+async def test_treat_as_secure_origin_does_not_match_schemeless_url() -> None:
+    jar = CookieJar(treat_as_secure_origin="http://example.com")
+
+    jar.update_cookies_from_headers(
+        ["sid=attacker; Secure; Path=/"], URL("//example.com:80/")
+    )
+
+    assert len(jar) == 0
+
+
 async def test_filter_cookies_does_not_leak_memory() -> None:
     """Test that filter_cookies doesn't create empty cookie entries.
 
@@ -1283,6 +1383,7 @@ def test_update_cookies_from_headers() -> None:
     """Test update_cookies_from_headers method."""
     jar: CookieJar = CookieJar()
     url: URL = URL("http://example.com/path")
+    url_https: URL = URL("https://example.com/path")
 
     # Test with simple cookies
     headers = [
@@ -1291,7 +1392,7 @@ def test_update_cookies_from_headers() -> None:
         "tracking=xyz789; Secure; HttpOnly",
     ]
 
-    jar.update_cookies_from_headers(headers, url)
+    jar.update_cookies_from_headers(headers, url_https)
 
     # Verify all cookies were added to the jar
     assert len(jar) == 3
@@ -1306,7 +1407,6 @@ def test_update_cookies_from_headers() -> None:
     assert "tracking" not in filtered_http  # Secure cookie not available on HTTP
 
     # Check cookies available for HTTPS URL (all cookies should be available)
-    url_https: URL = URL("https://example.com/path")
     filtered_https: BaseCookie[str] = jar.filter_cookies(url_https)
     assert len(filtered_https) == 3
     assert "tracking" in filtered_https

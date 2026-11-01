@@ -489,6 +489,12 @@ class CookieJar(AbstractCookieJar):
         if isinstance(cookies, Mapping):
             cookies = cookies.items()
 
+        # Shared cookies (no response host) have no origin to check.
+        is_not_secure = hostname is not None and not self._is_secure_url(response_url)
+        if is_not_secure:
+            # An expired Secure cookie must not count as stored below.
+            self._do_expiration()
+
         for name, cookie in cookies:
             if not isinstance(cookie, Morsel):
                 tmp = SimpleCookie()
@@ -531,6 +537,19 @@ class CookieJar(AbstractCookieJar):
                 domain = hostname
             else:
                 host_only = False
+
+            # https://datatracker.ietf.org/doc/html/draft-ietf-httpbis-rfc6265bis#section-5.7
+            # An insecure origin can neither set a Secure cookie nor shadow one.
+            if is_not_secure and (
+                cookie["secure"] or self._shadows_secure_cookie(domain, path, name)
+            ):
+                internal_logger.debug(
+                    "Dropped cookie %r for %s: Secure cookies are only "
+                    "set or replaced by a secure origin",
+                    name,
+                    domain,
+                )
+                continue
 
             deadline: float | None = None
             if expiration is not None:
@@ -635,12 +654,7 @@ class CookieJar(AbstractCookieJar):
             return filtered
         hostname = request_url.raw_host or ""
 
-        is_not_secure = request_url.scheme not in ("https", "wss")
-        if is_not_secure and self._treat_as_secure_origin:
-            request_origin = URL()
-            with contextlib.suppress(ValueError):
-                request_origin = request_url.origin()
-            is_not_secure = request_origin not in self._treat_as_secure_origin
+        is_not_secure = not self._is_secure_url(request_url)
 
         # Last (most specific) matching cookie per name wins.
         selected: dict[str, _MorselEntry] = {}
@@ -778,6 +792,31 @@ class CookieJar(AbstractCookieJar):
         # setting protected attributes directly.
         morsel.__setstate__({"key": cookie.key, "value": value, "coded_value": coded_value})  # type: ignore[attr-defined]
         return morsel
+
+    def _is_secure_url(self, url: URL) -> bool:
+        if url.scheme in ("https", "wss"):
+            return True
+        if not self._treat_as_secure_origin:
+            return False
+        with contextlib.suppress(ValueError):
+            return url.origin() in self._treat_as_secure_origin
+        return False
+
+    def _shadows_secure_cookie(self, domain: str, path: str, name: str) -> bool:
+        """Check if a cookie would overlap a stored Secure cookie of that name."""
+        for (stored_domain, stored_path), cookies in self._cookies.items():
+            if (
+                (stored := cookies.get(name)) is not None
+                and stored["secure"]
+                and (
+                    not stored_domain
+                    or self._is_domain_match(stored_domain, domain)
+                    or self._is_domain_match(domain, stored_domain)
+                )
+                and (path == stored_path or path.startswith(f"{stored_path}/"))
+            ):
+                return True
+        return False
 
     @staticmethod
     def _is_domain_match(domain: str, hostname: str) -> bool:

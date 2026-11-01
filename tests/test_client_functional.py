@@ -3133,6 +3133,29 @@ async def test_request_secure_cookie_not_sent_over_http(
         assert resp.status == 200
 
 
+async def test_schemeless_url_response_cannot_set_secure_cookie(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A URL without a scheme connects in cleartext, so it isn't a secure origin."""
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response()
+        resp.set_cookie("token", "attacker", secure=True)
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+
+    jar = aiohttp.CookieJar(unsafe=True)
+    async with aiohttp.ClientSession(cookie_jar=jar) as session:
+        async with session.get(f"//{server.host}:{server.port}/") as resp:
+            assert resp.status == 200
+            assert not resp.url.scheme
+
+    assert len(jar) == 0
+
+
 async def test_set_cookies(
     aiohttp_client: AiohttpClient, caplog: pytest.LogCaptureFixture
 ) -> None:
@@ -5887,9 +5910,11 @@ async def test_amazon_like_cookie_scenario(aiohttp_client: AiohttpClient) -> Non
     # Create a new client session with our fake resolver
     resolver = FakeResolver(port)
 
+    # The server is plain HTTP, but it sets Secure cookies.
+    jar = aiohttp.CookieJar(treat_as_secure_origin=f"http://www.amazon.it:{port}")
     async with (
         aiohttp.TCPConnector(resolver=resolver, force_close=True) as connector,
-        aiohttp.ClientSession(connector=connector) as session,
+        aiohttp.ClientSession(connector=connector, cookie_jar=jar) as session,
     ):
         # Make request to www.amazon.it which will resolve to
         # 127.0.0.1:port. This allows cookies for both .amazon.it
