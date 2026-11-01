@@ -1,1 +1,2 @@
-14098.bugfix.rst
+Fixed ``ClientResponse.total_raw_bytes`` to return ``0`` instead of raising
+``AttributeError`` on a response without a body -- by :user:`herniqeu`.
