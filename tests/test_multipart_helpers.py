@@ -30,6 +30,21 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
+    def test_semicolons(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; name="a;b"; filename="file; name; v2.mp4"'
+        )
+        assert disptype == "form-data"
+        assert params == {"name": "a;b", "filename": "file; name; v2.mp4"}
+
+    def test_semicolons_do_not_swallow_next_param(self) -> None:
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition(
+                'attachment; filename="a; b=1; filename="x.txt"'
+            )
+        assert disptype is None
+        assert {} == params
+
     def test_ows_before_separator(self) -> None:
         # https://github.com/aio-libs/aiohttp/issues/13002
         # Optional whitespace before the ";" separator (RFC 9110 §5.6.6) must
@@ -106,7 +121,6 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {"filename": '"quoting" tested.html'} == params
 
-    @pytest.mark.skip("need more smart parser which respects quoted text")
     def test_attwithquotedsemicolon(self) -> None:
         disptype, params = parse_content_disposition(
             'attachment; filename="Here\'s a semicolon;.html"'
