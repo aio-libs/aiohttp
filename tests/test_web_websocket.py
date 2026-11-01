@@ -68,6 +68,25 @@ def make_request(app, protocol):
     return maker
 
 
+@pytest.mark.parametrize("max_msg_size", [-1, 2**32])
+def test_set_max_msg_size_out_of_range(max_msg_size: int) -> None:
+    ws = web.WebSocketResponse(max_msg_size=1024)
+
+    with pytest.raises(ValueError, match="max_msg_size must be between"):
+        ws.set_max_msg_size(max_msg_size)
+    assert ws.max_msg_size == 1024
+
+
+def test_set_max_msg_size_rejected_by_parser() -> None:
+    ws = web.WebSocketResponse(max_msg_size=1024)
+    ws._parser = mock.Mock()
+    ws._parser.set_max_msg_size.side_effect = RuntimeError
+
+    with pytest.raises(RuntimeError):
+        ws.set_max_msg_size(2048)
+    assert ws.max_msg_size == 1024
+
+
 async def test_nonstarted_ping() -> None:
     ws = WebSocketResponse()
     with pytest.raises(RuntimeError):
