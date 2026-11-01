@@ -306,3 +306,7 @@ ask to raise the status.
 - `interlock-cb <https://github.com/bagowix/interlock>`_
   Circuit breaker middleware for aiohttp clients with one breaker per host; it fails fast
   while a host is degraded and trips on failure rate or slow responses.
+
+- `proxmint <https://proxmint.com/docs/python>`_
+  Client middleware that rotates requests through a pool of proxies, dropping
+  any that fail and retrying through the next.
