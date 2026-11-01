@@ -1,0 +1,2 @@
+Prevented ``RequestHandler`` from processing a queued request after its connection was lost
+-- by :user:`gyanu2507`.

@@ -750,6 +750,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 finally:
                     self._waiter = None
 
+                if self._force_close:
+                    break
+
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so
