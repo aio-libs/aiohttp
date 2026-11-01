@@ -1,1 +1,2 @@
-total_raw_bytes on a bodyless response raises AttributeError
+Fixed ``ClientResponse.total_raw_bytes`` to return ``0`` instead of raising
+``AttributeError`` on a bodyless response -- by :user:`herniqeu`.
