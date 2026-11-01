@@ -613,6 +613,10 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
     def __init__(self) -> None:
         self._read_eof_chunk = False
         self.total_bytes = 0
+        # total_raw_bytes reads this one, and a stream that never decompressed
+        # anything has nothing to report: None makes the property fall back to
+        # total_bytes instead of raising AttributeError.
+        self.total_compressed_bytes = None
 
     # Shadow the inherited slot with a property so the EMPTY_PAYLOAD singleton
     # can't be polluted with a per-response hook that would leak across
