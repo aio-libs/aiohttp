@@ -274,6 +274,7 @@ class _SessionOptions(TypedDict, total=False):
     max_headers: int
     fallback_charset_resolver: _CharsetResolver
     middlewares: Sequence[ClientMiddlewareType]
+    retry_connection: bool
     ssl_shutdown_timeout: _SENTINEL | None | float
 
 
@@ -371,6 +372,7 @@ class ClientSession:
         max_headers: int = 128,
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
+        retry_connection: bool = True,
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
@@ -469,7 +471,7 @@ class ClientSession:
 
         self._default_proxy = proxy
         self._default_ssl = ssl
-        self._retry_connection: bool = True
+        self._retry_connection = retry_connection
         self._middlewares = tuple(middlewares)
 
     def __init_subclass__(cls: type["ClientSession"]) -> None:
