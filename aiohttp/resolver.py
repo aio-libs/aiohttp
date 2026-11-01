@@ -13,9 +13,17 @@ try:
     import aiodns
 
     aiodns_default = hasattr(aiodns.DNSResolver, "getaddrinfo")
+    # c-ares getnameinfo flags are not POSIX flags: on Linux socket.NI_NUMERICHOST
+    # is 0x1 but pycares.ARES_NI_NUMERICHOST is 0x2 (and NI_NUMERICSERV 0x2 vs 0x8).
+    # aiodns forwards the flags to c-ares unchanged, so AsyncResolver must use the
+    # ARES_* values rather than the socket ones. pycares is aiodns's own
+    # dependency and is re-exported (but not declared) as aiodns.pycares.
+    pycares = aiodns.pycares  # type: ignore[attr-defined]
+    _ARES_NI_NUMERIC_FLAGS = pycares.ARES_NI_NUMERICHOST | pycares.ARES_NI_NUMERICSERV
 except ImportError:
     aiodns = None  # type: ignore[assignment]
     aiodns_default = False
+    _ARES_NI_NUMERIC_FLAGS = 0
 
 
 _NUMERIC_SOCKET_FLAGS = socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
@@ -154,7 +162,7 @@ class AsyncResolver(AbstractResolver):
                     # getnameinfo() unconditionally, but performance makes sense.
                     result = await self._resolver.getnameinfo(
                         (address[0].decode("ascii"), *address[1:]),
-                        _NAME_SOCKET_FLAGS,
+                        _ARES_NI_NUMERIC_FLAGS,
                     )
                     resolved_host = result.node
                 else:
