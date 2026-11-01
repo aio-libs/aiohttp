@@ -189,7 +189,6 @@ class WebSocketReader:
         decode_text: bool,
     ) -> None:
         self.queue = queue
-        self._max_msg_size = max_msg_size
         self._decode_text = decode_text
         # Parked on the queue while parsing is stalled; created once so
         # stalling does not allocate.
@@ -204,9 +203,6 @@ class WebSocketReader:
         self._frame_opcode: int = OP_CODE_NOT_SET
         # Reads of an in-flight frame, joined once when it completes.
         self._payload_fragments: list[bytes] = []
-        # Fold reads into _payload_buffer past this count to bound the object
-        # count (bytes are bounded by max_msg_size).
-        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
         self._payload_buffer = bytearray()
         self._frame_payload_len = 0
 
@@ -218,6 +214,34 @@ class WebSocketReader:
         self._compressed: int = COMPRESSED_NOT_SET
         self._decompressobj: ZLibDecompressor | None = None
         self._compress = compress
+        self.set_max_msg_size(max_msg_size)
+
+    def set_max_msg_size(self, max_msg_size: int) -> None:
+        """Set the maximum message size, including a data frame still being received."""
+        self._max_msg_size = max_msg_size
+        # Fold reads into _payload_buffer past this count to bound the object
+        # count (bytes are bounded by max_msg_size).
+        self._max_fragments = max(1024, max_msg_size // 256) if max_msg_size else 0
+        if (
+            not max_msg_size
+            or self._exc is not None
+            or self._state not in (READ_PAYLOAD_MASK, READ_PAYLOAD)
+            or self._frame_opcode
+            not in {OP_CODE_TEXT, OP_CODE_BINARY, OP_CODE_CONTINUATION}
+        ):
+            return
+        # The header of this frame passed the previous, larger limit.
+        msg_size = (
+            self._frame_payload_len + self._payload_bytes_to_read + len(self._partial)
+        )
+        if msg_size >= max_msg_size:
+            self._exc = WebSocketError(
+                WSCloseCode.MESSAGE_TOO_BIG,
+                f"Message size {msg_size} exceeds limit {max_msg_size}",
+            )
+            set_exception(self.queue, self._exc)
+            self._payload_fragments.clear()
+            self._payload_buffer = bytearray()
 
     def feed_eof(self) -> None:
         self.queue.feed_eof()
