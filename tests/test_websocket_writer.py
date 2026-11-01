@@ -277,9 +277,9 @@ async def test_send_compress_multiple_cancelled(
     # All tasks that entered the shield should complete, even if cancelled
     # With lock inside shield, all tasks enter shield immediately then wait for lock
     sent_count = len(writer.transport.write.call_args_list)  # type: ignore[attr-defined]
-    assert sent_count == 5, (
-        "All 5 sends should complete due to shield protecting lock acquisition"
-    )
+    assert (
+        sent_count == 5
+    ), "All 5 sends should complete due to shield protecting lock acquisition"
 
     # Verify all sent messages are correct (no corruption)
     for i in range(sent_count):
