@@ -224,3 +224,21 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+@pytest.mark.asyncio
+async def test_start_exits_after_connection_lost_wakes_waiter() -> None:
+    manager = Server(mock.AsyncMock())
+    handler = RequestHandler(manager, loop=asyncio.get_running_loop())
+    transport = mock.Mock()
+    handler.connection_made(transport)
+    task = handler._task_handler
+    assert task is not None
+    await asyncio.sleep(0)
+
+    handler.data_received(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+    handler.connection_lost(None)
+
+    await task
+    assert task.exception() is None
+    assert manager.requests_count == 0
