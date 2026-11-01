@@ -1,0 +1,5 @@
+Fixed an off-by-one error in :class:`~aiohttp.resolver.AsyncResolver` that caused
+an :exc:`IndexError` when handling :exc:`aiodns.error.DNSError` exceptions with
+a single argument. Also fixed the resolver not extracting the port from
+``getnameinfo()`` results for link-local IPv6 addresses, which could lead to
+incorrect port values in resolved addresses.
