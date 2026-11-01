@@ -1772,6 +1772,8 @@ manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
+      :raise ValueError: if *message* is longer than 125 bytes.
+
       .. versionchanged:: 3.0
 
          The method is converted into :term:`coroutine`
@@ -1784,6 +1786,8 @@ manually.
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      :raise ValueError: if *message* is longer than 125 bytes.
 
       .. versionchanged:: 3.0
 
@@ -1913,6 +1917,9 @@ manually.
 
       :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
+
+      :raise ValueError: if *code* may not be sent on the wire, or *message*
+         is not valid UTF-8 or makes the payload longer than 125 bytes.
 
    .. method:: receive()
       :async:

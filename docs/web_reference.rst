@@ -1189,6 +1189,8 @@ and :ref:`aiohttp-web-signals` handlers::
 
       :raise aiohttp.ClientConnectionResetError: if the connection is closing.
 
+      :raise ValueError: if *message* is longer than 125 bytes.
+
       .. versionchanged:: 3.0
 
          The method is converted into :term:`coroutine`
@@ -1205,6 +1207,8 @@ and :ref:`aiohttp-web-signals` handlers::
       :raise RuntimeError: if the connections is not started.
 
       :raise aiohttp.ClientConnectionResetError: if the connection is closing.
+
+      :raise ValueError: if *message* is longer than 125 bytes.
 
       .. versionchanged:: 3.0
 
@@ -1351,6 +1355,9 @@ and :ref:`aiohttp-web-signals` handlers::
       :param bool drain: drain outgoing buffer before closing connection.
 
       :raise RuntimeError: if connection is not started
+
+      :raise ValueError: if *code* may not be sent on the wire, or *message*
+         is not valid UTF-8 or makes the payload longer than 125 bytes.
 
    .. method:: receive(timeout=None)
       :async:

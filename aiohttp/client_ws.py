@@ -7,6 +7,7 @@ from collections.abc import Callable
 from types import TracebackType
 from typing import Any, Final, Generic, Literal, Self, overload
 
+from ._websocket.helpers import validate_close_frame
 from ._websocket.reader import WebSocketDataQueue, WebSocketReader
 from .client_exceptions import ClientError, ServerTimeoutError, WSMessageTypeError
 from .client_reqrep import ClientResponse
@@ -334,6 +335,10 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
         if self._closed:
             return False
 
+        # Reject invalid arguments before the response flips to the closed
+        # state; otherwise the ValueError below would be recorded as an
+        # abnormal closure instead of reaching the caller.
+        validate_close_frame(code, message)
         self._set_closed()
         try:
             try:
