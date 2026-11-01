@@ -79,6 +79,29 @@ async def test_close(writer: WebSocketWriter) -> None:
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xf4msg")  # type: ignore[attr-defined]
 
 
+async def test_ping_payload_too_large(writer: WebSocketWriter) -> None:
+    # RFC 6455 §5.5: control frames must have ≤125 bytes of payload
+    with pytest.raises(ValueError, match="125"):
+        await writer.send_frame(b"x" * 126, WSMsgType.PING)
+
+
+async def test_close_invalid_code(writer: WebSocketWriter) -> None:
+    # RFC 6455 §7.4: these codes must never appear on the wire
+    for bad_code in (1005, 1006, 1015, 1016, 2999, 5000, 6000):
+        with pytest.raises(ValueError, match="Invalid close code"):
+            await writer.close(bad_code, b"msg")
+    # codes in the application range and the normal code are fine
+    await writer.close(1000, b"msg")
+    await writer.close(3000, b"msg")
+    await writer.close(4999, b"msg")
+
+
+async def test_close_invalid_utf8(writer: WebSocketWriter) -> None:
+    # RFC 6455 §5.5.1: close reason must be valid UTF-8
+    with pytest.raises(ValueError, match="UTF-8"):
+        await writer.close(1000, b"\xff\xfe")
+
+
 async def test_send_text_masked(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:
@@ -254,9 +277,9 @@ async def test_send_compress_multiple_cancelled(
     # All tasks that entered the shield should complete, even if cancelled
     # With lock inside shield, all tasks enter shield immediately then wait for lock
     sent_count = len(writer.transport.write.call_args_list)  # type: ignore[attr-defined]
-    assert (
-        sent_count == 5
-    ), "All 5 sends should complete due to shield protecting lock acquisition"
+    assert sent_count == 5, (
+        "All 5 sends should complete due to shield protecting lock acquisition"
+    )
 
     # Verify all sent messages are correct (no corruption)
     for i in range(sent_count):
