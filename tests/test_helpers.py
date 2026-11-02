@@ -19,6 +19,7 @@ from yarl import URL
 from aiohttp import helpers, web
 from aiohttp.helpers import (
     EMPTY_BODY_METHODS,
+    accepted_content_codings,
     is_expected_content_type,
     must_be_empty_body,
     parse_http_date,
@@ -126,6 +127,40 @@ def test_parse_content_type(
     result = helpers.parse_content_type(content_type)
 
     assert result == expected
+
+
+# ------------------- accepted_content_codings ------------------------
+
+
+@pytest.mark.parametrize(
+    ("accept_encoding", "expected"),
+    [
+        ("", []),
+        ("gzip", ["gzip"]),
+        ("gzip, deflate", ["deflate", "gzip"]),
+        ("GZip , Deflate", ["deflate", "gzip"]),
+        ("gzip;q=0, deflate", ["deflate"]),
+        ("gzip;q=0.5, deflate;q=0.2", ["gzip", "deflate"]),
+        ("gzip;q=0.5, deflate;q=1.0", ["deflate", "gzip"]),
+        ("gzip; q=0.8, deflate;q=0.8", ["deflate", "gzip"]),
+        ("gzip;Q=0.5, deflate;q=0.2", ["gzip", "deflate"]),
+        ("identity, gzip;q=0.5", ["identity", "gzip"]),
+        ("identity;q=0, gzip", ["gzip"]),
+        ("*", ["deflate", "gzip", "identity"]),
+        ("*;q=0.1, gzip", ["gzip", "deflate", "identity"]),
+        ("*;q=0, gzip", ["gzip"]),
+        ("gzip;q=0, *", ["deflate", "identity"]),
+        ("x-gzip, xgzip, gzip-foo", []),
+        ("gzip;q=abc, deflate", ["deflate"]),
+        ("gzip;q=2, deflate", ["deflate"]),
+        ("gzip;q=0.1234, deflate", ["deflate"]),
+        ("gzip;foo=bar;q=0, deflate", ["deflate"]),
+        (",, gzip ,", ["gzip"]),
+    ],
+)
+def test_accepted_content_codings(accept_encoding: str, expected: list[str]) -> None:
+    codings = ("deflate", "gzip", "identity")
+    assert accepted_content_codings(accept_encoding, codings) == expected
 
 
 # ------------------- guess_filename ----------------------------------

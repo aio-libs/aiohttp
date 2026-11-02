@@ -721,7 +721,11 @@ and :ref:`aiohttp-web-signals` handlers::
       Enable compression.
 
       When *force* is unset compression encoding is selected based on
-      the request's *Accept-Encoding* header.
+      the request's *Accept-Encoding* header: codings with a higher
+      quality value are preferred, a coding with ``q=0`` is never used
+      and ``*`` matches the codings not listed explicitly
+      (:rfc:`9110#section-12.5.3`).  ``deflate`` is preferred over
+      ``gzip`` when both are equally acceptable.
 
       *Accept-Encoding* is not checked if *force* is set to a
       :class:`ContentCoding`.
@@ -2004,7 +2008,10 @@ Application and Router
 
       If a Brotli or gzip compressed version of the static content exists at
       the requested path with the ``.br`` or ``.gz`` extension, it will be used
-      for the response. Brotli will be preferred over gzip if both files exist.
+      for the response when the request's *Accept-Encoding* header accepts
+      that coding. The coding with the highest quality value is chosen;
+      Brotli will be preferred over gzip if both files exist and both codings
+      are equally acceptable.
 
       .. warning::
 
