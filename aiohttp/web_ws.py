@@ -28,6 +28,7 @@ from .http import (
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
+    validate_close_frame,
     WSCloseCode,
     WSMessageDecodeText,
     WSMessageNoDecodeText,
@@ -519,6 +520,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
         if self._closed:
             return False
+        # Validate before _set_closed(): a rejected close must surface to
+        # the caller, not tear the connection down as an abnormal closure.
+        if isinstance(message, str):
+            message = message.encode("utf-8")
+        validate_close_frame(code, message)
         self._set_closed()
 
         try:

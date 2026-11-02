@@ -457,13 +457,13 @@ async def test_close_idempotent(make_request: _RequestMaker) -> None:
     await ws.prepare(req)
     assert ws._reader is not None
     ws._reader.feed_data(WS_CLOSED_MESSAGE)
-    close_code = await ws.close(code=1, message=b"message1")
+    close_code = await ws.close(code=1000, message=b"message1")
     assert close_code == 1
     assert ws.closed
     assert req.transport is not None
     assert len(req.transport.close.mock_calls) == 1  # type: ignore[attr-defined]
 
-    close_code = await ws.close(code=2, message=b"message2")
+    close_code = await ws.close(code=1000, message=b"message2")
     assert close_code == 0
 
 
