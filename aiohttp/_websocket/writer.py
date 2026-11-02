@@ -19,13 +19,58 @@ from .helpers import (
     PACK_LEN2,
     PACK_LEN3,
     PACK_RANDBITS,
+    UNPACK_CLOSE_CODE,
     websocket_mask,
 )
-from .models import WS_DEFLATE_TRAILING, WSMsgType
+from .models import WS_DEFLATE_TRAILING, WSCloseCode, WSMsgType
 
 # WebSocket opcode boundary: opcodes 0-7 are data frames, 8-15 are control frames
 # Control frames (ping, pong, close) are never compressed
 WS_CONTROL_FRAME_OPCODE: Final[int] = 8
+
+# RFC 6455 §5.5: control frames must carry 125 bytes of payload or less
+WS_CONTROL_FRAME_MAX_PAYLOAD: Final[int] = 125
+
+# RFC 6455 §7.4: close codes that must never appear on the wire
+WS_CLOSE_CODE_MIN_APPLICATION: Final[int] = 3000
+WS_CLOSE_CODE_MAX_APPLICATION: Final[int] = 4999
+
+# Codes aiohttp accepts when sending: the defined codes except ABNORMAL_CLOSURE
+# (1006, only ever generated locally), plus the 3000-4999 application range
+# checked separately.
+_ALLOWED_CLOSE_CODES: Final[frozenset[int]] = frozenset(
+    code for code in WSCloseCode if code is not WSCloseCode.ABNORMAL_CLOSURE
+)
+
+
+def validate_close_frame(code: int, reason: bytes) -> None:
+    """Validate a close code and reason before anything hits the wire.
+
+    Raises :exc:`ValueError` for codes that RFC 6455 §7.4 forbids sending
+    (1005, 1006, 1015, 1016-2999, above 4999) and for non-UTF-8 reasons
+    (§5.5.1). Callers must validate *before* marking the connection closed,
+    otherwise a rejected close still tears the connection down.
+    """
+    allowed = code in _ALLOWED_CLOSE_CODES or (
+        WS_CLOSE_CODE_MIN_APPLICATION <= code <= WS_CLOSE_CODE_MAX_APPLICATION
+    )
+    if not allowed:
+        raise ValueError(f"Invalid close code: {code}")
+    try:
+        reason.decode("utf-8")
+    except UnicodeDecodeError as exc:
+        raise ValueError("Close reason must be valid UTF-8") from exc
+
+
+def validate_close_payload(payload: bytes) -> None:
+    """Validate a raw close frame payload as produced by ``PACK_CLOSE_CODE``."""
+    if len(payload) == 1:
+        # Like the reader: a 1-byte close payload is malformed.
+        raise ValueError(f"Invalid close frame payload: {payload!r}")
+    if len(payload) >= 2:
+        (code,) = UNPACK_CLOSE_CODE(payload[:2])
+        validate_close_frame(code, payload[2:])
+
 
 # For websockets, keeping latency low is extremely important as implementations
 # generally expect to be able to send and receive messages quickly. We use a
@@ -77,6 +122,19 @@ class WebSocketWriter:
         """Send a frame over the websocket with message as its payload."""
         if self._closing and not (opcode & WSMsgType.CLOSE):
             raise ClientConnectionResetError("Cannot write to closing transport")
+
+        if opcode >= WS_CONTROL_FRAME_OPCODE:
+            # RFC 6455 §5.5: control frames must carry 125 bytes or less.
+            # Validate here (rather than in ping()/pong()/close()) so direct
+            # send_frame() callers get the same protection.
+            if len(message) > WS_CONTROL_FRAME_MAX_PAYLOAD:
+                raise ValueError(
+                    "Control frame payload cannot be larger than "
+                    f"{WS_CONTROL_FRAME_MAX_PAYLOAD} bytes, got {len(message)}"
+                )
+            if opcode == WSMsgType.CLOSE:
+                # A raw close frame must carry a legal code and reason too.
+                validate_close_payload(message)
 
         if not (compress or self.compress) or opcode >= WS_CONTROL_FRAME_OPCODE:
             # Non-compressed frames don't need lock or shield
@@ -261,6 +319,8 @@ class WebSocketWriter:
         """Close the websocket, sending the specified code and message."""
         if isinstance(message, str):
             message = message.encode("utf-8")
+        # RFC 6455 §7.4/§5.5.1: reject illegal codes and reasons here.
+        validate_close_frame(code, message)
         try:
             await self.send_frame(
                 PACK_CLOSE_CODE(code) + message, opcode=WSMsgType.CLOSE
