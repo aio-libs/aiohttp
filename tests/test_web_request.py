@@ -1299,6 +1299,15 @@ async def test_urlencoded_form_empty_body(protocol: BaseProtocol) -> None:
     assert len(result) == 0
 
 
+async def test_urlencoded_form_query_method(protocol: BaseProtocol) -> None:
+    payload = _urlencoded_payload(protocol, b"a=1&b=2")
+    req = make_mocked_request(
+        "QUERY", "/", payload=payload, headers=_URLENCODED_HEADERS
+    )
+    result = await req.post()
+    assert dict(result) == {"a": "1", "b": "2"}
+
+
 async def test_urlencoded_form_parse_qsl_parity(protocol: BaseProtocol) -> None:
     payload = _urlencoded_payload(protocol, b"a=1+2&b=&&c&d=%zz&e=%C3%A9&f=%FF")
     req = make_mocked_request("POST", "/", payload=payload, headers=_URLENCODED_HEADERS)
