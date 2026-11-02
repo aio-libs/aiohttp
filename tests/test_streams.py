@@ -1360,6 +1360,8 @@ async def test_empty_stream_reader() -> None:
         await s.readexactly(10)
     assert s.read_nowait() == b""
     assert s.total_bytes == 0
+    assert s.total_compressed_bytes == 0
+    assert s.total_raw_bytes == 0
 
 
 async def test_empty_stream_reader_iter_chunks() -> None:
