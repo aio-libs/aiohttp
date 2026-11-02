@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
+import gc
 import http.cookies
 import io
 import json
@@ -7032,3 +7033,39 @@ async def test_stream_close_after_eof_keeps_connection(
     # Fully read, so the connection went back to the pool instead of closing.
     assert not connector._acquired
     assert len(connector._conns) == 1
+
+
+async def test_stream_close_hook_does_not_keep_response_alive(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A response dropped after a sock_read timeout still releases its connection."""
+    done = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        await resp.write(b"data")
+        await done.wait()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+    connector = aiohttp.TCPConnector(limit=1)
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+
+    # A plain session, the test client keeps a reference to every response.
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        resp = await session.get(server.make_url("/"))
+        with pytest.raises(SocketTimeoutError):
+            await resp.content.read()
+        assert connector._acquired
+
+        # The timeout dropped the EOF callback, only the close hook refers to
+        # the response now. Collecting it releases the connection.
+        del resp
+        gc.collect()
+        acquired = bool(connector._acquired)
+        done.set()
+
+    assert not acquired

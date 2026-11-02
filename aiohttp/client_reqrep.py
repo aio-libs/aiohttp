@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+import weakref
 from asyncio.base_events import BaseEventLoop
 from collections import deque
 from collections.abc import Callable, Iterable, Sequence
@@ -728,14 +729,6 @@ class ClientResponse(HeadersMixin):
                     set_result(self._continue, True)
                     self._continue = None
 
-        # payload, set before the eof handler which may run right away
-        self.content = payload
-
-        if payload is not EMPTY_PAYLOAD:
-            payload._on_close = self.close
-            if self._traces:
-                payload._on_chunk_received = self._on_chunk_response_received
-
         # payload eof handler
         payload.on_eof(self._response_eof)
 
@@ -749,6 +742,15 @@ class ClientResponse(HeadersMixin):
         self._raw_headers = message.raw_headers
         self._upgraded = message.upgrade
 
+        # payload
+        self.content = payload
+
+        if payload is not EMPTY_PAYLOAD:
+            # Weak, so the stream does not keep a dropped response alive.
+            payload._on_close = weakref.WeakMethod(self.close)
+            if self._traces:
+                payload._on_chunk_received = self._on_chunk_response_received
+
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
             # Store raw cookie headers for CookieJar
@@ -756,7 +758,6 @@ class ClientResponse(HeadersMixin):
         return self
 
     def _response_eof(self) -> None:
-        self._drop_close_hook()
         if self._closed:
             return
 
@@ -858,17 +859,7 @@ class ClientResponse(HeadersMixin):
             # response is reclaimable without waiting for cycle GC.
             if content._on_chunk_received is not None:
                 content._on_chunk_received = None
-            self._drop_close_hook()
         self._released = True
-
-    def _drop_close_hook(self) -> None:
-        # The close hook installed in start() captures self, creating a
-        # response→payload→method→self cycle. Drop it once the response is
-        # released, or at EOF when there is nothing left to close.
-        content = self.content
-        # content can be None here, but the types are cheated elsewhere.
-        if content and content._on_close is not None:  # type: ignore[truthy-bool]
-            content._on_close = None
 
     async def wait_for_close(self) -> None:
         if self.__writer is not None:

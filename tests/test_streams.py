@@ -1404,7 +1404,8 @@ class TestStreamReaderClose:
             protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
         )
         on_close = mock.Mock()
-        stream._on_close = on_close
+        # Stands in for the WeakMethod, calling it returns the bound close().
+        stream._on_close = mock.Mock(return_value=on_close)
         return stream, on_close
 
     async def test_close_without_hook(self) -> None:
@@ -1419,6 +1420,22 @@ class TestStreamReaderClose:
         stream.set_exception(ValueError())
         stream.close()
         on_close.assert_called_once_with()
+
+    async def test_close_after_eof(self, protocol: mock.Mock) -> None:
+        """The connection was released at EOF, so close() leaves the response alone."""
+        stream, on_close = self._make_one(protocol)
+        stream.feed_data(b"data")
+        stream.feed_eof()
+        stream.close()
+        on_close.assert_not_called()
+        assert await stream.read() == b"data"
+
+    async def test_close_after_response_collected(self, protocol: mock.Mock) -> None:
+        """close() is a no-op once the response it belongs to is gone."""
+        stream, _ = self._make_one(protocol)
+        assert stream._on_close is not None
+        stream._on_close.return_value = None  # type: ignore[attr-defined]
+        stream.close()
 
     @pytest.mark.parametrize(
         "make_iterator",

@@ -2,6 +2,7 @@ import asyncio
 import collections
 import sys
 import warnings
+import weakref
 from collections.abc import Awaitable, Callable, Coroutine
 from typing import Final, Generic, TypeVar
 
@@ -158,7 +159,7 @@ class StreamReader:
         self._on_chunk_received: (
             Callable[[bytes], Coroutine[None, None, None]] | None
         ) = None
-        self._on_close: Callable[[], None] | None = None
+        self._on_close: weakref.WeakMethod[Callable[[], None]] | None = None
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -204,8 +205,10 @@ class StreamReader:
         Does nothing once EOF was reached, or if the stream is not the body
         of a client response.
         """
-        if self._on_close is not None:
-            self._on_close()
+        if self._on_close is None or self._eof:
+            return
+        if (close := self._on_close()) is not None:
+            close()
 
     def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
@@ -665,7 +668,7 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         return None
 
     @_on_close.setter
-    def _on_close(self, value: Callable[[], None] | None) -> None:
+    def _on_close(self, value: weakref.WeakMethod[Callable[[], None]] | None) -> None:
         raise AttributeError("EmptyStreamReader._on_close is read-only")
 
     def __repr__(self) -> str:

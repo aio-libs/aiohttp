@@ -186,7 +186,7 @@ size limit and over any available data.
    A partially read response holds its connection until it is closed. This
    allows code that only has the stream, or an iterator returned by
    :meth:`iter_chunked`, :meth:`iter_any`, :meth:`iter_chunks` or
-   ``async for``, to close it. The iterators have a ``close()`` method
+   :func:`aiter`, to close it. The iterators have a ``close()`` method
    that calls this one::
 
       chunks = response.content.iter_chunked(1024)
