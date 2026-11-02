@@ -1,0 +1,5 @@
+Fixed an unretrieved ``ClientConnectionResetError`` surfacing as scary noise
+when a large compressed WebSocket send outlived its cancelled sender and the
+peer went away mid-compression: the shielded send now treats a dead
+transport as a quiet no-op and always retrieves its own outcome -- by
+:user:`rinopatrick`.

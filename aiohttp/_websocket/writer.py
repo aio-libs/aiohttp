@@ -71,6 +71,22 @@ class WebSocketWriter:
         self._send_lock = asyncio.Lock()
         self._background_tasks: set[asyncio.Task[None]] = set()
 
+    def _send_task_done(self, task: asyncio.Task[None]) -> None:
+        """Done callback for shielded send tasks.
+
+        Drops the strong reference and retrieves any exception so a
+        send that outlives its cancelled waiter (e.g. the peer went
+        away mid-compression) does not surface as an unretrieved
+        exception (see #14060). The waiter itself still observes the
+        failure through ``asyncio.shield()`` when it is waiting.
+        """
+        self._background_tasks.discard(task)
+        if not task.cancelled():
+            # Retrieve the exception (if any) so it is never reported as
+            # unretrieved; failures themselves are handled in
+            # _send_compressed_frame_async_locked.
+            task.exception()
+
     async def send_frame(
         self, message: bytes, opcode: int, compress: int | None = None
     ) -> None:
@@ -113,7 +129,7 @@ class WebSocketWriter:
                 send_task = asyncio.create_task(coro)
             # Keep a strong reference to prevent garbage collection
             self._background_tasks.add(send_task)
-            send_task.add_done_callback(self._background_tasks.discard)
+            send_task.add_done_callback(self._send_task_done)
             await asyncio.shield(send_task)
 
         # It is safe to return control to the event loop when using compression
@@ -244,18 +260,28 @@ class WebSocketWriter:
             compressobj = self._get_compressor(compress)
             # (0x40) RSV1 is set for compressed frames
             # https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.1
-            self._write_websocket_frame(
-                (
-                    await compressobj.compress(message)
-                    + compressobj.flush(
-                        ZLibBackend.Z_FULL_FLUSH
-                        if self.notakeover
-                        else ZLibBackend.Z_SYNC_FLUSH
-                    )
-                ).removesuffix(WS_DEFLATE_TRAILING),
-                opcode,
-                0x40,
-            )
+            try:
+                self._write_websocket_frame(
+                    (
+                        await compressobj.compress(message)
+                        + compressobj.flush(
+                            ZLibBackend.Z_FULL_FLUSH
+                            if self.notakeover
+                            else ZLibBackend.Z_SYNC_FLUSH
+                        )
+                    ).removesuffix(WS_DEFLATE_TRAILING),
+                    opcode,
+                    0x40,
+                )
+            except ClientConnectionResetError:
+                # The transport died mid-send. If it is (still) closing,
+                # there is nobody left to report to: a waiting sender
+                # observes the dead connection through its own paths, and a
+                # cancelled sender is gone already. Swallowing avoids an
+                # unretrievable error surfacing as scary noise (see #14060).
+                # Anything else (e.g. a live transport) still propagates.
+                if not self.transport.is_closing():
+                    raise
 
     async def close(self, code: int = 1000, message: bytes | str = b"") -> None:
         """Close the websocket, sending the specified code and message."""

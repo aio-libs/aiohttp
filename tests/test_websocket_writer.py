@@ -199,6 +199,46 @@ async def test_send_compress_cancelled(
     assert msg.data == large_data_2
 
 
+async def test_send_compress_cancelled_then_peer_dies(
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    slow_executor: ThreadPoolExecutor,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A cancelled sender plus a dead peer must not leave an unretrieved
+    exception on the shielded send task (see #14060)."""
+    loop = asyncio.get_running_loop()
+    seen: list[str] = []
+    loop.set_exception_handler(lambda _loop, ctx: seen.append(ctx.get("message", "")))
+    monkeypatch.setattr("aiohttp._websocket.writer.WEBSOCKET_MAX_SYNC_CHUNK_SIZE", 1024)
+    writer = WebSocketWriter(protocol, transport, compress=15)
+
+    writer._compressobj = writer._get_compressor(None)
+    writer._compressobj._executor = slow_executor
+
+    async def send_and_cancel() -> None:
+        await writer.send_frame(b"A" * 10000, WSMsgType.BINARY)
+
+    task = asyncio.create_task(send_and_cancel())
+    await asyncio.sleep(0.01)  # let compression start in the executor
+    task.cancel()
+    with suppress(asyncio.CancelledError):
+        await task
+
+    # Peer goes away while the shielded send is still running.
+    transport.is_closing.return_value = True  # type: ignore[attr-defined]
+    background = list(writer._background_tasks)
+    assert background, "expected the shielded send to still run"
+    # Do NOT await the background task: nobody retrieves its outcome.
+    # Once it fails against the dead transport, no exception must surface
+    # anywhere (neither unretrieved nor via the shield reporter).
+    await asyncio.sleep(0.5)
+    assert all(bg.done() for bg in background)
+    await asyncio.sleep(0)
+
+    assert seen == [], seen
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_compress_multiple_cancelled(
     protocol: BaseProtocol,
