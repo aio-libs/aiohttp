@@ -6971,3 +6971,64 @@ async def test_deprecated_upload_attributes(aiohttp_client: AiohttpClient) -> No
         with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
             assert resp.output_size >= 1024
         await resp.read()
+
+
+@pytest.mark.parametrize("close_iterator", (True, False), ids=("iterator", "stream"))
+async def test_stream_close_releases_partially_read_response(
+    aiohttp_client: AiohttpClient, close_iterator: bool
+) -> None:
+    """Closing only the stream or its iterator frees the connection."""
+    body = b"x" * (1024 * 1024)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=body)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
+
+    resp = await client.get("/")
+    iterator = resp.content.iter_chunked(1024)
+    assert await iterator.__anext__()
+    assert connector._acquired
+
+    # Only the stream is needed to close the response, e.g. a library that
+    # returned resp.content.iter_chunked() to its caller.
+    if close_iterator:
+        iterator.close()
+    else:
+        resp.content.close()
+
+    assert resp.closed
+    assert not connector._acquired
+    with pytest.raises(aiohttp.ClientConnectionError):
+        await iterator.__anext__()
+
+    # The single connector slot is free again.
+    async with client.get("/") as resp2:
+        assert await resp2.read() == body
+
+
+async def test_stream_close_after_eof_keeps_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Closing a fully read stream leaves its connection in the pool."""
+    body = b"x" * 1024
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=body)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
+
+    resp = await client.get("/")
+    iterator = resp.content.iter_chunked(256)
+    assert b"".join([chunk async for chunk in iterator]) == body
+    iterator.close()
+
+    # Fully read, so the connection went back to the pool instead of closing.
+    assert not connector._acquired
+    assert len(connector._conns) == 1

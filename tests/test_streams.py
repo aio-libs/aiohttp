@@ -1385,6 +1385,68 @@ async def test_empty_stream_reader_on_chunk_received_is_read_only() -> None:
     assert streams.EMPTY_PAYLOAD._on_chunk_received is None
 
 
+async def test_empty_stream_reader_on_close_is_read_only() -> None:
+    """Closing the shared EMPTY_PAYLOAD singleton never closes some response."""
+    assert streams.EMPTY_PAYLOAD._on_close is None
+
+    with pytest.raises(AttributeError, match="read-only"):
+        streams.EMPTY_PAYLOAD._on_close = mock.Mock()
+    assert streams.EMPTY_PAYLOAD._on_close is None
+
+    streams.EMPTY_PAYLOAD.close()
+
+
+class TestStreamReaderClose:
+    """Cover close() and the _on_close hook installed by a client response."""
+
+    def _make_one(self, protocol: mock.Mock) -> tuple[streams.StreamReader, mock.Mock]:
+        stream = streams.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        on_close = mock.Mock()
+        stream._on_close = on_close
+        return stream, on_close
+
+    async def test_close_without_hook(self) -> None:
+        """close() is a no-op on a stream that is not a client response body."""
+        stream = await create_stream()
+        stream.close()
+        assert await stream.read() == DATA
+
+    async def test_close_after_exception_calls_hook(self, protocol: mock.Mock) -> None:
+        """A failed read leaves the response open, so close() must still release it."""
+        stream, on_close = self._make_one(protocol)
+        stream.set_exception(ValueError())
+        stream.close()
+        on_close.assert_called_once_with()
+
+    @pytest.mark.parametrize(
+        "make_iterator",
+        (
+            lambda s: s.__aiter__(),
+            lambda s: s.iter_chunked(2),
+            lambda s: s.iter_any(),
+            lambda s: s.iter_chunks(),
+        ),
+        ids=("lines", "iter_chunked", "iter_any", "iter_chunks"),
+    )
+    async def test_iterator_close(
+        self,
+        protocol: mock.Mock,
+        make_iterator: Callable[
+            [streams.StreamReader],
+            streams.ClosableAsyncStreamIterator | streams.ChunkTupleAsyncStreamIterator,
+        ],
+    ) -> None:
+        """Every iterator a stream returns can close it."""
+        stream, on_close = self._make_one(protocol)
+        stream.feed_data(b"line1\nline2\n")
+        iterator = make_iterator(stream)
+        assert await iterator.__anext__()
+        iterator.close()
+        on_close.assert_called_once_with()
+
+
 @pytest.fixture
 async def buffer() -> streams.DataQueue[bytes]:
     return streams.DataQueue(asyncio.get_running_loop())

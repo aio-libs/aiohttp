@@ -1135,6 +1135,44 @@ async def test_response_chunk_received_hook_cleared_on_release(
     assert resp.content._on_chunk_received is None
 
 
+async def test_response_close_hook_cleared(aiohttp_client: AiohttpClient) -> None:
+    """The stream's close hook is dropped once there is nothing left to close.
+
+    It captures the response, so keeping it would leave a response-stream cycle.
+    """
+
+    async def large(request: web.Request) -> web.Response:
+        return web.Response(body=b"x" * (1024 * 1024))
+
+    async def small(request: web.Request) -> web.Response:
+        return web.Response(body=b"x")
+
+    app = web.Application()
+    app.router.add_get("/large", large)
+    app.router.add_get("/small", small)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/large")
+    assert resp.content._on_close is not None
+    resp.release()
+    assert resp.content._on_close is None
+
+    resp = await client.get("/large")  # type: ignore[unreachable]
+    assert resp.content._on_close is not None
+    resp.close()
+    assert resp.content._on_close is None
+
+    resp = await client.get("/large")
+    assert resp.content._on_close is not None
+    await resp.read()
+    assert resp.content._on_close is None
+
+    # The body is complete before start() returns, EOF fires right away.
+    resp = await client.get("/small")
+    assert resp.content._on_close is None
+    resp.release()
+
+
 async def test_response_chunk_received_trace_failure_closes_response(
     aiohttp_client: AiohttpClient,
 ) -> None:

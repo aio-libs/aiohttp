@@ -51,6 +51,21 @@ class AsyncStreamIterator(Generic[_T]):
         return rv
 
 
+class ClosableAsyncStreamIterator(AsyncStreamIterator[bytes]):
+
+    __slots__ = ("_stream",)
+
+    def __init__(
+        self, read_func: Callable[[], Awaitable[bytes]], stream: "StreamReader"
+    ) -> None:
+        super().__init__(read_func)
+        self._stream = stream
+
+    def close(self) -> None:
+        """Close the underlying stream, see :meth:`StreamReader.close`."""
+        self._stream.close()
+
+
 class ChunkTupleAsyncStreamIterator:
 
     __slots__ = ("_stream",)
@@ -60,6 +75,10 @@ class ChunkTupleAsyncStreamIterator:
 
     def __aiter__(self) -> "ChunkTupleAsyncStreamIterator":
         return self
+
+    def close(self) -> None:
+        """Close the underlying stream, see :meth:`StreamReader.close`."""
+        self._stream.close()
 
     async def __anext__(self) -> tuple[bytes, bool]:
         rv = await self._stream.readchunk()
@@ -102,6 +121,7 @@ class StreamReader:
         "_eof_callbacks",
         "_eof_counter",
         "_on_chunk_received",
+        "_on_close",
         "total_bytes",
         "total_compressed_bytes",
     )
@@ -138,6 +158,7 @@ class StreamReader:
         self._on_chunk_received: (
             Callable[[bytes], Coroutine[None, None, None]] | None
         ) = None
+        self._on_close: Callable[[], None] | None = None
         self.total_bytes = 0
         self.total_compressed_bytes: int | None = None
 
@@ -155,17 +176,17 @@ class StreamReader:
             info.append("e=%r" % self._exception)
         return "<%s>" % " ".join(info)
 
-    def __aiter__(self) -> AsyncStreamIterator[bytes]:
-        return AsyncStreamIterator(self.readline)
+    def __aiter__(self) -> ClosableAsyncStreamIterator:
+        return ClosableAsyncStreamIterator(self.readline, self)
 
-    def iter_chunked(self, n: int) -> AsyncStreamIterator[bytes]:
+    def iter_chunked(self, n: int) -> ClosableAsyncStreamIterator:
         """Returns an asynchronous iterator that yields chunks of size n."""
         self.set_read_chunk_size(n)
-        return AsyncStreamIterator(lambda: self.read(n))
+        return ClosableAsyncStreamIterator(lambda: self.read(n), self)
 
-    def iter_any(self) -> AsyncStreamIterator[bytes]:
+    def iter_any(self) -> ClosableAsyncStreamIterator:
         """Yield all available data as soon as it is received."""
-        return AsyncStreamIterator(self.readany)
+        return ClosableAsyncStreamIterator(self.readany, self)
 
     def iter_chunks(self) -> ChunkTupleAsyncStreamIterator:
         """Yield chunks of data as they are received by the server.
@@ -174,6 +195,17 @@ class StreamReader:
         of (bytes, bool) as returned by the StreamReader.readchunk method.
         """
         return ChunkTupleAsyncStreamIterator(self)
+
+    def close(self) -> None:
+        """Stop reading and close the client response this stream belongs to.
+
+        A partially read response keeps its connection until it is closed.
+        This releases it without needing a reference to the response.
+        Does nothing once EOF was reached, or if the stream is not the body
+        of a client response.
+        """
+        if self._on_close is not None:
+            self._on_close()
 
     def get_read_buffer_limits(self) -> tuple[int, int]:
         return (self._low_water, self._high_water)
@@ -626,6 +658,15 @@ class EmptyStreamReader(StreamReader):  # lgtm [py/missing-call-to-init]
         self, value: Callable[[bytes], Coroutine[None, None, None]] | None
     ) -> None:
         raise AttributeError("EmptyStreamReader._on_chunk_received is read-only")
+
+    # Same for the close hook, closing the singleton must never close a response.
+    @property
+    def _on_close(self) -> None:
+        return None
+
+    @_on_close.setter
+    def _on_close(self, value: Callable[[], None] | None) -> None:
+        raise AttributeError("EmptyStreamReader._on_close is read-only")
 
     def __repr__(self) -> str:
         return "<%s>" % self.__class__.__name__

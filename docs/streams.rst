@@ -178,6 +178,30 @@ size limit and over any available data.
               print(buffer)
               buffer = b""
 
+.. method:: StreamReader.close()
+
+   Stop reading and close the client response the stream belongs to,
+   releasing its connection.
+
+   A partially read response holds its connection until it is closed. This
+   allows code that only has the stream, or an iterator returned by
+   :meth:`iter_chunked`, :meth:`iter_any`, :meth:`iter_chunks` or
+   ``async for``, to close it. The iterators have a ``close()`` method
+   that calls this one::
+
+      chunks = response.content.iter_chunked(1024)
+      async for data in chunks:
+          if done(data):
+              chunks.close()
+              break
+
+   Reading after closing raises :exc:`ClientConnectionError`. Once EOF was
+   reached the connection has already been released and closing does
+   nothing. It also does nothing if the stream is not the body of a client
+   response.
+
+   .. versionadded:: 3.15
+
 
 Helpers
 -------
