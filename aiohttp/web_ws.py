@@ -28,11 +28,11 @@ from .http import (
     WebSocketError,
     WebSocketReader,
     WebSocketWriter,
-    validate_close_frame,
     WSCloseCode,
     WSMessageDecodeText,
     WSMessageNoDecodeText,
     WSMsgType,
+    validate_close_frame,
     ws_ext_gen,
     ws_ext_parse,
 )
