@@ -749,6 +749,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     await self._waiter
                 finally:
                     self._waiter = None
+                # The connection may have been lost while waiting (e.g. a
+                # queued request followed by connection_lost in the same
+                # iteration): exit quietly instead of using cleared state.
+                if self._force_close or self._request_factory is None:
+                    break
 
             message, payload = self._messages.popleft()
 
