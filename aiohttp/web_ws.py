@@ -70,7 +70,6 @@ class WebSocketReady:
 
 
 class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
-
     _length_check: bool = False
     _ws_protocol: str | None = None
     _writer: WebSocketWriter | None = None
@@ -153,11 +152,19 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._heartbeat_reset_handle = None
         if not self._need_heartbeat_reset:
             return
+        if self._closed or self._closing:
+            # The connection closed while the reset was deferred (e.g. the
+            # peer close frame arrived after the close handshake). Do not
+            # re-arm the heartbeat on a dead connection (see #14125).
+            self._need_heartbeat_reset = False
+            return
         self._reset_heartbeat()
         self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
         if self._heartbeat is None:
+            return
+        if self._closed or self._closing:
             return
         self._cancel_pong_response_cb()
         req = self._req

@@ -143,6 +143,22 @@ async def test_flush_heartbeat_reset_returns_early_when_not_needed() -> None:
         reset.assert_not_called()
 
 
+async def test_flush_heartbeat_reset_does_not_rearm_after_close() -> None:
+    # Peer-close data arriving after the close handshake must not re-arm
+    # the heartbeat on the closed connection (see #14125).
+    ws = web.WebSocketResponse(heartbeat=10)
+    ws._loop = asyncio.get_running_loop()
+    ws._set_closed()
+
+    # data (e.g. the peer close frame) arrives after close
+    ws._on_data_received()
+    await asyncio.sleep(0)
+    await asyncio.sleep(0)
+
+    assert ws._heartbeat_cb is None
+    assert ws._need_heartbeat_reset is False
+
+
 async def test_send_heartbeat_returns_early_when_reset_is_pending() -> None:
     ws = web.WebSocketResponse(heartbeat=0.05)
     ws._need_heartbeat_reset = True
