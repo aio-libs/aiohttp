@@ -206,7 +206,7 @@ pytest-aiohttp==1.1.1
     #   -r requirements/test-common-base.in
 pytest-asyncio==1.4.1
     # via pytest-aiohttp
-pytest-codspeed==5.0.3
+pytest-codspeed==5.0.4
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
