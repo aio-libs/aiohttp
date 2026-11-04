@@ -179,9 +179,9 @@ pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
-pydantic==2.14.1
+pydantic==2.14.2
     # via python-on-whales
-pydantic-core==2.50.1
+pydantic-core==2.50.2
     # via pydantic
 pyenchant==3.3.0
     # via sphinxcontrib-spelling
