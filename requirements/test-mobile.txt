@@ -104,7 +104,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   aiohttp
     #   aiosignal
     #   pytest-asyncio
-tzdata==2026.5
+tzdata==2026.6
     # via python-dateutil
 yarl==1.25.1
     # via
