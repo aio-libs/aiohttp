@@ -194,7 +194,7 @@ pytest==9.2.0
     #   pytest-mock
     #   pytest-timeout
     #   pytest-xdist
-pytest-codspeed==5.0.3
+pytest-codspeed==5.0.4
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
