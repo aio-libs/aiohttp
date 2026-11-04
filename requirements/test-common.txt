@@ -101,7 +101,7 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-tzdata==2026.5
+tzdata==2026.6
     # via python-dateutil
 zlib-ng==1.0.0
     # via -r requirements/test-common.in
