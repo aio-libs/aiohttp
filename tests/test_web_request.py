@@ -467,11 +467,14 @@ def test_request_cookies_many_invalid(caplog: pytest.LogCaptureFixture) -> None:
     cookie = "; ".join(f"{bad}{i}=1" for i in range(3000))
     req = make_mocked_request("GET", "/", headers=CIMultiDict(COOKIE=cookie))
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
         cookies = req.cookies
 
-    assert len(caplog.record_tuples) == 1
-    _, level, msg = caplog.record_tuples[0]
+    # Filter by logger: on PyPy, GC can finalize objects leaked by other
+    # tests (e.g. an unclosed ClientSession) and log to asyncio meanwhile.
+    records = [r for r in caplog.record_tuples if r[0] == "aiohttp.internal"]
+    assert len(records) == 1
+    _, level, msg = records[0]
     assert level is logging.DEBUG
     assert "Cannot load cookie" in msg
     assert cookies == {}
