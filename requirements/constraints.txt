@@ -72,7 +72,7 @@ docutils==0.21.2
     #   sphinx
 execnet==2.1.2
     # via pytest-xdist
-filelock==4.2.4
+filelock==4.2.6
     # via
     #   python-discovery
     #   virtualenv
