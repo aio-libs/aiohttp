@@ -274,7 +274,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-tzdata==2026.5
+tzdata==2026.6
     # via python-dateutil
 urllib3==2.8.0
     # via requests
