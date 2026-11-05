@@ -410,11 +410,13 @@ class DynamicResource(Resource):
         self._orig_path = path
         pattern = ""
         formatter = ""
+        good_vars: set[str] = set()
         for part in ROUTE_RE.split(path):
             match = self.DYN.fullmatch(part)
             if match:
                 pattern += "(?P<{}>{})".format(match.group("var"), self.GOOD)
                 formatter += "{" + match.group("var") + "}"
+                good_vars.add(match.group("var"))
                 continue
 
             match = self.DYN_WITH_RE.fullmatch(part)
@@ -438,6 +440,7 @@ class DynamicResource(Resource):
         assert formatter.startswith("/")
         self._pattern = compiled
         self._formatter = formatter
+        self._good_vars = frozenset(good_vars)
 
     @property
     def canonical(self) -> str:
@@ -465,7 +468,18 @@ class DynamicResource(Resource):
         return {"formatter": self._formatter, "pattern": self._pattern}
 
     def url_for(self, **parts: str) -> URL:
-        url = self._formatter.format_map({k: _quote_path(v) for k, v in parts.items()})
+        # A plain {var} matches a single segment and _match() decodes %2F
+        # to "/", so encode "/" back rather than let it split the path.
+        url = self._formatter.format_map(
+            {
+                k: (
+                    _quote_path(v).replace("/", "%2F")
+                    if k in self._good_vars
+                    else _quote_path(v)
+                )
+                for k, v in parts.items()
+            }
+        )
         return URL.build(path=url, encoded=True)
 
     def __repr__(self) -> str:
