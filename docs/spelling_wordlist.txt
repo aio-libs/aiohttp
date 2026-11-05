@@ -20,6 +20,7 @@ arg
 args
 armv
 Arsenic
+Asyntai
 async
 asyncio
 asyncpg
