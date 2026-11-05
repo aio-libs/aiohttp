@@ -8,6 +8,7 @@ isal
 mypy; implementation_name == "cpython"
 pre-commit
 proxy.py
+pyodide-py
 pytest
 pytest-aiohttp
 pytest-mock
