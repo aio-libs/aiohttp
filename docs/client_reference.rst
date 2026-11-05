@@ -1772,6 +1772,8 @@ manually.
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
 
+      :raise ValueError: if the payload exceeds 125 bytes (RFC 6455 §5.5).
+
       .. versionchanged:: 3.0
 
          The method is converted into :term:`coroutine`
@@ -1784,6 +1786,8 @@ manually.
       :param message: optional payload of *pong* message,
                       :class:`str` (converted to *UTF-8* encoded bytes)
                       or :class:`bytes`.
+
+      :raise ValueError: if the payload exceeds 125 bytes (RFC 6455 §5.5).
 
       .. versionchanged:: 3.0
 
@@ -1899,6 +1903,10 @@ manually.
                            single message,
                            ``None`` for not overriding per-socket setting.
 
+      :raise ValueError: if a control frame exceeds 125 bytes, a close
+                           frame carries a forbidden code, or the close
+                           reason is not valid UTF-8 (RFC 6455 §§5.5, 7.4).
+
       .. versionadded:: 3.11
 
    .. method:: close(*, code=WSCloseCode.OK, message=b'')
@@ -1913,6 +1921,10 @@ manually.
 
       :param message: optional payload of *close* message,
          :class:`str` (converted to *UTF-8* encoded bytes) or :class:`bytes`.
+
+      :raise ValueError: if *code* must not appear on the wire (1005, 1006,
+                           1015, 1016-2999, above 4999) or *message* is not
+                           valid UTF-8 (RFC 6455 §§5.5.1, 7.4).
 
    .. method:: receive()
       :async:
