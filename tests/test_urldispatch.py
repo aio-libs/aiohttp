@@ -1331,6 +1331,28 @@ async def test_add_domain_absolute_form_ignores_host_header(
     assert match_info.route.handler is domain_handler
 
 
+async def test_add_domain_within_prefixed_subapp(app: web.Application) -> None:
+    """A domain subapp nested in a prefixed subapp registers and routes."""
+    inner_handler = make_handler()
+    inner = web.Application()
+    inner.router.add_get("/resource", inner_handler)
+
+    subapp = web.Application()
+    subapp.add_domain("example.com", inner)
+
+    app.add_subapp("/sub", subapp)
+
+    request = make_mocked_request("GET", "/sub/resource", {"host": "example.com"})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is inner_handler
+
+    # A request for a host the domain does not match must not reach the
+    # domain-matched app.
+    request = make_mocked_request("GET", "/sub/resource", {"host": "other.example"})
+    match_info = await app.router.resolve(request)
+    assert match_info.route.handler is not inner_handler
+
+
 def test_subapp_url_for(app: web.Application) -> None:
     subapp = web.Application()
     resource = app.add_subapp("/pre", subapp)

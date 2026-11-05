@@ -1,0 +1,6 @@
+Fixed ``KeyError`` when registering a prefixed sub-application
+(:py:meth:`~aiohttp.web.Application.add_subapp`) whose application contains a
+rule-matched sub-application added with
+:py:meth:`~aiohttp.web.Application.add_domain`. The prefix is now also applied
+to the resources of the nested domain-matched application, restoring the
+behavior of aiohttp 3.9 -- by :user:`simpleqt`.
