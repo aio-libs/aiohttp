@@ -483,6 +483,52 @@ async def test_ignore_domain_ending_with_dot() -> None:
     assert cookies_sent.output(header="Cookie:") == ""
 
 
+@pytest.mark.parametrize("from_headers", (False, True), ids=("morsels", "headers"))
+@pytest.mark.parametrize(
+    "domain", ("example.com", "Example.COM", "EXAMPLE.COM", ".Example.COM")
+)
+@pytest.mark.parametrize("response_url", (URL(), URL("https://example.com/")))
+def test_domain_attribute_is_case_insensitive(
+    from_headers: bool, domain: str, response_url: URL
+) -> None:
+    jar = CookieJar()
+    field = f"sid=value; Domain={domain}; Path=/"
+    if from_headers:
+        jar.update_cookies_from_headers([field], response_url)
+    else:
+        cookies = SimpleCookie(field)
+        jar.update_cookies(cookies, response_url)
+        assert cookies["sid"]["domain"] == domain
+
+    assert len(jar) == 1
+    assert next(iter(jar))["domain"] == "example.com"
+    assert not jar.host_only_cookies
+    for host in ("example.com", "sub.example.com"):
+        assert jar.filter_cookies(URL(f"https://{host}/"))["sid"].value == "value"
+    for host in ("other.test", "badexample.com", "example.com.other.test"):
+        assert not jar.filter_cookies(URL(f"https://{host}/"))
+
+
+def test_domain_attribute_case_replacement_and_deletion() -> None:
+    jar = CookieJar()
+    origin = URL("https://example.com/")
+    jar.update_cookies_from_headers(["sid=first; Domain=example.com; Path=/"], origin)
+    assert jar.filter_cookies(origin)["sid"].value == "first"
+
+    jar.update_cookies_from_headers(["sid=second; Domain=EXAMPLE.COM; Path=/"], origin)
+
+    assert len(jar) == 1
+    assert jar.filter_cookies(origin)["sid"].value == "second"
+    assert jar.filter_cookies(URL("https://sub.example.com/"))["sid"].value == "second"
+
+    jar.update_cookies_from_headers(
+        ["sid=; Domain=Example.COM; Path=/; Max-Age=0"], origin
+    )
+
+    assert not jar
+    assert not jar.filter_cookies(origin)
+
+
 class TestCookieJarSafe:
     @pytest.fixture(autouse=True)
     def setup_cookies(
