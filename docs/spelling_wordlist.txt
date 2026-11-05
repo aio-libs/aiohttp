@@ -23,6 +23,7 @@ Arsenic
 async
 asyncio
 asyncpg
+Asyntai
 asynctest
 attrs
 auth
