@@ -305,3 +305,6 @@ ask to raise the status.
 - `interlock-cb <https://github.com/bagowix/interlock>`_
   Circuit breaker middleware for aiohttp clients with one breaker per host; it fails fast
   while a host is degraded and trips on failure rate or slow responses.
+
+- `aiohttp-ai-chatbot <https://asyntai.com/documentation/integrations/aiohttp/>`_
+  Server middleware that adds the Asyntai AI chat assistant to every HTML page.
