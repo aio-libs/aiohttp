@@ -79,12 +79,10 @@ pytest-timeout==2.4.0
     # via -r requirements/test-common-base.in
 pytest-xdist==3.8.0
     # via -r requirements/test-mobile.in
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via freezegun
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
-six==1.17.0
-    # via python-dateutil
 typing-extensions==4.16.0 ; python_version < "3.13"
     # via
     #   -r requirements/runtime-deps.in
