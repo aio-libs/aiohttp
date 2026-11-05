@@ -1,0 +1,2 @@
+Fixed TLS connections remaining open after an incomplete response was discarded
+with the default ``ssl_shutdown_timeout=0`` -- by :user:`ZXLyyds100`.
