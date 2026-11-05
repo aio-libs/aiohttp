@@ -42,7 +42,7 @@ proxy-py==2.4.10
     # via -r requirements/test-common-base.in
 pygments==2.21.0
     # via pytest
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   -r requirements/test-common-base.in
     #   pytest-aiohttp
@@ -52,7 +52,7 @@ pytest==9.1.1
     #   pytest-timeout
 pytest-aiohttp==1.1.1
     # via -r requirements/test-common-base.in
-pytest-asyncio==1.4.1
+pytest-asyncio==1.4.1.post1
     # via pytest-aiohttp
 pytest-cov==7.1.0
     # via -r requirements/test-common-base.in
@@ -60,18 +60,16 @@ pytest-mock==3.17.0
     # via -r requirements/test-common-base.in
 pytest-timeout==2.4.0
     # via -r requirements/test-common-base.in
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via freezegun
 setuptools-git==1.2
     # via -r requirements/test-common-base.in
-six==1.17.0
-    # via python-dateutil
 typing-extensions==4.16.0
     # via
     #   aiohttp
     #   aiosignal
     #   pytest-asyncio
-tzdata==2026.5
+tzdata==2026.6
     # via python-dateutil
 yarl==1.25.1
     # via aiohttp

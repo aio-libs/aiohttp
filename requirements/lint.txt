@@ -34,7 +34,7 @@ cryptography==50.0.2
     # via trustme
 distlib==0.4.4
     # via virtualenv
-filelock==4.2.4
+filelock==4.2.6
     # via
     #   python-discovery
     #   virtualenv
@@ -66,11 +66,11 @@ multidict==7.2.1
     # via
     #   aiohttp
     #   yarl
-mypy==2.4.0 ; implementation_name == "cpython"
+mypy==2.4.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
 mypy-extensions==1.1.0
     # via mypy
-nodeenv==1.11.0
+nodeenv==1.12.0
     # via pre-commit
 packaging==26.3
     # via
@@ -78,7 +78,7 @@ packaging==26.3
     #   virtualenv
 pathspec==1.1.1
     # via mypy
-platformdirs==4.13.5
+platformdirs==4.14.2
     # via virtualenv
 pluggy==1.7.0
     # via pytest
@@ -94,15 +94,15 @@ pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
-pydantic==2.14.1
+pydantic==2.14.2
     # via python-on-whales
-pydantic-core==2.50.1
+pydantic-core==2.50.2
     # via pydantic
 pygments==2.21.0
     # via
     #   pytest
     #   rich
-pytest==9.1.1
+pytest==9.2.0
     # via
     #   -r requirements/lint.in
     #   pytest-aiohttp
@@ -111,15 +111,15 @@ pytest==9.1.1
     #   pytest-mock
 pytest-aiohttp==1.1.1
     # via -r requirements/lint.in
-pytest-asyncio==1.4.1
+pytest-asyncio==1.4.1.post1
     # via pytest-aiohttp
-pytest-codspeed==5.0.3
+pytest-codspeed==5.0.4
     # via -r requirements/lint.in
 pytest-mock==3.17.0
     # via -r requirements/lint.in
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.6.5
+python-discovery==1.9.0
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
@@ -127,8 +127,6 @@ pyyaml==6.0.3
     # via pre-commit
 rich==15.0.0
     # via pytest-codspeed
-six==1.17.0
-    # via python-dateutil
 slotscheck==0.21.0
     # via -r requirements/lint.in
 trustme==1.2.1
@@ -145,13 +143,13 @@ typing-extensions==4.16.0
     #   typing-inspection
 typing-inspection==0.4.4
     # via pydantic
-tzdata==2026.5
+tzdata==2026.6
     # via python-dateutil
 uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.14.13
+virtualenv==21.15.2
     # via pre-commit
 yarl==1.25.1
     # via aiohttp
