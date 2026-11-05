@@ -27,6 +27,7 @@ __all__ = (
     "patch",
     "put",
     "delete",
+    "query",
     "route",
     "view",
     "static",
@@ -128,6 +129,10 @@ def delete(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_DELETE, path, handler, **kwargs)
 
 
+def query(path: str, handler: _HandlerType, **kwargs: Any) -> RouteDef:
+    return route(hdrs.METH_QUERY, path, handler, **kwargs)
+
+
 def view(path: str, handler: type[AbstractView], **kwargs: Any) -> RouteDef:
     return route(hdrs.METH_ANY, path, handler, **kwargs)
 
@@ -194,6 +199,9 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
 
     def delete(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_DELETE, path, **kwargs)
+
+    def query(self, path: str, **kwargs: Any) -> _Deco:
+        return self.route(hdrs.METH_QUERY, path, **kwargs)
 
     def options(self, path: str, **kwargs: Any) -> _Deco:
         return self.route(hdrs.METH_OPTIONS, path, **kwargs)
