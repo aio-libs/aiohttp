@@ -1,0 +1,2 @@
+Added ``proxmint``, an aiohttp client middleware that rotates requests through a pool
+of proxies, to the third-party libraries page -- by :user:`prian3003`.
