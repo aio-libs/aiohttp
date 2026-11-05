@@ -111,7 +111,7 @@ pytest==9.2.0
     #   pytest-mock
 pytest-aiohttp==1.1.1
     # via -r requirements/lint.in
-pytest-asyncio==1.4.1
+pytest-asyncio==1.4.1.post1
     # via pytest-aiohttp
 pytest-codspeed==5.0.4
     # via -r requirements/lint.in
