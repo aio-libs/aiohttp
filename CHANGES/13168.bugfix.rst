@@ -1,0 +1,4 @@
+Enforced the ``__Secure-`` and ``__Host-`` cookie name prefixes
+(RFC 6265bis, section 4.1.3) in :class:`~aiohttp.CookieJar`, so a
+prefixed cookie that is not host-locked and secure is no longer stored
+-- by :user:`arshsmith1`.
