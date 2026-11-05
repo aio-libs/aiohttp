@@ -129,7 +129,7 @@ async def test_multiple_responses_one_byte_at_a_time() -> None:
                 ),
             )
             await response.start(conn)
-            await response.read() == payload
+            assert await response.read() == payload
 
 
 async def test_unexpected_exception_during_data_received() -> None:
@@ -163,7 +163,7 @@ async def test_unexpected_exception_during_data_received() -> None:
             ),
         )
         await response.start(conn)
-        await response.read() == b"ab"
+        assert await response.read() == b"ab"
         with mock.patch.object(proto._parser, "feed_data", side_effect=ValueError):
             proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\ncd")
 
