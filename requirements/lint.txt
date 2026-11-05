@@ -89,7 +89,7 @@ pytest-codspeed==5.0.4
     # via -r requirements/lint.in
 pytest-mock==3.17.0
     # via -r requirements/lint.in
-python-dateutil==3.0.0
+python-dateutil==4.0.0
     # via freezegun
 python-discovery==1.9.0
     # via virtualenv
@@ -99,8 +99,6 @@ pyyaml==6.0.3
     # via pre-commit
 rich==15.0.0
     # via pytest-codspeed
-six==1.17.0
-    # via python-dateutil
 slotscheck==0.21.0
     # via -r requirements/lint.in
 trustme==1.2.1
