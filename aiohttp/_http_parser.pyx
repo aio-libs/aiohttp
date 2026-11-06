@@ -587,6 +587,8 @@ cdef class HttpParser:
             self._msg_in_flight += 1
 
     cdef _on_message_complete(self):
+        # llhttp has no trailers-complete callback, so finish the last trailer here.
+        self._process_header()
         # The payload is None when feed_eof() already completed a fully
         # received content-length body.
         if self._payload is not None:

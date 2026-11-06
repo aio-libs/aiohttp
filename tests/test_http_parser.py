@@ -2952,6 +2952,24 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
         parser.feed_data(text)
 
 
+@pytest.mark.skipif(NO_EXTENSIONS, reason="Python parser sets this on the payload")
+def test_c_parser_final_trailer_validated(
+    event_loop: asyncio.AbstractEventLoop, server: Server[Request]
+) -> None:
+    protocol = RequestHandler(server, loop=event_loop)
+    parser = HttpRequestParserC(
+        protocol, event_loop, 2**16, max_line_size=8190, max_field_size=8190
+    )
+    # With the 2 headers, only the last trailer exceeds max_headers=128.
+    trailers = b"".join(b"X-%d: 1\r\n" % i for i in range(127))
+    text = (
+        b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"0\r\n" + trailers + b"\r\n"
+    )
+    with pytest.raises(http_exceptions.BadHttpMessage, match="Too many headers"):
+        parser.feed_data(text)
+
+
 def test_parse_no_length_or_te_on_post(
     event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
