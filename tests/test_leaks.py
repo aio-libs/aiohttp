@@ -27,6 +27,11 @@ IS_PYPY = platform.python_implementation() == "PyPy"
             "check_for_request_leak.py",
             "Request leaked",
         ),
+        (
+            # Test that a refused connection's error is freed by reference counting.
+            "check_for_connect_error_leak.py",
+            "ClientConnectorError leaked",
+        ),
     ],
 )
 def test_leak(script: str, message: str) -> None:
