@@ -1,0 +1,8 @@
+Fixed the server ignoring quality values in the request ``Accept-Encoding``
+header when selecting a content coding for :meth:`~aiohttp.web.StreamResponse.enable_compression`
+and for pre-compressed static files served by :class:`~aiohttp.web.FileResponse`.
+A coding with ``q=0`` is no longer used, codings with a higher quality value
+are preferred, ``*`` is supported and coding names are matched as whole
+tokens rather than by searching for them inside the header value,
+per :rfc:`9110#section-12.5.3`
+-- by :user:`troyan-dy`.

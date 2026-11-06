@@ -4,7 +4,7 @@ import math
 import os
 import pathlib
 import sys
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 from contextlib import suppress
 from enum import Enum, auto
 from mimetypes import MimeTypes
@@ -14,7 +14,13 @@ from typing import TYPE_CHECKING, BinaryIO, Final
 
 from . import hdrs
 from .abc import AbstractStreamWriter
-from .helpers import DEFAULT_CHUNK_SIZE, ETAG_ANY, ETag, must_be_empty_body
+from .helpers import (
+    DEFAULT_CHUNK_SIZE,
+    ETAG_ANY,
+    ETag,
+    accepted_content_codings,
+    must_be_empty_body,
+)
 from .typedefs import LooseHeaders, PathLike
 from .web_exceptions import (
     HTTPForbidden,
@@ -48,6 +54,13 @@ CONTENT_TYPES: Final[MimeTypes] = MimeTypes()
 ENCODING_EXTENSIONS = MappingProxyType(
     {ext: CONTENT_TYPES.encodings_map[ext] for ext in (".br", ".gz")}
 )
+_EXTENSION_BY_ENCODING = MappingProxyType(
+    {encoding: ext for ext, encoding in ENCODING_EXTENSIONS.items()}
+)
+# Order of preference between equally acceptable codings; "identity"
+# stops the lookup so that an explicitly preferred uncompressed
+# representation is served.
+_FILE_CODINGS = (*ENCODING_EXTENSIONS.values(), "identity")
 
 FALLBACK_CONTENT_TYPE = "application/octet-stream"
 
@@ -179,7 +192,7 @@ class FileResponse(StreamResponse):
         return await super().prepare(request)
 
     def _make_response(
-        self, request: "BaseRequest", accept_encoding: str
+        self, request: "BaseRequest", codings: Sequence[str]
     ) -> tuple[
         _FileResponseResult, io.BufferedReader | None, os.stat_result, str | None
     ]:
@@ -191,9 +204,7 @@ class FileResponse(StreamResponse):
         This method should be called from a thread executor
         since it calls os.stat which may block.
         """
-        file_path, st, file_encoding = self._get_file_path_stat_encoding(
-            accept_encoding
-        )
+        file_path, st, file_encoding = self._get_file_path_stat_encoding(codings)
         if not file_path:
             return _FileResponseResult.NOT_ACCEPTABLE, None, st, None
 
@@ -235,13 +246,14 @@ class FileResponse(StreamResponse):
         return _FileResponseResult.SEND_FILE, fobj, st, file_encoding
 
     def _get_file_path_stat_encoding(
-        self, accept_encoding: str
+        self, codings: Sequence[str]
     ) -> tuple[pathlib.Path | None, os.stat_result, str | None]:
         file_path = self._path
-        for file_extension, file_encoding in ENCODING_EXTENSIONS.items():
-            if file_encoding not in accept_encoding:
-                continue
+        for file_encoding in codings:
+            if file_encoding == "identity":
+                break
 
+            file_extension = _EXTENSION_BY_ENCODING[file_encoding]
             compressed_path = file_path.with_suffix(file_path.suffix + file_extension)
             with suppress(OSError):
                 # Do not follow symlinks and ignore any non-regular files.
@@ -255,12 +267,11 @@ class FileResponse(StreamResponse):
 
     async def prepare(self, request: "BaseRequest") -> AbstractStreamWriter | None:
         loop = asyncio.get_running_loop()
-        # Encoding comparisons should be case-insensitive
-        # https://www.rfc-editor.org/rfc/rfc9110#section-8.4.1
-        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "").lower()
+        accept_encoding = request.headers.get(hdrs.ACCEPT_ENCODING, "")
+        codings = accepted_content_codings(accept_encoding, _FILE_CODINGS)
         try:
             response_result, fobj, st, file_encoding = await loop.run_in_executor(
-                None, self._make_response, request, accept_encoding
+                None, self._make_response, request, codings
             )
         except PermissionError:
             self.set_status(HTTPForbidden.status_code)
