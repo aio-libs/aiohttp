@@ -1,0 +1,5 @@
+Stopped the server WebSocket heartbeat from being rearmed after close:
+peer-close data arriving after the close handshake scheduled a deferred
+heartbeat reset that re-created the heartbeat timer on the closed connection.
+The deferred reset is now dropped when the connection is closing or closed --
+by :user:`rinopatrick`.
