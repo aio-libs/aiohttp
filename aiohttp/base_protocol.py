@@ -48,6 +48,11 @@ class BaseProtocol(asyncio.Protocol):
         return self.transport is not None
 
     @property
+    def can_receive_data(self) -> bool:
+        """Return True if a stream reader can still await more data."""
+        return self.connected
+
+    @property
     def writing_paused(self) -> bool:
         return self._paused
 

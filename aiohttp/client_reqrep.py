@@ -239,6 +239,7 @@ class ResponseParams(TypedDict):
     skip_payload: bool
     read_until_eof: bool
     auto_decompress: bool
+    auto_decompress_in_executor: bool
     read_timeout: float | None
     read_bufsize: int
     timeout_ceil_threshold: float

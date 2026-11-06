@@ -1,5 +1,6 @@
 import asyncio
 import gzip
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -13,11 +14,12 @@ from aiohttp.client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
+    SocketTimeoutError,
 )
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimerNoop
-from aiohttp.http_parser import HttpParser, RawResponseMessage
+from aiohttp.http_parser import HttpParser, HttpResponseParserPy, RawResponseMessage
 
 
 async def test_force_close() -> None:
@@ -67,11 +69,14 @@ async def test_client_proto_bad_message() -> None:
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_uncompleted_message() -> None:
+@pytest.mark.parametrize("in_executor", [False, True])
+async def test_uncompleted_message(in_executor: bool) -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     transport = mock.Mock()
     proto.connection_made(transport)
-    proto.set_response_params(read_until_eof=True)
+    proto.set_response_params(
+        read_until_eof=True, auto_decompress_in_executor=in_executor
+    )
 
     proto.data_received(
         b"HTTP/1.1 301 Moved Permanently\r\nLocation: http://python.org/"
@@ -83,6 +88,60 @@ async def test_uncompleted_message() -> None:
     assert isinstance(exc.message, RawResponseMessage)
     assert exc.message.code == 301
     assert dict(exc.message.headers) == {"Location": "http://python.org/"}
+
+
+async def test_executor_resume_does_not_restart_timeout_while_paused(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    proto.connection_made(mock.Mock())
+    proto.set_response_params(
+        auto_decompress_in_executor=True,
+        read_timeout=0.02,
+        read_until_eof=True,
+    )
+
+    pending_decodes: list[tuple[asyncio.Future[bytes], Any, tuple[Any, ...]]] = []
+    follow_up_queued = asyncio.Event()
+
+    def queue_decode(_executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        future: asyncio.Future[bytes] = loop.create_future()
+        pending_decodes.append((future, fn, args))
+        if len(pending_decodes) == 2:
+            follow_up_queued.set()
+        return future
+
+    monkeypatch.setattr(loop, "run_in_executor", queue_decode)
+    body = b"executor body" * 10_000
+    compressed = gzip.compress(body)
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _message, payload = await proto.read()
+
+    try:
+        first, first_fn, first_args = pending_decodes[0]
+        first.set_result(first_fn(*first_args))
+        await asyncio.wait_for(follow_up_queued.wait(), 1)
+        await asyncio.sleep(0.04)
+
+        assert proto._reading_paused
+        assert proto._read_timeout_handle is None
+        assert not isinstance(payload.exception(), SocketTimeoutError)
+    finally:
+        # Complete each queued decode so the parser and payload are left settled.
+        completed = 0
+        while completed < len(pending_decodes):
+            future, fn, args = pending_decodes[completed]
+            if not future.done():
+                future.set_result(fn(*args))
+            completed += 1
+            await asyncio.sleep(0)
+        proto._drop_timeout()
 
 
 async def test_data_received_after_close() -> None:
@@ -97,6 +156,38 @@ async def test_data_received_after_close() -> None:
     assert proto.should_close
     assert not transport.close.called
     assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
+async def test_abort_clears_deferred_decompression_state(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("aiohttp.client_proto.HttpResponseParser", HttpResponseParserPy)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(mock.Mock())
+    proto.set_response_params(
+        read_until_eof=True, auto_decompress_in_executor=True, read_bufsize=1024
+    )
+
+    body = b"deferred body" * 10_000
+    compressed = gzip.compress(body)
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n\r\n" + compressed
+    )
+    _, payload = await proto.read()
+    proto.connection_lost(None)
+
+    # Read into locals so mypy does not narrow the attributes abort() resets.
+    deferred_eof = proto._deferred_eof
+    parser = proto._parser
+    assert deferred_eof
+    assert parser is not None
+    assert proto._payload is payload
+
+    proto.abort()
+
+    assert not proto._deferred_eof
+    assert proto._parser is None
+    assert proto._payload is None
 
 
 async def test_multiple_responses_one_byte_at_a_time() -> None:

@@ -253,6 +253,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.13 | Vendored llhttp version drift | S / T | An upstream llhttp CVE not picked up by aiohttp's vendoring cadence remains exploitable until `make generate-llhttp` is re-run and released. | Medium |
 | 1.14 | Build/regen of llhttp (`make generate-llhttp`) | S / T | Local tampering or supply-chain compromise of the npm `llhttp` package gets baked into the vendored C. Covered in [§5.19](#519-build--release-supply-chain) but originates here. | Medium |
 | 1.15 | `Content-Encoding` coding chain | D | RFC 9110 §8.4 allows several nested codings; each layer multiplies the decompression amplification available from a small wire body (~1000× per gzip layer), so unbounded chains make client-side zip bombs cheap. | Low–Med |
+| 1.15 | Client response decompression scheduling | D | A compressed response can occupy the event loop, or shared executor workers when offloading is enabled. | Medium |
 
 **Mitigations.**
 
@@ -273,8 +274,13 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
 | 1.15 | Nested coding amplification | `http_parser.py:parse_content_encoding` decodes at most `MAX_CONTENT_CODINGS = 2` codings and raises `ContentEncodingError` beyond that instead of decoding or silently passing compressed bytes through. Unknown codings anywhere in the chain disable decoding. `DeflateBuffer` drains the stage nearest the output first, keeping each stage's intermediate buffer to a small multiple of `max_length` rather than the full decompressed stream. At EOF every stage must end exactly on a stream/frame/member boundary (`stream_complete` on each decompressor; gzip/zstd keep the spent decompressor observable by deferring its replacement until the next member's data arrives): a gzip stream cut before its 8-byte trailer inflates in full and previously passed through silently. | None. |
+| 1.15 | Client response decompression scheduling | `ClientSession` and requests accept `auto_decompress_in_executor=False`. Opting in moves each decode, including empty-input drains, to the default thread pool. Each response has at most one operation in flight; parsers pause while it runs, preserve existing output limits and stream backpressure, and finish decoding before payload EOF permits connection reuse. Closing discards late output; it cannot interrupt a running worker. | Offloading protects the event loop from codec work but does not cap aggregate CPU usage or the shared executor queue across responses. |
 
 **Past advisories / hardening (recap).**
+
+- **Opt-in response decompression offloading** — Python and Cython parser
+  continuation tests cover output backpressure, chunk boundaries, queued input,
+  EOF, decoding/framing errors, and response cleanup while a worker is pending.
 
 - **GHSA-xx9p-xxvh-7g8j (CVE-2023-47641)** (3.8.0) — CL-vs-TE divergence
   between the Cython and pure-Python parsers, allowing request smuggling
