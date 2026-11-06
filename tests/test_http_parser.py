@@ -2743,6 +2743,23 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
     # TODO: Add assertion of trailers when API added.
 
 
+async def test_trailers_do_not_leak_into_next_message(
+    parser: HttpRequestParser,
+) -> None:
+    text = (
+        b"POST /a HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"0\r\nContent-Encoding: gzip\r\nX-Trailer: value\r\n\r\n"
+        b"POST /b HTTP/1.1\r\nHost: b\r\nContent-Length: 4\r\n\r\ntest"
+    )
+    messages, upgraded, tail = parser.feed_data(text)
+    assert len(messages) == 2
+    msg, payload = messages[1]
+    assert list(msg.headers.items()) == [("Host", "b"), ("Content-Length", "4")]
+    assert msg.raw_headers == ((b"Host", b"b"), (b"Content-Length", b"4"))
+    assert msg.compression is None
+    assert await payload.read() == b"test"
+
+
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):

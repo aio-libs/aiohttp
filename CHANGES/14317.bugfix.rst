@@ -1,0 +1,1 @@
+Trailers no longer carry over to the next message in the C parser -- by :user:`henryiii`.

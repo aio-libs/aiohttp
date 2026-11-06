@@ -576,6 +576,9 @@ cdef class HttpParser:
             self._msg_in_flight += 1
 
     cdef _on_message_complete(self):
+        # Finish the last trailer, so it can't carry over to the next message.
+        self._process_header()
+        self._content_encoding = None
         # The payload is None when feed_eof() already completed a fully
         # received content-length body.
         if self._payload is not None:
