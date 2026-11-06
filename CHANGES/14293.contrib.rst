@@ -1,2 +1,2 @@
-Added ``Asyntai`` to the documentation spelling wordlist so the docs
+Added ``Asyntai`` to the documentation spelling dictionary so the docs
 spelling check passes -- by :user:`asvetlov`.
