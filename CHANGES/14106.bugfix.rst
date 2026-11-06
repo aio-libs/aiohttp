@@ -1,0 +1,3 @@
+Fixed binary file uploads failing with a negative Content-Length when the file
+position is beyond the end of the file, without treating negative size estimates
+from transformed binary streams as empty uploads -- by :user:`jipeng6036-del`.
