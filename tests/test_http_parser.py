@@ -760,7 +760,7 @@ def xfail_c_parser_status(request: pytest.FixtureRequest) -> None:
 
 @pytest.mark.usefixtures("xfail_c_parser_status")
 def test_parse_unusual_request_line(parser: HttpRequestParser) -> None:
-    text = b"#smol //a HTTP/1.3\r\n\r\n"
+    text = b"#smol //a HTTP/1.0\r\n\r\n"
     messages, upgrade, tail = parser.feed_data(text)
     assert len(messages) == 1
     msg, _ = messages[0]
@@ -768,7 +768,7 @@ def test_parse_unusual_request_line(parser: HttpRequestParser) -> None:
     assert not msg.upgrade
     assert msg.method == "#SMOL"
     assert msg.path == "//a"
-    assert msg.version == (1, 3)
+    assert msg.version == (1, 0)
 
 
 def test_py_parser_normalises_method_to_uppercase(
@@ -2193,6 +2193,27 @@ def test_http_request_parser_bad_version_number(parser: HttpRequestParser) -> No
         parser.feed_data(b"GET /test HTTP/1.32\r\nHost: a\r\n\r\n")
 
 
+@pytest.mark.parametrize("version", [b"HTTP/0.9", b"HTTP/2.0", b"HTTP/9.9"])
+def test_http_request_parser_rejects_non_1x_version(
+    parser: HttpRequestParser, version: bytes
+) -> None:
+    """Only HTTP/1.0 and HTTP/1.1 are valid; see THREAT_MODEL.md 5.1, threat 1.5."""
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"GET /test " + version + b"\r\nHost: a\r\n\r\n")
+
+
+@pytest.mark.parametrize("version", [b"HTTP/1.0", b"HTTP/1.1"])
+def test_http_request_parser_accepts_1x_version(
+    parser: HttpRequestParser, version: bytes
+) -> None:
+    messages, upgrade, tail = parser.feed_data(
+        b"GET /test " + version + b"\r\nHost: a\r\n\r\n"
+    )
+    msg = messages[0][0]
+    major, minor = (int(x) for x in version[len(b"HTTP/") :].split(b"."))
+    assert msg.version == (major, minor)
+
+
 def test_http_request_parser_bad_ascii_uri(parser: HttpRequestParser) -> None:
     with pytest.raises(http_exceptions.InvalidURLError):
         parser.feed_data(b"GET ! HTTP/1.1\r\n\r\n")
@@ -2364,6 +2385,25 @@ def test_http_response_parser_bad_version(response: HttpResponseParser) -> None:
 def test_http_response_parser_bad_version_number(response: HttpResponseParser) -> None:
     with pytest.raises(http_exceptions.BadHttpMessage):
         response.feed_data(b"HTTP/12.3 200 Ok\r\n\r\n")
+
+
+@pytest.mark.parametrize("version", [b"HTTP/0.9", b"HTTP/2.0", b"HTTP/9.9"])
+def test_http_response_parser_rejects_non_1x_version(
+    response: HttpResponseParser, version: bytes
+) -> None:
+    """Only HTTP/1.0 and HTTP/1.1 are valid; see THREAT_MODEL.md 5.1, threat 1.5."""
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        response.feed_data(version + b" 200 Ok\r\n\r\n")
+
+
+@pytest.mark.parametrize("version", [b"HTTP/1.0", b"HTTP/1.1"])
+def test_http_response_parser_accepts_1x_version(
+    response: HttpResponseParser, version: bytes
+) -> None:
+    messages, upgrade, tail = response.feed_data(version + b" 200 Ok\r\n\r\n")
+    msg = messages[0][0]
+    major, minor = (int(x) for x in version[len(b"HTTP/") :].split(b"."))
+    assert msg.version == (major, minor)
 
 
 def test_http_response_parser_no_reason(response: HttpResponseParser) -> None:
