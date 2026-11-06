@@ -1,0 +1,3 @@
+Fixed response ``Content-Type`` parameters losing required quoting when setting
+``content_type`` or ``charset``, including when a text response adds its default
+charset -- by :user:`fanaruto`.

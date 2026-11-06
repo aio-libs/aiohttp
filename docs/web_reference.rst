@@ -853,6 +853,9 @@ and :ref:`aiohttp-web-signals` handlers::
 
       The value converted to lower-case on attribute assigning.
 
+      Other *Content-Type* parameter values are quoted as needed when updating
+      :attr:`content_type` or :attr:`charset`.
+
    .. attribute:: last_modified
 
       *Last-Modified* header for outgoing response.
