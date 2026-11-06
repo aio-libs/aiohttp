@@ -2743,10 +2743,63 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
     # TODO: Add assertion of trailers when API added.
 
 
+async def test_trailers_do_not_leak_into_next_message(
+    parser: HttpRequestParser,
+) -> None:
+    text = (
+        b"POST /a HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"0\r\nContent-Encoding: gzip\r\nX-Trailer: value\r\n\r\n"
+        b"POST /b HTTP/1.1\r\nHost: b\r\nContent-Length: 4\r\n\r\ntest"
+    )
+    messages, upgraded, tail = parser.feed_data(text)
+    assert len(messages) == 2
+    msg, payload = messages[1]
+    assert list(msg.headers.items()) == [("Host", "b"), ("Content-Length", "4")]
+    assert msg.raw_headers == ((b"Host", b"b"), (b"Content-Length", b"4"))
+    assert msg.compression is None
+    assert await payload.read() == b"test"
+
+
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
         parser.feed_data(text)
+
+
+@pytest.mark.parametrize(
+    "tail",
+    (
+        pytest.param(b"zz\r\n", id="bad-chunk-size"),
+        pytest.param(b"0\r\nX-A: a\x00b\r\n\r\n", id="bad-final-trailer"),
+        pytest.param(b"0\r\nX-A: a\x00b\r\nX-B: 1\r\n\r\n", id="bad-trailer"),
+    ),
+)
+async def test_parse_error_reaches_active_payload(
+    parser: HttpRequestParser, tail: bytes
+) -> None:
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    messages, upgraded, _ = parser.feed_data(text)
+    payload = messages[0][1]
+
+    with pytest.raises(http_exceptions.HttpProcessingError) as exc_info:
+        parser.feed_data(tail)
+
+    assert payload.exception() is exc_info.value
+
+
+async def test_final_trailer_error_reaches_active_payload(
+    parser: HttpRequestParser,
+) -> None:
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    messages, upgraded, _ = parser.feed_data(text)
+    payload = messages[0][1]
+
+    # With the 2 headers, only the last trailer exceeds max_headers=128.
+    trailers = b"".join(b"X-%d: 1\r\n" % i for i in range(127))
+    with suppress(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"0\r\n" + trailers + b"\r\n")
+
+    assert isinstance(payload.exception(), http_exceptions.BadHttpMessage)
 
 
 def test_parse_no_length_or_te_on_post(

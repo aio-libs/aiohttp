@@ -576,6 +576,9 @@ cdef class HttpParser:
             self._msg_in_flight += 1
 
     cdef _on_message_complete(self):
+        # Finish the last trailer, so it can't carry over to the next message.
+        self._process_header()
+        self._content_encoding = None
         # The payload is None when feed_eof() already completed a fully
         # received content-length body.
         if self._payload is not None:
@@ -723,6 +726,12 @@ cdef class HttpParser:
 
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
+                if self._payload is not None:
+                    # A handler can already be waiting on this payload.
+                    payload_exc = ex
+                    if self._payload_exception is not None:
+                        payload_exc = self._payload_exception(str(ex))
+                    set_exception(self._payload, payload_exc, ex)
                 self._payload = None
                 raise ex
 
