@@ -644,6 +644,12 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         rng = self._headers.get(hdrs.RANGE)
         start, end = None, None
         if rng is not None:
+            # Multi-range requests (e.g. "bytes=0-100, 200-300") are not
+            # supported.  Rather than rejecting them with 416, ignore the
+            # Range header so the server returns the full representation
+            # with 200 OK, which is permitted by RFC 9110 §14.2.
+            if "," in rng:
+                return slice(None, None, 1)
             try:
                 pattern = r"^bytes=(\d*)-(\d*)$"
                 # https://www.rfc-editor.org/info/rfc9110/#section-14.1-4
