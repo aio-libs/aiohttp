@@ -62,11 +62,14 @@ async def test_client_proto_bad_message() -> None:
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-async def test_uncompleted_message() -> None:
+@pytest.mark.parametrize("in_executor", [False, True])
+async def test_uncompleted_message(in_executor: bool) -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     transport = mock.Mock()
     proto.connection_made(transport)
-    proto.set_response_params(read_until_eof=True)
+    proto.set_response_params(
+        read_until_eof=True, auto_decompress_in_executor=in_executor
+    )
 
     proto.data_received(
         b"HTTP/1.1 301 Moved Permanently\r\nLocation: http://python.org/"
