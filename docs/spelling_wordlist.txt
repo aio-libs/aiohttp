@@ -23,8 +23,8 @@ Arsenic
 async
 asyncio
 asyncpg
-Asyntai
 asynctest
+Asyntai
 attrs
 auth
 autocalculated
