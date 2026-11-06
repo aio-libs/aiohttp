@@ -1,0 +1,1 @@
+Added the ``retry_connection`` option to :class:`aiohttp.ClientSession` so applications can disable automatic connection retries while preserving the existing default -- by :user:`gilbertgong`.

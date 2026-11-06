@@ -121,6 +121,52 @@ async def test_close_coro(
     await session.close()
 
 
+@pytest.mark.parametrize("retry_connection", [None, True, False])
+@pytest.mark.parametrize("force_close", [False, True])
+@pytest.mark.parametrize("method", ["GET", "POST"])
+@pytest.mark.parametrize("warmup", [False, True])
+async def test_retry_connection(
+    aiohttp_server: AiohttpServer,
+    create_session: Callable[..., Awaitable[ClientSession]],
+    retry_connection: bool | None,
+    force_close: bool,
+    method: str,
+    warmup: bool,
+) -> None:
+    num_requests = 0
+    failure_at = 2 if warmup else 1
+    transports: list[object] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        nonlocal num_requests
+        num_requests += 1
+        transports.append(request.transport)
+        if num_requests == failure_at:
+            request.protocol.force_close()
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.router.add_route(method, "/", handler)
+    server = await aiohttp_server(app)
+    options = {} if retry_connection is None else {"retry_connection": retry_connection}
+    session = await create_session(
+        connector=TCPConnector(force_close=force_close), **options
+    )
+    if warmup:
+        async with session.request(method, server.make_url("/")) as response:
+            assert await response.text() == "ok"
+    if method == "GET" and retry_connection is not False:
+        async with session.request(method, server.make_url("/")) as response:
+            assert await response.text() == "ok"
+        assert num_requests == failure_at + 1
+    else:
+        with pytest.raises(aiohttp.ServerDisconnectedError):
+            await session.request(method, server.make_url("/"))
+        assert num_requests == failure_at
+    if warmup:
+        assert (transports[0] is transports[1]) is not force_close
+
+
 async def test_init_headers_simple_dict(
     create_session: Callable[..., Awaitable[ClientSession]],
 ) -> None:

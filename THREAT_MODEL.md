@@ -157,6 +157,15 @@ subsection below.
 18. [Tracing & URL/header helpers](#518-tracing--urlheader-helpers)
 19. [Build & release supply chain](#519-build--release-supply-chain)
 
+**Client retry policy.** The trusted caller can set
+`ClientSession(retry_connection=False)` to disable the built-in single retry of
+idempotent requests after connection errors. The default remains enabled. This
+lets applications own replay decisions without modifying private state; it does
+not disable retries implemented by application middleware or change HTTP parsing,
+authentication, redirect policy, or connection pooling. Disabling the retry is
+not an exactly-once delivery guarantee: a peer can process a request before
+the caller observes a connection failure.
+
 ---
 
 ### 5.1. HTTP/1 parser
