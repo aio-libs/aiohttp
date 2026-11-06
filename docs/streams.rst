@@ -55,6 +55,8 @@ Reading Attributes and Methods
 
    Read exactly *n* bytes.
 
+   If *n* is zero, return an empty bytes object, even at EOF.
+
    Raise an :exc:`asyncio.IncompleteReadError` if the end of the
    stream is reached before *n* can be read, the
    :attr:`asyncio.IncompleteReadError.partial` attribute of the

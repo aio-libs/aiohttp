@@ -600,16 +600,19 @@ class TestStreamReader:
         data = await stream.read()
         assert b"" == data
 
-    async def test_readexactly_exception(self) -> None:
+    @pytest.mark.parametrize("n", (-1, 0, 2))
+    async def test_readexactly_exception(self, n: int) -> None:
         stream = self._make_one()
         stream.feed_data(b"line\n")
 
         data = await stream.readexactly(2)
         assert b"li" == data
 
-        stream.set_exception(ValueError())
-        with pytest.raises(ValueError):
-            await stream.readexactly(2)
+        error = ValueError()
+        stream.set_exception(error)
+        with pytest.raises(ValueError) as exc_info:
+            await stream.readexactly(n)
+        assert exc_info.value is error
 
     async def test_unread_data(self) -> None:
         stream = self._make_one()
@@ -1369,6 +1372,18 @@ async def test_empty_stream_reader_iter_chunks() -> None:
     iter_chunks = s.iter_chunks()
     with pytest.raises(StopAsyncIteration):
         await iter_chunks.__anext__()
+
+
+@pytest.mark.parametrize("n", (-1, 0))
+async def test_empty_stream_reader_readexactly_zero_or_less(n: int) -> None:
+    reader = streams.EmptyStreamReader()
+
+    assert await reader.readexactly(n) == b""
+    assert reader.at_eof()
+    with pytest.raises(asyncio.IncompleteReadError) as exc_info:
+        await reader.readexactly(1)
+    assert exc_info.value.partial == b""
+    assert exc_info.value.expected == 1
 
 
 async def test_empty_stream_reader_on_chunk_received_is_read_only() -> None:
