@@ -550,7 +550,9 @@ class CookieJar(AbstractCookieJar):
                     cookie["max-age"] = ""
 
             elif expires := cookie["expires"]:
-                if expire_time := self._parse_date(expires):
+                # 0 is the epoch, a valid expiry-time in the past, not a failure
+                expire_time = self._parse_date(expires)
+                if expire_time is not None:
                     deadline = expire_time
                 else:
                     cookie["expires"] = ""
