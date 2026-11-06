@@ -1,0 +1,3 @@
+Close the connection when a connection trace callback raises or is cancelled
+after the connection is created or reused, instead of leaking the socket
+-- by :user:`BlueX888`.
