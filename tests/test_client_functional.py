@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
+import gzip
 import http.cookies
 import io
 import json
@@ -1323,6 +1324,100 @@ async def test_sock_read_timeout_not_rearmed_on_pooled_connection(
         assert await resp.json() == {"ok": True}
 
     assert next(iter(client.session.connector._conns.values()))[0][0] is proto
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_gzip_eof_leaves_connection_reusable(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    # Exceed the initial decompression buffer so read() resumes parsing.
+    decoded = b"x" * 2_000_000
+    encoded = gzip.compress(decoded)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=encoded, headers={"Content-Encoding": "gzip"})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    timeout = aiohttp.ClientTimeout(total=30, sock_read=30)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    async with client.get("/") as response:
+        proto = response._protocol
+        assert proto is not None
+        assert await response.read() == decoded
+        assert response.content.is_eof()
+        assert proto._read_timeout_handle is None
+
+    async with client.get("/") as response:
+        assert response._protocol is proto
+        assert await response.read() == decoded
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_gzip_repause_keeps_timer_stopped(aiohttp_client: AiohttpClient) -> None:
+    decoded = b"x" * 2_000_000
+    encoded = gzip.compress(decoded)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=encoded, headers={"Content-Encoding": "gzip"})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    timeout = aiohttp.ClientTimeout(total=30, sock_read=30)
+    client = await aiohttp_client(app, timeout=timeout)
+
+    async with client.get("/") as response:
+        proto = response._protocol
+        assert proto is not None
+        # Leave enough decompressed output pending to pause again while reading.
+        first = await response.content.readexactly(750_000)
+        assert proto._reading_paused
+        assert not response.content.is_eof()
+        assert response.content._size > 0
+        assert proto._read_timeout_handle is None
+        assert first + await response.content.read() == decoded
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_gzip_waiting_for_wire_bytes_times_out(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    decoded = b"x" * 2_000_000
+    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    # Flush a prefix so resuming parsing still needs bytes from the peer.
+    first = compressor.compress(decoded[:750_000]) + compressor.flush(zlib.Z_SYNC_FLUSH)
+    remaining = compressor.compress(decoded[750_000:]) + compressor.flush()
+    release = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse(
+            headers={
+                "Content-Encoding": "gzip",
+                "Content-Length": str(len(first) + len(remaining)),
+            }
+        )
+        await response.prepare(request)
+        await response.write(first)
+        await release.wait()
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    timeout = aiohttp.ClientTimeout(total=30, sock_read=0.15)
+    client = await aiohttp_client(app, timeout=timeout)
+    try:
+        async with client.get("/") as response:
+            proto = response._protocol
+            assert proto is not None
+            assert await response.content.readexactly(750_000) == decoded[:750_000]
+            assert not response.content.is_eof()
+            assert not proto._reading_paused
+            assert proto._read_timeout_handle is not None
+            with pytest.raises(SocketTimeoutError):
+                await response.content.read()
+    finally:
+        release.set()
 
 
 async def test_request_exception_cleanup_with_no_total_timeout(
