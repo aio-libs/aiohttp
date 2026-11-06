@@ -726,6 +726,12 @@ cdef class HttpParser:
 
                     pointer = " " * (len(repr(before))-1) + "^"
                     ex = parser_error_from_errno(self._cparser, data, pointer)
+                if self._payload is not None:
+                    # A handler can already be waiting on this payload.
+                    payload_exc = ex
+                    if self._payload_exception is not None:
+                        payload_exc = self._payload_exception(str(ex))
+                    set_exception(self._payload, payload_exc, ex)
                 self._payload = None
                 raise ex
 

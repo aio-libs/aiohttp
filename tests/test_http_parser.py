@@ -2766,6 +2766,42 @@ async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> 
         parser.feed_data(text)
 
 
+@pytest.mark.parametrize(
+    "tail",
+    (
+        pytest.param(b"zz\r\n", id="bad-chunk-size"),
+        pytest.param(b"0\r\nX-A: a\x00b\r\n\r\n", id="bad-final-trailer"),
+        pytest.param(b"0\r\nX-A: a\x00b\r\nX-B: 1\r\n\r\n", id="bad-trailer"),
+    ),
+)
+async def test_parse_error_reaches_active_payload(
+    parser: HttpRequestParser, tail: bytes
+) -> None:
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    messages, upgraded, _ = parser.feed_data(text)
+    payload = messages[0][1]
+
+    with pytest.raises(http_exceptions.HttpProcessingError) as exc_info:
+        parser.feed_data(tail)
+
+    assert payload.exception() is exc_info.value
+
+
+async def test_final_trailer_error_reaches_active_payload(
+    parser: HttpRequestParser,
+) -> None:
+    text = b"POST / HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    messages, upgraded, _ = parser.feed_data(text)
+    payload = messages[0][1]
+
+    # With the 2 headers, only the last trailer exceeds max_headers=128.
+    trailers = b"".join(b"X-%d: 1\r\n" % i for i in range(127))
+    with suppress(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"0\r\n" + trailers + b"\r\n")
+
+    assert isinstance(payload.exception(), http_exceptions.BadHttpMessage)
+
+
 def test_parse_no_length_or_te_on_post(
     event_loop: asyncio.AbstractEventLoop,
     server: Server[Request],
