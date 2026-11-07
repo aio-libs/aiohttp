@@ -62,6 +62,9 @@ class ClosableAsyncStreamIterator(AsyncStreamIterator[bytes]):
         super().__init__(read_func)
         self._stream = stream
 
+    def __aiter__(self) -> "ClosableAsyncStreamIterator":
+        return self
+
     def close(self) -> None:
         """Close the underlying stream, see :meth:`StreamReader.close`."""
         self._stream.close()
@@ -205,7 +208,9 @@ class StreamReader:
         Does nothing once EOF was reached, or if the stream is not the body
         of a client response.
         """
-        if self._on_close is None or self._eof:
+        # EOF released the connection, unless a read error (e.g. sock_read
+        # timeout) dropped the EOF callback before the rest of the body came.
+        if self._on_close is None or (self._eof and self._exception is None):
             return
         if (close := self._on_close()) is not None:
             close()

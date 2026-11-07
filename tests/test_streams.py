@@ -1421,6 +1421,16 @@ class TestStreamReaderClose:
         stream.close()
         on_close.assert_called_once_with()
 
+    async def test_close_after_exception_and_eof_calls_hook(
+        self, protocol: mock.Mock
+    ) -> None:
+        """EOF after a failed read did not release the response, close() must."""
+        stream, on_close = self._make_one(protocol)
+        stream.set_exception(ValueError())
+        stream.feed_eof()
+        stream.close()
+        on_close.assert_called_once_with()
+
     async def test_close_after_eof(self, protocol: mock.Mock) -> None:
         """The connection was released at EOF, so close() leaves the response alone."""
         stream, on_close = self._make_one(protocol)
