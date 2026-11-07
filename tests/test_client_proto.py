@@ -26,6 +26,68 @@ async def test_force_close() -> None:
     assert proto.should_close
 
 
+async def test_should_abort_before_response() -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+
+    assert proto.should_abort
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\no",
+        b"HTTP/1.1 100 Continue\r\n\r\n",
+        b"HTTP/1.1 103 Early Hints\r\n\r\n",
+    ),
+)
+async def test_should_abort_for_incomplete_response(response: bytes) -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(mock.Mock())
+    proto.set_response_params()
+
+    proto.data_received(response)
+
+    assert proto.should_abort
+
+
+@pytest.mark.parametrize(
+    "response",
+    (
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok",
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n2\r\nok\r\n0\r\n\r\n",
+        b"HTTP/1.1 204 No Content\r\n\r\n",
+    ),
+)
+async def test_should_not_abort_after_complete_response(response: bytes) -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(mock.Mock())
+    proto.set_response_params()
+
+    proto.data_received(response)
+
+    assert not proto.should_abort
+
+
+async def test_should_abort_when_reused_before_next_response() -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(mock.Mock())
+    proto.set_response_params()
+    proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\nok")
+    await proto.read()
+    assert not proto.should_abort
+
+    proto.set_response_params()
+
+    assert proto.should_abort
+
+
+async def test_should_not_abort_upgraded_connection() -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto._upgraded = True
+
+    assert not proto.should_abort
+
+
 async def test_oserror() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     transport = mock.Mock()
