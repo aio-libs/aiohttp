@@ -1,6 +1,7 @@
 """HTTP related errors."""
 
 import asyncio
+import re
 from collections.abc import Mapping
 from typing import TYPE_CHECKING
 
@@ -56,6 +57,20 @@ class ClientError(Exception):
     """Base class for client connection errors."""
 
 
+# The URL may be unparsable by design (see InvalidURL), so the password is
+# matched in the text instead of parsing it. The password runs to the last
+# "@" of the authority, since it may contain an "@" itself.
+_PASSWORD_RE = re.compile(
+    r"^(?P<prefix>(?:[a-z][a-z0-9+.-]*:)?//)(?P<user>[^:/@]*):[^/?#]*@",
+    re.IGNORECASE,
+)
+
+
+def _hide_password(url: StrOrURL) -> str:
+    """Render a URL for an exception message without its password."""
+    return _PASSWORD_RE.sub(r"\g<prefix>\g<user>:*hidden*@", str(url))
+
+
 class ClientResponseError(ClientError):
     """Base class for exceptions that occur after getting a response.
 
@@ -88,7 +103,8 @@ class ClientResponseError(ClientError):
         self.args = (request_info, history)
 
     def __str__(self) -> str:
-        return f"{self.status}, message={self.message!r}, url={str(self.request_info.real_url)!r}"
+        url = _hide_password(self.request_info.real_url)
+        return f"{self.status}, message={self.message!r}, url={url!r}"
 
     def __repr__(self) -> str:
         args = f"{self.request_info!r}, {self.history!r}"
@@ -300,9 +316,10 @@ class InvalidURL(ClientError, ValueError):
         return f"<{self.__class__.__name__} {self}>"
 
     def __str__(self) -> str:
+        url = _hide_password(self._url)
         if self._description:
-            return f"{self._url} - {self._description}"
-        return str(self._url)
+            return f"{url} - {self._description}"
+        return url
 
 
 class InvalidUrlClientError(InvalidURL):
@@ -315,6 +332,9 @@ class RedirectClientError(ClientError):
 
 class NonHttpUrlClientError(ClientError):
     """Non http URL client error."""
+
+    def __str__(self) -> str:
+        return _hide_password(self.args[0]) if self.args else ""
 
 
 class InvalidUrlRedirectClientError(InvalidUrlClientError, RedirectClientError):
