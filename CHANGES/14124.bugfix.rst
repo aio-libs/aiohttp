@@ -1,0 +1,3 @@
+Fixed ``FileResponse`` answering a well-formed multi-range request with
+``416 Range Not Satisfiable`` instead of ignoring ``Range`` and returning the
+full file -- by :user:`vyrnsynx`.
