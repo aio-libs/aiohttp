@@ -1525,6 +1525,95 @@ def test_response_links_param_value_with_gt(
     }
 
 
+def test_response_links_quoted_param_value_with_comma(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """A comma inside a quoted parameter value does not split the link-value."""
+    url = URL("http://def-cl-resp.org/")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    h = (("Link", '</items>; title="first part, <second"; rel=next'),)
+    response._headers = HeadersDictProxy(CIMultiDict(h))
+    assert response.links == {
+        "next": {
+            "url": URL("http://def-cl-resp.org/items"),
+            "title": "first part, <second",
+            "rel": "next",
+        }
+    }
+
+
+def test_response_links_trailing_comma(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """An empty list element from a trailing comma is ignored."""
+    url = URL("http://def-cl-resp.org/")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    h = (("Link", "<http://example.com/docs>; rel=next,"),)
+    response._headers = HeadersDictProxy(CIMultiDict(h))
+    assert response.links == {
+        "next": {"url": URL("http://example.com/docs"), "rel": "next"}
+    }
+
+
+def test_response_links_quoted_pair_unescape(
+    event_loop: asyncio.AbstractEventLoop, session: ClientSession
+) -> None:
+    """Quoted-pairs in parameter values are unescaped as getall() did."""
+    url = URL("http://def-cl-resp.org/")
+    response = ClientResponse(
+        "get",
+        url,
+        writer=WriterMock(),
+        continue100=None,
+        timer=TimerNoop(),
+        traces=[],
+        loop=event_loop,
+        session=session,
+        request_headers=CIMultiDict[str](),
+        original_url=url,
+        stream_writer=mock.create_autospec(
+            AbstractStreamWriter, spec_set=True, instance=True
+        ),
+    )
+    h = (("Link", '</docs>; title="say \\"hi\\""; rel=next'),)
+    response._headers = HeadersDictProxy(CIMultiDict(h))
+    assert response.links == {
+        "next": {
+            "url": URL("http://def-cl-resp.org/docs"),
+            "title": 'say "hi"',
+            "rel": "next",
+        }
+    }
+
+
 def test_response_links_multiple_headers(
     event_loop: asyncio.AbstractEventLoop, session: ClientSession
 ) -> None:
