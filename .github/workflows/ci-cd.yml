@@ -143,6 +143,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
       with:
+        fetch-depth: 0  # get all commits for sphinxcontrib-spelling ref #14323
         submodules: true
     - name: Setup Python
       uses: actions/setup-python@v7.1.0
@@ -377,7 +378,7 @@ jobs:
           - os: ubuntu-latest
             platform: android
             archs: x86_64
-          - os: macos-14
+          - os: macos-latest
             platform: ios
             archs: arm64_iphonesimulator
     steps:
