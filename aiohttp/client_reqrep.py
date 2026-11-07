@@ -85,6 +85,14 @@ _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 _LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
+# A new link-value starts at a comma followed by "<" (RFC 8288 section 3);
+# a comma inside the URI-Reference, e.g. "<https://example.com/a,b>", is
+# part of the URL and must not split the header into separate links.
+_LINK_VALUE_SPLIT_RE = re.compile(r",(?=\s*<)")
+# link-value = "<" URI-Reference ">" *( ";" param ). A URI-Reference cannot
+# contain a literal ">" (RFC 3986), so capture up to the first one; a greedy
+# match would instead stop at a ">" inside a quoted parameter value.
+_LINK_VALUE_RE = re.compile(r"\s*<([^>]*)>(.*)")
 
 
 @frozen_dataclass_decorator
@@ -675,8 +683,16 @@ class ClientResponse(HeadersMixin):
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-        for val in self.headers.getall("link"):
-            match = re.match(r"\s*<(.*)>(.*)", val)
+        # __getitem__ joins every same-named header line into one value
+        # without splitting on list-element commas, which would break links
+        # whose URI-Reference contains a comma. Split only on a comma followed
+        # by "<" so a comma inside the URI-Reference does not break the header
+        # into separate links.
+        links_str = self.headers.get("Link", "")
+        if not links_str:
+            return MultiDictProxy(links)
+        for val in _LINK_VALUE_SPLIT_RE.split(links_str):
+            match = _LINK_VALUE_RE.match(val)
             if match is None:  # Malformed link
                 continue
             url, params_str = match.groups()
