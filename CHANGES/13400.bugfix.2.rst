@@ -1,0 +1,2 @@
+Fixed a read of a truncated compressed response body hanging when the
+terminating chunk arrived separately -- by :user:`Dreamsorcerer`.

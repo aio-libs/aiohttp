@@ -1852,6 +1852,49 @@ async def test_compressed_chunked_split_chunk_size_line(
     assert payload.exception() is None
 
 
+async def test_truncated_compressed_body_split_final_chunk(
+    protocol: BaseProtocol,
+    response_cls: type[HttpResponseParser],
+) -> None:
+    """A reader parked on the body is failed, not left waiting.
+
+    The terminating chunk arrives in its own feed, so the truncated-stream
+    check fires while a reader is blocked in ``readany()``. The C parser used
+    to drop its payload reference and raise out of ``feed_data()`` instead,
+    leaving that reader with neither data, EOF nor an exception.
+    """
+    response = response_cls(
+        protocol,
+        asyncio.get_running_loop(),
+        DEFAULT_CHUNK_SIZE,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+    )
+    # Cutting the gzip trailer leaves the data decodable but the stream short.
+    truncated = gzip.compress(b"Hello, world! " * 4)[:-8]
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n"
+    )
+    size_line = hex(len(truncated))[2:].encode() + b"\r\n"
+
+    msgs, upgrade, tail = response.feed_data(headers + size_line + truncated + b"\r\n")
+    payload = msgs[0][-1]
+    assert await payload.readany() == b"Hello, world! " * 4
+
+    reader = asyncio.create_task(payload.readany())
+    await asyncio.sleep(0)
+    assert not reader.done()
+
+    response.feed_data(b"0\r\n\r\n")
+
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        await asyncio.wait_for(reader, 1)
+
+
 async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
     """Test read-until-eof + compressed with pause."""
     # Must be large enough to exceed high water mark.
