@@ -538,3 +538,25 @@ async def test_handler_slower_than_first_request_deadline(
     finally:
         writer.close()
         await writer.wait_closed()
+
+
+async def test_connection_lost_right_after_request_is_queued() -> None:
+    """A request queued in the same loop iteration as a disconnect is dropped."""
+
+    async def handler(request: web.BaseRequest) -> web.Response:
+        assert False
+
+    protocol = web.Server(handler)()
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    transport.get_extra_info.return_value = None
+    protocol.connection_made(transport)
+    task = protocol._task_handler
+    assert task is not None
+    await asyncio.sleep(0)  # start() is now waiting for the next request
+
+    protocol.data_received(b"GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
+    protocol.connection_lost(None)
+    await asyncio.wait_for(task, timeout=5)
+
+    assert task.exception() is None
