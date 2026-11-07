@@ -3800,8 +3800,11 @@ class TestDeflateBuffer:
         )
         dbuf = DeflateBuffer(buf, "deflate")
 
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress_sync.return_value = b"line"
+        decompressor = mock.create_autospec(
+            ZLibDecompressor, instance=True, spec_set=True
+        )
+        dbuf._stages[0].decompressor = decompressor
+        decompressor.decompress_sync.return_value = b"line"
 
         # First byte should be b'x' in order code not to change the decoder.
         dbuf.feed_data(b"xxxx")
@@ -3812,8 +3815,11 @@ class TestDeflateBuffer:
         dbuf = DeflateBuffer(buf, "deflate")
 
         exc = ValueError()
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.decompress_sync.side_effect = exc
+        decompressor = mock.create_autospec(
+            ZLibDecompressor, instance=True, spec_set=True
+        )
+        dbuf._stages[0].decompressor = decompressor
+        decompressor.decompress_sync.side_effect = exc
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             # Should be more than 4 bytes to trigger deflate FSM error.
@@ -3824,9 +3830,12 @@ class TestDeflateBuffer:
         buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
         dbuf = DeflateBuffer(buf, "deflate")
 
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
+        decompressor = mock.create_autospec(
+            ZLibDecompressor, instance=True, spec_set=True
+        )
+        dbuf._stages[0].decompressor = decompressor
+        decompressor.data_available = False
+        decompressor.flush.return_value = b""
 
         dbuf.feed_eof()
         assert buf._eof

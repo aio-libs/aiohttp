@@ -1275,17 +1275,6 @@ class DeflateBuffer:
         self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
         self._max_decompress_size = max_decompress_size
 
-    @property
-    def decompressor(self) -> BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor:
-        """Decompressor for the outermost coding."""
-        return self._stages[0].decompressor
-
-    @decompressor.setter
-    def decompressor(
-        self, decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
-    ) -> None:
-        self._stages[0].decompressor = decompressor
-
     def set_exception(
         self,
         exc: type[BaseException] | BaseException,
