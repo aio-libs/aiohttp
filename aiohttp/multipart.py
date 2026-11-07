@@ -108,6 +108,9 @@ def parse_content_disposition(
 
     # https://www.rfc-editor.org/info/rfc9110/#section-5.6.6-2
     disptype, *parts = header.split(";")
+    # Offset in header of the next part, to match a quoted value that spans
+    # several parts in place instead of joining them again.
+    pos = len(disptype) + 1
     disptype = disptype.strip()
     if not is_token(disptype):
         warnings.warn(BadContentDispositionHeader(header))
@@ -116,6 +119,8 @@ def parse_content_disposition(
     params: dict[str, str] = {}
     while parts:
         item = parts.pop(0)
+        start = pos
+        pos += len(item) + 1
 
         if not item:  # To handle trailing semicolons
             warnings.warn(BadContentDispositionHeader(header))
@@ -162,26 +167,31 @@ def parse_content_disposition(
                 continue
 
         else:
-            failed = True
             rstripped = value.rstrip()
-            if is_quoted(rstripped):
-                failed = False
+            if is_quoted(rstripped) and rstripped[-2] != "\\":
                 value = unescape(rstripped[1:-1].lstrip("\\/"))
-            elif is_token(value):
-                failed = False
-            elif parts:
-                # The quoted value contains ";", so find its closing quote in
-                # the rest of the header.
-                rest = ";".join((value, *parts))
-                match = _QUOTED_STRING_RE.match(rest)
-                if match and not rest[match.end() :].split(";", 1)[0].strip():
-                    del parts[: match.group().count(";")]
-                    value = unescape(match.group()[1:-1].lstrip("\\/"))
-                    failed = False
+            elif not is_token(value):
+                # The quoted value contains ";" or ends with an escaped quote,
+                # so match it in the header itself rather than in this part.
+                value_start = start + len(item) - len(value)
+                match = _QUOTED_STRING_RE.match(header, value_start)
+                end = len(header)
+                if match:
+                    end = header.find(";", match.end())
+                    if end == -1:
+                        end = len(header)
+                    if header[match.end() : end].strip():
+                        match = None
 
-            if failed:
-                warnings.warn(BadContentDispositionHeader(header))
-                return None, {}
+                if match:
+                    del parts[: header.count(";", value_start, match.end())]
+                    pos = end + 1
+                    value = unescape(match.group()[1:-1].lstrip("\\/"))
+                elif is_quoted(rstripped):
+                    value = unescape(rstripped[1:-1].lstrip("\\/"))
+                else:
+                    warnings.warn(BadContentDispositionHeader(header))
+                    return None, {}
 
         params[key] = value
 
