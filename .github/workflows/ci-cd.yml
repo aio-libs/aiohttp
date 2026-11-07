@@ -377,7 +377,7 @@ jobs:
           - os: ubuntu-latest
             platform: android
             archs: x86_64
-          - os: macos-14
+          - os: macos-latest
             platform: ios
             archs: arm64_iphonesimulator
     steps:
