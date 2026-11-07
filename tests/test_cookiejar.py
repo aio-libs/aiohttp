@@ -2135,6 +2135,25 @@ def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
     )
 
 
+@pytest.mark.parametrize(
+    "expires",
+    (
+        "Thu, 01 Jan 1970 00:00:00 GMT",
+        # Year before day of month, which RFC 6265 tokenization accepts
+        "Thu, 1970 Jan 01 00:00:00 GMT",
+    ),
+)
+def test_epoch_expires_removes_cookie(expires: str) -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies_from_headers(["sid=abc; Path=/"], url)
+
+    jar.update_cookies_from_headers([f"sid=; Path=/; Expires={expires}"], url)
+
+    assert len(jar) == 0
+    assert "sid" not in jar.filter_cookies(url)
+
+
 def test_session_cookie_replacement_drops_old_expiry() -> None:
     jar = CookieJar()
     url = URL("https://example.com/")

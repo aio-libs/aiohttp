@@ -1,1 +1,1 @@
-Fixed cookie ``Expires`` dates being misread when a field is followed by more digits, such as a year before the day of month, and rejected dates that don't exist -- by :user:`canblmz1`.
+Fixed cookie ``Expires`` dates being misread when a field is followed by more digits, such as a year before the day of month, and rejected dates that don't exist. A cookie whose ``Expires`` is the Unix epoch, such as ``Thu, 01 Jan 1970 00:00:00 GMT``, is now removed instead of being kept as a session cookie -- by :user:`canblmz1`.
