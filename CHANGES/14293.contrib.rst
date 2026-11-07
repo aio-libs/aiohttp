@@ -1,2 +1,0 @@
-Added ``Asyntai`` to the documentation spelling dictionary so the docs
-spelling check passes -- by :user:`asvetlov`.
