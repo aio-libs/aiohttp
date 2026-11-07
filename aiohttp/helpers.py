@@ -160,7 +160,8 @@ def encode_basic_auth(login: str, password: str = "", encoding: str = "utf-8") -
     if ":" in login:
         raise ValueError('A ":" is not allowed in login (RFC 7617#section-2)')
     creds = f"{login}:{password}".encode(encoding)
-    return "Basic " + base64.b64encode(creds).decode(encoding)
+    # Base64 output is always ASCII, regardless of the credentials encoding.
+    return "Basic " + base64.b64encode(creds).decode("ascii")
 
 
 def strip_auth_from_url(url: URL) -> tuple[URL, str | None]:
