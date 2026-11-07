@@ -30,6 +30,41 @@ class TestParseContentDisposition:
         assert disptype == "form-data"
         assert params == {"name": "data", "filename": "file ; name.mp4"}
 
+    def test_semicolons(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; name="a;b"; filename="file; name; v2.mp4"'
+        )
+        assert disptype == "form-data"
+        assert params == {"name": "a;b", "filename": "file; name; v2.mp4"}
+
+    def test_escaped_quote_before_semicolon(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; name="upload"; filename="a\\";b;c.txt"'
+        )
+        assert disptype == "form-data"
+        assert params == {"name": "upload", "filename": 'a";b;c.txt'}
+
+    def test_escaped_backslash_before_closing_quote(self) -> None:
+        disptype, params = parse_content_disposition(
+            'form-data; filename="a\\\\"; name="b;c"'
+        )
+        assert disptype == "form-data"
+        assert params == {"filename": "a\\", "name": "b;c"}
+
+    def test_many_quoted_semicolons(self) -> None:
+        header = "form-data; " + "; ".join(f'p{i}="a;b"' for i in range(600))
+        disptype, params = parse_content_disposition(header)
+        assert disptype == "form-data"
+        assert params == {f"p{i}": "a;b" for i in range(600)}
+
+    def test_semicolons_do_not_swallow_next_param(self) -> None:
+        with pytest.warns(aiohttp.BadContentDispositionHeader):
+            disptype, params = parse_content_disposition(
+                'attachment; filename="a; b=1; filename="x.txt"'
+            )
+        assert disptype is None
+        assert {} == params
+
     def test_ows_before_separator(self) -> None:
         # https://github.com/aio-libs/aiohttp/issues/13002
         # Optional whitespace before the ";" separator (RFC 9110 §5.6.6) must
@@ -106,7 +141,6 @@ class TestParseContentDisposition:
         assert "attachment" == disptype
         assert {"filename": '"quoting" tested.html'} == params
 
-    @pytest.mark.skip("need more smart parser which respects quoted text")
     def test_attwithquotedsemicolon(self) -> None:
         disptype, params = parse_content_disposition(
             'attachment; filename="Here\'s a semicolon;.html"'
