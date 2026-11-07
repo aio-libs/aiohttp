@@ -1,0 +1,3 @@
+Fixed a spurious ``Task exception was never retrieved`` warning when the
+request body writer failed to send the ``Expect: 100-continue`` preamble on a
+connection that was already closing -- by :user:`Rahul-cs50`.
