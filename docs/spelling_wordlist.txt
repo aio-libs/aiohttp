@@ -24,7 +24,6 @@ async
 asyncio
 asyncpg
 asynctest
-Asyntai
 attrs
 auth
 autocalculated
