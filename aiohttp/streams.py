@@ -347,6 +347,8 @@ class StreamReader:
             set_result(waiter, None)
 
     async def _wait(self, func_name: str) -> None:
+        if self._exception is not None:
+            raise self._exception
         if not self._protocol.connected:
             raise RuntimeError("Connection closed.")
 

@@ -475,6 +475,7 @@ async def make_client_request() -> AsyncIterator[_RequestMaker]:
                 "skip_payload": True,
                 "read_until_eof": True,
                 "auto_decompress": True,
+                "auto_decompress_in_executor": False,
                 "read_timeout": timeout.sock_read,
                 "read_bufsize": 2**16,
                 "timeout_ceil_threshold": 5,

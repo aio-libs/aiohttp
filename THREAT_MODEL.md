@@ -252,6 +252,7 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.12 | Cython ⇄ pure-Python divergence | T / S | Behaviour differences between llhttp and the Python fallback may produce parser-confusion if a deployment unintentionally switches backends (e.g. a user installs without compiled extensions). | Med |
 | 1.13 | Vendored llhttp version drift | S / T | An upstream llhttp CVE not picked up by aiohttp's vendoring cadence remains exploitable until `make generate-llhttp` is re-run and released. | Medium |
 | 1.14 | Build/regen of llhttp (`make generate-llhttp`) | S / T | Local tampering or supply-chain compromise of the npm `llhttp` package gets baked into the vendored C. Covered in [§5.19](#519-build--release-supply-chain) but originates here. | Medium |
+| 1.15 | Client response decompression scheduling | D | A compressed response can occupy the event loop, or shared executor workers when offloading is enabled. | Medium |
 
 **Mitigations.**
 
@@ -271,8 +272,13 @@ into `StreamReader`) is then handed to `web_protocol.RequestHandler` and
 | 1.12 | Cython ⇄ pure-Python divergence | `tests/test_http_parser.py` parameterises tests over `REQUEST_PARSERS` / `RESPONSE_PARSERS` (pure-Python always; Cython when the extension imports). The high-leverage attack vectors are already covered under both backends: CL+TE (`test_content_length_transfer_encoding`), CL×N (`test_duplicate_singleton_header_rejected`), obs-fold (`test_reject_obsolete_line_folding`, `test_http_response_parser_obs_line_folding*`), CR/LF/NUL (`test_bad_headers`, `test_http_response_parser_null_byte_in_header_value`, `test_http_response_parser_bad_crlf`), version regex (`test_http_request_parser_bad_version*`, `test_http_response_parser_bad_version*`), bare-LF line endings (`test_reject_bare_lf_no_cross_request_leak`), control characters in the request target (`test_http_request_parser_ctl_in_request_target`), absolute-form targets without `//` or with an empty host (`test_url_absolute_form_empty_host_rejected`). | None. When new attack vectors emerge, add them to the parameterised tests. |
 | 1.13 | llhttp version drift | Manual upgrade via `make generate-llhttp`; vendor pinned in `vendor/llhttp/package.json`. | Track upstream releases (e.g. via Dependabot rule for `vendor/llhttp/package.json`), bump on every llhttp release, regenerate in CI. |
 | 1.14 | npm-side compromise of `llhttp` | The vendored output is checked into git, so a compromise during a future regen would be detectable in PR review. See [§5.19](#519-build--release-supply-chain). | **Make the llhttp build reproducible: pin Node.js version, commit the npm lockfile, and on every bump verify the regenerated C against upstream's release tarballs before committing.** |
+| 1.15 | Client response decompression scheduling | `ClientSession` and requests accept `auto_decompress_in_executor=False`. Opting in moves each decode, including empty-input drains, to the default thread pool. Each response has at most one operation in flight; parsers pause while it runs, preserve existing output limits and stream backpressure, and finish decoding before payload EOF permits connection reuse. Closing discards late output; it cannot interrupt a running worker. | Offloading protects the event loop from codec work but does not cap aggregate CPU usage or the shared executor queue across responses. |
 
 **Past advisories / hardening (recap).**
+
+- **Opt-in response decompression offloading** — Python and Cython parser
+  continuation tests cover output backpressure, chunk boundaries, queued input,
+  EOF, decoding/framing errors, and response cleanup while a worker is pending.
 
 - **GHSA-xx9p-xxvh-7g8j (CVE-2023-47641)** (3.8.0) — CL-vs-TE divergence
   between the Cython and pure-Python parsers, allowing request smuggling

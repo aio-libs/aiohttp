@@ -15,6 +15,7 @@ from typing import (
     Literal,
     NamedTuple,
     TypeVar,
+    cast,
 )
 
 from multidict import CIMultiDict, istr
@@ -280,6 +281,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         read_until_eof: bool = False,
         auto_decompress: bool = True,
         max_msg_queue_size: int = 0,
+        auto_decompress_in_executor: bool = False,
     ) -> None:
         self.protocol = protocol
         self.loop = loop
@@ -301,6 +303,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         self._payload_parser: HttpPayloadParser | None = None
         self._payload_has_more_data = False
         self._auto_decompress = auto_decompress
+        self._auto_decompress_in_executor = auto_decompress_in_executor
         self._limit = limit
         self._headers_parser = HeadersParser(max_field_size, self.lax)
         # Stop emitting messages once this many are queued unconsumed (0 = off).
@@ -323,6 +326,16 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
             self._msg_in_flight -= 1
 
     def feed_eof(self) -> _MsgT | None:
+        if self._auto_decompress_in_executor and self._payload_has_more_data:
+            self.feed_data(b"")
+            if self._payload_has_more_data:
+                return None
+        if (
+            self._auto_decompress_in_executor
+            and self._payload_parser is not None
+            and self._tail
+        ):
+            return None
         if self._payload_parser is not None:
             self._payload_parser.feed_eof()
             if self._payload_parser.done:
@@ -348,10 +361,21 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
         METH_CONNECT: str = hdrs.METH_CONNECT,
         SEC_WEBSOCKET_KEY1: istr = hdrs.SEC_WEBSOCKET_KEY1,
     ) -> tuple[list[tuple[_MsgT, StreamReader]], bool, bytes]:
-        messages = []
+        messages: list[tuple[_MsgT, StreamReader]] = []
 
         if self._tail:
             data, self._tail = self._tail + data, b""
+
+        if self._auto_decompress_in_executor and self._payload_has_more_data and data:
+            # Finish the in-flight decode before accepting another body fragment.
+            messages, upgraded, tail = self.feed_data(b"")
+            if upgraded:
+                return messages, upgraded, tail + data
+            if self._payload_has_more_data or self.protocol._reading_paused:
+                self._tail = tail + data
+                return messages, upgraded, b""
+            following, upgraded, tail = self.feed_data(tail + data)
+            return messages + following, upgraded, tail
 
         data_len = len(data)
         start_pos = 0
@@ -460,6 +484,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 code=self.code,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
+                                auto_decompress_in_executor=self._auto_decompress_in_executor,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
                                 max_line_size=self.max_line_size,
@@ -487,6 +512,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 method=msg.method,
                                 compression=msg.compression,
                                 auto_decompress=self._auto_decompress,
+                                auto_decompress_in_executor=self._auto_decompress_in_executor,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
                                 max_line_size=self.max_line_size,
@@ -510,6 +536,7 @@ class HttpParser(abc.ABC, Generic[_MsgT]):
                                 code=self.code,
                                 response_with_body=self.response_with_body,
                                 auto_decompress=self._auto_decompress,
+                                auto_decompress_in_executor=self._auto_decompress_in_executor,
                                 lax=self.lax,
                                 headers_parser=self._headers_parser,
                                 max_line_size=self.max_line_size,
@@ -903,6 +930,7 @@ class HttpPayloadParser:
         max_field_size: int = 8190,
         max_trailers: int = 128,
         limit: int = DEFAULT_CHUNK_SIZE,
+        auto_decompress_in_executor: bool = False,
     ) -> None:
         self._length = 0
         self._paused = False
@@ -924,7 +952,10 @@ class HttpPayloadParser:
         # payload decompression wrapper
         if response_with_body and compression and self._auto_decompress:
             real_payload: StreamReader | DeflateBuffer = DeflateBuffer(
-                payload, compression, max_decompress_size=limit
+                payload,
+                compression,
+                max_decompress_size=limit,
+                in_executor=auto_decompress_in_executor,
             )
         else:
             real_payload = payload
@@ -1182,6 +1213,8 @@ class DeflateBuffer:
         out: StreamReader,
         encoding: str | None,
         max_decompress_size: int = DEFAULT_CHUNK_SIZE,
+        *,
+        in_executor: bool = False,
     ) -> None:
         self.out = out
         self.size = 0
@@ -1208,6 +1241,8 @@ class DeflateBuffer:
             self.decompressor = ZLibDecompressor(encoding=encoding)
 
         self._max_decompress_size = max_decompress_size
+        self._in_executor = in_executor
+        self._pending: asyncio.Future[bytes] | None = None
 
     def set_exception(
         self,
@@ -1218,6 +1253,22 @@ class DeflateBuffer:
 
     def feed_data(self, chunk: bytes) -> bool:
         """Return True if more data is available and this method should be called again with b""."""
+        if self._pending is not None:
+            assert not chunk
+            if not self._pending.done():
+                self.out._protocol.pause_reading()
+                return True
+            pending, self._pending = self._pending, None
+            try:
+                decompressed = pending.result()
+            except Exception as exc:
+                raise ContentEncodingError(
+                    "Can not decode content-encoding: %s" % self.encoding
+                ) from exc
+            if decompressed:
+                self.out.feed_data(decompressed)
+            return self.decompressor.data_available
+
         self.size += len(chunk)
         self.out.total_compressed_bytes = self.size
 
@@ -1240,6 +1291,14 @@ class DeflateBuffer:
         max_length = (
             0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         )
+        if self._in_executor:
+            self._pending = self.out._loop.run_in_executor(
+                None, self.decompressor.decompress_sync, chunk, max_length
+            )
+            self._pending.add_done_callback(self._decompression_done)
+            self.out._protocol.pause_reading()
+            return True
+
         try:
             chunk = self.decompressor.decompress_sync(chunk, max_length=max_length)
         except Exception:
@@ -1250,6 +1309,18 @@ class DeflateBuffer:
         if chunk:
             self.out.feed_data(chunk)
         return self.decompressor.data_available
+
+    def _decompression_done(self, future: asyncio.Future[bytes]) -> None:
+        # A consumer can resume parsing before this callback runs.
+        if self._pending is not future:
+            return
+        protocol = cast("ResponseHandler", self.out._protocol)
+        if protocol._payload is self.out and self.out.exception() is None:
+            protocol.resume_reading()
+        else:
+            # Closing a response cannot stop a running executor operation.
+            future.exception()
+            self._pending = None
 
     def feed_eof(self) -> None:
         chunk = self.decompressor.flush()

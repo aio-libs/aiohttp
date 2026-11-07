@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
+import gzip
 import http.cookies
 import io
 import json
@@ -12,6 +13,7 @@ import socket
 import ssl
 import sys
 import tarfile
+import threading
 import time
 import zipfile
 import zlib
@@ -6285,6 +6287,135 @@ async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> N
         data = await resp.content.read()
         assert resp.content.total_raw_bytes == len(data)
         assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
+
+
+@pytest.mark.parametrize(
+    ("session_option", "request_option", "auto_decompress"),
+    [
+        (None, None, True),
+        (True, None, True),
+        (False, True, True),
+        (True, False, True),
+        (True, None, False),
+    ],
+)
+async def test_response_decompression_in_executor(
+    aiohttp_client: AiohttpClient,
+    monkeypatch: pytest.MonkeyPatch,
+    session_option: bool | None,
+    request_option: bool | None,
+    auto_decompress: bool,
+) -> None:
+    body = b"response body" * 10_000
+    compressed = gzip.compress(body)
+
+    transports = []
+
+    async def handler(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response(body=compressed, headers={"Content-Encoding": "gzip"})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    session_options: dict[str, Any] = (
+        {}
+        if session_option is None
+        else {"auto_decompress_in_executor": session_option}
+    )
+    client = await aiohttp_client(app, **session_options, read_bufsize=1024)
+    assert client.session.auto_decompress_in_executor is bool(session_option)
+    loop = asyncio.get_running_loop()
+    run_in_executor = loop.run_in_executor
+    threads = []
+    inputs = []
+
+    def submit(executor: Any, func: Any, *args: Any) -> Any:
+        assert executor is None
+
+        def run() -> Any:
+            threads.append(threading.get_ident())
+            inputs.append(args[0])
+            return func(*args)
+
+        return run_in_executor(executor, run)
+
+    monkeypatch.setattr(loop, "run_in_executor", submit)
+    for _ in range(2):
+        async with client.get(
+            "/",
+            auto_decompress_in_executor=request_option,
+            auto_decompress=auto_decompress,
+        ) as response:
+            chunks = [chunk async for chunk in response.content.iter_chunked(2048)]
+            assert b"".join(chunks) == (body if auto_decompress else compressed)
+            assert response.content.total_raw_bytes == len(compressed)
+    enabled = session_option if request_option is None else request_option
+    if enabled and auto_decompress:
+        assert threads
+        assert set(threads).isdisjoint({threading.get_ident()})
+        assert b"" in inputs
+    else:
+        assert not threads
+    assert transports[0] is transports[1]
+
+
+@pytest.mark.parametrize("action", ["release", "cancel_read"])
+async def test_response_decompression_pending_cleanup(
+    aiohttp_client: AiohttpClient, monkeypatch: pytest.MonkeyPatch, action: str
+) -> None:
+    body = b"body" * 10_000
+    compressed = gzip.compress(body)
+    transports = []
+
+    async def handler(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response(body=compressed, headers={"Content-Encoding": "gzip"})
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app, auto_decompress_in_executor=True)
+    loop = asyncio.get_running_loop()
+    run_in_executor = loop.run_in_executor
+    started = asyncio.Event()
+    unblock = threading.Event()
+    jobs = []
+
+    def submit(executor: Any, func: Any, *args: Any) -> Any:
+        def run() -> Any:
+            loop.call_soon_threadsafe(started.set)
+            assert unblock.wait(5)
+            return func(*args)
+
+        job = run_in_executor(executor, run)
+        jobs.append(job)
+        return job
+
+    monkeypatch.setattr(loop, "run_in_executor", submit)
+    try:
+        response = await client.get("/")
+        await asyncio.wait_for(started.wait(), 2)
+        assert not response.content.is_eof()
+        error: type[BaseException] | BaseException | None = None
+        if action == "release":
+            response.release()
+            error = response.content.exception()
+        else:
+            read = asyncio.create_task(response.content.read(1))
+            await asyncio.sleep(0)
+            read.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await read
+        unblock.set()
+        await asyncio.wait_for(jobs[0], 2)
+        if action == "release":
+            assert response.content.exception() is error
+        else:
+            assert await response.read() == body
+        async with client.get("/") as following:
+            assert await following.read() == body
+        assert (transports[0] is transports[1]) == (action == "cancel_read")
+    finally:
+        unblock.set()
 
 
 async def test_upload_tracker_bytes(aiohttp_client: AiohttpClient) -> None:
