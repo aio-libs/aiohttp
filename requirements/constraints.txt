@@ -99,7 +99,7 @@ imagesize==2.0.1
     # via sphinx
 iniconfig==2.3.1
     # via pytest
-isal==1.8.0 ; python_version < "3.14" and implementation_name == "cpython"
+isal==1.9.1 ; python_version < "3.14" and implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
