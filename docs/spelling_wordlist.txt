@@ -148,6 +148,7 @@ frontend
 getall
 gethostbyname
 github
+Gitter
 google
 gunicorn
 gunicorn’s
