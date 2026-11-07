@@ -1,0 +1,3 @@
+Added ``BaseRunner.serve_forever()``
+that waits forever until cancelled, mirroring ``asyncio.Server.serve_forever()``
+-- by :user:`Mubashir78`.
