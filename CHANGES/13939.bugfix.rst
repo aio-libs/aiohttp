@@ -1,0 +1,4 @@
+Fixed :attr:`aiohttp.web.BaseRequest.forwarded` letting the first quoted value
+in a ``Forwarded`` element swallow every pair after it, so a proxy that quotes
+its node identifiers (e.g. ``for="[::1]:10"``) no longer loses the ``for``,
+``host`` or ``by`` values -- by :user:`dxbjavid`.
