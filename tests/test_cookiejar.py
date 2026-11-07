@@ -183,12 +183,26 @@ def test_date_parsing() -> None:
 
     # Invalid day of month
     assert parse_func("Tue, 0 Jan 1970 00:00:00 GMT") is None
+    assert parse_func("Tue, 30 Feb 2026 00:00:00 GMT") is None
+    assert (
+        parse_func("Tue, 29 Feb 2024 00:00:00 GMT")
+        == datetime.datetime(2024, 2, 29, tzinfo=utc).timestamp()
+    )
 
     # Invalid year
     assert parse_func("Tue, 1 Jan 1500 00:00:00 GMT") is None
 
     # Invalid time
     assert parse_func("Tue, 1 Jan 1970 77:88:99 GMT") is None
+
+    # A field can't be followed by more digits, so a year isn't a day of month
+    # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
+    assert (
+        parse_func("Tue, 2026 Jan 15 00:00:00 GMT")
+        == datetime.datetime(2026, 1, 15, tzinfo=utc).timestamp()
+    )
+    assert parse_func("Tue, 115 Jan 1970 00:00:00 GMT") is None
+    assert parse_func("Tue, 1 Jan 1970 00:00:001 GMT") is None
 
     # Invalid digits
     # https://datatracker.ietf.org/doc/html/rfc6265#section-5.1.1
@@ -2119,6 +2133,25 @@ def test_cookie_jar_update_compacts_expirations_after_limit_eviction() -> None:
     assert len(jar._expire_heap) <= max(
         cookiejar_module._MIN_SCHEDULED_COOKIE_EXPIRATION, 2 * len(jar._expirations)
     )
+
+
+@pytest.mark.parametrize(
+    "expires",
+    (
+        "Thu, 01 Jan 1970 00:00:00 GMT",
+        # Year before day of month, which RFC 6265 tokenization accepts
+        "Thu, 1970 Jan 01 00:00:00 GMT",
+    ),
+)
+def test_epoch_expires_removes_cookie(expires: str) -> None:
+    jar = CookieJar()
+    url = URL("https://example.com/")
+    jar.update_cookies_from_headers(["sid=abc; Path=/"], url)
+
+    jar.update_cookies_from_headers([f"sid=; Path=/; Expires={expires}"], url)
+
+    assert len(jar) == 0
+    assert "sid" not in jar.filter_cookies(url)
 
 
 def test_session_cookie_replacement_drops_old_expiry() -> None:
