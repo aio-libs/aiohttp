@@ -7,6 +7,7 @@ import re
 import sys
 import traceback
 import warnings
+import weakref
 from asyncio.base_events import BaseEventLoop
 from collections import deque
 from collections.abc import Callable, Iterable, Sequence
@@ -744,8 +745,11 @@ class ClientResponse(HeadersMixin):
         # payload
         self.content = payload
 
-        if self._traces and payload is not EMPTY_PAYLOAD:
-            payload._on_chunk_received = self._on_chunk_response_received
+        if payload is not EMPTY_PAYLOAD:
+            # Weak, so the stream does not keep a dropped response alive.
+            payload._on_close = weakref.WeakMethod(self.close)
+            if self._traces:
+                payload._on_chunk_received = self._on_chunk_response_received
 
         # cookies
         if cookie_hdrs := self.headers._md.getall(hdrs.SET_COOKIE, ()):
