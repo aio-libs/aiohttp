@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.CookieJar` rejecting cookies with mixed-case ``Domain`` attributes instead of normalizing them to lowercase -- by :user:`ZXLyyds100`.
