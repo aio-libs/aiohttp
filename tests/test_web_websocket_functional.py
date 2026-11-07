@@ -403,6 +403,53 @@ async def test_handshake_connection_header_substring_not_a_token(
     assert resp.status == 400
 
 
+@pytest.mark.parametrize("after_prepare", (False, True))
+async def test_set_max_msg_size(
+    aiohttp_client: AiohttpClient, after_prepare: bool
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        if not after_prepare:
+            ws.set_max_msg_size(16)
+        await ws.prepare(request)
+        if after_prepare:
+            ws.set_max_msg_size(16)
+        assert ws.max_msg_size == 16
+        await ws.send_str("limited")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
+        ws.set_max_msg_size(4 * 1024 * 1024)
+        await ws.send_str("raised")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
+        assert msg.data == "x" * 1024
+        ws.set_max_msg_size(16)
+        await ws.send_str("lowered")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.ERROR
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    assert await ws.receive_str() == "limited"
+    await ws.send_str("small")
+    assert await ws.receive_str() == "raised"
+    await ws.send_str("x" * 1024)
+    assert await ws.receive_str() == "lowered"
+    await ws.send_str("x" * 1024)
+
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.MESSAGE_TOO_BIG
+
+
 async def test_websocket_json(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
