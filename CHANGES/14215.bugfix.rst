@@ -1,0 +1,2 @@
+Fixed cleanup of consumed, non-seekable file payloads after direct and single-level multipart uploads,
+including failed writes -- by :user:`StarSignpost`.
