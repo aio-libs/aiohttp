@@ -339,6 +339,13 @@ and :ref:`aiohttp-web-signals` handlers.
       bound*, ``.stop`` is *right exclusive bound* and ``.step`` is
       ``1``.
 
+      Raises :exc:`ValueError` if the *Range* header is not in an
+      acceptable format, or if it requests a zero-length suffix range
+      (e.g. ``Range: bytes=-0``); a zero-length suffix is unsatisfiable
+      per :rfc:`9110` section 14.1.2. Callers such as
+      :class:`FileResponse` convert this into a ``416 Range Not
+      Satisfiable`` response.
+
       The property might be used in two manners:
 
       1. Attribute-access style (example assumes that both left and
