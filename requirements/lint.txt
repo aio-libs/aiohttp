@@ -42,7 +42,7 @@ idna==3.20
     # via trustme
 iniconfig==2.3.1
     # via pytest
-isal==1.8.0
+isal==1.9.1
     # via -r requirements/lint.in
 librt==0.16.0
     # via mypy
