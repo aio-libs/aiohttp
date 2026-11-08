@@ -9,8 +9,8 @@ Categories:
 
 import asyncio
 import struct
-from typing import Any, Dict, List, Optional, Tuple
 from collections.abc import Generator
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock
 
 import pytest

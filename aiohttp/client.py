@@ -293,7 +293,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
         # concurrently
         await connector.semaphore.acquire(key)
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
-    except asyncio.TimeoutError as exc:
+    except TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
     finally:
         connector.semaphore.release(key)

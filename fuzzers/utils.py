@@ -1,6 +1,5 @@
 class MockTransport:
-    """Minimal asyncio.Transport replacement.
-    """
+    """Minimal asyncio.Transport replacement."""
 
     def __init__(self) -> None:
         self._closing = False

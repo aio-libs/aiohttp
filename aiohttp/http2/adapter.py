@@ -1,8 +1,8 @@
 """HTTP/1.1 to HTTP/2 adapters."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 from collections.abc import Iterable, Mapping
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
 
 from multidict import CIMultiDict
 

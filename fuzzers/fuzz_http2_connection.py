@@ -20,14 +20,11 @@ import sys
 from contextlib import suppress
 
 import atheris  # noqa: I900
-
 from hpack import Encoder
+from utils import MockTransport
 from yarl import URL
 
-from utils import MockTransport
-
 with atheris.instrument_imports():  # type: ignore[attr-defined]
-    from aiohttp.http_exceptions import ContentEncodingError
     from aiohttp.http2.connection import Http2Connection, Http2Protocol
     from aiohttp.http2.errors import ProtocolError
     from aiohttp.http2.stream import Stream, StreamState
@@ -80,6 +77,7 @@ FRAME_WINDOW_UPDATE = 8
 FLAG_END_STREAM = 0x1
 FLAG_ACK = 0x1
 FLAG_END_HEADERS = 0x4
+
 
 def make_frame(ftype: int, flags: int, stream_id: int, payload: bytes = b"") -> bytes:
     """Build a single HTTP/2 frame."""

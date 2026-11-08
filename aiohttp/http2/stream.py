@@ -1,8 +1,8 @@
 import asyncio
 import logging
+from collections.abc import Iterable
 from enum import IntEnum
 from typing import TYPE_CHECKING, Any, Dict, Optional, Set
-from collections.abc import Iterable
 
 from ..http_exceptions import ContentEncodingError
 from ..http_parser import DeflateBuffer, RawResponseMessage

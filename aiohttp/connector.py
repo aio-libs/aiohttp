@@ -726,9 +726,7 @@ class BaseConnector:
         # and are never idle in a connection pool
         # so the timeout does not apply
         if proto.version.major == 2:
-            self._multiplexed[key] = deque(
-                [(proto, float("inf"))]
-            )
+            self._multiplexed[key] = deque([(proto, float("inf"))])
 
         return conn
 

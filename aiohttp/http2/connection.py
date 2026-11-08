@@ -25,8 +25,8 @@ import asyncio
 import logging
 import struct
 import traceback
-from typing import Dict, List, Optional, Set
 from collections.abc import Iterable
+from typing import Dict, List, Optional, Set
 
 try:
     from hpack import Decoder, Encoder
@@ -44,7 +44,7 @@ from ..helpers import (
     set_result,
 )
 from ..http_parser import RawResponseMessage
-from ..http_writer import _safe_header, HttpVersion2
+from ..http_writer import HttpVersion2, _safe_header
 from ..streams import StreamReader
 from .errors import ErrorCode, ProtocolError
 from .settings import (

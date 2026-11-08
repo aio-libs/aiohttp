@@ -1,6 +1,6 @@
 import asyncio
-from typing import Any, List, Tuple
 from collections.abc import Generator
+from typing import Any, List, Tuple
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest

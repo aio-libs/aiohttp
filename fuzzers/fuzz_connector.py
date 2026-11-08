@@ -24,6 +24,7 @@ from unittest import mock
 
 import atheris  # noqa: I900
 import yarl
+from utils import MockTransport
 
 # with atheris.instrument_imports():  # type: ignore[attr-defined]
 import aiohttp
@@ -31,9 +32,6 @@ from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
 from aiohttp.http2.connection import Http2Protocol
-
-from utils import MockTransport
-
 
 # ---------------------------------------------------------------------------
 # Logging
@@ -160,15 +158,21 @@ def assert_pool_consistent(conn, where: str = "") -> None:
         if leaked:
             logger.error(
                 "pool invariant VIOLATED at %s: leaked acquired_per_host[%s]=%s",
-                where, key, leaked,
+                where,
+                key,
+                leaked,
             )
             logger.error("pool snapshot: %s", snap)
         assert not leaked, f"acquired_per_host[{key}] not in acquired: {leaked}"
 
     # 3. Total acquired never exceeds limit.
     if conn._limit and len(conn._acquired) > conn._limit:
-        logger.error("pool invariant VIOLATED at %s: acquired over limit %d > %d",
-                     where, len(conn._acquired), conn._limit)
+        logger.error(
+            "pool invariant VIOLATED at %s: acquired over limit %d > %d",
+            where,
+            len(conn._acquired),
+            conn._limit,
+        )
         logger.error("pool snapshot: %s", snap)
     assert not conn._limit or len(conn._acquired) <= conn._limit
 
@@ -179,7 +183,9 @@ def assert_pool_consistent(conn, where: str = "") -> None:
             if n > conn._limit_per_host:
                 logger.error(
                     "pool invariant VIOLATED at %s: per-host overflow %s=%d",
-                    where, key, n,
+                    where,
+                    key,
+                    n,
                 )
                 logger.error("pool snapshot: %s", snap)
             assert n <= conn._limit_per_host
@@ -239,7 +245,10 @@ async def fuzz_connector(data: bytes) -> None:
     )
     logger.info(
         "=== start %s http2=%s limit=%d limit_per_host=%d",
-        perm.describe(), http2_enabled, limit, limit_per_host,
+        perm.describe(),
+        http2_enabled,
+        limit,
+        limit_per_host,
     )
 
     conn = aiohttp.TCPConnector(
@@ -262,8 +271,9 @@ async def fuzz_connector(data: bytes) -> None:
         key = req.connection_key if req is not None else MockRequest(0).connection_key
 
         if fdp.ConsumeIntInRange(0, 9) == 0:
-            logger.info("[%s] create#%d host=%s -> INJECTED FAILURE",
-                        perm.id, i, key.host)
+            logger.info(
+                "[%s] create#%d host=%s -> INJECTED FAILURE", perm.id, i, key.host
+            )
             raise ClientConnectorError(key, OSError("fuzz-injected"))
 
         if http2_enabled:
@@ -273,8 +283,9 @@ async def fuzz_connector(data: bytes) -> None:
         transport = MockTransport()
         proto.connection_made(transport)
 
-        logger.info("[%s] create#%d host=%s -> %s",
-                    perm.id, i, key.host, type(proto).__name__)
+        logger.info(
+            "[%s] create#%d host=%s -> %s", perm.id, i, key.host, type(proto).__name__
+        )
         assert_pool_consistent(conn, f"{perm.id} exit-create#{i}")
         return transport, proto
 
@@ -287,8 +298,7 @@ async def fuzz_connector(data: bytes) -> None:
             conn.connect(req, [], aiohttp.ClientTimeout(total=1))
         )
         pending[cid] = (host_id, req, task)
-        logger.info("[%s] step: connect cid=%d host=%d",
-                    perm.id, cid, host_id)
+        logger.info("[%s] step: connect cid=%d host=%d", perm.id, cid, host_id)
 
     def do_release() -> None:
         cid = random.choice(list(live.keys()))
@@ -298,8 +308,7 @@ async def fuzz_connector(data: bytes) -> None:
         except BaseException as e:
             logger.error("[%s] release cid=%d raised: %r", perm.id, cid, e)
             raise
-        logger.info("[%s] step: release cid=%d host=%d",
-                    perm.id, cid, entry.host_id)
+        logger.info("[%s] step: release cid=%d host=%d", perm.id, cid, entry.host_id)
 
     def do_error() -> None:
         cid = random.choice(list(live.keys()))
@@ -312,8 +321,7 @@ async def fuzz_connector(data: bytes) -> None:
         except BaseException as e:
             logger.error("[%s] error cid=%d raised: %r", perm.id, cid, e)
             raise
-        logger.info("[%s] step: error cid=%d host=%d",
-                    perm.id, cid, entry.host_id)
+        logger.info("[%s] step: error cid=%d host=%d", perm.id, cid, entry.host_id)
 
     async def drain() -> None:
         # Give the loop a bounded number of turns so pending connects can
@@ -330,8 +338,7 @@ async def fuzz_connector(data: bytes) -> None:
                 logger.debug("[%s] pending cid=%d failed: %r", perm.id, cid, e)
                 continue
             live[cid] = LiveConn(cid, host_id, connection, req)
-            logger.debug("[%s] connect cid=%d host=%d completed",
-                         perm.id, cid, host_id)
+            logger.debug("[%s] connect cid=%d host=%d completed", perm.id, cid, host_id)
 
     with mock.patch.object(
         conn,
@@ -368,9 +375,8 @@ async def fuzz_connector(data: bytes) -> None:
                     asyncio.gather(*tasks, return_exceptions=True),
                     timeout=2.0,
                 )
-            except asyncio.TimeoutError:
-                logger.error("[%s] final drain timed out: %s",
-                             perm.id, _snapshot(conn))
+            except TimeoutError:
+                logger.error("[%s] final drain timed out: %s", perm.id, _snapshot(conn))
                 raise AssertionError("final drain timed out") from None
             for cid, (host_id, req, task) in list(pending.items()):
                 if task.done() and not task.cancelled():
