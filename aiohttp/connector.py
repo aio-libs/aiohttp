@@ -350,6 +350,13 @@ class BaseConnector:
         self._conns: defaultdict[
             ConnectionKey, deque[tuple[ResponseHandler, float]]
         ] = defaultdict(deque)
+        # We distinguish multiplexed connections
+        # because:
+        # 1. The connection is always reused
+        # 2. Lease is handled at a protocol level
+        self._multiplexed: defaultdict[
+            ConnectionKey, deque[tuple[ResponseHandler, float]]
+        ] = defaultdict(deque)
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: set[ResponseHandler] = set()
@@ -467,6 +474,8 @@ class BaseConnector:
         # weakref_handle() never schedules this method for a None timeout
         assert timeout is not None
 
+        # NOTE multiplexed connections
+        # do not use this timeout
         if self._conns:
             connections = defaultdict(deque)
             deadline = now - timeout
@@ -553,7 +562,7 @@ class BaseConnector:
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
 
-            for data in self._conns.values():
+            for data in (self._conns | self._multiplexed).values():
                 for proto, _ in data:
                     if (
                         abort_ssl
@@ -587,6 +596,7 @@ class BaseConnector:
 
         finally:
             self._conns.clear()
+            self._multiplexed.clear()
             self._acquired.clear()
             for keyed_waiters in self._waiters.values():
                 for keyed_waiter in keyed_waiters:
@@ -710,7 +720,17 @@ class BaseConnector:
             acquired_per_host = self._acquired_per_host[key]
             acquired_per_host.remove(placeholder)
             acquired_per_host.add(proto)
-        return Connection(self, key, proto, self._loop)
+        conn = Connection(self, key, proto, self._loop)
+
+        # HTTP/2+ connections are always reusable
+        # and are never idle in a connection pool
+        # so the timeout does not apply
+        if proto.version.major == 2:
+            self._multiplexed[key] = deque(
+                [(proto, float("inf"))]
+            )
+
+        return conn
 
     async def _wait_for_available_connection(
         self, key: "ConnectionKey", traces: list["Trace"]
@@ -761,8 +781,17 @@ class BaseConnector:
 
         The connection will be marked as acquired.
         """
-        if (conns := self._conns.get(key)) is None:
+        target = None
+        multiplexed = False
+        if key in self._multiplexed:
+            target = self._multiplexed
+            multiplexed = True
+        elif key in self._conns:
+            target = self._conns
+        else:
             return None
+
+        conns = target[key].copy()
 
         t1 = monotonic()
         while conns:
@@ -772,7 +801,13 @@ class BaseConnector:
             if proto.is_connected() and (
                 self._keepalive_timeout is None or t1 - t0 <= self._keepalive_timeout
             ):
-                if not conns:
+                # If the connection is multiplexed
+                # we won't find it in `self._conns`
+                # nor we want to drop the key when the connection
+                # is "reclaimed"
+                # The key should be only dropped if the connection
+                # can not be reused at all (e.g., because of a timeout or another exception)
+                if not conns and key in self._conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
                 self._acquired.add(proto)
@@ -785,6 +820,9 @@ class BaseConnector:
                         except BaseException:
                             self._release_acquired(key, proto)
                             raise
+                if not multiplexed and key in self._conns:
+                    # persist changes
+                    self._conns[key] = conns
                 return Connection(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
@@ -795,7 +833,15 @@ class BaseConnector:
                 self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
-        del self._conns[key]
+        # if multiplexed is True, there is a risk that
+        # the protocol is still in self._acquired
+        # However, for HTTP/2 in particular, ClientResponse._release_connection
+        # is only called when EOF is received
+        # this only happens when all streams are closed of if there is an error
+        # this branch is only reachable in the second case
+        # because, otherwise, the connection is still active
+        # in the error path we always call release() so this is fine
+        del target[key]
         return None
 
     def _release_waiter(self) -> None:
@@ -857,7 +903,8 @@ class BaseConnector:
                 self._cleanup_closed_transports.append(transport)
             return
 
-        self._conns[key].append((protocol, monotonic()))
+        if not protocol.version.major == 2:
+            self._conns[key].append((protocol, monotonic()))
 
         if self._cleanup_handle is None:
             self._cleanup_handle = helpers.weakref_handle(

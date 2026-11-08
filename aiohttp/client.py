@@ -293,8 +293,7 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
         # concurrently
         await connector.semaphore.acquire(key)
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
-        connector.semaphore.release(key)
-    except TimeoutError as exc:
+    except asyncio.TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
     finally:
         connector.semaphore.release(key)
@@ -307,14 +306,6 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     resp = None
     started = False
 
-    if alpn_protocol == "h2":
-        # release immediately to allow reuse
-        connector._release(conn._key, conn.protocol, should_close=False)
-        # the protocol corresponding to the connection
-        # remains (i.e., the count per host is always 1 for h2)
-        # This is the number of TCP connections not the number of
-        # streams
-        connector._acquired.add(conn.protocol)
     try:
         # backwards compatibility
         if alpn_protocol == "h2":
@@ -331,8 +322,6 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
                 raise NotImplementedError("expect100 is not supported over HTTP/2")
             stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
             req.stream_id = stream.stream_id
-            # release again to clear the protocol from _acquired if required
-            connector._release(conn._key, conn.protocol, should_close=False)
             conn.protocol.set_response_params(**req._response_params)
             resp = await req._send(conn)
             resp.stream_id = stream.stream_id
@@ -340,10 +329,6 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
             conn.protocol.set_response_params(**req._response_params)
             resp = await req._send(conn)
         await resp.start(conn)
-
-        if alpn_protocol == "h2":
-            # we still have to null the protocol since we didn't close the connection
-            conn._protocol = None
 
         started = True
     finally:

@@ -44,7 +44,7 @@ from ..helpers import (
     set_result,
 )
 from ..http_parser import RawResponseMessage
-from ..http_writer import _safe_header
+from ..http_writer import _safe_header, HttpVersion2
 from ..streams import StreamReader
 from .errors import ErrorCode, ProtocolError
 from .settings import (
@@ -729,6 +729,8 @@ class Http2Protocol(BaseProtocol):
         self._read_timeout_handle: asyncio.TimerHandle | None = None
 
         self._auto_decompress: bool = True
+
+        self.version = HttpVersion2
 
     # ------------------------------------------------------------------
     # Properties expected by connector

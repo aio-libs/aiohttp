@@ -42,12 +42,12 @@ class HttpDispatcherProtocol(asyncio.Protocol):
             "_handler",
             "_transport",
             "_loop",
-        }:
+        } and self._handler is not None:
             return getattr(self._handler, name)
         return super().__getattribute__(name)
 
     def __setattr__(self, name: str, value: Any) -> None:
-        if name not in {"_handler", "_transport", "_loop"}:
+        if name not in {"_handler", "_transport", "_loop"} and self._handler is not None:
             return self._handler.__setattr__(name, value)
         return super().__setattr__(name, value)
 
