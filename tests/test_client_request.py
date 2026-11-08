@@ -2,10 +2,9 @@ import asyncio
 import hashlib
 import io
 import pathlib
-import sys
 from collections.abc import AsyncIterator, Callable, Iterable
 from http.cookies import BaseCookie, SimpleCookie
-from typing import Any, Protocol
+from typing import Protocol, Unpack
 from unittest import mock
 
 import pytest
@@ -34,16 +33,11 @@ from aiohttp.helpers import HeadersDictProxy, TimerNoop
 from aiohttp.http import HttpVersion10, HttpVersion11, StreamWriter
 from aiohttp.multipart import MultipartWriter
 
-if sys.version_info >= (3, 11):
-    from typing import Unpack
 
-    class _RequestMaker(Protocol):
-        def __call__(
-            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
-        ) -> ClientRequest: ...
-
-else:
-    _RequestMaker = Any
+class _RequestMaker(Protocol):
+    def __call__(
+        self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest: ...
 
 
 class WriterMock(mock.AsyncMock):
@@ -1536,7 +1530,6 @@ async def test_oserror_on_write_bytes(
     assert isinstance(exc, aiohttp.ClientOSError)
 
 
-@pytest.mark.skipif(sys.version_info < (3, 11), reason="Needs Task.cancelling()")
 async def test_cancel_close(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:
@@ -2456,9 +2449,6 @@ async def test_preamble_failure_reported_to_upload_tracker(
         assert isinstance(tracker.upload_complete.exception(), RuntimeError)
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11), reason="TimeoutError is OSError only on 3.11+"
-)
 async def test_timeout_on_write_bytes_not_wrapped(
     conn: mock.Mock, make_client_request: _RequestMaker
 ) -> None:

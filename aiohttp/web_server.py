@@ -3,13 +3,18 @@
 import asyncio
 import warnings
 from collections.abc import Awaitable, Callable
-from typing import Any, Generic, TypeVar, overload
+from typing import Any, Generic, TypeVar, Unpack, overload
 
 from .abc import AbstractStreamWriter
 from .http_parser import RawRequestMessage
 from .streams import StreamReader
 from .web_exceptions import HTTPBadRequest
-from .web_protocol import RequestHandler
+from .web_protocol import (
+    RequestHandler,
+    _AnyAbstractAccessLogger,
+    _HandlerKwargs,
+    _RequestHandlerKwargs,
+)
 from .web_request import BaseRequest
 from .web_response import StreamResponse
 
@@ -29,6 +34,15 @@ _RequestFactory = Callable[
 ]
 
 
+class _ServerOptions(_HandlerKwargs, total=False):
+    debug: bool | None
+    handler_cancellation: bool
+
+
+class _ServerKwargs(_ServerOptions, total=False):
+    access_log_class: _AnyAbstractAccessLogger
+
+
 class Server(Generic[_Request]):
     request_factory: _RequestFactory[_Request]
 
@@ -39,7 +53,7 @@ class Server(Generic[_Request]):
         *,
         debug: bool | None = None,
         handler_cancellation: bool = False,
-        **kwargs: Any,  # TODO(PY311): Use Unpack to define kwargs from RequestHandler
+        **kwargs: Unpack[_RequestHandlerKwargs],
     ) -> None: ...
     @overload
     def __init__(
@@ -49,7 +63,7 @@ class Server(Generic[_Request]):
         request_factory: _RequestFactory[_Request] | None,
         debug: bool | None = None,
         handler_cancellation: bool = False,
-        **kwargs: Any,
+        **kwargs: Unpack[_RequestHandlerKwargs],
     ) -> None: ...
     def __init__(
         self,
@@ -58,7 +72,7 @@ class Server(Generic[_Request]):
         request_factory: _RequestFactory[_Request] | None = None,
         debug: bool | None = None,
         handler_cancellation: bool = False,
-        **kwargs: Any,
+        **kwargs: Unpack[_RequestHandlerKwargs],
     ) -> None:
         if debug is not None:
             warnings.warn(
@@ -127,7 +141,7 @@ class Server(Generic[_Request]):
             return RequestHandler(self, loop=self._loop, **self._kwargs)
         except TypeError:
             # Failsafe creation: remove all custom handler_args
-            kwargs = {
+            kwargs: dict[str, Any] = {
                 k: v
                 for k, v in self._kwargs.items()
                 if k in ["debug", "access_log_class"]

@@ -18,7 +18,7 @@ from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -30,7 +30,7 @@ import aiohttp
 
 def _mark_aiohttp_worker_for_skipping(
     importables: list[str],
-) -> list[Union[str, "ParameterSet"]]:
+) -> list["str | ParameterSet"]:
     return [
         (
             pytest.param(

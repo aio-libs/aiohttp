@@ -6,7 +6,6 @@ import hashlib
 import json
 import socket
 import struct
-import sys
 import zlib
 from collections.abc import AsyncIterator, Awaitable, Callable
 from types import SimpleNamespace
@@ -31,11 +30,6 @@ from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_ws import ClientWSTimeout
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WS_KEY, WebSocketError, WSCloseCode
-
-if sys.version_info >= (3, 11):
-    import asyncio as async_timeout
-else:
-    import async_timeout
 
 
 @contextlib.asynccontextmanager
@@ -847,7 +841,7 @@ async def test_recv_timeout(aiohttp_client: AiohttpClient) -> None:
     await resp.send_str("ask")
 
     with pytest.raises(asyncio.TimeoutError):
-        async with async_timeout.timeout(0.01):
+        async with asyncio.timeout(0.01):
             await resp.receive()
 
     await resp.close()
@@ -1227,7 +1221,7 @@ async def test_close_websocket_while_ping_inflight(
             raise
 
     with mock.patch.object(resp._writer, "send_frame", delayed_send_frame):
-        async with async_timeout.timeout(1):
+        async with asyncio.timeout(1):
             await ping_started
 
     await resp.close()
@@ -1920,7 +1914,7 @@ async def test_data_discarded_after_protocol_error(
             assert protocol is not None
 
             # The drain only completes if the client read it all.
-            async with async_timeout.timeout(10):
+            async with asyncio.timeout(10):
                 await flooded.wait()
 
             # Nothing the peer sent after the error was kept.
@@ -1975,7 +1969,7 @@ async def test_tail_bounded_while_a_trace_callback_suspends(
         # bound fires; an unbounded buffer never pauses, so let that case fall
         # through to the assertion below rather than raising from here.
         with contextlib.suppress(asyncio.TimeoutError):
-            async with async_timeout.timeout(5):
+            async with asyncio.timeout(5):
                 await paused.wait()
 
     trace.on_request_end.append(on_request_end)

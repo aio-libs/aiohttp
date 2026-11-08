@@ -1,6 +1,5 @@
-import sys
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, assert_type
 from unittest import mock
 from unittest.mock import Mock
 
@@ -28,28 +27,23 @@ from aiohttp.tracing import (
     TraceResponseChunkReceivedParams,
 )
 
-if sys.version_info >= (3, 11):
-    from typing import assert_type
-
 
 class TestTraceConfig:
     def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
-        if sys.version_info >= (3, 11):
-            assert_type(
-                trace_config.on_request_chunk_sent,
-                Signal[ClientSession, SimpleNamespace, TraceRequestChunkSentParams],
-            )
+        assert_type(
+            trace_config.on_request_chunk_sent,
+            Signal[ClientSession, SimpleNamespace, TraceRequestChunkSentParams],
+        )
 
     def test_trace_config_ctx_factory(self) -> None:
         trace_config = TraceConfig(trace_config_ctx_factory=dict)
         assert isinstance(trace_config.trace_config_ctx(), dict)
-        if sys.version_info >= (3, 11):
-            assert_type(
-                trace_config.on_request_start,
-                Signal[ClientSession, dict[str, Any], TraceRequestStartParams],
-            )
+        assert_type(
+            trace_config.on_request_start,
+            Signal[ClientSession, dict[str, Any], TraceRequestStartParams],
+        )
 
     def test_trace_config_ctx_request_ctx(self) -> None:
         trace_request_ctx = Mock()

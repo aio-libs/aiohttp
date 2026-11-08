@@ -1,6 +1,7 @@
 import asyncio
+from collections.abc import Callable
 from contextlib import suppress
-from typing import Callable, Protocol
+from typing import Protocol
 
 from ._websocket.reader import WebSocketDataQueue
 from .base_protocol import BaseProtocol

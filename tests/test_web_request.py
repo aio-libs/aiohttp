@@ -2,7 +2,6 @@ import asyncio
 import datetime
 import logging
 import ssl
-import sys
 import time
 import weakref
 from collections.abc import Iterator, MutableMapping
@@ -547,11 +546,14 @@ def test_request_cookies_many_invalid(caplog: pytest.LogCaptureFixture) -> None:
     cookie = "; ".join(f"{bad}{i}=1" for i in range(3000))
     req = make_mocked_request("GET", "/", headers=CIMultiDict(COOKIE=cookie))
 
-    with caplog.at_level(logging.DEBUG):
+    with caplog.at_level(logging.DEBUG, logger="aiohttp.internal"):
         cookies = req.cookies
 
-    assert len(caplog.record_tuples) == 1
-    _, level, msg = caplog.record_tuples[0]
+    # Filter by logger: on PyPy, GC can finalize objects leaked by other
+    # tests (e.g. an unclosed ClientSession) and log to asyncio meanwhile.
+    records = [r for r in caplog.record_tuples if r[0] == "aiohttp.internal"]
+    assert len(records) == 1
+    _, level, msg = records[0]
     assert level is logging.DEBUG
     assert "Cannot load cookie" in msg
     assert cookies == {}
@@ -718,34 +720,20 @@ def test_requestkey_repr_concrete() -> None:
 
 def test_requestkey_repr_nonconcrete() -> None:
     key = web.RequestKey("key", Iterator[int])
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test_requestkey_repr_annotated() -> None:
     key = web.RequestKey[Iterator[int]]("key")
-    if sys.version_info < (3, 11):
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator)>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator)>",
-        )
-    else:
-        assert repr(key) in (
-            # pytest-xdist:
-            "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
-            "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
-        )
+    assert repr(key) in (
+        # pytest-xdist:
+        "<RequestKey(__channelexec__.key, type=collections.abc.Iterator[int])>",
+        "<RequestKey(__main__.key, type=collections.abc.Iterator[int])>",
+    )
 
 
 def test___repr__() -> None:
@@ -1653,7 +1641,7 @@ def test_etag_headers(
         pytest.param("Tue, 08 Oct 2000 00:56:80 GMT", None),
         pytest.param(
             "Tue, 08 Oct 2000 00:56:40 GMT",
-            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.timezone.utc),
+            datetime.datetime(2000, 10, 8, 0, 56, 40, tzinfo=datetime.UTC),
         ),
     ),
 )

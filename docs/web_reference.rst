@@ -862,6 +862,13 @@ and :ref:`aiohttp-web-signals` handlers::
       as an :class:`int` or a :class:`float` object, and the
       value ``None`` to unset the header.
 
+      Naive :class:`datetime.datetime` objects are interpreted as UTC.
+
+      .. deprecated:: 3.15
+
+         Naive :class:`datetime.datetime` objects, pass a timezone-aware
+         one instead.
+
    .. attribute:: etag
 
       *ETag* header for outgoing response.
@@ -1152,6 +1159,27 @@ and :ref:`aiohttp-web-signals` handlers::
 
       May be ``None`` if server and client protocols are
       not overlapping.
+
+   .. attribute:: max_msg_size
+
+      Read-only property, the maximum size of a received message.
+
+      .. versionadded:: 3.15
+
+   .. method:: set_max_msg_size(max_msg_size)
+
+      Change the maximum size of a received message, for example to accept
+      only small messages until the peer has authenticated. Can be called
+      before or after :meth:`prepare`; a message that is still being
+      received is checked against the new limit too. To disable the size
+      limit use ``0``.
+
+      :param int max_msg_size: maximum size of a received message, from
+                               ``0`` up to ``2**32 - 1``.
+
+      :raises ValueError: if *max_msg_size* is out of range.
+
+      .. versionadded:: 3.15
 
    .. method:: get_extra_info(name, default=None)
 
@@ -3311,7 +3339,7 @@ Constants
 .. class:: ContentCoding
    :canonical: aiohttp.web_response.ContentCoding
 
-   An :class:`enum.Enum` class of available Content Codings.
+   An :class:`enum.StrEnum` class of available Content Codings.
 
    .. attribute:: deflate
 

@@ -1,8 +1,7 @@
 import asyncio
 import socket
 import ssl
-import sys
-from typing import Protocol
+from typing import Protocol, Unpack
 from unittest import mock
 
 import pytest
@@ -22,18 +21,11 @@ from aiohttp.client_reqrep import (
 from aiohttp.connector import _SSL_CONTEXT_VERIFIED
 from aiohttp.helpers import TimerNoop
 
-if sys.version_info >= (3, 11):
-    from typing import Unpack
 
-    class _RequestMaker(Protocol):
-        def __call__(
-            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
-        ) -> ClientRequest: ...
-
-else:
-    from typing import Any
-
-    _RequestMaker = Any
+class _RequestMaker(Protocol):
+    def __call__(
+        self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest: ...
 
 
 @mock.patch("aiohttp.connector.ClientRequestBase")

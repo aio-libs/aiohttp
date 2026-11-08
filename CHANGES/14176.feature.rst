@@ -1,0 +1,6 @@
+Added :py:meth:`~aiohttp.web.WebSocketResponse.set_max_msg_size` and the
+:py:attr:`~aiohttp.web.WebSocketResponse.max_msg_size` property to change the
+maximum size of received messages after
+:py:meth:`~aiohttp.web.WebSocketResponse.prepare`, for example to only accept
+small messages until the peer has authenticated
+-- by :user:`erwindouna`.

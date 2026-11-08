@@ -1,9 +1,8 @@
 """codspeed benchmarks for client requests."""
 
 import asyncio
-import sys
 from http.cookies import BaseCookie
-from typing import TYPE_CHECKING, Any, Protocol
+from typing import TYPE_CHECKING, Protocol, Unpack
 
 import pytest
 from multidict import CIMultiDict
@@ -21,16 +20,13 @@ from aiohttp.helpers import TimerNoop
 from aiohttp.http_writer import HttpVersion11
 from aiohttp.tracing import Trace
 
-if sys.version_info >= (3, 11):
-    from typing import Unpack
 
-    class _RequestMaker(Protocol):
-        def __call__(
-            self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
-        ) -> ClientRequest: ...
+class _RequestMaker(Protocol):
+    def __call__(
+        self, method: str, url: URL, **kwargs: Unpack[ClientRequestArgs]
+    ) -> ClientRequest: ...
 
-else:
-    _RequestMaker = Any
+
 if TYPE_CHECKING:
     from pytest_codspeed import BenchmarkFixture
 else:

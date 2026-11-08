@@ -7,7 +7,7 @@ import re
 import signal
 import sys
 from types import FrameType
-from typing import Any, Optional
+from typing import Any
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -153,9 +153,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
         return waiter
 
-    def _notify_waiter_done(
-        self, waiter: Optional["asyncio.Future[bool]"] = None
-    ) -> None:
+    def _notify_waiter_done(self, waiter: "asyncio.Future[bool] | None" = None) -> None:
         if waiter is None:
             waiter = self._notify_waiter
         if waiter is not None:

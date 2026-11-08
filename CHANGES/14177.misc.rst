@@ -1,0 +1,3 @@
+Typed the ``**kwargs`` of :py:class:`~aiohttp.web.Server`, the web runners,
+:py:func:`~aiohttp.web.run_app` internals and the test utilities with
+:py:data:`typing.Unpack` -- by :user:`asvetlov`.

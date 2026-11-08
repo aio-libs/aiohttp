@@ -769,23 +769,6 @@ constructor.::
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
 
-.. attention::
-
-   As of now (Python 3.10), support for TLS in TLS is disabled for the transports that
-   :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
-   toggles one attribute, it'll *just work™*.
-
-   aiohttp v3.8 and higher is ready for this to happen and has code in
-   place supports TLS-in-TLS, hence sending HTTPS requests over HTTPS
-   proxy tunnels.
-
-   ⚠️ For as long as your Python runtime doesn't declare the support for
-   TLS-in-TLS, please don't file bugs with aiohttp but rather try to
-   help the CPython upstream enable this feature. Meanwhile, if you
-   *really* need this to work, there's a patch that may help you make
-   it happen, include it into your app's code base:
-   https://github.com/aio-libs/aiohttp/discussions/6044#discussioncomment-1432443.
-
 .. important::
 
    When supplying a custom :py:class:`ssl.SSLContext` instance, bear in

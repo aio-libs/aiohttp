@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 from .typedefs import StrOrURL
 
@@ -162,7 +162,7 @@ class ClientConnectorError(ClientOSError):
         return self._conn_key.port
 
     @property
-    def ssl(self) -> Union[SSLContext, bool, "Fingerprint"]:
+    def ssl(self) -> "SSLContext | bool | Fingerprint":
         return self._conn_key.ssl
 
     def __str__(self) -> str:
