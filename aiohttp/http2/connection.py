@@ -25,7 +25,8 @@ import asyncio
 import logging
 import struct
 import traceback
-from typing import Dict, Iterable, List, Optional, Set
+from typing import Dict, List, Optional, Set
+from collections.abc import Iterable
 
 try:
     from hpack import Decoder, Encoder
@@ -97,8 +98,8 @@ class Http2Connection:
         self._protocol = protocol
 
         # Settings
-        self.remote_settings: Dict[Setting, int] = RFC_DEFAULT_SETTINGS.copy()
-        self.local_settings: Dict[Setting, int] = DEFAULT_SETTINGS.copy()
+        self.remote_settings: dict[Setting, int] = RFC_DEFAULT_SETTINGS.copy()
+        self.local_settings: dict[Setting, int] = DEFAULT_SETTINGS.copy()
 
         # HPACK
         self.hpack_encoder = Encoder()
@@ -119,12 +120,12 @@ class Http2Connection:
         self._flow_control_updated.set()  # initially writable
 
         # Streams
-        self.streams: Dict[int, Stream] = {}
+        self.streams: dict[int, Stream] = {}
         self.next_stream_id: int = 1  # client streams are odd
         self.max_concurrent_streams: int = DEFAULT_SETTINGS[
             Setting.MAX_CONCURRENT_STREAMS
         ]
-        self._pending_streams: List[asyncio.Future[Stream]] = []
+        self._pending_streams: list[asyncio.Future[Stream]] = []
 
         # Frame buffers
         self._frame_buffer: bytearray = bytearray()
@@ -136,7 +137,7 @@ class Http2Connection:
         self._error_code: int = 0
 
         # Closed streams cleanup
-        self._closed_streams: Set[int] = set()
+        self._closed_streams: set[int] = set()
 
     @property
     def _last_peer_stream_id(self) -> int:
@@ -210,7 +211,7 @@ class Http2Connection:
         self.close()
         return False
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
         logger.debug(f"Connection lost: {exc}")
         # Cancel all pending streams (including those in the queue)
         exc = exc or ConnectionError("Connection lost")
@@ -717,15 +718,15 @@ class Http2Protocol(BaseProtocol):
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         super().__init__(loop, None)
 
-        self._connection: Optional[Http2Connection] = None
-        self._closed_future: Optional[asyncio.Future[None]] = None
+        self._connection: Http2Connection | None = None
+        self._closed_future: asyncio.Future[None] | None = None
         self._connection_lost_called = False
 
         self._should_close = False
         self._upgraded = False
 
-        self._read_timeout: Optional[float] = None
-        self._read_timeout_handle: Optional[asyncio.TimerHandle] = None
+        self._read_timeout: float | None = None
+        self._read_timeout_handle: asyncio.TimerHandle | None = None
 
         self._auto_decompress: bool = True
 
@@ -733,7 +734,7 @@ class Http2Protocol(BaseProtocol):
     # Properties expected by connector
     # ------------------------------------------------------------------
     @property
-    def closed(self) -> Optional[asyncio.Future[None]]:
+    def closed(self) -> asyncio.Future[None] | None:
         """Future that completes when the connection is closed.
 
         Mirrors ``ResponseHandler.closed``. The future is created lazily
@@ -775,7 +776,7 @@ class Http2Protocol(BaseProtocol):
             self._connection.eof_received()
         return False
 
-    def connection_lost(self, exc: Optional[BaseException]) -> None:
+    def connection_lost(self, exc: BaseException | None) -> None:
         self._connection_lost_called = True
         self._drop_timeout()
 

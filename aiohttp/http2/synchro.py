@@ -23,10 +23,10 @@ class HostProbeSynchronizer:
     def __init__(self) -> None:
         # Keys that are currently locked (i.e. an acquire has succeeded and
         # release has not yet been called).
-        self._locked: Set[Any] = set()
-        self._done: Set[Any] = set()
+        self._locked: set[Any] = set()
+        self._done: set[Any] = set()
         # For each locked key, a list of futures that waiting tasks are awaiting.
-        self._waiters: Dict[Any, List[asyncio.Future[None]]] = defaultdict(list)
+        self._waiters: dict[Any, list[asyncio.Future[None]]] = defaultdict(list)
 
     async def acquire(self, key: Any) -> None:
         """

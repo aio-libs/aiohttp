@@ -1,7 +1,8 @@
 """HTTP/1.1 to HTTP/2 adapters."""
 
 import asyncio
-from typing import TYPE_CHECKING, Any, Iterable, List, Mapping, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from collections.abc import Iterable, Mapping
 
 from multidict import CIMultiDict
 
@@ -84,8 +85,8 @@ class Http2StreamWriter(AbstractStreamWriter):
         loop: asyncio.AbstractEventLoop,
         req: "ClientRequest",
         *,
-        on_chunk_sent: Optional[Any] = None,
-        on_headers_sent: Optional[Any] = None,
+        on_chunk_sent: Any | None = None,
+        on_headers_sent: Any | None = None,
     ) -> None:
         del on_chunk_sent, on_headers_sent  # skipped for now
 
@@ -95,7 +96,7 @@ class Http2StreamWriter(AbstractStreamWriter):
         self.stream_id: int = req.stream_id
         self.loop = loop
 
-        self._headers: Optional[List[Tuple[str, str]]] = None
+        self._headers: list[tuple[str, str]] | None = None
         self._headers_sent = False
         self._eof = False
         self.output_size = 0

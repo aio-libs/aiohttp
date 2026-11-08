@@ -51,7 +51,7 @@ class Setting(IntEnum):
 
 
 # Default values (RFC 7540, 6.5.2)
-RFC_DEFAULT_SETTINGS: Dict[Setting, int] = {
+RFC_DEFAULT_SETTINGS: dict[Setting, int] = {
     Setting.HEADER_TABLE_SIZE: 4096,
     Setting.ENABLE_PUSH: 1,
     Setting.MAX_CONCURRENT_STREAMS: 2**32 - 1,
@@ -60,7 +60,7 @@ RFC_DEFAULT_SETTINGS: Dict[Setting, int] = {
     Setting.MAX_HEADER_LIST_SIZE: 2**32 - 1,
 }
 
-DEFAULT_SETTINGS: Dict[Setting, int] = {
+DEFAULT_SETTINGS: dict[Setting, int] = {
     Setting.HEADER_TABLE_SIZE: 4096,
     Setting.ENABLE_PUSH: 0,  # we do not support server push
     Setting.MAX_CONCURRENT_STREAMS: 2**32 - 1,

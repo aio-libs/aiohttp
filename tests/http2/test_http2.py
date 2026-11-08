@@ -9,7 +9,8 @@ Categories:
 
 import asyncio
 import struct
-from typing import Any, Dict, Generator, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Generator
 from unittest.mock import MagicMock
 
 import pytest
@@ -48,12 +49,12 @@ URL = "https://127.3.3.3"
 # Mock transport – records writes and lies about ALPN
 # ----------------------------------------------------------------------
 class MockH2Transport(asyncio.Transport):
-    def __init__(self, extra_info: Optional[Dict[str, Any]] = None) -> None:
+    def __init__(self, extra_info: dict[str, Any] | None = None) -> None:
         super().__init__()
         self.written = bytearray()
         self._closing = False
         self._extra = extra_info or {}
-        self._protocol: Optional[Http2Protocol] = None
+        self._protocol: Http2Protocol | None = None
 
     def write(self, data: bytes | bytearray | memoryview) -> None:
         self.written.extend(data)
@@ -94,11 +95,11 @@ async def h2_client() -> Any:  # returns a generator of (session, transport, pro
     mock_ssl.selected_alpn_protocol.return_value = "h2"
     transport = MockH2Transport(extra_info={"ssl_object": mock_ssl})
 
-    protocol_instance: Optional[Http2Protocol] = None
+    protocol_instance: Http2Protocol | None = None
 
     async def fake_create_connection(
         protocol_factory: Any, *args: Any, **kwargs: Any
-    ) -> Tuple[MockH2Transport, Http2Protocol]:
+    ) -> tuple[MockH2Transport, Http2Protocol]:
         nonlocal protocol_instance
         protocol_instance = protocol_factory()  # Http2Protocol()
         protocol_instance.connection_made(transport)
@@ -146,9 +147,9 @@ def stream_setup() -> Generator[Any, None, None]:
 # Helper to create headers with optional content-encoding
 # ----------------------------------------------------------------------
 def make_headers(
-    encoding: Optional[str] = None, end_stream: bool = False
-) -> List[Tuple[str, str]]:
-    headers: List[Tuple[str, str]] = [(":status", "200")]
+    encoding: str | None = None, end_stream: bool = False
+) -> list[tuple[str, str]]:
+    headers: list[tuple[str, str]] = [(":status", "200")]
     if encoding:
         headers.append(("content-encoding", encoding))
     return headers
@@ -158,7 +159,7 @@ def make_headers(
 # UNIT TESTS
 # ======================================================================
 @pytest.mark.asyncio
-async def test_incomplete_frame(connection: Tuple[Http2Connection, MagicMock]) -> None:
+async def test_incomplete_frame(connection: tuple[Http2Connection, MagicMock]) -> None:
     conn, _ = connection
     frame = b"111111111"
     conn.data_received(frame)
@@ -171,7 +172,7 @@ async def test_incomplete_frame(connection: Tuple[Http2Connection, MagicMock]) -
 class TestProtocolCompliance:
     @pytest.mark.asyncio
     async def test_receive_settings_updates_remote_and_acks(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         conn, transport = connection
         # Send server SETTINGS (HEADER_TABLE_SIZE=8192, MAX_CONCURRENT_STREAMS=50)
@@ -193,7 +194,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_receive_data_flow_control(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         conn, transport = connection
         stream = await conn.create_stream()
@@ -235,7 +236,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_rst_stream_handling(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         conn, _ = connection
         stream = await conn.create_stream()
@@ -252,7 +253,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_goaway_cancels_higher_streams(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         conn, _ = connection
         # create three streams (1,3,5)
@@ -273,13 +274,13 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_ping_ack(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         conn, transport = connection
         frame = build_ping(ack=False, opaque=b"12345678")
         conn.data_received(frame)
         # Expect ACK sent back with same data
-        acks: List[bytes] = []
+        acks: list[bytes] = []
         for call in transport.write.call_args_list:
             arg = call.args[0]
             if FrameType.PING.to_bytes(1, "big") in arg and arg[4] & FlagPing.ACK:
@@ -289,7 +290,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_max_concurrent_streams_blocking(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         conn, _ = connection
         conn.max_concurrent_streams = 1
@@ -306,7 +307,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_unknown_frame_ignored(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         conn, _ = connection
         # send frame type 0x1a (unused)
@@ -317,7 +318,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_bad_hpack_triggers_protocol_error(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         conn, transport = connection
         stream = await conn.create_stream()
@@ -347,7 +348,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_data_frame_with_padding(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Cover DATA frame with PADDED flag."""
         conn, _ = connection
@@ -361,7 +362,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_headers_frame_with_priority(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Cover HEADERS frame with PRIORITY flag."""
         conn, _ = connection
@@ -383,7 +384,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_rst_stream_for_unknown_stream(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """RST_STREAM on an unknown stream ID is silently ignored."""
         conn, _ = connection
@@ -392,7 +393,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_rst_stream_when_future_done(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """RST_STREAM when response future already completed."""
         conn, _ = connection
@@ -405,7 +406,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_receive_settings_ack(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Receive SETTINGS ACK (should be a no‑op)."""
         conn, _ = connection
@@ -414,7 +415,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_settings_on_nonzero_stream(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """SETTINGS frame on stream_id != 0 triggers GOAWAY."""
         conn, transport = connection
@@ -427,7 +428,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_settings_invalid_payload_length(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """SETTINGS payload not a multiple of 6 triggers protocol error."""
         conn, transport = connection
@@ -441,7 +442,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_settings_initial_window_size_update(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """INITIAL_WINDOW_SIZE setting updates stream windows."""
         conn, _ = connection
@@ -454,7 +455,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_settings_header_table_size(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """HEADER_TABLE_SIZE setting is processed."""
         conn, _ = connection
@@ -464,7 +465,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_ping_on_nonzero_stream(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """PING on non‑zero stream triggers GOAWAY."""
         conn, transport = connection
@@ -477,7 +478,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_receive_ping_ack(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Receiving a PING ACK is logged and does not cause another response."""
         conn, _ = connection
@@ -486,7 +487,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_goaway_when_future_already_done(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """GOAWAY should not fail when a stream's future is already complete."""
         conn, _ = connection
@@ -501,7 +502,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_window_update_for_unknown_stream(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """WINDOW_UPDATE on unknown stream must be ignored (no crash)."""
         conn, _ = connection
@@ -511,7 +512,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_continuation_frame_ignored(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """CONTINUATION frame is ignored with a warning."""
         conn, _ = connection
@@ -520,7 +521,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_unknown_frame_type_ignored(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Unknown frame type (>9) is ignored."""
         conn, _ = connection
@@ -529,7 +530,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_send_data_end_stream_last_chunk(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """send_data with end_stream=True sets END_STREAM on the last chunk."""
         conn, transport = connection
@@ -548,7 +549,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_create_stream_after_goaway(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """create_stream raises ConnectionError when GOAWAY has been sent."""
         conn, _ = connection
@@ -558,7 +559,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_maybe_unblock_streams_done_future(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """_maybe_unblock_streams skips futures that are already done."""
         conn, _ = connection
@@ -570,7 +571,7 @@ class TestProtocolCompliance:
 
     @pytest.mark.asyncio
     async def test_connection_lost_done_futures(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """connection_lost must handle streams whose futures are already done."""
         conn, _ = connection
@@ -585,7 +586,7 @@ class TestProtocolCompliance:
 class TestMiscellaneous:
     @pytest.mark.asyncio
     async def test_concurrent_send_data_does_not_deadlock(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """Multiple tasks sending data on the same stream should not deadlock."""
         conn, transport = connection
@@ -604,7 +605,7 @@ class TestMiscellaneous:
 
     @pytest.mark.asyncio
     async def test_window_update_wakes_all_waiters(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """When window is zero, multiple blocked tasks resume on WINDOW_UPDATE."""
         conn, transport = connection
@@ -630,7 +631,7 @@ class TestMiscellaneous:
 
     @pytest.mark.asyncio
     async def test_empty_payload(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """When window is zero, multiple blocked tasks resume on WINDOW_UPDATE."""
         conn, transport = connection
@@ -644,7 +645,7 @@ class TestMiscellaneous:
 
     @pytest.mark.asyncio
     async def test_stream_cancelled_before_response(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Pending create_stream futures are cancelled on connection loss."""
         conn, _ = connection
@@ -663,7 +664,7 @@ class TestMiscellaneous:
 
     @pytest.mark.asyncio
     async def test_close_stream_on_rst_without_headers(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """RST_STREAM before headers deliver must resolve future with error."""
         conn, _ = connection
@@ -676,7 +677,7 @@ class TestMiscellaneous:
 
     @pytest.mark.asyncio
     async def test_data_received_without_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """Http2Protocol.data_received is a no‑op before connection_made."""
         proto, _ = protocol
@@ -687,7 +688,7 @@ class TestMiscellaneous:
 class TestStreamStateMachine:
     @pytest.mark.asyncio
     async def test_invalid_transition_raises(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """Invalid state transition raises ProtocolError."""
         conn, _ = connection
@@ -698,7 +699,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_receive_data_end_stream_half_closed_local(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """DATA END_STREAM when HALF_CLOSED_LOCAL -> CLOSED and stream removed."""
         conn, _ = connection
@@ -711,7 +712,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_receive_data_end_stream_invalid_state(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """DATA END_STREAM in CLOSED state raises ProtocolError."""
         conn, _ = connection
@@ -722,7 +723,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_receive_headers_end_stream_half_closed_local(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """HEADERS END_STREAM when HALF_CLOSED_LOCAL -> CLOSED and stream removed."""
         conn, _ = connection
@@ -734,7 +735,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_receive_headers_end_stream_invalid_state(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """HEADERS END_STREAM in CLOSED state raises ProtocolError."""
         conn, _ = connection
@@ -745,7 +746,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_data_stream_before_headers(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """DATA before headers does NOT set future until headers arrive."""
         conn, _ = connection
@@ -761,7 +762,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_future_already_done_data_end_stream(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """receive_data with END_STREAM does not double‑set an already done future."""
         conn, _ = connection
@@ -773,7 +774,7 @@ class TestStreamStateMachine:
 
     @pytest.mark.asyncio
     async def test_future_already_done_headers_end_stream(
-        self, connection: Tuple[Http2Connection, MagicMock]
+        self, connection: tuple[Http2Connection, MagicMock]
     ) -> None:
         """receive_headers with END_STREAM does not double‑set an already done future."""
         conn, _ = connection
@@ -908,7 +909,7 @@ class TestIncomingResponses:
 class TestConnectionEdgeCases:
     @pytest.mark.asyncio
     async def test_eof_received_calls_close(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """EOF triggers connection close."""
         conn, transport = connection
@@ -918,7 +919,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_protocol_eof_received(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+        self, protocol: tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
     ) -> None:
         """Http2Protocol.eof_received delegates to connection and returns False."""
         proto, transport = protocol
@@ -931,7 +932,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_data_frame_unknown_stream_above_last_peer(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """DATA frame for unknown stream_id > _last_peer_stream_id sends RST_STREAM."""
         conn, transport = connection
@@ -952,7 +953,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_data_frame_too_large(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """DATA frame is larger than Setting.MAX_FRAME_SIZE."""
         conn, transport = connection
@@ -964,7 +965,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_send_data_end_stream_when_half_closed_remote(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """When stream is HALF_CLOSED_REMOTE, final DATA with END_STREAM closes it."""
         conn, transport = connection
@@ -980,7 +981,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_connection_lost_cancels_open_streams(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """connection_lost sets ConnectionError on all unfinished streams."""
         conn, _ = connection
@@ -996,7 +997,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_connection_lost_clears_pending_futures(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """Pending create_stream futures are cancelled on connection loss."""
         conn, _ = connection
@@ -1013,7 +1014,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_close_transport(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """close() calls transport.close()."""
         conn, transport = connection
@@ -1022,7 +1023,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_should_close_reflects_goaway(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """should_close returns True if GOAWAY sent or received."""
         conn, _ = connection
@@ -1032,7 +1033,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_is_connected(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """is_connected mirrors transport.is_closing()."""
         conn, transport = connection
@@ -1042,7 +1043,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_protocol_close_and_abort(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+        self, protocol: tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
     ) -> None:
         """Http2Protocol.close() and abort() propagate to transport."""
         proto, transport = protocol
@@ -1054,7 +1055,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_protocol_should_close_no_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+        self, protocol: tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
     ) -> None:
         """should_close returns False when connection is None."""
         proto, _ = protocol
@@ -1063,7 +1064,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_protocol_is_connected_no_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
+        self, protocol: tuple[Http2Protocol, MagicMock], mock_transport: MagicMock
     ) -> None:
         """is_connected returns False when connection is None."""
         proto, _ = protocol
@@ -1072,7 +1073,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_initiate_connection_sends_preface_and_settings(
-        self, mock_transport: MagicMock, protocol: Tuple[Http2Protocol, MagicMock]
+        self, mock_transport: MagicMock, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """initiate_connection writes HTTP/2 preface and initial SETTINGS."""
         h2_proto, _ = protocol
@@ -1085,7 +1086,7 @@ class TestConnectionEdgeCases:
 
     @pytest.mark.asyncio
     async def test_send_data_flow_control_releases_waiters(
-        self, connection: Tuple[Http2Connection, MagicMock], mock_transport: MagicMock
+        self, connection: tuple[Http2Connection, MagicMock], mock_transport: MagicMock
     ) -> None:
         """After a send, if window space remains, _flow_control_updated is set."""
         conn, transport = connection
@@ -1381,7 +1382,7 @@ class TestReceiveData:
 class TestProtocolMethods:
     @pytest.mark.asyncio
     async def test_closed_property_before_connection_made(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """closed returns a future that is created lazily."""
         proto, _ = protocol
@@ -1393,7 +1394,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_closed_property_after_clean_connection_lost(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """After connection_lost(None), closed future is resolved with None."""
         proto, _ = protocol
@@ -1407,7 +1408,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_closed_property_after_error_connection_lost(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """After connection_lost with an exception, closed future gets ClientConnectionError."""
         proto, _ = protocol
@@ -1422,7 +1423,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_closed_property_after_connection_lost_twice(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """Once connection_lost has been called, closed returns None."""
         proto, _ = protocol
@@ -1433,7 +1434,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_connection_lost_cleanup(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """connection_lost performs necessary cleanup."""
         proto, _ = protocol
@@ -1457,7 +1458,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_connection_lost_with_exception_cleanup(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         """connection_lost with exception sets error on future."""
         proto, _ = protocol
@@ -1477,7 +1478,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_force_close_sets_should_close(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         assert not proto._should_close
@@ -1486,7 +1487,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_set_exception_causes_cleanup(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         # Set a read_timeout_handle to be dropped
@@ -1499,7 +1500,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_resume_reading_reschedules_timeout(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         # Simulate paused state
@@ -1513,7 +1514,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_start_timeout_with_read_timeout(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto._read_timeout = 3.0
@@ -1526,7 +1527,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_start_timeout_without_read_timeout(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto._read_timeout = None
@@ -1536,7 +1537,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_on_read_timeout_sets_exception(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto.set_exception = MagicMock()  # type: ignore[method-assign]
@@ -1548,7 +1549,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_set_response_params_sets_timeout_and_decompress(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto.set_response_params(
@@ -1563,7 +1564,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_create_stream_when_no_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto._connection = None
@@ -1572,7 +1573,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_read_stream_when_no_connection(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         proto._connection = None
@@ -1581,7 +1582,7 @@ class TestProtocolMethods:
 
     @pytest.mark.asyncio
     async def test_stream_cleanup(
-        self, protocol: Tuple[Http2Protocol, MagicMock]
+        self, protocol: tuple[Http2Protocol, MagicMock]
     ) -> None:
         proto, _ = protocol
         stream = await proto.create_stream()

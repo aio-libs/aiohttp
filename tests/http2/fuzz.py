@@ -1,6 +1,7 @@
 import random
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
+from collections.abc import Callable
 
 from http2.utils import (  # noqa: I900
     build_data_frame,
@@ -35,12 +36,12 @@ class ServerStreamState:
 class ServerConnectionState:
     """Full HTTP/2 connection state as seen by the server."""
 
-    streams: Dict[int, ServerStreamState] = field(default_factory=dict)
+    streams: dict[int, ServerStreamState] = field(default_factory=dict)
     last_stream_id: int = 0
-    settings: Dict[Setting, int] = field(
+    settings: dict[Setting, int] = field(
         default_factory=lambda: DEFAULT_SETTINGS.copy()
     )
-    peer_settings: Dict[Setting, int] = field(
+    peer_settings: dict[Setting, int] = field(
         default_factory=dict
     )  # settings received from client
     goaway_sent: bool = False
@@ -64,7 +65,7 @@ class FuzzerConfig:
     The fuzzer will randomly choose according to these weights.
     """
 
-    frame_type_probs: Dict[int, int] = field(
+    frame_type_probs: dict[int, int] = field(
         default_factory=lambda: {
             FrameType.HEADERS: 30,
             FrameType.DATA: 25,
@@ -89,7 +90,7 @@ class FuzzerConfig:
     # Maximum number of frames to send in one cycle
     max_frames_per_cycle: int = 3
     # Random seed (optional)
-    seed: Optional[int] = None
+    seed: int | None = None
 
 
 # ----------------------------------------------------------------------
@@ -121,12 +122,12 @@ class Http2ServerFuzzer:
         transport: Any,
         config: FuzzerConfig = FuzzerConfig(),
         max_cycles: int = 100,
-        verification: Optional[
+        verification: None | (
             Callable[
-                [List[bytes], List[Tuple[int, int, int, bytes]], ServerConnectionState],
+                [list[bytes], list[tuple[int, int, int, bytes]], ServerConnectionState],
                 bool,
             ]
-        ] = None,
+        ) = None,
     ):
         self.connection = connection
         self.transport = transport
@@ -138,7 +139,7 @@ class Http2ServerFuzzer:
         self.rng = random.Random(config.seed)
 
         # Keep track of client frames sent via transport.write
-        self.client_frame_buffer: List[bytes] = []
+        self.client_frame_buffer: list[bytes] = []
         self._record_client_frames()
 
     def _record_client_frames(self) -> None:
@@ -154,7 +155,7 @@ class Http2ServerFuzzer:
     def _clear_client_frames(self) -> None:
         self.client_frame_buffer.clear()
 
-    def _parse_client_frames(self, data: bytes) -> List[Tuple[int, int, int, bytes]]:
+    def _parse_client_frames(self, data: bytes) -> list[tuple[int, int, int, bytes]]:
         """Parse raw bytes into a list of (length, type, flags, payload)."""
         frames = []
         while len(data) >= 9:
@@ -168,7 +169,7 @@ class Http2ServerFuzzer:
             data = data[9 + length :]
         return frames
 
-    def _get_client_frames_since_last_cycle(self) -> List[Tuple[int, int, int, bytes]]:
+    def _get_client_frames_since_last_cycle(self) -> list[tuple[int, int, int, bytes]]:
         """Extract and parse all client frames written since last clear."""
         all_raw = b"".join(self.client_frame_buffer)
         self._clear_client_frames()
@@ -178,7 +179,7 @@ class Http2ServerFuzzer:
     # State update helpers (server perspective)
     # ------------------------------------------------------------------
     def _apply_client_frames_to_state(
-        self, frames: List[Tuple[int, int, int, bytes]]
+        self, frames: list[tuple[int, int, int, bytes]]
     ) -> None:
         """Update server state based on what the client sent."""
         for length, ftype, flags, payload in frames:
@@ -337,7 +338,7 @@ class Http2ServerFuzzer:
     # ------------------------------------------------------------------
     # Main fuzzing loop
     # ------------------------------------------------------------------
-    def run(self) -> List[Dict[str, Any]]:
+    def run(self) -> list[dict[str, Any]]:
         """Run the fuzzer for max_cycles cycles.
 
         Returns a list of bug reports (empty if no bugs found).
@@ -391,8 +392,8 @@ class Http2ServerFuzzer:
     # ------------------------------------------------------------------
     def default_verification(
         self,
-        sent_frames: List[bytes],
-        client_frames: List[Tuple[int, int, int, bytes]],
+        sent_frames: list[bytes],
+        client_frames: list[tuple[int, int, int, bytes]],
         state: ServerConnectionState,
     ) -> bool:
         """Basic sanity checks:

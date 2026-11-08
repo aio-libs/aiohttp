@@ -36,7 +36,7 @@ def frame_header(length: int, ftype: int, flags: int, stream_id: int) -> bytes:
 
 
 def build_settings_frame(
-    settings_pairs: Optional[list[tuple[Setting, int]]] = None, ack: bool = False
+    settings_pairs: list[tuple[Setting, int]] | None = None, ack: bool = False
 ) -> bytes:
     payload = b""
     if not ack and settings_pairs:
@@ -51,7 +51,7 @@ def build_headers_frame(
     headers: list[tuple[str, str]],
     end_headers: bool = True,
     end_stream: bool = False,
-    priority: Optional[bytes] = None,
+    priority: bytes | None = None,
 ) -> Any:
     encoder = Encoder()
     header_block = encoder.encode(headers)

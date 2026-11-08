@@ -1,7 +1,8 @@
 import asyncio
 import logging
 from enum import IntEnum
-from typing import TYPE_CHECKING, Any, Dict, Iterable, Optional, Set
+from typing import TYPE_CHECKING, Any, Dict, Optional, Set
+from collections.abc import Iterable
 
 from ..http_exceptions import ContentEncodingError
 from ..http_parser import DeflateBuffer, RawResponseMessage
@@ -42,7 +43,7 @@ class StreamState(IntEnum):
 
 
 # Valid transitions (RFC 7540 Figure 2)
-VALID_TRANSITIONS: Dict[StreamState, Set[StreamState]] = {
+VALID_TRANSITIONS: dict[StreamState, set[StreamState]] = {
     StreamState.IDLE: {
         StreamState.OPEN,
         StreamState.RESERVED_LOCAL,
@@ -100,9 +101,9 @@ class Stream:
             tuple[RawResponseMessage, StreamReader]
         ] = loop.create_future()
 
-        self.response_headers: Optional[Iterable[tuple[str, str]]] = None
+        self.response_headers: Iterable[tuple[str, str]] | None = None
         self.response: RawResponseMessage | None = None
-        self.decompressor: Optional[DeflateBuffer] = None
+        self.decompressor: DeflateBuffer | None = None
         # NOTE if headers never come and the server sends a enough data to
         # make us run out of memory the process might be OOM killed
         self._pending_data: bytearray = bytearray()

@@ -6,13 +6,12 @@ import sys
 from collections.abc import Awaitable, Callable, Iterable
 from typing import (
     TYPE_CHECKING,
-    Awaitable,
-    Callable,
-    Iterable,
     NamedTuple,
     Optional,
     Union,
 )
+from collections.abc import Awaitable, Callable, Iterable
+
 from multidict import CIMultiDict
 
 from .abc import AbstractStreamWriter

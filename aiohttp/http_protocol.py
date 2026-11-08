@@ -13,8 +13,8 @@ class HttpDispatcherProtocol(asyncio.Protocol):
 
     def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
         self._loop = loop
-        self._transport: Optional[asyncio.Transport] = None
-        self._handler: Optional[asyncio.Protocol] = None
+        self._transport: asyncio.Transport | None = None
+        self._handler: asyncio.Protocol | None = None
 
     # ---- Transport callbacks forwarded to the real handler ----
     def connection_made(self, transport: asyncio.BaseTransport) -> None:

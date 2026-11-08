@@ -1,5 +1,6 @@
 import asyncio
-from typing import Any, Generator, List, Tuple
+from typing import Any, List, Tuple
+from collections.abc import Generator
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -38,7 +39,7 @@ def assert_send_headers_called(
     stream_id: int,
     method: str,
     url: Any,
-    headers: List[Tuple[str, str]],
+    headers: list[tuple[str, str]],
     end_stream: bool,
 ) -> None:
     protocol._connection.send_headers.assert_called_once_with(
