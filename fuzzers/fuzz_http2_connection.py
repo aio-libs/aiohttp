@@ -17,11 +17,13 @@
 import asyncio
 import struct
 import sys
+from collections.abc import Awaitable
 from contextlib import suppress
+from typing import Any, cast
 
 import atheris  # noqa: I900
 from hpack import Encoder
-from utils import MockTransport
+from utils import MockTransport  # noqa: I900
 from yarl import URL
 
 with atheris.instrument_imports():  # type: ignore[attr-defined]
@@ -31,7 +33,7 @@ with atheris.instrument_imports():  # type: ignore[attr-defined]
     from aiohttp.http_exceptions import ContentEncodingError
 
 
-def _drain_future(fut) -> None:
+def _drain_future(fut: asyncio.Future[Any] | None) -> None:
     """Mark a future's exception as retrieved (suppresses asyncio warnings)."""
     if fut is None:
         return
@@ -98,14 +100,14 @@ async def fuzz_http2_async(data: bytes) -> None:  # type: ignore[misc]
     protocol = Http2Protocol(loop)
 
     transport = MockTransport()
-    conn = Http2Connection(transport, loop, protocol)
+    conn = Http2Connection(cast(asyncio.Transport, transport), loop, protocol)
     conn.initiate_connection()
 
     # Separate HPACK encoder to simulate the server side.
     server_encoder = Encoder()
     streams: list[Stream] = []
 
-    async def wait_or_none(coro, timeout: float = 0.01):
+    async def wait_or_none(coro: Awaitable[Any], timeout: float = 0.01) -> Any:
         try:
             return await asyncio.wait_for(coro, timeout)
         except (
@@ -171,7 +173,7 @@ async def fuzz_http2_async(data: bytes) -> None:  # type: ignore[misc]
                 if upper <= 0:
                     continue
                 payload = fdp.ConsumeBytes(fdp.ConsumeIntInRange(0, upper))
-                result = await wait_or_none(
+                await wait_or_none(
                     conn.send_data(stream.stream_id, payload, fdp.ConsumeBool())
                 )
 

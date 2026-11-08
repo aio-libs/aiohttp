@@ -26,7 +26,6 @@ import logging
 import struct
 import traceback
 from collections.abc import Iterable
-from typing import Dict, List, Optional, Set
 
 try:
     from hpack import Decoder, Encoder

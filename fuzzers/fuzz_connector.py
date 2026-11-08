@@ -18,19 +18,20 @@ import hashlib
 import logging
 import random
 import sys
-from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass
+from typing import Any, cast
 from unittest import mock
 
 import atheris  # noqa: I900
 import yarl
-from utils import MockTransport
+from utils import MockTransport  # noqa: I900
 
 # with atheris.instrument_imports():  # type: ignore[attr-defined]
 import aiohttp
 from aiohttp.client_exceptions import ClientConnectorError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ConnectionKey
+from aiohttp.connector import Connection
 from aiohttp.http2.connection import Http2Protocol
 
 # ---------------------------------------------------------------------------
@@ -106,7 +107,7 @@ def _next_seq() -> int:
 class LiveConn:
     cid: int
     host_id: int
-    connection: object  # aiohttp.Connection
+    connection: Connection
     request: "MockRequest"
 
 
@@ -117,7 +118,7 @@ class MockRequest:
             host=host,
             port=80,
             is_ssl=False,
-            ssl=None,
+            ssl=False,
             proxy=None,
             proxy_headers_hash=None,
             server_hostname=None,
@@ -133,7 +134,7 @@ class MockRequest:
 # ---------------------------------------------------------------------------
 # Pool invariants
 # ---------------------------------------------------------------------------
-def _snapshot(conn) -> dict:
+def _snapshot(conn: aiohttp.TCPConnector) -> dict[str, Any]:
     return {
         "conns": {str(k): len(v) for k, v in conn._conns.items()},
         "multiplexed": {str(k): len(v) for k, v in conn._multiplexed.items()},
@@ -146,7 +147,7 @@ def _snapshot(conn) -> dict:
     }
 
 
-def assert_pool_consistent(conn, where: str = "") -> None:
+def assert_pool_consistent(conn: aiohttp.TCPConnector, where: str = "") -> None:
     snap = _snapshot(conn)
 
     # 1. No key in both pools.
@@ -193,7 +194,7 @@ def assert_pool_consistent(conn, where: str = "") -> None:
     logger.debug("pool ok at %s: %s", where, snap)
 
 
-def assert_pool_clean(conn, where: str = "") -> None:
+def assert_pool_clean(conn: aiohttp.TCPConnector, where: str = "") -> None:
     snap = _snapshot(conn)
     problems = []
     if dict(conn._conns) != {}:
@@ -226,13 +227,13 @@ def assert_pool_clean(conn, where: str = "") -> None:
 # Step loop
 # ---------------------------------------------------------------------------
 @atheris.instrument_func  # type: ignore[attr-defined]
-async def fuzz_connector(data: bytes) -> None:
+async def fuzz_connector(data: bytes) -> None:  # type: ignore[misc]
     fdp = atheris.FuzzedDataProvider(data)  # type: ignore[attr-defined]
 
     n_steps = fdp.ConsumeIntInRange(1, N_MAX_STEPS)
     n_hosts = fdp.ConsumeIntInRange(1, MAX_HOSTS)
     host_ids = list(range(n_hosts))
-    http2_enabled = 1
+    http2_enabled = True
     # disabled; we aren't testing these
     limit = MAX_HOSTS
     limit_per_host = 1
@@ -259,10 +260,10 @@ async def fuzz_connector(data: bytes) -> None:
     loop = asyncio.get_running_loop()
 
     live: dict[int, LiveConn] = {}
-    pending: dict[int, tuple[int, MockRequest, asyncio.Task]] = {}
+    pending: dict[int, tuple[int, MockRequest, asyncio.Task[Any]]] = {}
     state = {"next_cid": 0, "create_attempt": 0}
 
-    async def maybe_connect(*args, **kwargs):
+    async def maybe_connect(*args: Any, **kwargs: Any) -> Any:
         i = state["create_attempt"]
         state["create_attempt"] += 1
         assert_pool_consistent(conn, f"{perm.id} enter-create#{i}")
@@ -276,12 +277,13 @@ async def fuzz_connector(data: bytes) -> None:
             )
             raise ClientConnectorError(key, OSError("fuzz-injected"))
 
+        proto: Http2Protocol | ResponseHandler
         if http2_enabled:
             proto = Http2Protocol(loop)
         else:
             proto = ResponseHandler(loop)
         transport = MockTransport()
-        proto.connection_made(transport)
+        proto.connection_made(cast(asyncio.BaseTransport, transport))
 
         logger.info(
             "[%s] create#%d host=%s -> %s", perm.id, i, key.host, type(proto).__name__
@@ -295,7 +297,11 @@ async def fuzz_connector(data: bytes) -> None:
         host_id = random.choice(host_ids)
         req = MockRequest(host_id)
         task = asyncio.create_task(
-            conn.connect(req, [], aiohttp.ClientTimeout(total=1))
+            conn.connect(
+                cast(aiohttp.ClientRequest, req),
+                [],
+                aiohttp.ClientTimeout(total=1),
+            )
         )
         pending[cid] = (host_id, req, task)
         logger.info("[%s] step: connect cid=%d host=%d", perm.id, cid, host_id)
@@ -390,7 +396,8 @@ async def fuzz_connector(data: bytes) -> None:
         # -------- release everything --------
         for cid in list(live.keys()):
             entry = live.pop(cid)
-            entry.connection._protocol.connection_lost(Exception)
+            # hacked type
+            entry.connection._protocol.connection_lost(BaseException())  # type: ignore[union-attr]
             entry.connection.release()
 
         assert_pool_consistent(conn, f"{perm.id} pre-close")
@@ -401,10 +408,10 @@ async def fuzz_connector(data: bytes) -> None:
 
 
 @atheris.instrument_func  # type: ignore[attr-defined]
-def TestOneInput(data: bytes) -> None:
+def TestOneInput(data: bytes) -> None:  # type: ignore[misc]
     asyncio.run(fuzz_connector(data))
 
 
 if __name__ == "__main__":
-    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)
-    atheris.Fuzz()
+    atheris.Setup(sys.argv, TestOneInput, enable_python_coverage=True)  # type: ignore[attr-defined]
+    atheris.Fuzz()  # type: ignore[attr-defined]

@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Optional
+from typing import Any
 
 from .client_proto import ResponseHandler
 from .http2.adapter import _get_version

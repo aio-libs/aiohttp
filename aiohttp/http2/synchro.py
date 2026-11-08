@@ -1,6 +1,6 @@
 import asyncio
 from collections import defaultdict
-from typing import Any, Dict, List, Set
+from typing import Any
 
 
 class HostProbeSynchronizer:

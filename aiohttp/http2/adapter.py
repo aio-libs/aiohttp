@@ -2,7 +2,7 @@
 
 import asyncio
 from collections.abc import Iterable, Mapping
-from typing import TYPE_CHECKING, Any, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Any, Union
 
 from multidict import CIMultiDict
 

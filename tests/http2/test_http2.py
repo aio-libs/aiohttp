@@ -10,7 +10,7 @@ Categories:
 import asyncio
 import struct
 from collections.abc import Generator
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
