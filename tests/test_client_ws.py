@@ -630,6 +630,29 @@ async def test_receive_runtime_err() -> None:
         await resp.receive()
 
 
+async def test_receive_zero_timeout_overrides_default() -> None:
+    resp = client.ClientWebSocketResponse(
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        mock.Mock(),
+        ClientWSTimeout(ws_receive=10.0),
+        True,
+        True,
+        asyncio.get_running_loop(),
+    )
+
+    async def block() -> None:
+        await asyncio.sleep(10)
+
+    resp._reader = mock.Mock()
+    resp._reader.read = mock.AsyncMock(side_effect=block)
+
+    async with asyncio.timeout(2):
+        with pytest.raises(asyncio.TimeoutError):
+            await resp.receive(timeout=0)
+
+
 async def test_heartbeat_reset_coalesces_on_data() -> None:
     response = mock.Mock()
     response.connection = None

@@ -655,6 +655,24 @@ async def test_receive_timeouterror(make_request: _RequestMaker) -> None:
     assert len(req.transport.close.mock_calls) == 0  # type: ignore[attr-defined]
 
 
+async def test_receive_zero_timeout_overrides_default(
+    make_request: _RequestMaker,
+) -> None:
+    req = make_request("GET", "/")
+    ws = web.WebSocketResponse(receive_timeout=10.0)
+    await ws.prepare(req)
+
+    async def block() -> None:
+        await asyncio.sleep(10)
+
+    ws._reader = mock.Mock()
+    ws._reader.read = mock.AsyncMock(side_effect=block)
+
+    async with asyncio.timeout(2):
+        with pytest.raises(asyncio.TimeoutError):
+            await ws.receive(timeout=0)
+
+
 async def test_multiple_receive_on_close_connection(
     make_request: _RequestMaker,
 ) -> None:

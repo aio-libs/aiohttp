@@ -623,7 +623,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         if self._reader is None:
             raise RuntimeError("Call .prepare() first")
 
-        receive_timeout = timeout or self._receive_timeout
+        receive_timeout = timeout if timeout is not None else self._receive_timeout
         while True:
             if self._waiting:
                 raise RuntimeError("Concurrent call to receive() is not allowed")
@@ -639,7 +639,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             try:
                 self._waiting = True
                 try:
-                    if receive_timeout:
+                    if receive_timeout is not None:
                         # Entering the context manager and creating
                         # Timeout() object can take almost 50% of the
                         # run time in this loop so we avoid it if
