@@ -1,0 +1,1 @@
+Added the ``partitioned`` parameter to :py:meth:`~aiohttp.web.StreamResponse.del_cookie`, so partitioned cookies can be deleted -- by :user:`astroknot-sheep`.
