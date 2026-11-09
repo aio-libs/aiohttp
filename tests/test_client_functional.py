@@ -2660,7 +2660,7 @@ async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> N
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with pytest.raises((aiohttp.ClientPayloadError)):
+    with pytest.raises(aiohttp.ClientPayloadError):
         async with client.get("/") as resp:
             await resp.read()
 
