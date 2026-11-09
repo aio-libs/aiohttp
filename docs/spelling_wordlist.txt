@@ -207,6 +207,7 @@ lossless
 lowercased
 Mako
 manylinux
+memoryviews
 metadata
 MiB
 microservice
