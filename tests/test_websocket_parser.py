@@ -881,7 +881,9 @@ def test_fragments_at_max_size_accepted(out: WebSocketDataQueue) -> None:
     last = build_frame(b"b" * 156, WSMsgType.CONTINUATION, is_fin=True)
     parser._feed_data(last)
     assert out.exception() is None
-    assert out._buffer[0] == WSMessageText(data="a" * 100 + "b" * 156, size=256, extra="")
+    assert out._buffer[0] == WSMessageText(
+        data="a" * 100 + "b" * 156, size=256, extra=""
+    )
 
 
 def test_msg_too_large_across_fragments(out: WebSocketDataQueue) -> None:
