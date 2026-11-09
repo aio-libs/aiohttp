@@ -2647,9 +2647,7 @@ async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> N
     """A gzip body missing its 8-byte trailer must error, not decode silently.
 
     The truncated stream inflates in full, so this previously returned the
-    complete plaintext with a 200 and no error. The C parser surfaces the
-    error as ClientResponseError from the request; the pure-Python parser
-    delivers ClientPayloadError from read().
+    complete plaintext with a 200 and no error.
     """
     body = gzip.compress(b"payload " * 4096)[:-8]
 
@@ -2662,7 +2660,7 @@ async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> N
     app.router.add_get("/", handler)
     client = await aiohttp_client(app)
 
-    with pytest.raises((aiohttp.ClientPayloadError, aiohttp.ClientResponseError)):
+    with pytest.raises((aiohttp.ClientPayloadError)):
         async with client.get("/") as resp:
             await resp.read()
 
