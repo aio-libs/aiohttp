@@ -299,7 +299,7 @@ typing-extensions==4.16.0 ; python_version < "3.13"
     #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.4
+typing-inspection==0.4.5
     # via pydantic
 tzdata==2026.6
     # via python-dateutil
