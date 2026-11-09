@@ -131,7 +131,7 @@ mypy==2.4.1 ; implementation_name == "cpython"
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via mypy
 myst-parser==5.1.0
     # via -r requirements/doc.in
