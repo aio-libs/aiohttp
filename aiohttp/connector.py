@@ -670,6 +670,7 @@ class BaseConnector:
             if self._limit_per_host:
                 self._acquired_per_host[key].add(placeholder)
 
+            proto: ResponseHandler | None = None
             try:
                 # Traces are done inside the try block to ensure that the
                 # that the placeholder is still cleaned up if an exception
@@ -683,8 +684,11 @@ class BaseConnector:
                         await trace.send_connection_create_end()
             except BaseException:
                 self._release_acquired(key, placeholder)
+                if proto is not None:
+                    self._close_proto(key, proto)
                 raise
             else:
+                assert proto is not None
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
@@ -774,6 +778,7 @@ class BaseConnector:
                             await trace.send_connection_reuseconn()
                         except BaseException:
                             self._release_acquired(key, proto)
+                            self._close_proto(key, proto)
                             raise
                 return Connection(self, key, proto, self._loop)
 
@@ -826,6 +831,12 @@ class BaseConnector:
             if not conns:
                 del self._acquired_per_host[key]
         self._release_waiter()
+
+    def _close_proto(self, key: "ConnectionKey", proto: ResponseHandler) -> None:
+        transport = proto.transport
+        proto.close()
+        if key.is_ssl and not self._cleanup_closed_disabled:
+            self._cleanup_closed_transports.append(transport)
 
     def _release(
         self,

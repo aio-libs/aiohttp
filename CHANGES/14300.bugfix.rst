@@ -1,0 +1,1 @@
+Close connections when a trace callback raises or is cancelled during connection creation or reuse.
