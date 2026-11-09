@@ -2530,6 +2530,9 @@ Utilities
 
    Implements cookie storage adhering to RFC 6265.
 
+   Cookie ``Domain`` attributes are normalized to lowercase before matching
+   and storage, so ``Domain=Example.COM`` is treated as ``Domain=example.com``.
+
    Cookies parsed from responses are limited to 50 valid ``Set-Cookie``
    fields per response, 4,096 octets for a cookie's name and value, 32
    attributes per field and 1,024 octets per attribute value; anything beyond
