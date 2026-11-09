@@ -940,6 +940,22 @@ def test_set_max_msg_size_rejects_frame_in_progress(out: WebSocketDataQueue) -> 
     assert not out._buffer
 
 
+def test_set_max_msg_size_accepts_frame_of_exact_size(
+    out: WebSocketDataQueue,
+) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 256, WSMsgType.TEXT)
+    assert parser.feed_data(frame[:100]) == (False, b"")
+
+    # The in-flight frame is exactly the new limit: it must be accepted.
+    parser.set_max_msg_size(256)
+    assert out.exception() is None
+
+    parser.feed_data(frame[100:])
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(data="a" * 256, size=256, extra="")
+
+
 def test_set_max_msg_size_raised_for_frame_in_progress(
     out: WebSocketDataQueue,
 ) -> None:
