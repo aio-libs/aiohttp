@@ -208,7 +208,7 @@ class WebSocketDataQueue(_InterpretedReadMixin):
         raise EofStream
 
 
-@mypyc_attr(allow_interpreted_subclasses=True)
+@mypyc_attr(allow_interpreted_subclasses=True, weakrefs=True)
 class WebSocketReader:
     def __init__(
         self,
