@@ -1,0 +1,3 @@
+Fixed :py:attr:`aiohttp.StreamReader.total_raw_bytes` raising
+:exc:`AttributeError` on responses with no body (e.g. 204 or HEAD replies)
+-- by :user:`rinopatrick`.
