@@ -309,7 +309,7 @@ yarl==1.25.1
     # via
     #   -r requirements/runtime-deps.in
     #   aiohttp
-zlib-ng==1.0.0
+zlib-ng==1.1.0
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common.in
