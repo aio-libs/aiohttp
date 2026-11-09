@@ -68,7 +68,7 @@ multidict==7.2.1
     #   yarl
 mypy==2.4.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via mypy
 nodeenv==1.12.0
     # via pre-commit
