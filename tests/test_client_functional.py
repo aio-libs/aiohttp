@@ -593,6 +593,40 @@ async def test_post_data_textio_encoding(aiohttp_client: AiohttpClient) -> None:
         assert 200 == resp.status
 
 
+@pytest.mark.parametrize("method", ["write", "write_eof"])
+@pytest.mark.parametrize("compressed", [False, True])
+@pytest.mark.parametrize(
+    "view",
+    [
+        memoryview(b"abcdefgh").cast("H"),
+        memoryview(b"abcdefgh").cast("B", (2, 4)),
+        memoryview(b"a").cast("B", ()),
+    ],
+    ids=["wide", "matrix", "scalar"],
+)
+async def test_stream_response_memoryview(
+    aiohttp_client: AiohttpClient,
+    method: str,
+    compressed: bool,
+    view: memoryview,
+) -> None:
+    async def handler(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse()
+        if compressed:
+            response.enable_compression()
+        await response.prepare(request)
+        await getattr(response, method)(view)
+        await response.write_eof()
+        return response
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    async with client.get("/") as response:
+        assert response.status == 200
+        assert await response.read() == view.tobytes()
+
+
 async def test_post_data_zipfile_filelike(aiohttp_client: AiohttpClient) -> None:
     data = b"This is a zip file payload text file."
 

@@ -176,9 +176,8 @@ class StreamWriter(AbstractStreamWriter):
         notify = self.on_body_write
         if isinstance(chunk, memoryview):
             body_size = chunk.nbytes
-            if body_size != len(chunk):
-                # just reshape it
-                chunk = chunk.cast("c")
+            if chunk.ndim != 1 or chunk.itemsize != 1:
+                chunk = chunk.cast("c") if body_size else b""
         else:
             body_size = len(chunk) if notify is not None else 0
 
@@ -271,12 +270,18 @@ class StreamWriter(AbstractStreamWriter):
 
         self._eof = True
 
-    async def write_eof(self, chunk: bytes = b"") -> None:
+    async def write_eof(
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]" = b""
+    ) -> None:
         if self._eof:
             return
 
-        if chunk and self._on_chunk_sent is not None:
+        body_size = chunk.nbytes if isinstance(chunk, memoryview) else len(chunk)
+        if body_size and self._on_chunk_sent is not None:
             await self._on_chunk_sent(chunk)
+
+        if isinstance(chunk, memoryview) and (chunk.ndim != 1 or chunk.itemsize != 1):
+            chunk = chunk.cast("c") if body_size else b""
 
         # Handle body/compression
         if self._compress:
@@ -333,8 +338,8 @@ class StreamWriter(AbstractStreamWriter):
             self._eof = True
             return
 
-        if chunk and (notify := self.on_body_write) is not None:
-            notify(len(chunk), self.output_size)
+        if body_size and (notify := self.on_body_write) is not None:
+            notify(body_size, self.output_size)
         await self.drain()
         self._eof = True
 

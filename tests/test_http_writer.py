@@ -1,6 +1,7 @@
 # Tests for aiohttp/http_writer.py
 import array
 import asyncio
+import ctypes
 import zlib
 from collections.abc import Callable, Generator, Iterable
 from typing import Any
@@ -771,6 +772,79 @@ async def test_write_payload_slicing_long_memoryview(
 
     thing = b"ABCD"
     assert thing == buf
+
+
+@pytest.mark.parametrize("method", ["write", "write_eof"])
+@pytest.mark.parametrize("buffered_headers", [False, True])
+@pytest.mark.parametrize(
+    "view",
+    [
+        memoryview(b"abcdefgh"),
+        memoryview(b"abcdefgh").cast("H"),
+        memoryview(b"abcdefgh").cast("B", (2, 4)),
+        memoryview(b"abcdefgh").cast("B", (8, 1)),
+        memoryview(b"a").cast("B", ()),
+        memoryview(((ctypes.c_ubyte * 0) * 2)()),
+    ],
+    ids=["bytes", "wide", "matrix", "column", "scalar", "empty-matrix"],
+)
+async def test_write_memoryview_chunked_byte_length(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    method: str,
+    buffered_headers: bool,
+    view: memoryview,
+) -> None:
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.enable_chunking()
+    if buffered_headers:
+        await msg.write_headers(
+            "HTTP/1.1 200 OK", CIMultiDict({"Transfer-Encoding": "chunked"})
+        )
+    callback = mock.AsyncMock()
+    msg._on_chunk_sent = callback
+    notify = mock.Mock()
+    msg.on_body_write = notify
+
+    await getattr(msg, method)(view)
+    await msg.write_eof()
+
+    expected = view.tobytes()
+    body = bytes(buf).split(b"\r\n\r\n", 1)[1] if buffered_headers else bytes(buf)
+    assert body == (
+        f"{len(expected):x}\r\n".encode() + expected + b"\r\n0\r\n\r\n"
+        if expected
+        else b"0\r\n\r\n"
+    )
+    assert msg.output_size == len(buf)
+    if expected:
+        assert notify.call_args.args[0] == view.nbytes
+        callback.assert_awaited_once_with(view)
+    else:
+        notify.assert_not_called()
+        if method == "write":
+            callback.assert_awaited_once_with(view)
+        else:
+            callback.assert_not_awaited()
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        memoryview(b"abcdefgh").cast("B", (8, 1)),
+        memoryview(b"a").cast("B", ()),
+    ],
+    ids=["column", "scalar"],
+)
+async def test_write_memoryview_byte_limit(
+    buf: bytearray, protocol: BaseProtocol, view: memoryview
+) -> None:
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.length = 1
+    await msg.write(view)
+    await msg.write_eof()
+    assert buf == view.tobytes()[:1]
+    assert msg.length == 0
 
 
 async def test_write_drain(
