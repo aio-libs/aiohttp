@@ -20,7 +20,7 @@ atheris==3.0.0
     # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
-backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
+backports-zstd==1.8.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via -r requirements/lint.in
 blockbuster==1.5.29
     # via -r requirements/lint.in
