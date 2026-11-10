@@ -689,7 +689,7 @@ class StaticResource(PrefixResource):
         for _file in sorted(dir_index):
             # show file url as relative to static path
             rel_path = _file.relative_to(self._directory).as_posix()
-            quoted_file_url = _quote_path(f"{self._prefix}/{rel_path}")
+            quoted_file_url = html_escape(_quote_path(f"{self._prefix}/{rel_path}"))
 
             # if file is a directory, add '/' to the end of the name
             if _file.is_dir():
