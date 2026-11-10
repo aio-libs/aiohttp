@@ -205,7 +205,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.4
+python-discovery==1.9.5
     # via virtualenv
 python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via
