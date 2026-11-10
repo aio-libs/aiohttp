@@ -6399,22 +6399,9 @@ async def test_stream_reader_total_raw_bytes(aiohttp_client: AiohttpClient) -> N
         assert resp.content.total_raw_bytes == int(resp.headers["Content-Length"])
 
 
-@pytest.mark.parametrize(
-    ("session_option", "request_option", "auto_decompress"),
-    [
-        (None, None, True),
-        (True, None, True),
-        (False, True, True),
-        (True, False, True),
-        (True, None, False),
-    ],
-)
 async def test_response_decompression_in_executor(
     aiohttp_client: AiohttpClient,
     monkeypatch: pytest.MonkeyPatch,
-    session_option: bool | None,
-    request_option: bool | None,
-    auto_decompress: bool,
 ) -> None:
     body = b"response body" * 10_000
     compressed = gzip.compress(body)
@@ -6427,13 +6414,7 @@ async def test_response_decompression_in_executor(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    session_options: dict[str, Any] = (
-        {}
-        if session_option is None
-        else {"auto_decompress_in_executor": session_option}
-    )
-    client = await aiohttp_client(app, **session_options, read_bufsize=1024)
-    assert client.session.auto_decompress_in_executor is bool(session_option)
+    client = await aiohttp_client(app, read_bufsize=1024)
     loop = asyncio.get_running_loop()
     run_in_executor = loop.run_in_executor
     threads = []
@@ -6451,21 +6432,17 @@ async def test_response_decompression_in_executor(
 
     monkeypatch.setattr(loop, "run_in_executor", submit)
     for _ in range(2):
-        async with client.get(
-            "/",
-            auto_decompress_in_executor=request_option,
-            auto_decompress=auto_decompress,
-        ) as response:
+        async with client.get("/") as response:
             chunks = [chunk async for chunk in response.content.iter_chunked(2048)]
-            assert b"".join(chunks) == (body if auto_decompress else compressed)
+            assert b"".join(chunks) == body
             assert response.content.total_raw_bytes == len(compressed)
-    enabled = session_option if request_option is None else request_option
-    if enabled and auto_decompress:
-        assert threads
-        assert set(threads).isdisjoint({threading.get_ident()})
-        assert b"" in inputs
-    else:
-        assert not threads
+    offload_count = len(threads)
+    async with client.get("/", auto_decompress=False) as response:
+        assert await response.read() == compressed
+    assert len(threads) == offload_count
+    assert threads
+    assert set(threads).isdisjoint({threading.get_ident()})
+    assert b"" in inputs
     assert transports[0] is transports[1]
 
 
@@ -6483,7 +6460,7 @@ async def test_response_decompression_pending_cleanup(
 
     app = web.Application()
     app.router.add_get("/", handler)
-    client = await aiohttp_client(app, auto_decompress_in_executor=True)
+    client = await aiohttp_client(app)
     loop = asyncio.get_running_loop()
     run_in_executor = loop.run_in_executor
     started = asyncio.Event()

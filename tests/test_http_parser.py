@@ -156,9 +156,7 @@ async def executor_protocol(
     monkeypatch.setattr("aiohttp.client_proto.HttpResponseParser", response_cls)
     protocol = ResponseHandler(asyncio.get_running_loop())
     protocol.connection_made(mock.Mock())
-    protocol.set_response_params(
-        auto_decompress_in_executor=True, read_until_eof=True, read_bufsize=1024
-    )
+    protocol.set_response_params(read_until_eof=True, read_bufsize=1024)
     return protocol
 
 
@@ -2177,7 +2175,7 @@ def test_executor_decompression_feed_eof_reports_incomplete_payload(
         event_loop,
         DEFAULT_CHUNK_SIZE,
         max_line_size=8190,
-        auto_decompress_in_executor=True,
+        offload_decompression=True,
     )
     messages, _upgraded, _tail = parser.feed_data(
         b"HTTP/1.1 200 OK\r\n"

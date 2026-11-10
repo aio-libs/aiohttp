@@ -366,7 +366,7 @@ cdef class HttpParser:
         object  _payload_exception
         object  _last_error
         bint    _auto_decompress
-        bint    _auto_decompress_in_executor
+        bint    _offload_decompression
         int     _limit
 
         str     _content_encoding
@@ -398,7 +398,7 @@ cdef class HttpParser:
         bint response_with_body=True, bint read_until_eof=False,
         bint auto_decompress=True,
         Py_ssize_t max_msg_queue_size=0,
-        bint auto_decompress_in_executor=False,
+        bint offload_decompression=False,
     ):
         cparser.llhttp_settings_init(self._csettings)
         cparser.llhttp_init(self._cparser, mode, self._csettings)
@@ -435,7 +435,7 @@ cdef class HttpParser:
         self._upgraded = False
         self._pending_upgrade = False
         self._auto_decompress = auto_decompress
-        self._auto_decompress_in_executor = auto_decompress_in_executor
+        self._offload_decompression = offload_decompression
         self._content_encoding = None
         self._content_encoding_repeated = False
         self._lax = False
@@ -584,7 +584,7 @@ cdef class HttpParser:
         if encoding is not None and self._auto_decompress:
             self._payload = DeflateBuffer(
                 payload, encoding, max_decompress_size=self._limit,
-                in_executor=self._auto_decompress_in_executor)
+                in_executor=self._offload_decompression)
 
         self._messages.append((msg, payload))
         if self._max_msg_queue_size:
@@ -865,12 +865,12 @@ cdef class HttpResponseParser(HttpParser):
             size_t max_line_size=8190, size_t max_headers=128,
             size_t max_field_size=8190, payload_exception=None,
             bint response_with_body=True, bint read_until_eof=False,
-            bint auto_decompress=True, bint auto_decompress_in_executor=False
+            bint auto_decompress=True, bint offload_decompression=False
     ):
         self._init(cparser.HTTP_RESPONSE, protocol, loop, limit, timer,
                    max_line_size, max_headers, max_field_size,
                    payload_exception, response_with_body, read_until_eof,
-                   auto_decompress, 0, auto_decompress_in_executor)
+                   auto_decompress, 0, offload_decompression)
         # Use strict parsing on dev mode, so users are warned about broken servers.
         if not DEBUG:
             cparser.llhttp_set_lenient_headers(self._cparser, 1)

@@ -69,14 +69,11 @@ async def test_client_proto_bad_message() -> None:
     assert isinstance(proto.exception(), http.HttpProcessingError)
 
 
-@pytest.mark.parametrize("in_executor", [False, True])
-async def test_uncompleted_message(in_executor: bool) -> None:
+async def test_uncompleted_message() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     transport = mock.Mock()
     proto.connection_made(transport)
-    proto.set_response_params(
-        read_until_eof=True, auto_decompress_in_executor=in_executor
-    )
+    proto.set_response_params(read_until_eof=True)
 
     proto.data_received(
         b"HTTP/1.1 301 Moved Permanently\r\nLocation: http://python.org/"
@@ -97,7 +94,6 @@ async def test_executor_resume_does_not_restart_timeout_while_paused(
     proto = ResponseHandler(loop=loop)
     proto.connection_made(mock.Mock())
     proto.set_response_params(
-        auto_decompress_in_executor=True,
         read_timeout=0.02,
         read_until_eof=True,
     )
@@ -164,9 +160,7 @@ async def test_abort_clears_deferred_decompression_state(
     monkeypatch.setattr("aiohttp.client_proto.HttpResponseParser", HttpResponseParserPy)
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.connection_made(mock.Mock())
-    proto.set_response_params(
-        read_until_eof=True, auto_decompress_in_executor=True, read_bufsize=1024
-    )
+    proto.set_response_params(read_until_eof=True, read_bufsize=1024)
 
     body = b"deferred body" * 10_000
     compressed = gzip.compress(body)

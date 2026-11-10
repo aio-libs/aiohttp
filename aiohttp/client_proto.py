@@ -57,7 +57,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._closed: None | asyncio.Future[None] = None
         self._connection_lost_called = False
         self._deferred_eof = False
-        self._auto_decompress_in_executor = False
+        self._offload_decompression = False
 
     @property
     def closed(self) -> None | asyncio.Future[None]:
@@ -163,7 +163,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         uncompleted = None
         if (
-            self._auto_decompress_in_executor
+            self._offload_decompression
             and self._parser is not None
             and not self._upgraded
         ):
@@ -205,7 +205,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._should_close = True
         self._deferred_eof = (
-            self._auto_decompress_in_executor
+            self._offload_decompression
             and isinstance(self._payload, StreamReader)
             and not self._payload.is_eof()
             and self._payload.exception() is None
@@ -306,7 +306,6 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         skip_payload: bool = False,
         read_until_eof: bool = False,
         auto_decompress: bool = True,
-        auto_decompress_in_executor: bool = False,
         read_timeout: float | None = None,
         read_bufsize: int = DEFAULT_CHUNK_SIZE,
         timeout_ceil_threshold: float = 5,
@@ -315,9 +314,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
-        self._auto_decompress_in_executor = (
-            auto_decompress and auto_decompress_in_executor
-        )
+        self._offload_decompression = auto_decompress
 
         self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
@@ -333,7 +330,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             response_with_body=not skip_payload,
             read_until_eof=read_until_eof,
             auto_decompress=auto_decompress,
-            auto_decompress_in_executor=self._auto_decompress_in_executor,
+            offload_decompression=auto_decompress,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers,

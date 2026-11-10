@@ -360,9 +360,9 @@ def test_get_request_with_251308_compressed_chunked_payload(
 
 
 @pytest.mark.parametrize(
-    ("encoded", "offload"),
-    ((False, False), (False, True), (True, False), (True, True)),
-    ids=("raw-inline", "raw-executor", "gzip-inline", "gzip-executor"),
+    "encoded",
+    (False, True),
+    ids=("raw", "gzip"),
 )
 def test_get_precompressed_response_decode(
     event_loop: asyncio.AbstractEventLoop,
@@ -371,7 +371,6 @@ def test_get_precompressed_response_decode(
     ],
     benchmark: BenchmarkFixture,
     encoded: bool,
-    offload: bool,
 ) -> None:
     """Benchmark reading raw bytes and decoding precompressed responses."""
     payload = b"".join(
@@ -393,7 +392,7 @@ def test_get_precompressed_response_decode(
     client = event_loop.run_until_complete(aiohttp_client_sync(app))
 
     async def create_session() -> ClientSession:
-        return ClientSession(auto_decompress_in_executor=offload)
+        return ClientSession()
 
     session = event_loop.run_until_complete(create_session())
 
