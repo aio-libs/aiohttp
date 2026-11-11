@@ -603,8 +603,13 @@ def make_mocked_request(
 
     if headers:
         headers = HeadersDictProxy(CIMultiDict(headers))
+        # The parsers decode headers with surrogateescape; this is the inverse.
         raw_hdrs = tuple(
-            (k.encode("utf-8"), v.encode("utf-8")) for k, v in headers.items()
+            (
+                k.encode("utf-8", "surrogateescape"),
+                v.encode("utf-8", "surrogateescape"),
+            )
+            for k, v in headers.items()
         )
     else:
         headers = HeadersDictProxy(CIMultiDict())
