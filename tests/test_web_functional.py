@@ -1227,7 +1227,7 @@ async def test_payload_access_after_response_raises_new_exception(
             assert resp.status == 200
         request = requests.pop()
         while request.content.exception() is None:
-            await asyncio.sleep(0)
+            await asyncio.sleep(0)  # pragma: no cover
         with pytest.raises(web.PayloadAccessError) as exc_info:
             await request.content.read()
         errors.append(exc_info.value)
