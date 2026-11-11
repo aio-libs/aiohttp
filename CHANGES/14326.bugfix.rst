@@ -1,0 +1,2 @@
+Fixed byte-length accounting and chunked framing for memoryviews in stream
+writers, including scalar and empty multidimensional views -- by :user:`0718lol`.

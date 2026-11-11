@@ -908,6 +908,9 @@ and :ref:`aiohttp-web-signals` handlers::
       Raises :exc:`TypeError` if data is not :class:`bytes`,
       :class:`bytearray` or :class:`memoryview` instance.
 
+      C-contiguous memoryviews are sent as raw bytes regardless of their
+      element size or shape.
+
       Raises :exc:`RuntimeError` if :meth:`prepare` has not been called.
 
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
