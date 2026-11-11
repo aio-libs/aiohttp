@@ -157,7 +157,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
-        if self._heartbeat is None:
+        if self._heartbeat is None or self._closed:
             return
         self._cancel_pong_response_cb()
         req = self._req
