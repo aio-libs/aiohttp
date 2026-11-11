@@ -7,7 +7,7 @@ import re
 import signal
 import sys
 from types import FrameType
-from typing import Any, Optional
+from typing import Any
 
 from gunicorn.config import AccessLogFormat as GunicornAccessLogFormat
 from gunicorn.workers import base
@@ -41,9 +41,12 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         self.exit_code = 0
         self._notify_waiter: asyncio.Future[bool] | None = None
 
+    def _create_event_loop(self) -> asyncio.AbstractEventLoop:
+        return asyncio.new_event_loop()
+
     def init_process(self) -> None:
         # create new event_loop after fork
-        self.loop = asyncio.new_event_loop()
+        self.loop = self._create_event_loop()
         asyncio.set_event_loop(self.loop)
 
         super().init_process()
@@ -109,6 +112,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 runner,
                 sock,
                 ssl_context=ctx,
+                backlog=self.cfg.backlog,
             )
             await site.start()
 
@@ -149,9 +153,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
         return waiter
 
-    def _notify_waiter_done(
-        self, waiter: Optional["asyncio.Future[bool]"] = None
-    ) -> None:
+    def _notify_waiter_done(self, waiter: "asyncio.Future[bool] | None" = None) -> None:
         if waiter is None:
             waiter = self._notify_waiter
         if waiter is not None:
@@ -247,9 +249,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
 
 
 class GunicornUVLoopWebWorker(GunicornWebWorker):
-    def init_process(self) -> None:
+    def _create_event_loop(self) -> asyncio.AbstractEventLoop:
         import uvloop
 
-        asyncio.set_event_loop_policy(uvloop.EventLoopPolicy())
-
-        super().init_process()
+        return uvloop.new_event_loop()

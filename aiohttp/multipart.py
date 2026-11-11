@@ -9,7 +9,7 @@ import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
 from types import TracebackType
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Self, cast
 from urllib.parse import parse_qsl, unquote, urlencode
 
 from multidict import CIMultiDict
@@ -44,13 +44,6 @@ from .payload import (
     payload_type,
 )
 from .streams import StreamReader
-
-if sys.version_info >= (3, 11):
-    from typing import Self
-else:
-    from typing import TypeVar
-
-    Self = TypeVar("Self", bound="BodyPartReader")
 
 __all__ = (
     "MultipartReader",
@@ -202,33 +195,48 @@ def content_disposition_filename(
     elif name in params:
         return params[name]
     else:
-        parts = []
-        fnparams = sorted(
-            (key, value) for key, value in params.items() if key.startswith(name_suf)
+        # The index is capped at six digits so a header cannot push int() past
+        # CPython's int-to-str limit; a longer run of digits simply never matches.
+        section_re = re.compile(re.escape(name) + r"\*([0-9]{1,6})(\*)?")
+        matches = (
+            (m, value)
+            for key, value in params.items()
+            if (m := section_re.fullmatch(key)) is not None
         )
-        for num, (key, value) in enumerate(fnparams):
-            _, tail = key.split("*", 1)
-            if tail.endswith("*"):
-                tail = tail[:-1]
-            if tail == str(num):
-                parts.append(value)
-            else:
-                break
+        # https://www.rfc-editor.org/info/rfc2231/#section-3
+        # Order numerically.
+        fnparams = sorted(matches, key=lambda mv: int(mv[0].group(1)))
+        parts: list[str] = []
+        # Consecutive encoded sections are decoded as one unit, because a
+        # single multibyte character may be split across a section boundary.
+        pending: list[str] = []
+        encoding = "utf-8"
+        for num, (m, value) in enumerate(fnparams):
+            if m.group(1) != str(num):  # Missing section or leading zero.
+                return None
+            if m.group(2) is not None:  # encoded parameter
+                # https://www.rfc-editor.org/info/rfc2231/#section-4.1
+                if num == 0 and value.count("'") >= 2:
+                    encoding, _, value = value.split("'", 2)
+                    encoding = encoding or "utf-8"
+                pending.append(value)
+                continue
+            if pending:
+                # Current value is not encoded, so process encoding of previous parts
+                try:
+                    parts.append(unquote("".join(pending), encoding, "strict"))
+                except (builtins.LookupError, UnicodeDecodeError):
+                    return None
+                pending.clear()
+            parts.append(value)
+        if pending:
+            try:
+                parts.append(unquote("".join(pending), encoding, "strict"))
+            except (builtins.LookupError, UnicodeDecodeError):
+                return None
         if not parts:
             return None
-        value = "".join(parts)
-        if "'" in value:
-            encoding, _, value = value.split("'", 2)
-            encoding = encoding or "utf-8"
-            try:
-                return unquote(value, encoding, "strict").lstrip("\\/")
-            except (builtins.LookupError, UnicodeDecodeError):
-                # Both the charset name and the octets are attacker-controlled
-                # here; an unknown encoding raises the builtin LookupError
-                # (shadowed in this module by payload.LookupError) and
-                # undecodable bytes raise UnicodeDecodeError.
-                return None
-        return value.lstrip("\\/")
+        return "".join(parts).lstrip("\\/")
 
 
 class MultipartResponseWrapper:
@@ -251,7 +259,7 @@ class MultipartResponseWrapper:
 
     async def __anext__(
         self,
-    ) -> Union["MultipartReader", "BodyPartReader"]:
+    ) -> "MultipartReader | BodyPartReader":
         part = await self.next()
         if part is None:
             raise StopAsyncIteration
@@ -263,7 +271,7 @@ class MultipartResponseWrapper:
 
     async def next(
         self,
-    ) -> Union["MultipartReader", "BodyPartReader"] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         """Emits next multipart reader object."""
         item = await self.stream.next()
         if self.stream.at_eof():
@@ -371,7 +379,7 @@ class BodyPartReader:
         if carry:
             self._b64_carry = b""
             want = max(want, self._boundary_len)
-        if self._length:
+        if self._length is not None:
             fresh = await self._read_chunk_from_length(want)
         else:
             fresh = await self._read_chunk_from_stream(want)
@@ -742,7 +750,7 @@ class MultipartReader:
 
     async def __anext__(
         self,
-    ) -> Union["MultipartReader", BodyPartReader] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         part = await self.next()
         if part is None:
             raise StopAsyncIteration
@@ -768,7 +776,7 @@ class MultipartReader:
 
     async def next(
         self,
-    ) -> Union["MultipartReader", BodyPartReader] | None:
+    ) -> "MultipartReader | BodyPartReader | None":
         """Emits the next multipart body part."""
         # So, if we're at BOF, we need to skip till the boundary.
         if self._at_eof:
@@ -812,7 +820,7 @@ class MultipartReader:
 
     async def fetch_next_part(
         self,
-    ) -> Union["MultipartReader", BodyPartReader]:
+    ) -> "MultipartReader | BodyPartReader":
         """Returns the next body part reader."""
         headers = await self._read_headers()
         return self._get_part_reader(headers)
@@ -820,7 +828,7 @@ class MultipartReader:
     def _get_part_reader(
         self,
         headers: HeadersDictProxy,
-    ) -> Union["MultipartReader", BodyPartReader]:
+    ) -> "MultipartReader | BodyPartReader":
         """Dispatches the response by the `Content-Type` header.
 
         Returns a suitable reader instance.

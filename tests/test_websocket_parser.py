@@ -495,6 +495,16 @@ def test_continuation_err(
         parser._handle_frame(True, WSMsgType.TEXT, b"line2", 0)
 
 
+def test_continuation_non_fin_err(
+    out: WebSocketDataQueue, parser: PatchableWebSocketReader
+) -> None:
+    # https://datatracker.ietf.org/doc/html/rfc6455#section-5.4
+    parser._handle_frame(False, WSMsgType.TEXT, b"line1", 0)
+    with pytest.raises(WebSocketError) as ctx:
+        parser._handle_frame(False, WSMsgType.TEXT, b"line2", 0)
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_continuation_with_close(
     out: WebSocketDataQueue, parser: WebSocketReader
 ) -> None:
@@ -756,6 +766,30 @@ def test_control_frame_with_rsv1(
     assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
 
 
+@pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
+def test_control_frame_with_rsv1_no_compress(
+    out: WebSocketDataQueue, opcode: WSMsgType
+) -> None:
+    parser_no_compress = PatchableWebSocketReader(
+        out, 0, compress=False, decode_text=True
+    )
+    with pytest.raises(WebSocketError) as ctx:
+        parser_no_compress._feed_data(PACK_LEN1(0xC0 | opcode, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
+def test_control_frame_with_rsv1_between_fragments(
+    parser: PatchableWebSocketReader,
+) -> None:
+    # An RSV1 control frame mid-message fails the connection too.
+    parser._feed_data(PACK_LEN1(0x40 | WSMsgType.BINARY, 1) + b"\x00")
+    with pytest.raises(WebSocketError) as ctx:
+        parser._feed_data(PACK_LEN1(0xC0 | WSMsgType.PING, 0))
+
+    assert ctx.value.code == WSCloseCode.PROTOCOL_ERROR
+
+
 def test_parse_compress_error_frame(parser: PatchableWebSocketReader) -> None:
     parser.parse_frame(struct.pack("!BB", 0b01000001, 0b00000001))
     parser.parse_frame(b"1")
@@ -832,6 +866,55 @@ def test_msg_too_large_across_fragments(out: WebSocketDataQueue) -> None:
     ) as ctx:
         parser._feed_data(last)
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_set_max_msg_size_lowers_limit(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    parser.set_max_msg_size(256)
+
+    header = PACK_LEN3(0x80 | WSMsgType.TEXT, 127, 1024 * 1024)
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 1048576 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_set_max_msg_size_raises_limit(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 256, compress=False, decode_text=True)
+    parser.set_max_msg_size(4096)
+
+    parser._feed_data(build_frame(b"a" * 1000, WSMsgType.TEXT))
+    assert out._buffer[0] == WSMessageText(data="a" * 1000, size=1000, extra="")
+
+
+def test_set_max_msg_size_rejects_frame_in_progress(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 1024, WSMsgType.TEXT)
+    assert parser.feed_data(frame[:100]) == (False, b"")
+
+    parser.set_max_msg_size(256)
+
+    exc = out.exception()
+    assert isinstance(exc, WebSocketError)
+    assert exc.code == WSCloseCode.MESSAGE_TOO_BIG
+    assert str(exc) == "Message size 1024 exceeds limit 256"
+    assert parser.feed_data(frame[100:]) == (True, frame[100:])
+    assert not out._buffer
+
+
+def test_set_max_msg_size_raised_for_frame_in_progress(
+    out: WebSocketDataQueue,
+) -> None:
+    parser = WebSocketReader(out, 2048, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 1024, WSMsgType.TEXT)
+    parser.feed_data(frame[:100])
+
+    parser.set_max_msg_size(4096)
+    parser.feed_data(frame[100:])
+
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(data="a" * 1024, size=1024, extra="")
 
 
 def test_msg_too_large_text_after_non_fin_text(out: WebSocketDataQueue) -> None:

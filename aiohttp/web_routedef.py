@@ -1,7 +1,7 @@
 import abc
 import dataclasses
 from collections.abc import Callable, Iterator, Sequence
-from typing import TYPE_CHECKING, Any, Union, overload
+from typing import TYPE_CHECKING, Any, overload
 
 from . import hdrs
 from .abc import AbstractView
@@ -39,7 +39,7 @@ class AbstractRouteDef(abc.ABC):
         """Register itself into the given router."""
 
 
-_HandlerType = Union[type[AbstractView], Handler]
+_HandlerType = type[AbstractView] | Handler
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -157,7 +157,7 @@ class RouteTableDef(Sequence[AbstractRouteDef]):
     ) -> list[AbstractRouteDef]: ...
 
     def __getitem__(
-        self, index: Union[int, "slice[int | None, int | None, int | None]"]
+        self, index: "int | slice[int | None, int | None, int | None]"
     ) -> AbstractRouteDef | list[AbstractRouteDef]:
         return self._items[index]
 

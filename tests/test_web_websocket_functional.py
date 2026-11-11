@@ -403,6 +403,53 @@ async def test_handshake_connection_header_substring_not_a_token(
     assert resp.status == 400
 
 
+@pytest.mark.parametrize("after_prepare", (False, True))
+async def test_set_max_msg_size(
+    aiohttp_client: AiohttpClient, after_prepare: bool
+) -> None:
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        if not after_prepare:
+            ws.set_max_msg_size(16)
+        await ws.prepare(request)
+        if after_prepare:
+            ws.set_max_msg_size(16)
+        assert ws.max_msg_size == 16
+        await ws.send_str("limited")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
+        ws.set_max_msg_size(4 * 1024 * 1024)
+        await ws.send_str("raised")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.TEXT
+        assert msg.data == "x" * 1024
+        ws.set_max_msg_size(16)
+        await ws.send_str("lowered")
+
+        msg = await ws.receive()
+        assert msg.type is WSMsgType.ERROR
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    client = await aiohttp_client(app)
+
+    ws = await client.ws_connect("/")
+    assert await ws.receive_str() == "limited"
+    await ws.send_str("small")
+    assert await ws.receive_str() == "raised"
+    await ws.send_str("x" * 1024)
+    assert await ws.receive_str() == "lowered"
+    await ws.send_str("x" * 1024)
+
+    msg = await ws.receive()
+    assert msg.type is WSMsgType.CLOSE
+    assert msg.data == WSCloseCode.MESSAGE_TOO_BIG
+
+
 async def test_websocket_json(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
         ws = web.WebSocketResponse()
@@ -1010,7 +1057,7 @@ async def test_receive_timeout(aiohttp_client: AiohttpClient) -> None:
 
         try:
             await ws.receive()
-        except asyncio.TimeoutError:
+        except TimeoutError:
             nonlocal raised
             raised = True
 
@@ -1036,7 +1083,7 @@ async def test_custom_receive_timeout(aiohttp_client: AiohttpClient) -> None:
 
         try:
             await ws.receive(0.1)
-        except asyncio.TimeoutError:
+        except TimeoutError:
             nonlocal raised
             raised = True
 
@@ -1309,6 +1356,36 @@ async def test_websocket_disable_keepalive(aiohttp_client: AiohttpClient) -> Non
     resp = await client.get("/")
     txt = await resp.text()
     assert txt == "OK"
+
+    ws = await client.ws_connect("/")
+    data = await ws.receive_str()
+    assert data == "OK"
+
+    await ws.receive()  # Handle close
+
+
+async def test_websocket_disable_keepalive_no_armed_handle(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    """keep_alive(False) when no keepalive timer was armed (keepalive_timeout=0)."""
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        ws = web.WebSocketResponse()
+        assert ws.can_prepare(request)
+        # A zero timeout arms no deadline at connection_made().
+        assert request.protocol._keepalive_handle is None
+        await ws.prepare(request)
+        assert not request.protocol._keepalive
+        assert request.protocol._keepalive_handle is None
+
+        await ws.send_str("OK")
+        await ws.close()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app, keepalive_timeout=0)
+    client = await aiohttp_client(server)  # type: ignore[var-annotated]
 
     ws = await client.ws_connect("/")
     data = await ws.receive_str()

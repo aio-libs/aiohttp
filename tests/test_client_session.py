@@ -4,8 +4,6 @@ import gc
 import io
 import json
 import ssl
-import sys
-import warnings
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
@@ -363,10 +361,6 @@ async def test_create_connector(
     assert m.called
 
 
-@pytest.mark.skipif(
-    sys.version_info < (3, 11),
-    reason="Use test_ssl_shutdown_timeout_passed_to_connector_pre_311 for Python < 3.11",
-)
 async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
     # Test default value (no warning expected)
     async with ClientSession() as session:
@@ -394,49 +388,6 @@ async def test_ssl_shutdown_timeout_passed_to_connector() -> None:
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
         custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
-    with pytest.warns(
-        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
-    ):
-        async with ClientSession(
-            connector=custom_conn, ssl_shutdown_timeout=1.0
-        ) as session:
-            assert session.connector is not None
-            assert isinstance(session.connector, TCPConnector)
-            assert (
-                session.connector._ssl_shutdown_timeout == 2.0
-            )  # Should use connector's value
-
-
-@pytest.mark.skipif(
-    sys.version_info >= (3, 11),
-    reason="This test is for Python < 3.11 runtime warning behavior",
-)
-async def test_ssl_shutdown_timeout_passed_to_connector_pre_311() -> None:
-    """Test that both deprecation and runtime warnings are issued on Python < 3.11."""
-    # Test custom value - expect both deprecation and runtime warnings
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        async with ClientSession(ssl_shutdown_timeout=1.0) as session:
-            assert isinstance(session.connector, TCPConnector)
-            assert session.connector._ssl_shutdown_timeout == 1.0
-        # Should have deprecation warnings (from ClientSession and TCPConnector) and runtime warning
-        # ClientSession emits 1 DeprecationWarning, TCPConnector emits 1 DeprecationWarning + 1 RuntimeWarning = 3 total
-        assert len(w) == 3
-        deprecation_count = sum(
-            1 for warn in w if issubclass(warn.category, DeprecationWarning)
-        )
-        runtime_count = sum(
-            1 for warn in w if issubclass(warn.category, RuntimeWarning)
-        )
-        assert deprecation_count == 2  # One from ClientSession, one from TCPConnector
-        assert runtime_count == 1  # One from TCPConnector
-
-    # Test with custom connector
-    with warnings.catch_warnings(record=True) as w:
-        warnings.simplefilter("always")
-        custom_conn = TCPConnector(ssl_shutdown_timeout=2.0)
-        # Should have both deprecation and runtime warnings
-        assert len(w) == 2
     with pytest.warns(
         DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
     ):
@@ -792,7 +743,7 @@ async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
             return MappingProxyType({})
 
         @property
-        def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+        def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
             return frozenset()
 
         def clear(self, predicate: abc.ClearCookiePredicate | None = None) -> None:
@@ -1524,7 +1475,7 @@ async def test_client_session_timeout_zero(
         ):
             try:
                 resp = await session.get("http://example.com")
-            except asyncio.TimeoutError:  # pragma: no cover
+            except TimeoutError:  # pragma: no cover
                 pytest.fail("0 should disable timeout.")
             resp.close()
 
@@ -1729,3 +1680,25 @@ async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
         text = await resp.text()
         # Should not have auth since the host is not in netrc
         assert text == "no_auth"
+
+
+@pytest.mark.parametrize(
+    ("location", "expected"),
+    (
+        ("http:/ok", True),
+        ("http:ok", True),
+        ("http:", True),
+        ("http:/", True),
+        ("http://example.com/", False),
+        ("http:///example.com", False),
+        ("  http:///example.com", False),
+        ("\x00http:///example.com", False),
+        ("http:/\t/example.com", False),
+        ("http:/\n/example.com", False),
+        ("http:\\\\example.com", False),
+        ("http:\\/example.com", False),
+        ("http:/\\example.com", False),
+    ),
+)
+def test_has_no_authority(location: str, expected: bool) -> None:
+    assert client._has_no_authority(location, "http") is expected

@@ -1,0 +1,2 @@
+Added ``aiohttp-ai-chatbot``, a server middleware that adds an AI chat assistant
+to HTML pages, to the third-party libraries page -- by :user:`asyntai`.

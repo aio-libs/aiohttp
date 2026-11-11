@@ -1,0 +1,1 @@
+Control frames with RSV1 set now fail the WebSocket connection with close code 1002, as RFC 7692 requires -- by :user:`bdraco`.

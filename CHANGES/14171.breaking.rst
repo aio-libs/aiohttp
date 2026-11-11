@@ -1,0 +1,3 @@
+Dropped support for Python 3.10; the ``async-timeout`` dependency is no longer
+needed. :class:`~aiohttp.web.ContentCoding` is now an :class:`enum.StrEnum`
+-- by :user:`asvetlov`.

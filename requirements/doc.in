@@ -1,6 +1,7 @@
 aiohttp-theme
 myst-parser
 sphinx
+sphinx-issues
 sphinxcontrib-mermaid
 sphinxcontrib-towncrier
 towncrier

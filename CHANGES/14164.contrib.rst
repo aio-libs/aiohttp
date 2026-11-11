@@ -1,0 +1,3 @@
+Disabled per-test coverage contexts in the free-threaded CI job to work
+around a coverage.py deadlock (:issue:`coveragepy/coveragepy#2348`) that
+made it hang until the job timeout -- by :user:`asvetlov`.

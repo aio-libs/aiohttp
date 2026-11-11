@@ -2,4 +2,4 @@
 
 [[ "$AIOHTTP_NO_EXTENSIONS" != "y" ]] && make cythonize
 
-python -m pytest -qx --no-cov $1
+python -m pytest -qx --no-cov --numprocesses=0 $1

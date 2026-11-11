@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import socket
 from abc import ABC, abstractmethod
@@ -165,13 +166,18 @@ class AbstractCookieJar(Sized, Iterable[Morsel[str]]):
         """Return True if cookies should be quoted."""
 
     @property
+    def treat_as_secure_origin(self) -> frozenset[URL]:
+        """Return origins considered secure even over cleartext connections."""
+        return frozenset()
+
+    @property
     @abstractmethod
     def cookies(self) -> MappingProxyType[tuple[str, str], SimpleCookie]:
         """Return the cookies stored in this jar."""
 
     @property
     @abstractmethod
-    def host_only_cookies(self) -> frozenset[tuple[str, str]]:
+    def host_only_cookies(self) -> frozenset[tuple[str, str, str]]:
         """Return the host-only cookies stored in this jar."""
 
     @abstractmethod
@@ -204,6 +210,22 @@ class AbstractStreamWriter(ABC):
     buffer_size: int = 0
     output_size: int = 0
     length: int | None = 0
+    # Called with each accepted body chunk's byte count (before any
+    # transport-level transformation such as compression or chunked
+    # framing) and the writer's total output_size after the chunk.
+    # Assigned by the client request machinery for upload progress
+    # tracking; write()/write_eof() implementations should invoke it
+    # for every body chunk they accept.
+    on_body_write: Callable[[int, int], None] | None = None
+
+    @property
+    def transport(self) -> asyncio.WriteTransport | None:
+        """The transport this writer writes to, if any.
+
+        Used by upload progress tracking to observe the unsent buffer;
+        writers without one report progress only on completion.
+        """
+        return None
 
     @abstractmethod
     async def write(

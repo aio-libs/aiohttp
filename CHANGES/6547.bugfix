@@ -1,2 +1,0 @@
-Remove overlapping slots in ``RequestHandler``,
-fix broken slots inheritance in :py:class:`~aiohttp.web.StreamResponse`.

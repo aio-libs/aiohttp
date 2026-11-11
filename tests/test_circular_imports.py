@@ -18,7 +18,7 @@ from collections.abc import Generator
 from itertools import chain
 from pathlib import Path
 from types import ModuleType
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING
 
 import pytest
 
@@ -30,7 +30,7 @@ import aiohttp
 
 def _mark_aiohttp_worker_for_skipping(
     importables: list[str],
-) -> list[Union[str, "ParameterSet"]]:
+) -> list["str | ParameterSet"]:
     return [
         (
             pytest.param(
@@ -107,19 +107,6 @@ def test_no_warnings(import_path: str) -> None:
         # fmt: off
         sys.executable,
         "-W", "error",
-        # The following deprecation warning is triggered by importing
-        # `gunicorn.util`. Hopefully, it'll get fixed in the future. See
-        # https://github.com/benoitc/gunicorn/issues/2840 for detail.
-        "-W", "ignore:module 'sre_constants' is "
-        "deprecated:DeprecationWarning:pkg_resources._vendor.pyparsing",
-        # Also caused by `gunicorn.util` importing `pkg_resources`:
-        "-W", "ignore:Creating a LegacyVersion has been deprecated and "
-        "will be removed in the next major release:"
-        "DeprecationWarning:",
-        # Deprecation warning emitted by setuptools v67.5.0+ triggered by importing
-        # `gunicorn.util`.
-        "-W", "ignore:pkg_resources is deprecated as an API:"
-        "DeprecationWarning",
         "-c", f"import {import_path!s}",
         # fmt: on
     )

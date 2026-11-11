@@ -550,6 +550,15 @@ If your HTTP server uses UNIX domain sockets you can use
   conn = aiohttp.UnixConnector(path='/path/to/socket')
   session = aiohttp.ClientSession(connector=conn)
 
+Request URLs continue to work much the same as any other connector.
+The protocol is still HTTP, therefore the ``http://`` scheme should still be used.
+While the connector always routes to the socket, the domain/port in the URL is
+still used to create the ``Host`` header and must be included.
+For example::
+
+  async with session.get('http://localhost/get') as resp:
+      ...
+
 
 Custom socket creation
 ^^^^^^^^^^^^^^^^^^^^^^
@@ -609,7 +618,7 @@ checks can be relaxed by setting *ssl* to ``False``::
 If you need to setup custom ssl parameters (use own certification
 files for example) you can create a :class:`ssl.SSLContext` instance and
 pass it into the :meth:`ClientSession.request` methods or set it for the
-entire session with ``ClientSession(connector=TCPConnector(ssl=ssl_context))``.
+entire session with ``ClientSession(ssl=ssl_context)``.
 
 There are explicit errors when ssl verification fails
 
@@ -651,7 +660,7 @@ installed or Python is unable to find them, resulting in a error like
 One way to work around this problem is to use the `certifi` package::
 
   ssl_context = ssl.create_default_context(cafile=certifi.where())
-  async with ClientSession(connector=TCPConnector(ssl=ssl_context)) as sess:
+  async with ClientSession(ssl=ssl_context) as sess:
       ...
 
 Example: Use self-signed certificate
@@ -697,9 +706,9 @@ DER with e.g::
    Tip: to convert from a hexadecimal digest to a binary byte-string,
    you can use :func:`binascii.unhexlify`.
 
-   *ssl* parameter could be passed
-   to :class:`TCPConnector` as default, the value from
-   :meth:`ClientSession.get` and others override default.
+   *ssl* parameter could be passed to :class:`ClientSession` as the
+   session-wide default, the value from :meth:`ClientSession.get` and
+   others override it.
 
 .. _aiohttp-client-proxy-support:
 
@@ -759,23 +768,6 @@ constructor.::
 
 Proxy credentials are given from ``~/.netrc`` file if present (see
 :class:`aiohttp.ClientSession` for more details).
-
-.. attention::
-
-   As of now (Python 3.10), support for TLS in TLS is disabled for the transports that
-   :py:mod:`asyncio` uses. If the further release of Python (say v3.11)
-   toggles one attribute, it'll *just work™*.
-
-   aiohttp v3.8 and higher is ready for this to happen and has code in
-   place supports TLS-in-TLS, hence sending HTTPS requests over HTTPS
-   proxy tunnels.
-
-   ⚠️ For as long as your Python runtime doesn't declare the support for
-   TLS-in-TLS, please don't file bugs with aiohttp but rather try to
-   help the CPython upstream enable this feature. Meanwhile, if you
-   *really* need this to work, there's a patch that may help you make
-   it happen, include it into your app's code base:
-   https://github.com/aio-libs/aiohttp/discussions/6044#discussioncomment-1432443.
 
 .. important::
 

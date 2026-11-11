@@ -3,7 +3,7 @@ import signal
 import socket
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from typing import Any, Generic, TypeVar
+from typing import Any, Generic, TypeVar, Unpack
 
 from yarl import URL
 
@@ -16,7 +16,7 @@ from .web_exceptions import HTTPBadRequest
 from .web_log import AccessLogger
 from .web_protocol import RequestHandler
 from .web_request import BaseRequest, Request
-from .web_server import Server
+from .web_server import Server, _ServerKwargs, _ServerOptions
 
 try:
     from ssl import SSLContext
@@ -295,6 +295,19 @@ class SockSite(BaseSite):
         )
 
 
+class _RunnerKwargs(_ServerOptions, total=False):
+    shutdown_timeout: float
+
+
+class _AppRunnerKwargs(_RunnerKwargs, total=False):
+    handle_signals: bool
+    access_log_class: type[AbstractAccessLogger]
+
+
+class _ServerRunnerKwargs(_ServerKwargs, total=False):
+    shutdown_timeout: float
+
+
 class BaseRunner(ABC, Generic[_Request]):
     __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
 
@@ -303,7 +316,7 @@ class BaseRunner(ABC, Generic[_Request]):
         *,
         handle_signals: bool = False,
         shutdown_timeout: float = 60.0,
-        **kwargs: Any,
+        **kwargs: Unpack[_ServerKwargs],
     ) -> None:
         self._handle_signals = handle_signals
         self._kwargs = kwargs
@@ -408,7 +421,7 @@ class ServerRunner(BaseRunner[BaseRequest]):
         web_server: Server[BaseRequest],
         *,
         handle_signals: bool = False,
-        **kwargs: Any,
+        **kwargs: Unpack[_ServerRunnerKwargs],
     ) -> None:
         super().__init__(handle_signals=handle_signals, **kwargs)
         self._web_server = web_server
@@ -434,27 +447,27 @@ class AppRunner(BaseRunner[Request]):
         *,
         handle_signals: bool = False,
         access_log_class: type[AbstractAccessLogger] = AccessLogger,
-        **kwargs: Any,
+        **kwargs: Unpack[_RunnerKwargs],
     ) -> None:
         if not isinstance(app, Application):
             raise TypeError(
                 f"The first argument should be web.Application instance, got {app!r}"
             )
-        kwargs["access_log_class"] = access_log_class
+        server_kwargs: dict[str, Any] = {**kwargs, "access_log_class": access_log_class}
 
         if app._handler_args:
             for k, v in app._handler_args.items():
-                kwargs[k] = v
+                server_kwargs[k] = v
 
-        if not issubclass(kwargs["access_log_class"], AbstractAccessLogger):
+        if not issubclass(server_kwargs["access_log_class"], AbstractAccessLogger):
             raise TypeError(
                 "access_log_class must be subclass of "
                 "aiohttp.abc.AbstractAccessLogger, got {}".format(
-                    kwargs["access_log_class"]
+                    server_kwargs["access_log_class"]
                 )
             )
 
-        super().__init__(handle_signals=handle_signals, **kwargs)
+        super().__init__(handle_signals=handle_signals, **server_kwargs)
         self._app = app
 
     @property
@@ -494,6 +507,7 @@ class AppRunner(BaseRunner[Request]):
             task,
             loop,
             client_max_size=self.app._client_max_size,
+            client_max_fields=self.app._client_max_fields,
             pre_handler_error=pre_handler_error,
         )
 
