@@ -235,7 +235,8 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
             new_headers = HeadersDictProxy(CIMultiDict(headers))
             dct["headers"] = new_headers
             dct["raw_headers"] = tuple(
-                (k.encode("utf-8"), v.encode("utf-8"))
+                # surrogateescape matches the parser behaviour
+                (k.encode("utf-8", "surrogateescape"), v.encode("utf-8", "surrogateescape"))
                 for k, v in new_headers._md.items()
             )
 
