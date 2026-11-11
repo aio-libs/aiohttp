@@ -2548,6 +2548,11 @@ Utilities
    The limits do not apply to an explicit ``Cookie`` header or to the
    per-request ``cookies`` argument.
 
+   Like browsers, the jar ignores a cookie from an insecure origin (one that
+   is not ``https``/``wss`` and not listed in *treat_as_secure_origin*) if it
+   has the ``Secure`` attribute or would replace a stored ``Secure`` cookie
+   with the same name, an overlapping domain and a matching path.
+
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
    :param bool quote_cookie: (optional) Whether to quote cookies according to
