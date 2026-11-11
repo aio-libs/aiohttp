@@ -965,9 +965,7 @@ class _BytesStreamWriter(AbstractStreamWriter):
     def enable_chunking(self) -> None:
         raise NotImplementedError("not used by payload serialization")
 
-    async def write_headers(
-        self, status_line: str, headers: CIMultiDict[str]
-    ) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         raise NotImplementedError("not used by payload serialization")
 
 
@@ -1147,10 +1145,6 @@ class MultipartWriter(Payload):
             )
         )
 
-    def _part_prelude(self, part: Payload) -> bytes:
-        """Boundary delimiter line plus the part's header block."""
-        return b"--" + self._boundary + b"\r\n" + part._binary_headers
-
     @property
     def size(self) -> int | None:
         """Size of the payload."""
@@ -1188,7 +1182,8 @@ class MultipartWriter(Payload):
                     "Cannot decode multipart data with content/transfer encoded "
                     "parts synchronously; use as_bytes() instead"
                 )
-            out.append(self._part_prelude(part).decode(encoding, errors))
+            out.append("--" + self.boundary + "\r\n")
+            out.append(part._binary_headers.decode(encoding, errors))
             out.append(part.decode() + "\r\n")
         out.append("--" + self.boundary + "--\r\n")
         return "".join(out)
@@ -1216,7 +1211,8 @@ class MultipartWriter(Payload):
                 assert CONTENT_DISPOSITION in part.headers
                 assert "name=" in part.headers[CONTENT_DISPOSITION]
 
-            await writer.write(self._part_prelude(part))
+            await writer.write(b"--" + self._boundary + b"\r\n")
+            await writer.write(part._binary_headers)
 
             if encoding or te_encoding:
                 w = MultipartPayloadWriter(writer)
