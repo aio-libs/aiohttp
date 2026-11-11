@@ -940,6 +940,37 @@ class MultipartReader:
 _Part = tuple[Payload, str, str]
 
 
+class _BytesStreamWriter(AbstractStreamWriter):
+    """In-memory writer collecting everything written to it."""
+
+    def __init__(self) -> None:
+        self.buffer = bytearray()
+
+    async def write(
+        self, chunk: "bytes | bytearray | memoryview[int] | memoryview[bytes]"
+    ) -> None:
+        self.buffer += chunk
+
+    async def write_eof(self, chunk: bytes = b"") -> None:
+        self.buffer += chunk
+
+    async def drain(self) -> None:
+        """In-memory buffer; nothing to drain."""
+
+    def enable_compression(
+        self, encoding: str = "deflate", strategy: int | None = None
+    ) -> None:
+        raise NotImplementedError("not used by payload serialization")
+
+    def enable_chunking(self) -> None:
+        raise NotImplementedError("not used by payload serialization")
+
+    async def write_headers(
+        self, status_line: str, headers: CIMultiDict[str]
+    ) -> None:
+        raise NotImplementedError("not used by payload serialization")
+
+
 class MultipartWriter(Payload):
     """Multipart body writer."""
 
@@ -1116,6 +1147,10 @@ class MultipartWriter(Payload):
             )
         )
 
+    def _part_prelude(self, part: Payload) -> bytes:
+        """Boundary delimiter line plus the part's header block."""
+        return b"--" + self._boundary + b"\r\n" + part._binary_headers
+
     @property
     def size(self) -> int | None:
         """Size of the payload."""
@@ -1142,42 +1177,34 @@ class MultipartWriter(Payload):
 
         WARNING: This method may do blocking I/O if parts contain file payloads.
         It should not be called in the event loop. Use as_bytes().decode() instead.
+
+        :raises TypeError: if a part has a content or transfer encoding;
+            applying those requires the event loop, use as_bytes() instead.
         """
-        return "".join(
-            "--"
-            + self.boundary
-            + "\r\n"
-            + part._binary_headers.decode(encoding, errors)
-            + part.decode()
-            for part, _e, _te in self._parts
-        )
+        out: list[str] = []
+        for part, part_encoding, te_encoding in self._parts:
+            if part_encoding or te_encoding:
+                raise TypeError(
+                    "Cannot decode multipart data with content/transfer encoded "
+                    "parts synchronously; use as_bytes() instead"
+                )
+            out.append(self._part_prelude(part).decode(encoding, errors))
+            out.append(part.decode() + "\r\n")
+        out.append("--" + self.boundary + "--\r\n")
+        return "".join(out)
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the multipart data.
-
-        This method is async-safe and calls as_bytes on underlying payloads.
-        """
-        parts: list[bytes] = []
-
-        # Process each part
+        """Return bytes representation of the multipart data."""
+        # Materialize every part first: parts whose write() path would
+        # irreversibly drain them cache their content here (async iterables),
+        # and parts that cannot be buffered at all raise before any other
+        # part is consumed.
         for part, _e, _te in self._parts:
-            # Add boundary
-            parts.append(b"--" + self._boundary + b"\r\n")
+            await part.as_bytes(encoding, errors)
 
-            # Add headers
-            parts.append(part._binary_headers)
-
-            # Add payload content using as_bytes for async safety
-            part_bytes = await part.as_bytes(encoding, errors)
-            parts.append(part_bytes)
-
-            # Add trailing CRLF
-            parts.append(b"\r\n")
-
-        # Add closing boundary
-        parts.append(b"--" + self._boundary + b"--\r\n")
-
-        return b"".join(parts)
+        writer = _BytesStreamWriter()
+        await self.write(writer)
+        return bytes(writer.buffer)
 
     async def write(
         self, writer: AbstractStreamWriter, close_boundary: bool = True
@@ -1189,8 +1216,7 @@ class MultipartWriter(Payload):
                 assert CONTENT_DISPOSITION in part.headers
                 assert "name=" in part.headers[CONTENT_DISPOSITION]
 
-            await writer.write(b"--" + self._boundary + b"\r\n")
-            await writer.write(part._binary_headers)
+            await writer.write(self._part_prelude(part))
 
             if encoding or te_encoding:
                 w = MultipartPayloadWriter(writer)
