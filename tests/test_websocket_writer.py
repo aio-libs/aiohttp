@@ -79,6 +79,54 @@ async def test_close(writer: WebSocketWriter) -> None:
     writer.transport.write.assert_called_with(b"\x88\x05\x03\xf4msg")  # type: ignore[attr-defined]
 
 
+async def test_ping_payload_too_large(writer: WebSocketWriter) -> None:
+    # RFC 6455 §5.5: control frames must have ≤125 bytes of payload
+    with pytest.raises(ValueError, match="125"):
+        await writer.send_frame(b"x" * 126, WSMsgType.PING)
+
+
+async def test_close_invalid_code(writer: WebSocketWriter) -> None:
+    # RFC 6455 §7.4: these codes must never appear on the wire
+    for bad_code in (1005, 1006, 1015, 1016, 2999, 5000, 6000):
+        writer.transport.reset_mock()
+        with pytest.raises(ValueError, match="Invalid close code"):
+            await writer.close(bad_code, b"msg")
+        # the invalid frame must never hit the wire
+        writer.transport.write.assert_not_called()
+    # codes in the application range and the normal code are fine
+    await writer.close(1000, b"msg")
+    await writer.close(3000, b"msg")
+    await writer.close(4999, b"msg")
+
+
+async def test_close_invalid_utf8(writer: WebSocketWriter) -> None:
+    # RFC 6455 §5.5.1: close reason must be valid UTF-8
+    writer.transport.reset_mock()
+    with pytest.raises(ValueError, match="UTF-8"):
+        await writer.close(1000, b"\xff\xfe")
+    writer.transport.write.assert_not_called()
+
+
+async def test_send_frame_raw_close_validated(writer: WebSocketWriter) -> None:
+    # A raw close frame sent via send_frame() gets the same validation
+    from aiohttp._websocket.helpers import PACK_CLOSE_CODE
+
+    writer.transport.reset_mock()
+    with pytest.raises(ValueError, match="Invalid close code"):
+        await writer.send_frame(PACK_CLOSE_CODE(1005), WSMsgType.CLOSE)
+    writer.transport.write.assert_not_called()
+
+    writer.transport.reset_mock()
+    with pytest.raises(ValueError, match="UTF-8"):
+        await writer.send_frame(PACK_CLOSE_CODE(1000) + b"\xff\xfe", WSMsgType.CLOSE)
+    writer.transport.write.assert_not_called()
+
+    writer.transport.reset_mock()
+    with pytest.raises(ValueError, match="Invalid close frame payload"):
+        await writer.send_frame(b"\x03", WSMsgType.CLOSE)
+    writer.transport.write.assert_not_called()
+
+
 async def test_send_text_masked(
     protocol: BaseProtocol, transport: asyncio.Transport
 ) -> None:

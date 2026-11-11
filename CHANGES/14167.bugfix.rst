@@ -1,0 +1,6 @@
+Started enforcing :rfc:`6455` frame rules on the WebSocket writer, mirroring
+what the reader already enforces: control frames (ping/pong/close) with more
+than 125 bytes of payload, close frames with a code that must not appear on
+the wire (1005, 1006, 1015, 1016-2999, above 4999), and close frames with a
+non-UTF-8 reason are now rejected with :exc:`ValueError` instead of emitting
+an invalid frame -- by :user:`rinopatrick`.
