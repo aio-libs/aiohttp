@@ -1,0 +1,5 @@
+Removed the ``loop`` parameter from the documented
+:class:`~aiohttp.BaseConnector`, :class:`~aiohttp.TCPConnector` and
+:class:`~aiohttp.DummyCookieJar` constructor signatures, since none of them
+accepts it, and documented ``timeout_ceil_threshold`` on
+:class:`~aiohttp.BaseConnector`, which it does accept -- by :user:`Hero0p`.
