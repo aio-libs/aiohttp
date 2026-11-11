@@ -965,9 +965,7 @@ class _BytesStreamWriter(AbstractStreamWriter):
     def enable_chunking(self) -> None:
         raise NotImplementedError("not used by payload serialization")
 
-    async def write_headers(
-        self, status_line: str, headers: CIMultiDict[str]
-    ) -> None:
+    async def write_headers(self, status_line: str, headers: CIMultiDict[str]) -> None:
         raise NotImplementedError("not used by payload serialization")
 
 
