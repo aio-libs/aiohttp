@@ -18,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read  # For build_fuzzers to check out the code
-      issues: write  # To create a new issue in the last step
     strategy:
       fail-fast: false
       matrix:
         sanitizer: [address, undefined]
+    outputs:
+      address: ${{ steps.flag.outputs.address }}
+      undefined: ${{ steps.flag.outputs.undefined }}
     steps:
       - name: Build Fuzzers
         id: build
@@ -39,37 +41,52 @@ jobs:
           fuzz-seconds: 600
           sanitizer: ${{ matrix.sanitizer }}
       - name: Upload Crash
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         if: failure() && steps.build.outcome == 'success'
         with:
           name: ${{ matrix.sanitizer }}-artifacts
           path: ./out/artifacts
-      - name: Open issue on post-merge crash
-        if: >-
-          failure()
-          && steps.build.outcome == 'success'
-          && github.event_name == 'push'
-        uses: actions/github-script@v9
+      - name: Flag fuzzer crash
+        id: flag
+        if: failure() && steps.build.outcome == 'success'
         env:
           SANITIZER: ${{ matrix.sanitizer }}
+        run: echo "${SANITIZER}=crashed" >> "$GITHUB_OUTPUT"
+
+  Report:
+    name: Open issue on post-merge crash
+    needs: Fuzzing
+    if: failure() && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write  # To create a new issue for the crash
+    steps:
+      - name: Open issue
+        uses: actions/github-script@v9.0.0
+        env:
+          CRASHES: ${{ toJSON(needs.Fuzzing.outputs) }}
         with:
           script: |
+            const crashed = Object.entries(JSON.parse(process.env.CRASHES))
+              .filter(([, value]) => value === 'crashed')
+              .map(([sanitizer]) => sanitizer);
             const branch = context.ref.replace('refs/heads/', '');
             const shortSha = context.sha.substring(0, 7);
-            const sanitizer = process.env.SANITIZER;
             const runUrl =
               `${context.serverUrl}/${context.repo.owner}` +
               `/${context.repo.repo}/actions/runs/${context.runId}`;
-            await github.rest.issues.create({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              title: `CIFuzz: ${sanitizer} crash on ${branch} @ ${shortSha}`,
-              body: [
-                `CIFuzz found a crash on \`${branch}\` at ${context.sha}.`,
-                ``,
-                `- Sanitizer: \`${sanitizer}\``,
-                `- Run: ${runUrl}`,
-                `- Download \`${sanitizer}-artifacts\` from the run page for the reproducer.`,
-              ].join('\n'),
-              type: 'Bug',
-            });
+            for (const sanitizer of crashed) {
+              await github.rest.issues.create({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                title: `CIFuzz: ${sanitizer} crash on ${branch} @ ${shortSha}`,
+                body: [
+                  `CIFuzz found a crash on \`${branch}\` at ${context.sha}.`,
+                  ``,
+                  `- Sanitizer: \`${sanitizer}\``,
+                  `- Run: ${runUrl}`,
+                  `- Download \`${sanitizer}-artifacts\` from the run page for the reproducer.`,
+                ].join('\n'),
+                type: 'Bug',
+              });
+            }
