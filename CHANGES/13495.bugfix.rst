@@ -1,0 +1,1 @@
+Fixed CRLF corruption on quoted-printable encoding -- by :user:`2sumtech` and :user:`Dreamsorcerer`.

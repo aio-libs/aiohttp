@@ -26,10 +26,13 @@ from aiohttp.hdrs import (
 )
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy, parse_mimetype
 from aiohttp.multipart import (
+    _QP_BLOCK_SIZE,
     BodyPartReader,
     BodyPartReaderPayload,
+    MultipartPayloadWriter,
     MultipartReader,
     MultipartResponseWrapper,
+    _encode_quoted_printable,
 )
 from aiohttp.streams import StreamReader
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
@@ -1946,15 +1949,7 @@ async def test_writer_as_bytes_applies_content_transfer_encoding_qp(
 @pytest.mark.parametrize(
     "chunks",
     (
-        pytest.param(
-            (b"line one\r", b"\nline two\r\n"),
-            id="crlf-split",
-            marks=pytest.mark.xfail(
-                reason="per-chunk b2a_qp corrupts a CRLF split across chunks"
-                " (#13495); the wire still matches as_bytes()",
-                strict=True,
-            ),
-        ),
+        pytest.param((b"line one\r", b"\nline two\r\n"), id="crlf-split"),
         pytest.param((b"x" * 100, b"y" * 100 + b"\r\n"), id="long-line-split"),
         pytest.param((b"hello ", b"world\r\n"), id="space-at-chunk-end"),
         pytest.param((b"tab\t", b"stop\r\n"), id="tab-at-chunk-end"),
@@ -2058,6 +2053,32 @@ async def test_writer_qp_newline_free_multi_megabyte_body(
     _, wire_body = bytes(buf).split(b"\r\n\r\n", 1)
     qp_body = wire_body.rsplit(b"\r\n--:--\r\n", 1)[0]
     assert binascii.a2b_qp(qp_body) == body
+
+
+async def test_multipart_payload_writer_qp_partial_line_buffer_is_bounded(
+    buf: bytearray, stream: AbstractStreamWriter
+) -> None:
+    """A newline-free body must stream without unbounded buffering.
+
+    The partial-line buffer must never retain more than one
+    quoted-printable block between write() calls, and every large input
+    chunk must make progress downstream instead of accumulating.
+    """
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    body = b"no newline here " * 65_536  # 1 MB, no newline
+    chunk_size = 65_536
+    for pos in range(0, len(body), chunk_size):
+        written_before = len(buf)
+        await payload_writer.write(body[pos : pos + chunk_size])
+        assert payload_writer._encoding_buffer is not None
+        assert len(payload_writer._encoding_buffer) <= _QP_BLOCK_SIZE
+        assert len(buf) > written_before
+    await payload_writer.write_eof()
+
+    assert bytes(buf) == _encode_quoted_printable(body)
+    assert binascii.a2b_qp(bytes(buf)) == body
 
 
 async def test_body_part_reader_payload_as_bytes() -> None:
