@@ -250,3 +250,27 @@ Multipart reference
       .. versionadded:: 3.4
 
          Support ``close_boundary`` argument.
+
+   .. method:: as_bytes(encoding='utf-8', errors='strict')
+      :async:
+
+      Return the multipart body as :class:`bytes`.
+
+      Part bodies are encoded according to their own ``Content-Encoding``
+      and ``Content-Transfer-Encoding`` headers, so the result is
+      byte-identical to the body that :meth:`write` sends on the wire.
+
+      Payloads that can be replayed (seekable files, cached async
+      iterables) are left reusable, so the request body can still be
+      sent afterwards.
+
+      :raises TypeError: if a part cannot be buffered in memory
+                         (e.g. a part wrapping a :class:`BodyPartReader`).
+
+      .. versionadded:: 3.12.1
+
+      .. versionchanged:: 4.0
+
+         Part ``Content-Encoding``/``Content-Transfer-Encoding`` are now
+         applied; previously the parts' raw bodies were returned, which
+         did not match the wire format.
