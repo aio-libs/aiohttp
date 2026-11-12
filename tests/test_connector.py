@@ -1923,6 +1923,10 @@ async def test_exception_during_connetion_create_tracing(
 
     assert not conn._acquired
     assert key not in conn._acquired_per_host
+    if signal == "on_connection_create_end":
+        proto.close.assert_called_once_with()
+    else:
+        proto.close.assert_not_called()
 
 
 async def test_exception_during_connection_queued_tracing(
@@ -2007,6 +2011,7 @@ async def test_exception_during_connection_reuse_tracing(
 
     assert not conn._acquired
     assert key not in conn._acquired_per_host
+    proto.close.assert_called_once_with()
 
 
 async def test_cancellation_during_waiting_for_free_connection(
