@@ -7,6 +7,7 @@ import http.cookies
 import io
 import json
 import logging
+import os
 import pathlib
 import socket
 import ssl
@@ -5754,6 +5755,53 @@ async def test_invalid_redirect_origin_closes_payload(
     assert (
         payload.close_called
     ), "Payload.close() was not called when InvalidUrlRedirectClientError (invalid origin) was raised"
+
+
+@pytest.mark.parametrize("multipart_body", [False, True])
+@pytest.mark.parametrize("mode", ["rb", "r"])
+async def test_request_closes_consumed_unseekable_file(
+    aiohttp_server: AiohttpServer,
+    multipart_body: bool,
+    mode: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        if multipart_body:
+            reader = await request.multipart()
+            part = await reader.next()
+            assert isinstance(part, aiohttp.BodyPartReader)
+            return web.Response(body=await part.read())
+        return web.Response(body=await request.read())
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    server = await aiohttp_server(app)
+
+    read_fd, write_fd = os.pipe()
+    with os.fdopen(write_fd, "wb") as output:
+        output.write(b"upload")
+    stream = os.fdopen(read_fd, mode)
+
+    def tell() -> int:
+        raise io.UnsupportedOperation("stream is not seekable")
+
+    # Force the tell() failure: Windows pipes can otherwise return 0.
+    monkeypatch.setattr(stream, "tell", tell)
+    body: Any = stream
+    if multipart_body:
+        body = aiohttp.MultipartWriter()
+        body.append(stream)
+
+    try:
+        close_futures = payload._CLOSE_FUTURES.copy()
+        async with aiohttp.ClientSession() as session:
+            async with session.post(server.make_url("/"), data=body) as response:
+                assert response.status == 200
+                assert await response.read() == b"upload"
+            await asyncio.gather(*(payload._CLOSE_FUTURES - close_futures))
+            assert stream.closed
+    finally:
+        stream.close()
 
 
 async def test_request_body_closed_on_server_disconnect() -> None:
