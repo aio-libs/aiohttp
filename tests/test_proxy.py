@@ -964,6 +964,7 @@ async def test_https_connect_send_error(  # type: ignore[misc]
         ):
             tr, proto = mock.Mock(), mock.Mock()
             tr.get_extra_info.return_value = None
+            proto.transport = tr
             # Called on connection to http://proxy.example.com
             with mock.patch.object(
                 connector_module,
