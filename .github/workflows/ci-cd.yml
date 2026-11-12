@@ -401,7 +401,7 @@ jobs:
       # The Gradle version used by CPython's Android testbed cannot run
       # on the JDK that newer runner images ship by default.
       if: ${{ matrix.config.platform == 'android' }}
-      uses: actions/setup-java@v6.1.0
+      uses: actions/setup-java@v6.2.0
       with:
         distribution: temurin
         java-version: 21
