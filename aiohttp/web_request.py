@@ -130,6 +130,7 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
         hdrs.METH_PUT,
         hdrs.METH_TRACE,
         hdrs.METH_DELETE,
+        hdrs.METH_QUERY,
     }
 
     _post: MultiDictProxy[str | bytes | FileField] | None = None
