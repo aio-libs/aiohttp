@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
+import gc
 import http.cookies
 import io
 import json
@@ -6971,3 +6972,138 @@ async def test_deprecated_upload_attributes(aiohttp_client: AiohttpClient) -> No
         with pytest.warns(DeprecationWarning, match="output_size is deprecated"):
             assert resp.output_size >= 1024
         await resp.read()
+
+
+@pytest.mark.parametrize("close_iterator", (True, False), ids=("iterator", "stream"))
+async def test_stream_close_releases_partially_read_response(
+    aiohttp_server: AiohttpServer, close_iterator: bool
+) -> None:
+    """Closing only the stream or its iterator frees the connection."""
+    body = b"x" * (1024 * 1024)
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=body)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+    connector = aiohttp.TCPConnector(limit=1)
+
+    # A plain session, the test client keeps a reference to every response.
+    async with aiohttp.ClientSession(connector=connector) as session:
+        resp = await session.get(server.make_url("/"))
+        stream = resp.content
+        iterator = stream.iter_chunked(1024)
+        assert await iterator.__anext__()
+        assert connector._acquired
+
+        # Only the stream is needed to close the response, e.g. a library that
+        # returned resp.content.iter_chunked() to its caller and dropped resp.
+        del resp
+        gc.collect()
+        if close_iterator:
+            iterator.close()
+        else:
+            stream.close()
+
+        assert not connector._acquired
+        with pytest.raises(aiohttp.ClientConnectionError):
+            await iterator.__anext__()
+
+        # The single connector slot is free again.
+        async with session.get(server.make_url("/")) as resp2:
+            assert await resp2.read() == body
+
+
+async def test_stream_close_after_eof_keeps_connection(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Closing a fully read stream leaves its connection in the pool."""
+    body = b"x" * 1024
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=body)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(app, connector=connector)
+
+    resp = await client.get("/")
+    iterator = resp.content.iter_chunked(256)
+    assert b"".join([chunk async for chunk in iterator]) == body
+    iterator.close()
+
+    # Fully read, so the connection went back to the pool instead of closing.
+    assert not connector._acquired
+    assert len(connector._conns) == 1
+
+
+async def test_stream_close_hook_does_not_keep_response_alive(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    """A response dropped after a sock_read timeout still releases its connection."""
+    done = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        await resp.write(b"data")
+        await done.wait()
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+    connector = aiohttp.TCPConnector(limit=1)
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+
+    # A plain session, the test client keeps a reference to every response.
+    async with aiohttp.ClientSession(connector=connector, timeout=timeout) as session:
+        resp = await session.get(server.make_url("/"))
+        with pytest.raises(SocketTimeoutError):
+            await resp.content.read()
+        assert connector._acquired
+
+        # The timeout dropped the EOF callback, only the close hook refers to
+        # the response now. Collecting it releases the connection.
+        del resp
+        gc.collect()
+        acquired = bool(connector._acquired)
+        done.set()
+
+    assert not acquired
+
+
+async def test_stream_close_after_read_timeout_and_late_eof(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """Closing still frees the connection when the body ends after a read timeout."""
+    resume = asyncio.Event()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        resp.content_length = 8
+        await resp.prepare(request)
+        await resp.write(b"data")
+        await resume.wait()
+        await resp.write(b"more")
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    connector = aiohttp.TCPConnector(limit=1)
+    timeout = aiohttp.ClientTimeout(sock_read=0.1)
+    client = await aiohttp_client(app, connector=connector, timeout=timeout)
+
+    resp = await client.get("/")
+    with pytest.raises(SocketTimeoutError):
+        await resp.content.read()
+
+    # The timeout dropped the EOF callback, so the late EOF releases nothing.
+    resume.set()
+    await resp.content.wait_eof()
+    assert connector._acquired
+
+    resp.content.close()
+    assert not connector._acquired
