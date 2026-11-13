@@ -3773,6 +3773,169 @@ async def test_client_error_from_json_serializer_has_empty_history() -> None:
     assert ctx.value.history == ()
 
 
+@pytest.mark.parametrize(
+    ("path", "expected_history"),
+    [("/slow", ()), ("/redirect", (301, 302))],
+)
+async def test_total_timeout_preserves_redirect_history(
+    aiohttp_client: AiohttpClient,
+    path: str,
+    expected_history: tuple[int, ...],
+) -> None:
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "/slow"})
+
+    slow_request_received = asyncio.Event()
+
+    async def slow(request: web.Request) -> NoReturn:
+        slow_request_received.set()
+        await asyncio.Future[NoReturn]()
+
+    app = web.Application()
+    app.router.add_get("/redirect", redirect)
+    app.router.add_get("/step", redirect_again)
+    app.router.add_get("/slow", slow)
+    client = await aiohttp_client(app)
+
+    request_task = asyncio.create_task(
+        client.get(path, timeout=aiohttp.ClientTimeout(total=60))
+    )
+    await slow_request_received.wait()
+
+    loop = asyncio.get_running_loop()
+    with mock.patch.object(loop, "time", return_value=loop.time() + 61):
+        with pytest.raises(asyncio.TimeoutError) as ctx:
+            await request_task
+
+    assert type(ctx.value) is aiohttp.ClientTimeoutError
+    assert [response.status for response in ctx.value.history] == list(expected_history)
+    assert ctx.value.request_info is not None
+    assert ctx.value.request_info.method == "GET"
+    assert ctx.value.request_info.url.path == "/slow"
+
+
+async def test_timeout_from_raise_for_status_callback_is_not_converted(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    error = asyncio.TimeoutError("callback timeout")
+
+    async def raise_for_status(response: aiohttp.ClientResponse) -> None:
+        raise error
+
+    client = await aiohttp_client(web.Application(), raise_for_status=raise_for_status)
+
+    with pytest.raises(asyncio.TimeoutError) as ctx:
+        await client.get("/")
+
+    assert ctx.value is error
+
+
+@pytest.mark.parametrize(
+    ("path", "expected_history"),
+    [("/slow", ()), ("/redirect", (301, 302))],
+)
+@pytest.mark.parametrize("read_method", ["response", "stream", "chunks"])
+async def test_total_timeout_during_response_body_has_history(
+    aiohttp_client: AiohttpClient,
+    path: str,
+    expected_history: tuple[int, ...],
+    read_method: str,
+) -> None:
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "/slow"})
+
+    body_started = asyncio.Event()
+
+    async def slow(request: web.Request) -> NoReturn:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        body_started.set()
+        await asyncio.Future[NoReturn]()
+
+    app = web.Application()
+    app.router.add_get("/redirect", redirect)
+    app.router.add_get("/step", redirect_again)
+    app.router.add_get("/slow", slow)
+    client = await aiohttp_client(app)
+    response = await client.get(path, timeout=aiohttp.ClientTimeout(total=60))
+    await body_started.wait()
+
+    async def read_body() -> bytes:
+        if read_method == "response":
+            return await response.read()
+        if read_method == "stream":
+            return await response.content.read()
+        return await anext(response.content.iter_chunked(1))
+
+    read_task = asyncio.create_task(read_body())
+    await asyncio.sleep(0)
+    loop = asyncio.get_running_loop()
+    with mock.patch.object(loop, "time", return_value=loop.time() + 61):
+        with pytest.raises(aiohttp.ClientTimeoutError) as ctx:
+            await read_task
+
+    assert isinstance(ctx.value, asyncio.TimeoutError)
+    assert [item.status for item in ctx.value.history] == list(expected_history)
+    assert ctx.value.request_info is not None
+    assert ctx.value.request_info.method == "GET"
+    assert ctx.value.request_info.url.path == "/slow"
+
+
+@pytest.mark.parametrize("read_method", ["response", "stream", "chunks"])
+async def test_socket_timeout_during_response_body_has_redirect_history(
+    aiohttp_client: AiohttpClient, read_method: str
+) -> None:
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "/slow"})
+
+    body_started = asyncio.Event()
+
+    async def slow(request: web.Request) -> NoReturn:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        body_started.set()
+        await asyncio.Future[NoReturn]()
+
+    app = web.Application()
+    app.router.add_get("/redirect", redirect)
+    app.router.add_get("/step", redirect_again)
+    app.router.add_get("/slow", slow)
+    client = await aiohttp_client(app)
+    response = await client.get(
+        "/redirect", timeout=aiohttp.ClientTimeout(total=60, sock_read=0.1)
+    )
+    await body_started.wait()
+
+    async def read_body() -> bytes:
+        if read_method == "response":
+            return await response.read()
+        if read_method == "stream":
+            return await response.content.read()
+        return await anext(response.content.iter_chunked(1))
+
+    read_task = asyncio.create_task(read_body())
+    await asyncio.sleep(0)
+    loop = asyncio.get_running_loop()
+    with mock.patch.object(loop, "time", return_value=loop.time() + 0.2):
+        with pytest.raises(aiohttp.SocketTimeoutError) as ctx:
+            await read_task
+
+    assert type(ctx.value) is aiohttp.SocketTimeoutError
+    assert [item.status for item in ctx.value.history] == [301, 302]
+    assert ctx.value.request_info is not None
+    assert ctx.value.request_info.method == "GET"
+    assert ctx.value.request_info.url.path == "/slow"
+
+
 async def test_raise_for_status_per_request(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         raise web.HTTPBadRequest()

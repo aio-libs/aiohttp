@@ -5,6 +5,7 @@ import io
 import json
 import socket
 import ssl
+import weakref
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
@@ -1268,6 +1269,227 @@ async def test_pre_request_client_error_survives_unusable_params(
         await client.session.get(
             "ftp://example.invalid/path", params={"x": None}  # type: ignore[dict-item]
         )
+
+
+async def test_socket_read_timeout_in_readchunk_has_request_context(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    body_started = asyncio.Event()
+
+    async def handler(request: web.Request) -> NoReturn:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        body_started.set()
+        await asyncio.Future[NoReturn]()
+
+    app = web.Application()
+    app.router.add_get("/body", handler)
+    client = await aiohttp_client(
+        app, timeout=aiohttp.ClientTimeout(total=60, sock_read=0.05)
+    )
+    response = await client.get("/body?query=value")
+    await body_started.wait()
+
+    read_task = asyncio.create_task(response.content.readchunk())
+    await asyncio.sleep(0)
+    loop = asyncio.get_running_loop()
+    with mock.patch.object(loop, "time", return_value=loop.time() + 0.1):
+        with pytest.raises(aiohttp.SocketTimeoutError) as exc_info:
+            await read_task
+
+    assert exc_info.value.request_info == response.request_info
+    assert exc_info.value.history == ()
+    response.close()
+
+
+async def test_connection_closed_errors_keep_each_response_context(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"body")
+
+    app = web.Application()
+    app.router.add_get("/{name}", handler)
+    client = await aiohttp_client(app)
+
+    first = await client.get("/first")
+    first.close()
+    second = await client.get("/second")
+    second.release()
+
+    with pytest.raises(aiohttp.ClientConnectionError) as first_error:
+        await first.content.readchunk()
+    with pytest.raises(aiohttp.ClientConnectionError) as second_error:
+        await second.content.read()
+
+    assert first_error.value.request_info == first.request_info
+    assert second_error.value.request_info == second.request_info
+
+
+async def test_trace_client_error_preserves_existing_context_after_eof(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    error: aiohttp.ClientResponseError | None = None
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"body")
+
+    async def redirect(request: web.Request) -> NoReturn:
+        raise web.HTTPFound("/target")
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        if error is not None:
+            raise error
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+    app = web.Application()
+    app.router.add_get("/seed", handler)
+    app.router.add_get("/redirect", redirect)
+    app.router.add_get("/target", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    seed = await client.get("/seed")
+    await seed.read()
+    error = aiohttp.ClientResponseError(seed.request_info, (seed,), status=400)
+    response = await client.get("/redirect")
+    await response.content.wait_eof()
+    assert not response.content.at_eof()
+
+    with pytest.raises(aiohttp.ClientResponseError) as exc_info:
+        await response.content.readany()
+
+    assert exc_info.value is error
+    assert exc_info.value.request_info is seed.request_info
+    assert exc_info.value.history == (seed,)
+    assert response.closed
+
+
+async def test_response_stream_does_not_retain_response_through_trace_callback(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"body")
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> None:
+        return None
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+    app = web.Application()
+    app.router.add_get("/body", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    response = await client.session.get(client.make_url("/body"))
+    await response.read()
+    content = response.content
+    await content.wait_eof()
+    response_ref = weakref.ref(response)
+    del response
+    gc.collect()
+
+    assert response_ref() is None
+
+
+async def test_stream_trace_error_after_response_is_collected(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"body")
+
+    error = RuntimeError("trace failed")
+
+    async def on_response_chunk_received(
+        session: object,
+        context: object,
+        params: tracing.TraceResponseChunkReceivedParams,
+    ) -> NoReturn:
+        raise error
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config.on_response_chunk_received.append(on_response_chunk_received)
+    app = web.Application()
+    app.router.add_get("/body", handler)
+    client = await aiohttp_client(app, trace_configs=[trace_config])
+
+    response = await client.session.get(client.make_url("/body"))
+    content = response.content
+    await content.wait_eof()
+    response_ref = weakref.ref(response)
+    del response
+    gc.collect()
+    assert response_ref() is None
+
+    with pytest.raises(RuntimeError) as exc_info:
+        await content.read()
+
+    assert exc_info.value is error
+
+
+async def test_wait_for_close_propagates_cancellation_during_upload(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        response = web.StreamResponse()
+        await response.prepare(request)
+        await response.write(b"response")
+        await asyncio.Future[NoReturn]()
+
+    upload_started = asyncio.Event()
+
+    async def body() -> AsyncIterator[bytes]:
+        yield b"request"
+        upload_started.set()
+        await asyncio.Future[NoReturn]()
+
+    app = web.Application()
+    app.router.add_post("/body", handler)
+    client = await aiohttp_client(app)
+    response = await client.post("/body", data=body())
+    try:
+        await upload_started.wait()
+        waiter_started = asyncio.Event()
+
+        async def wait_for_close() -> None:
+            waiter_started.set()
+            await response.wait_for_close()
+
+        waiter = asyncio.create_task(wait_for_close())
+        await waiter_started.wait()
+        waiter.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await waiter
+    finally:
+        response.close()
+
+
+async def test_cached_response_read_error_has_request_context(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"body")
+
+    app = web.Application()
+    app.router.add_get("/body", handler)
+    client = await aiohttp_client(app)
+    response = await client.get("/body?query=value")
+
+    assert await response.read() == b"body"
+    response.release()
+
+    with pytest.raises(aiohttp.ClientConnectionError) as exc_info:
+        await response.read()
+
+    assert exc_info.value.request_info == response.request_info
+    assert exc_info.value.history == ()
 
 
 async def test_request_tracing_url_params(aiohttp_client: AiohttpClient) -> None:

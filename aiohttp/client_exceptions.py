@@ -21,6 +21,7 @@ else:
 
 __all__ = (
     "ClientError",
+    "ClientTimeoutError",
     "ClientConnectionError",
     "ClientConnectionResetError",
     "ClientOSError",
@@ -57,6 +58,10 @@ class ClientError(Exception):
 
     request_info: "RequestInfo | None" = None
     history: tuple[ClientResponse, ...] = ()
+
+
+class ClientTimeoutError(ClientError, asyncio.TimeoutError):
+    """Total client request timeout."""
 
 
 class ClientResponseError(ClientError):

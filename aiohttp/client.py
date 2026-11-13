@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import dataclasses
+import functools
 import hashlib
 import json
 import os
@@ -52,6 +53,7 @@ from .client_exceptions import (
     ClientProxyConnectionError,
     ClientResponseError,
     ClientSSLError,
+    ClientTimeoutError,
     ConnectionTimeoutError,
     ContentTypeError,
     InvalidURL,
@@ -80,6 +82,7 @@ from .client_reqrep import (
     RequestInfo,
     ResponseParams,
     UploadTracker,
+    _set_exception_context,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -93,6 +96,7 @@ from .helpers import (
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     HTTP_AND_EMPTY_SCHEMA_SET,
+    BaseTimerContext,
     TimeoutHandle,
     _auth_header_from_netrc,
     get_env_proxy_for_url,
@@ -102,6 +106,7 @@ from .helpers import (
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
+from .streams import EMPTY_PAYLOAD
 from .tracing import Trace, TraceConfig
 from .typedefs import (
     JSONBytesEncoder,
@@ -120,6 +125,7 @@ __all__ = (
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
+    "ClientTimeoutError",
     "ClientHttpProxyError",
     "ClientOSError",
     "ClientPayloadError",
@@ -584,6 +590,7 @@ class ClientSession:
         resp: ClientResponse | None = None
         request_url_for_info: URL | None = None
         history: list[ClientResponse] = []
+        timer: BaseTimerContext | None = None
         try:
             if self.closed:
                 raise RuntimeError("Session is closed")
@@ -688,7 +695,12 @@ class ClientSession:
                 )
                 traces.append(trace)
 
-            timer = tm.timer()
+            def total_timeout_error() -> ClientTimeoutError:
+                error = ClientTimeoutError()
+                error.history = tuple(history)
+                return error
+
+            timer = tm.timer(total_timeout_error)
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
                 retry_persistent_connection = (
@@ -957,6 +969,15 @@ class ClientSession:
             if req._body is not None:
                 await req._body.close()
             resp._history = tuple(history)
+            content: Any = resp.content
+            if content is not None and content is not EMPTY_PAYLOAD:
+                content._set_exception_handler(
+                    functools.partial(
+                        _set_exception_context,
+                        request_info=resp.request_info,
+                        history=resp.history,
+                    )
+                )
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
