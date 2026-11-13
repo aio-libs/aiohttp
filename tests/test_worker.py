@@ -240,7 +240,7 @@ async def test__run_ok_parent_changed(
     worker.ppid = 0
     worker.alive = True
     sock = unused_port_socket
-    worker.sockets = [sock]
+    worker.sockets = [mock.Mock(sock=sock)]
     worker.log = mock.Mock()
     worker.loop = asyncio.get_running_loop()
     worker.max_requests = 0
@@ -253,12 +253,12 @@ async def test__run_ok_parent_changed(
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
 
 
-async def test__run_passes_backlog_to_sock_site(
+async def test__run_passes_socket_and_backlog_to_sock_site(
     worker: base_worker.GunicornWebWorker, unused_port_socket: socket.socket
 ) -> None:
     worker.ppid = 0
     worker.alive = True
-    worker.sockets = [unused_port_socket]
+    worker.sockets = [mock.Mock(sock=unused_port_socket)]
     worker.log = mock.Mock()
     worker.loop = asyncio.get_running_loop()
     worker.max_requests = 0
@@ -281,7 +281,7 @@ async def test__run_exc(
     worker.ppid = os.getppid()
     worker.alive = True
     sock = unused_port_socket
-    worker.sockets = [sock]
+    worker.sockets = [mock.Mock(sock=sock)]
     worker.log = mock.Mock()
     worker.loop = loop
     worker.max_requests = 0
