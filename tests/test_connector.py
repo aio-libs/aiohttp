@@ -1890,8 +1890,12 @@ async def test_connect_tracing(make_client_request: _RequestMaker) -> None:
         "on_connection_create_end",
     ],
 )
+@pytest.mark.parametrize(
+    ("scheme", "is_ssl"),
+    [("http", False), ("https", True)],
+)
 async def test_exception_during_connetion_create_tracing(
-    signal: str, make_client_request: _RequestMaker
+    signal: str, scheme: str, is_ssl: bool, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     session = mock.Mock()
@@ -1906,10 +1910,12 @@ async def test_exception_during_connetion_create_tracing(
 
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
+    proto.transport.get_extra_info.return_value = object() if is_ssl else None
 
-    req = make_client_request("GET", URL("http://host:80"), loop=loop)
+    req = make_client_request("GET", URL(f"{scheme}://host:80"), loop=loop)
     key = req.connection_key
-    conn = aiohttp.BaseConnector()
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=is_ssl)
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
@@ -1923,6 +1929,57 @@ async def test_exception_during_connetion_create_tracing(
 
     assert not conn._acquired
     assert key not in conn._acquired_per_host
+    if signal == "on_connection_create_end":
+        # The connection was created before the trace failed, it must be closed.
+        proto.close.assert_called_once_with()
+        if is_ssl:
+            assert conn._cleanup_closed_transports == [proto.transport]
+        else:
+            assert not conn._cleanup_closed_transports
+    else:
+        proto.close.assert_not_called()
+        assert not conn._cleanup_closed_transports
+
+
+async def test_exception_during_connection_create_tracing_after_close(
+    make_client_request: _RequestMaker,
+) -> None:
+    # A connector closed while the create-end trace is still running cannot
+    # abort queued SSL transports anymore, so the handler must abort directly.
+    loop = asyncio.get_running_loop()
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_create_end.append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+    proto.transport.get_extra_info.return_value = object()
+
+    req = make_client_request("GET", URL("https://host:80"), loop=loop)
+    key = req.connection_key
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+    conn._closed = True
+
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
+    ):
+        await conn.connect(req, traces, ClientTimeout())
+
+    # with the connector closed, _release_acquired intentionally leaves the
+    # bookkeeping to close(); only the transport state matters here
+    proto.close.assert_called_once_with()
+    proto.transport.abort.assert_called_once_with()
+    assert not conn._cleanup_closed_transports
 
 
 async def test_exception_during_connection_queued_tracing(
@@ -1967,8 +2024,12 @@ async def test_exception_during_connection_queued_tracing(
     await conn.close()
 
 
+@pytest.mark.parametrize(
+    ("scheme", "is_ssl"),
+    [("http", False), ("https", True)],
+)
 async def test_exception_during_connection_reuse_tracing(
-    make_client_request: _RequestMaker,
+    scheme: str, is_ssl: bool, make_client_request: _RequestMaker
 ) -> None:
     loop = asyncio.get_running_loop()
     session = mock.Mock()
@@ -1983,10 +2044,12 @@ async def test_exception_during_connection_reuse_tracing(
 
     proto = create_mocked_conn(loop)
     proto.is_connected.return_value = True
+    proto.transport.get_extra_info.return_value = object() if is_ssl else None
 
-    req = make_client_request("GET", URL("http://host:80"), loop=loop)
+    req = make_client_request("GET", URL(f"{scheme}://host:80"), loop=loop)
     key = req.connection_key
-    conn = aiohttp.BaseConnector()
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=is_ssl)
     assert not conn._acquired
     assert key not in conn._acquired_per_host
 
@@ -2007,6 +2070,12 @@ async def test_exception_during_connection_reuse_tracing(
 
     assert not conn._acquired
     assert key not in conn._acquired_per_host
+    # The pooled connection that failed to be reused must be closed.
+    proto.close.assert_called_once_with()
+    if is_ssl:
+        assert conn._cleanup_closed_transports == [proto.transport]
+    else:
+        assert not conn._cleanup_closed_transports
 
 
 async def test_cancellation_during_waiting_for_free_connection(
