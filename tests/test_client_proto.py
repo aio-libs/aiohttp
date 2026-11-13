@@ -1,4 +1,5 @@
 import asyncio
+import gzip
 from unittest import mock
 
 import pytest
@@ -6,7 +7,11 @@ from yarl import URL
 
 from aiohttp import http
 from aiohttp.abc import AbstractStreamWriter
-from aiohttp.client_exceptions import ClientOSError, ServerDisconnectedError
+from aiohttp.client_exceptions import (
+    ClientOSError,
+    ClientPayloadError,
+    ServerDisconnectedError,
+)
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, TimerNoop
@@ -604,3 +609,40 @@ async def test_drain_leaves_the_clock_stopped_for_a_flow_control_pause() -> None
     proto.set_parser(parser, mock.Mock())
 
     assert proto._read_timeout_handle is None
+
+
+async def test_truncated_compressed_body_fails_a_waiting_reader() -> None:
+    """A reader parked on the body is failed when the terminating chunk errors.
+
+    The final chunk arrives on its own, so the body's truncated-stream check
+    fires while a reader waits in ``readany()``. The parser drops its payload
+    reference there and ``connection_lost()`` then has nothing left to
+    complete, so unless the error reaches the body first that reader waits
+    for the whole read timeout, or forever when timeouts are disabled.
+    """
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(
+        mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    )
+    proto.set_response_params()
+
+    # Cutting the gzip trailer leaves the data decodable but the stream short.
+    truncated = gzip.compress(b"Hello, world! " * 4)[:-8]
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n" + b"%x\r\n" % len(truncated) + truncated + b"\r\n"
+    )
+    _, payload = await proto.read()
+    assert await payload.readany() == b"Hello, world! " * 4
+
+    reader = asyncio.create_task(payload.readany())
+    await asyncio.sleep(0)
+    assert not reader.done()
+
+    proto.data_received(b"0\r\n\r\n")
+    proto.connection_lost(None)
+
+    with pytest.raises(ClientPayloadError):
+        await asyncio.wait_for(reader, 1)

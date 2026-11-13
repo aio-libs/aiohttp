@@ -1622,6 +1622,49 @@ async def test_compressed_chunked_split_chunk_size_line(
     assert payload.exception() is None
 
 
+async def test_truncated_compressed_body_split_final_chunk(
+    protocol: BaseProtocol,
+    response_cls: type[HttpResponseParser],
+) -> None:
+    """A reader parked on the body is failed, not left waiting.
+
+    The terminating chunk arrives in its own feed, so the truncated-stream
+    check fires while a reader is blocked in ``readany()``. The C parser used
+    to drop its payload reference and raise out of ``feed_data()`` instead,
+    leaving that reader with neither data, EOF nor an exception.
+    """
+    response = response_cls(
+        protocol,
+        asyncio.get_running_loop(),
+        DEFAULT_CHUNK_SIZE,
+        max_line_size=8190,
+        max_headers=128,
+        max_field_size=8190,
+    )
+    # Cutting the gzip trailer leaves the data decodable but the stream short.
+    truncated = gzip.compress(b"Hello, world! " * 4)[:-8]
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n"
+    )
+    size_line = hex(len(truncated))[2:].encode() + b"\r\n"
+
+    msgs, upgrade, tail = response.feed_data(headers + size_line + truncated + b"\r\n")
+    payload = msgs[0][-1]
+    assert await payload.readany() == b"Hello, world! " * 4
+
+    reader = asyncio.create_task(payload.readany())
+    await asyncio.sleep(0)
+    assert not reader.done()
+
+    response.feed_data(b"0\r\n\r\n")
+
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        await asyncio.wait_for(reader, 1)
+
+
 async def test_compressed_until_eof_with_pending(response: HttpResponseParser) -> None:
     """Test read-until-eof + compressed with pause."""
     # Must be large enough to exceed high water mark.
@@ -2595,6 +2638,34 @@ async def test_request_chunked_with_trailer(parser: HttpRequestParser) -> None:
     # TODO: Add assertion of trailers when API added.
 
 
+async def test_trailer_not_leaked_into_next_message(
+    parser: HttpRequestParser,
+) -> None:
+    """Trailers of one message must not become headers of the next one.
+
+    Regression test for the C parser leaving the trailer section's last
+    field/value pair (and the Content-Encoding capture) pending across
+    messages: it was processed into the next message's header set, so a
+    trailer could inject a header — including a Content-Encoding that
+    switched decompression on for an unencoded body.
+    """
+    msg1 = (
+        b"POST /a HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n"
+        b"3\r\nabc\r\n0\r\nContent-Encoding: gzip\r\nX-Trailer: leaked\r\n\r\n"
+    )
+    msg2 = b"POST /b HTTP/1.1\r\nHost: a\r\nContent-Length: 5\r\n\r\nhello"
+
+    messages, upgraded, tail = parser.feed_data(msg1)
+    assert messages[0][0].compression is None
+
+    messages, upgraded, tail = parser.feed_data(msg2)
+    msg, payload = messages[0]
+    assert msg.compression is None
+    assert "Content-Encoding" not in msg.headers
+    assert "X-Trailer" not in msg.headers
+    assert await payload.read() == b"hello"
+
+
 async def test_request_chunked_reject_bad_trailer(parser: HttpRequestParser) -> None:
     text = b"GET /test HTTP/1.1\r\nHost: a\r\nTransfer-Encoding: chunked\r\n\r\n0\r\nbad\ntrailer\r\n\r\n"
     with pytest.raises(http_exceptions.BadHttpMessage, match=r"b'bad\\ntrailer'"):
@@ -3540,58 +3611,54 @@ class TestDeflateBuffer:
         dbuf.feed_eof()
         assert buf._eof
 
-    async def test_feed_eof_err_deflate(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "deflate")
+    @pytest.mark.parametrize(
+        ("encoding", "make_body"),
+        (
+            ("deflate", lambda data: zlib.compress(data)[:-4]),
+            ("gzip", lambda data: gzip.compress(data)[:-8]),
+            pytest.param(
+                "br",
+                lambda data: brotli.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    brotli is None, reason="brotli is not installed"
+                ),
+            ),
+            pytest.param(
+                "zstd",
+                lambda data: zstandard.compress(data)[:-4],
+                marks=pytest.mark.skipif(
+                    zstandard is None, reason="zstandard is not installed"
+                ),
+            ),
+        ),
+        ids=(
+            "single-deflate",
+            "single-gzip",
+            "single-brotli",
+            "single-zstd",
+        ),
+    )
+    async def test_feed_eof_truncated_stream(
+        self,
+        protocol: BaseProtocol,
+        encoding: str,
+        make_body: Callable[[bytes], bytes],
+    ) -> None:
+        """A stream cut short of its trailer must raise, not pass silently.
 
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-        dbuf.size = 1  # Simulate that data was previously fed
+        A gzip stream missing its final 8 bytes (CRC32 + ISIZE) still
+        inflates completely, so without the completeness check the consumer
+        would receive the full plaintext with no error.
+        """
+        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
+        dbuf = DeflateBuffer(buf, encoding)
+
+        chunk = make_body(b"payload " * 4096)
+        while dbuf.feed_data(chunk, len(chunk)):
+            chunk = b""
 
         with pytest.raises(http_exceptions.ContentEncodingError):
             dbuf.feed_eof()
-
-    async def test_feed_eof_no_err_gzip(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "gzip")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
-
-    @pytest.mark.skipif(
-        sys.platform in ("android", "ios"), reason="brotli not available"
-    )
-    async def test_feed_eof_no_err_brotli(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "br")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
-
-    @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")
-    async def test_feed_eof_no_err_zstandard(self, protocol: BaseProtocol) -> None:
-        buf = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
-        dbuf = DeflateBuffer(buf, "zstd")
-
-        dbuf.decompressor = mock.Mock()
-        dbuf.decompressor.data_available = False
-        dbuf.decompressor.flush.return_value = b""
-        dbuf.decompressor.eof = False
-
-        dbuf.feed_eof()
-        assert buf._eof
 
     async def test_empty_body(self, protocol: BaseProtocol) -> None:
         buf = aiohttp.StreamReader(
