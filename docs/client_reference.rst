@@ -2816,6 +2816,26 @@ All exceptions are available as members of *aiohttp* module.
 
    Derived from :exc:`Exception`
 
+   .. attribute:: request_info
+
+      An instance of :class:`RequestInfo` for the request that raised the
+      exception, or ``None`` when request context is unavailable.
+
+   .. attribute:: history
+
+      A tuple of :class:`ClientResponse` objects received before the
+      exception, such as redirect responses. Empty when no redirects
+      occurred.
+
+
+.. exception:: ClientTimeoutError
+   :canonical: aiohttp.client_exceptions.ClientTimeoutError
+
+   Total client request timeout, including while reading a response body.
+
+   This exception is also an :exc:`asyncio.TimeoutError`.
+
+   Derived from :exc:`ClientError` and :exc:`asyncio.TimeoutError`
 
 .. class:: ClientPayloadError
    :canonical: aiohttp.client_exceptions.ClientPayloadError
@@ -3092,6 +3112,8 @@ Hierarchy of exceptions
 ^^^^^^^^^^^^^^^^^^^^^^^
 
 * :exc:`ClientError`
+
+  * :exc:`ClientTimeoutError`
 
   * :exc:`ClientConnectionError`
 

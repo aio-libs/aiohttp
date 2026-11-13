@@ -1,0 +1,1 @@
+Total request timeouts now raise :exc:`~aiohttp.ClientTimeoutError`, which retains redirect history and remains an :exc:`asyncio.TimeoutError` -- by :user:`PLPeeters`.
