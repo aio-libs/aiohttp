@@ -533,7 +533,6 @@ cdef class HttpParser:
         encoding = None
         enc = self._content_encoding
         if enc is not None:
-            self._content_encoding = None
             if enc.isascii():  # Must be checked before .lower()
                 enc = enc.lower()
                 if enc in {"gzip", "deflate", "br", "zstd"}:
@@ -581,8 +580,19 @@ cdef class HttpParser:
         # The payload is None when feed_eof() already completed a fully
         # received content-length body.
         if self._payload is not None:
-            self._payload.feed_eof()
+            payload = self._payload
             self._payload = None
+            try:
+                payload.feed_eof()
+            except BaseException as underlying_exc:
+                # A reader may already be waiting on this body: hand it the
+                # error before dropping the reference, or it waits forever.
+                reraised_exc = underlying_exc
+                if self._payload_exception is not None:
+                    reraised_exc = self._payload_exception(str(underlying_exc))
+                set_exception(payload, reraised_exc, underlying_exc)
+                self._payload_error = 1
+                raise
 
     cdef _on_chunk_header(self):
         self._payload.begin_http_chunk_receiving()
@@ -868,6 +878,11 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except? -1:
     PyByteArray_Resize(pyparser._buf, 0)
     pyparser._path = None
     pyparser._reason = None
+    pyparser._raw_name = b""
+    pyparser._raw_value = b""
+    pyparser._has_value = False
+    pyparser._header_name_size = 0
+    pyparser._content_encoding = None
     return 0
 
 
@@ -985,7 +1000,10 @@ cdef int cb_on_message_complete(cparser.llhttp_t* parser) except? -1:
         pyparser._started = False
         pyparser._on_message_complete()
     except BaseException as exc:
-        pyparser._last_error = exc
+        # _payload_error means _on_message_complete() already handed the error
+        # to the body reader; feed_data() then returns quietly, as for cb_on_body.
+        if not pyparser._payload_error:
+            pyparser._last_error = exc
         return -1
     else:
         if (
