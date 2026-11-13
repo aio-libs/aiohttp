@@ -393,7 +393,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
     async def receive(
         self, timeout: float | None = None
     ) -> WSMessageDecodeText | WSMessageNoDecodeText:
-        receive_timeout = timeout or self._timeout.ws_receive
+        receive_timeout = timeout if timeout is not None else self._timeout.ws_receive
 
         while True:
             if self._waiting:
@@ -408,7 +408,7 @@ class ClientWebSocketResponse(Generic[_DecodeText]):
             try:
                 self._waiting = True
                 try:
-                    if receive_timeout:
+                    if receive_timeout is not None:
                         # Entering the context manager and creating
                         # Timeout() object can take almost 50% of the
                         # run time in this loop so we avoid it if
