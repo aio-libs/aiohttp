@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 
+from aiohttp import web
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import BaseRequest
@@ -224,3 +225,38 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+def test_start_ignores_message_queued_before_connection_lost() -> None:
+    """start() exits quietly when connection_lost() runs in the same
+    event-loop iteration as a newly queued request (issue #14000).
+
+    data_received() resolves the waiter and connection_lost() clears
+    _request_factory before start() resumes; without the re-check after the
+    waiter, start() calls the torn-down factory and the task dies with
+    TypeError: 'NoneType' object is not callable.
+    """
+
+    async def scenario() -> None:
+        # The handler is never reached: the queued request is dropped when
+        # the connection is lost before start() resumes.
+        proto = web.Server(mock.AsyncMock())()
+        transport = mock.Mock()
+        transport.is_closing.return_value = False
+        transport.get_extra_info.return_value = None
+        proto.connection_made(transport)
+        task = proto._task_handler
+        assert task is not None
+        await asyncio.sleep(0)  # start() parks waiting for the next request
+
+        # Same event-loop iteration: a request arrives, then the peer
+        # disconnects before start() resumes.
+        proto.data_received(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+        proto.connection_lost(None)
+
+        for _ in range(5):
+            await asyncio.sleep(0)
+        assert task.done()
+        assert task.exception() is None
+
+    asyncio.run(scenario())
