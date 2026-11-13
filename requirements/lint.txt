@@ -34,7 +34,7 @@ cryptography==50.0.2
     # via trustme
 distlib==0.4.4
     # via virtualenv
-filelock==4.2.9
+filelock==4.2.10
     # via
     #   python-discovery
     #   virtualenv
