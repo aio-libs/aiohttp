@@ -3,6 +3,7 @@ from __future__ import annotations  # TODO(PY314): Remove
 
 import asyncio
 import datetime
+import gzip
 import http.cookies
 import io
 import json
@@ -33,7 +34,10 @@ except ImportError:
     brotli = None
 
 try:
-    from backports.zstd import ZstdCompressor
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdCompressor  # noqa: I900
+    else:
+        from backports.zstd import ZstdCompressor
 except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
@@ -2600,6 +2604,113 @@ async def test_bad_payload_compression(aiohttp_client: AiohttpClient) -> None:
         assert resp.status == 200
 
         with pytest.raises(aiohttp.ClientPayloadError):
+            await resp.read()
+
+
+async def test_multiple_content_codings(aiohttp_client: AiohttpClient) -> None:
+    """Chained Content-Encoding codings are decoded in reverse order.
+
+    Regression test for https://github.com/aio-libs/aiohttp/issues/13364:
+    some misconfigured servers compress twice, e.g. Content-Encoding: gzip,gzip.
+    """
+    body = gzip.compress(gzip.compress(b'{"hello": "world"}'))
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body, content_type="application/json")
+        resp.headers["Content-Encoding"] = "gzip,gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.json() == {"hello": "world"}
+
+
+def _zstd_compress(data: bytes) -> bytes:
+    assert ZstdCompressor is not None
+    compressor = ZstdCompressor()
+    return compressor.compress(data) + compressor.flush()
+
+
+@pytest.mark.parametrize(
+    ("encoding", "compress"),
+    (
+        pytest.param(
+            "deflate,br",
+            lambda data: brotli.compress(zlib.compress(data)),
+            marks=pytest.mark.skipif(brotli is None, reason="brotli is not installed"),
+            id="deflate,br",
+        ),
+        pytest.param(
+            "zstd,gzip",
+            lambda data: gzip.compress(_zstd_compress(data)),
+            marks=pytest.mark.skipif(
+                ZstdCompressor is None, reason="zstd is not installed"
+            ),
+            id="zstd,gzip",
+        ),
+    ),
+)
+async def test_mixed_content_codings(
+    aiohttp_client: AiohttpClient,
+    encoding: str,
+    compress: Callable[[bytes], bytes],
+) -> None:
+    body = compress(b'{"hello": "world"}')
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body, content_type="application/json")
+        resp.headers["Content-Encoding"] = encoding
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.json() == {"hello": "world"}
+
+
+async def test_too_many_content_codings(aiohttp_client: AiohttpClient) -> None:
+    """More codings than the decoder accepts fail loudly, not with garbage."""
+    body = gzip.compress(gzip.compress(gzip.compress(b"text")))
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body)
+        resp.headers["Content-Encoding"] = "gzip,gzip,gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(aiohttp.ClientResponseError):
+        await client.get("/")
+
+
+async def test_truncated_compressed_response(aiohttp_client: AiohttpClient) -> None:
+    """A gzip body missing its 8-byte trailer must error, not decode silently.
+
+    The truncated stream inflates in full, so this previously returned the
+    complete plaintext with a 200 and no error.
+    """
+    body = gzip.compress(b"payload " * 4096)[:-8]
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body)
+        resp.headers["Content-Encoding"] = "gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    with pytest.raises(aiohttp.ClientPayloadError):
+        async with client.get("/") as resp:
             await resp.read()
 
 
