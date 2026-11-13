@@ -933,6 +933,10 @@ cdef int cb_on_header_field(cparser.llhttp_t* parser,
     cdef Py_ssize_t size
     try:
         pyparser._on_status_complete()
+        if pyparser._has_value:
+            # Finish the previous field first: until then _raw_name still holds
+            # its name, and finishing it resets _header_name_size.
+            pyparser._process_header()
         size = len(pyparser._raw_name) + length
         if size > pyparser._max_field_size:
             name = pyparser._raw_name + at[:length]

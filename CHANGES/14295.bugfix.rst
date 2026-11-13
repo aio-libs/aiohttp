@@ -1,0 +1,4 @@
+Fixed the C HTTP parser applying ``max_field_size`` to the header name only for
+the first header field: a later field's name was not counted, and a later
+name was measured together with the previous field's name
+-- by :user:`parthod0x`.
