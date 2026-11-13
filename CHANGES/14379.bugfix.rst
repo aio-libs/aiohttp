@@ -1,0 +1,2 @@
+Reduced scheduling overhead when a client has queued requests for many distinct
+hosts -- by :user:`PLPeeters`.
