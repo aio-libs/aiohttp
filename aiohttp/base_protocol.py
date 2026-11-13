@@ -27,6 +27,7 @@ class BaseProtocol(asyncio.Protocol):
         "_buffer_paused",
         "_upgraded",
         "transport",
+        "version",
     )
 
     def __init__(
@@ -41,6 +42,9 @@ class BaseProtocol(asyncio.Protocol):
         self._upgraded = False
 
         self.transport: asyncio.Transport | None = None
+        # proto version
+        # we can't set the default due to a circular import
+        self.version: Any = None
 
     @property
     def connected(self) -> bool:
