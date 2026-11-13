@@ -23,14 +23,14 @@ jobs:
       contents: write  # Required by the Dependency submission API
     steps:
     - name: Checkout
-      uses: actions/checkout@v7
+      uses: actions/checkout@v7.0.1
       with:
         submodules: true
     - name: Read vendored llhttp version
       id: llhttp
       run: echo "version=$(jq -re .version vendor/llhttp/package.json)" >> "$GITHUB_OUTPUT"
     - name: Submit llhttp to the dependency graph
-      uses: actions/github-script@v9
+      uses: actions/github-script@v9.0.0
       env:
         LLHTTP_VERSION: ${{ steps.llhttp.outputs.version }}
       with:
