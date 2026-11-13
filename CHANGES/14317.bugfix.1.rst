@@ -1,0 +1,1 @@
+Parse errors in a message body now reach the payload in the C parser, so a handler waiting on the body no longer hangs -- by :user:`henryiii`.
