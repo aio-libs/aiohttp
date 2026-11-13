@@ -34,7 +34,10 @@ except ImportError:
     brotli = None
 
 try:
-    from backports.zstd import ZstdCompressor
+    if sys.version_info >= (3, 14):
+        from compression.zstd import ZstdCompressor  # noqa: I900
+    else:
+        from backports.zstd import ZstdCompressor
 except ImportError:
     ZstdCompressor = None  # type: ignore[assignment,misc]  # pragma: no cover
 
@@ -2615,6 +2618,52 @@ async def test_multiple_content_codings(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         resp = web.Response(body=body, content_type="application/json")
         resp.headers["Content-Encoding"] = "gzip,gzip"
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    async with client.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.json() == {"hello": "world"}
+
+
+def _zstd_compress(data: bytes) -> bytes:
+    assert ZstdCompressor is not None
+    compressor = ZstdCompressor()
+    return compressor.compress(data) + compressor.flush()
+
+
+@pytest.mark.parametrize(
+    ("encoding", "compress"),
+    (
+        pytest.param(
+            "deflate,br",
+            lambda data: brotli.compress(zlib.compress(data)),
+            marks=pytest.mark.skipif(brotli is None, reason="brotli is not installed"),
+            id="deflate,br",
+        ),
+        pytest.param(
+            "zstd,gzip",
+            lambda data: gzip.compress(_zstd_compress(data)),
+            marks=pytest.mark.skipif(
+                ZstdCompressor is None, reason="zstd is not installed"
+            ),
+            id="zstd,gzip",
+        ),
+    ),
+)
+async def test_mixed_content_codings(
+    aiohttp_client: AiohttpClient,
+    encoding: str,
+    compress: Callable[[bytes], bytes],
+) -> None:
+    body = compress(b'{"hello": "world"}')
+
+    async def handler(request: web.Request) -> web.Response:
+        resp = web.Response(body=body, content_type="application/json")
+        resp.headers["Content-Encoding"] = encoding
         return resp
 
     app = web.Application()
