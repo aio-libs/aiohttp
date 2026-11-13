@@ -369,6 +369,7 @@ cdef class HttpParser:
         int     _limit
 
         str     _content_encoding
+        bint    _content_encoding_repeated
 
         Py_buffer py_buf
 
@@ -433,6 +434,7 @@ cdef class HttpParser:
         self._pending_upgrade = False
         self._auto_decompress = auto_decompress
         self._content_encoding = None
+        self._content_encoding_repeated = False
         self._lax = False
         self._seen_singletons = set()
 
@@ -479,8 +481,10 @@ cdef class HttpParser:
                 if self._content_encoding is None:
                     self._content_encoding = value
                 else:
+                    # Joined once in _on_headers_complete: concatenating here
+                    # copies the whole accumulated value for every repeat.
                     # https://www.rfc-editor.org/info/rfc9110/#section-5.3-1
-                    self._content_encoding = self._content_encoding + "," + value
+                    self._content_encoding_repeated = True
 
             self._has_value = False
             self._header_name_size = 0
@@ -540,6 +544,8 @@ cdef class HttpParser:
         encoding = None
         enc = self._content_encoding
         if enc is not None:
+            if self._content_encoding_repeated:
+                enc = headers[CONTENT_ENCODING]
             encoding = parse_content_encoding(enc, self._auto_decompress)
 
         if self._cparser.type == cparser.HTTP_REQUEST:
@@ -887,6 +893,7 @@ cdef int cb_on_message_begin(cparser.llhttp_t* parser) except? -1:
     pyparser._has_value = False
     pyparser._header_name_size = 0
     pyparser._content_encoding = None
+    pyparser._content_encoding_repeated = False
     return 0
 
 

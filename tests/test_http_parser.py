@@ -1267,6 +1267,17 @@ def test_compression_repeated_headers(parser: HttpRequestParser) -> None:
     assert msg.compression == "deflate,gzip"
 
 
+def test_compression_repeated_headers_over_limit(parser: HttpRequestParser) -> None:
+    # Every repeat counts towards the chain, not just the first two.
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\n"
+        b"content-encoding: deflate\r\ncontent-encoding: gzip\r\n"
+        b"content-encoding: gzip\r\n\r\n"
+    )
+    with pytest.raises(http_exceptions.ContentEncodingError):
+        parser.feed_data(text)
+
+
 def test_compression_multiple_codings_identity(parser: HttpRequestParser) -> None:
     # "identity" is a synonym for no encoding and drops out of the chain.
     text = b"GET /test HTTP/1.1\r\nHost: a\r\ncontent-encoding: identity, gzip\r\n\r\n"
