@@ -1,0 +1,6 @@
+Fixed a crash in :class:`~aiohttp.web.RequestHandler` when a connection is
+lost while the handler is parked waiting for the next keep-alive request.
+Previously this raised ``TypeError: 'NoneType' object is not callable``
+because ``RequestHandler.start()`` called the request factory after
+``RequestHandler.connection_lost()`` had cleared it
+-- by :user:`inchang-ing`.
