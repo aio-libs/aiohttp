@@ -7,7 +7,9 @@ import re
 import sys
 import zlib
 from collections.abc import Callable, Iterable, Iterator
+from concurrent.futures import Future, ThreadPoolExecutor
 from contextlib import suppress
+from threading import Event
 from typing import Any
 from unittest import mock
 from urllib.parse import quote
@@ -19,6 +21,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_exceptions import ClientPayloadError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -144,6 +147,17 @@ def response(
 def response_cls(request: pytest.FixtureRequest) -> type[HttpResponseParser]:
     # Parser implementations
     return request.param  # type: ignore[no-any-return]
+
+
+@pytest.fixture
+async def executor_protocol(
+    response_cls: type[HttpResponseParser], monkeypatch: pytest.MonkeyPatch
+) -> ResponseHandler:
+    monkeypatch.setattr("aiohttp.client_proto.HttpResponseParser", response_cls)
+    protocol = ResponseHandler(asyncio.get_running_loop())
+    protocol.connection_made(mock.Mock())
+    protocol.set_response_params(read_until_eof=True, read_bufsize=1024)
+    return protocol
 
 
 @pytest.mark.skipif(NO_EXTENSIONS, reason="Extensions available but not imported")
@@ -1830,6 +1844,796 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+@pytest.mark.parametrize("framing", ["length", "chunked", "eof"])
+async def test_executor_decompression_connection_lost(
+    executor_protocol: ResponseHandler, framing: str
+) -> None:
+    protocol = executor_protocol
+    body = b"body" * 100_000
+    compressed = gzip.compress(body)
+    if framing == "length":
+        header = b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        wire_body = compressed
+    elif framing == "chunked":
+        header = b"Transfer-Encoding: chunked\r\n"
+        wire_body = b"%x\r\n" % len(compressed) + compressed + b"\r\n0\r\n\r\n"
+    else:
+        header = b""
+        wire_body = compressed
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n" + header + b"\r\n" + wire_body
+    )
+    _, payload = await protocol.read()
+    assert not payload.is_eof()
+    protocol.connection_lost(None)
+    can_receive_data = protocol.can_receive_data
+    assert can_receive_data
+    assert await asyncio.wait_for(payload.read(), 2) == body
+    assert payload.is_eof()
+    assert not protocol.can_receive_data
+    assert protocol.should_close
+
+
+@pytest.mark.parametrize("framing", ["length", "chunked"])
+async def test_uncompressed_connection_lost_drains_buffered_payload(
+    executor_protocol: ResponseHandler, framing: str
+) -> None:
+    protocol = executor_protocol
+    chunks = [b"body" * 2_500 for _ in range(5)]
+    body = b"".join(chunks)
+    if framing == "length":
+        headers = b"Content-Length: " + str(len(body)).encode() + b"\r\n"
+        wire_body = body
+    else:
+        headers = b"Transfer-Encoding: chunked\r\n"
+        wire_body = (
+            b"".join(b"%x\r\n" % len(chunk) + chunk + b"\r\n" for chunk in chunks)
+            + b"0\r\n\r\n"
+        )
+    protocol.data_received(b"HTTP/1.1 200 OK\r\n" + headers + b"\r\n" + wire_body)
+    _, payload = await protocol.read()
+    protocol.connection_lost(None)
+
+    assert await payload.read() == body
+    assert payload.is_eof()
+    assert not protocol.can_receive_data
+    assert protocol.should_close
+
+
+@pytest.mark.parametrize("shutdown", ["close", "abort"])
+async def test_executor_decompression_shutdown_wakes_payload_reader(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+    shutdown: str,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    pending: asyncio.Future[bytes] = loop.create_future()
+    monkeypatch.setattr(
+        loop,
+        "run_in_executor",
+        lambda _executor, _fn, *_args: pending,
+    )
+    compressed = gzip.compress(b"pending body")
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _, payload = await protocol.read()
+    protocol.connection_lost(None)
+
+    shutdown_protocol = getattr(protocol, shutdown)
+    shutdown_protocol()
+
+    with pytest.raises(ClientPayloadError):
+        await asyncio.wait_for(payload.read(), 1)
+
+    # Settle the callback after shutdown so the controlled future is not left
+    # pending at test teardown.
+    pending.set_result(b"pending body")
+    await asyncio.sleep(0)
+
+
+async def test_executor_decompression_cancelled_after_peer_eof_fails_payload(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    pending: asyncio.Future[bytes] = loop.create_future()
+    monkeypatch.setattr(
+        loop,
+        "run_in_executor",
+        lambda _executor, _fn, *_args: pending,
+    )
+    compressed = gzip.compress(b"pending body")
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _, payload = await protocol.read()
+    protocol.connection_lost(None)
+
+    pending.cancel()
+
+    with pytest.raises(ClientPayloadError):
+        await asyncio.wait_for(payload.read(), 1)
+
+
+@pytest.mark.parametrize("connection_lost", [False, True], ids=["live", "drain"])
+async def test_executor_decompression_cancelled_fails_payload_and_cleans_up(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+    connection_lost: bool,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    pending: asyncio.Future[bytes] = loop.create_future()
+    callback_ran = loop.create_future()
+    pending.add_done_callback(lambda _future: callback_ran.set_result(None))
+    monkeypatch.setattr(
+        loop,
+        "run_in_executor",
+        lambda _executor, _fn, *_args: pending,
+    )
+    compressed = gzip.compress(b"pending body")
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _, payload = await protocol.read()
+
+    pending.cancel()
+    if connection_lost:
+        protocol.connection_lost(None)
+    else:
+        await callback_ran
+
+    assert isinstance(payload.exception(), ClientPayloadError)
+    assert protocol.should_close
+    if connection_lost:
+        assert protocol.transport is None
+
+
+async def test_executor_decompression_resumed_bad_chunk_fails_payload(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    pending: asyncio.Future[bytes] = loop.create_future()
+    decode: list[tuple[Any, tuple[Any, ...]]] = []
+
+    def queue_decode(_executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        decode.append((fn, args))
+        if len(decode) == 1:
+            return pending
+        completed = loop.create_future()
+        completed.set_result(fn(*args))
+        return completed
+
+    monkeypatch.setattr(loop, "run_in_executor", queue_decode)
+    compressed = gzip.compress(b"x")
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n"
+        + b"%x\r\n" % len(compressed)
+        + compressed
+        + b"\r\nz\r\n"
+    )
+    _, payload = await protocol.read()
+    protocol.connection_lost(None)
+    assert decode
+
+    fn, args = decode[0]
+    pending.set_result(fn(*args))
+    for _ in range(5):
+        await asyncio.sleep(0)
+
+    assert isinstance(payload.exception(), ClientPayloadError)
+    with pytest.raises(ClientPayloadError):
+        await payload.read(1)
+
+
+async def test_executor_decompression_done_respects_chunk_count_high_water(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    protocol = executor_protocol
+    if type(protocol._parser).__module__ != "aiohttp._http_parser":
+        pytest.skip("The chunk-count resume regression is specific to the C parser")
+    loop = asyncio.get_running_loop()
+    backpressure_callback_processed = asyncio.Event()
+
+    def decode_callback_processed() -> None:
+        if (
+            payload._http_chunk_splits is not None
+            and len(payload._http_chunk_splits) > payload._high_water_chunks
+        ):
+            backpressure_callback_processed.set()
+
+    class DecodeFuture(asyncio.Future[bytes]):
+        def add_done_callback(self, fn: Any, *, context: Any = None) -> None:
+            super().add_done_callback(fn, context=context)
+            # Observe state after the decoder's completion callback runs.
+            loop.call_soon(decode_callback_processed)
+
+    def decode_now(_executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        future = DecodeFuture(loop=loop)
+        future.set_result(fn(*args))
+        return future
+
+    monkeypatch.setattr(loop, "run_in_executor", decode_now)
+    compressor = zlib.compressobj(wbits=31)
+    chunks = [
+        compressor.compress(b"x") + compressor.flush(zlib.Z_SYNC_FLUSH)
+        for _ in range(300)
+    ]
+    chunks.append(compressor.flush(zlib.Z_FINISH))
+    wire_body = (
+        b"".join(b"%x\r\n" % len(chunk) + chunk + b"\r\n" for chunk in chunks if chunk)
+        + b"0\r\n\r\n"
+    )
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\n"
+    )
+    _, payload = await protocol.read()
+    protocol.data_received(wire_body)
+    await asyncio.wait_for(backpressure_callback_processed.wait(), 2)
+
+    assert payload.total_bytes < payload._high_water
+    assert payload._http_chunk_splits is not None
+    assert len(payload._http_chunk_splits) == payload._high_water_chunks + 1
+    assert payload.total_bytes == len(payload._http_chunk_splits)
+    assert protocol._reading_paused
+
+
+async def test_executor_decompression_feed_eof_preserves_pending_response(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    parser = protocol._parser
+    assert parser is not None
+    loop = asyncio.get_running_loop()
+    executor = ThreadPoolExecutor(max_workers=1)
+    loop.set_default_executor(executor)
+    run_in_executor = loop.run_in_executor
+    executor_calls = 0
+    delivery_processed = asyncio.Event()
+    eof_results: list[Any] = []
+    body = b"pending eof body" * 5
+    compressed = gzip.compress(body)
+    next_response = b"HTTP/1.1 204 No Content\r\nContent-Length: 0\r\n\r\n"
+
+    def schedule_decode(
+        executor_arg: Any, fn: Any, *args: Any
+    ) -> asyncio.Future[bytes]:
+        nonlocal executor_calls
+        executor_calls += 1
+        if executor_calls > 1:
+            return run_in_executor(executor_arg, fn, *args)
+
+        result = loop.create_future()
+        worker_future = executor.submit(fn, *args)
+
+        def finish_decode(worker: Future[bytes]) -> None:
+            def complete_and_deliver() -> None:
+                result.set_result(worker.result())
+                protocol.data_received(compressed[10:] + next_response)
+                eof_results.append(parser.feed_eof())
+                delivery_processed.set()
+
+            loop.call_soon_threadsafe(complete_and_deliver)
+
+        worker_future.add_done_callback(finish_decode)
+        return result
+
+    async def read_payload() -> list[bytes]:
+        return [chunk async for chunk in payload.iter_chunked(2048)]
+
+    monkeypatch.setattr(loop, "run_in_executor", schedule_decode)
+    try:
+        protocol.data_received(
+            b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+            + str(len(compressed)).encode()
+            + b"\r\n\r\n"
+            + compressed[:10]
+        )
+        _, payload = await protocol.read()
+
+        # Resolve the executor future and deliver remaining input in one loop
+        # callback. Its done callback can resume parsing only after the delivery.
+        await asyncio.wait_for(delivery_processed.wait(), 2)
+
+        assert eof_results == [None]
+        # Resume parsing the bytes retained by the EOF guard.
+        protocol.resume_reading()
+        chunks = await asyncio.wait_for(read_payload(), 2)
+        assert b"".join(chunks) == body
+        message, next_payload = await asyncio.wait_for(protocol.read(), 2)
+        assert message.code == 204
+        assert next_payload.is_eof()
+    finally:
+        executor.shutdown(wait=True)
+
+
+def test_executor_decompression_feed_eof_reports_incomplete_payload(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    protocol = ResponseHandler(event_loop)
+    parser = HttpResponseParserPy(
+        protocol,
+        event_loop,
+        DEFAULT_CHUNK_SIZE,
+        max_line_size=8190,
+        offload_decompression=True,
+    )
+    messages, _upgraded, _tail = parser.feed_data(
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: 10\r\n"
+        b"Content-Encoding: gzip\r\n\r\n"
+    )
+    assert len(messages) == 1
+    payload = messages[0][-1]
+    payload_parser = parser._payload_parser
+    assert payload_parser is not None
+
+    with pytest.raises(http_exceptions.ContentLengthError):
+        parser.feed_eof()
+
+    assert parser._payload_parser is payload_parser
+    assert not payload.is_eof()
+
+
+async def test_executor_decompression_feed_eof_finishes_completed_decode(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    parser = protocol._parser
+    assert parser is not None
+    loop = asyncio.get_running_loop()
+    body = b"completed decode body" * 5
+    compressed = gzip.compress(body)
+    eof_processed = asyncio.Event()
+
+    def deliver_eof() -> None:
+        assert parser.feed_eof() is None
+        eof_processed.set()
+
+    def run_decode_now(_executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        future = loop.create_future()
+        future.set_result(fn(*args))
+        if not args[0]:
+            # EOF lands after the final empty decode completes but before its
+            # done callback can resume parsing.
+            loop.call_soon(deliver_eof)
+        return future
+
+    monkeypatch.setattr(loop, "run_in_executor", run_decode_now)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _, payload = await protocol.read()
+
+    await asyncio.wait_for(eof_processed.wait(), 2)
+    assert await asyncio.wait_for(payload.read(), 2) == body
+    assert payload.is_eof()
+
+
+@pytest.mark.parametrize("framing", ["length", "chunked", "eof"])
+async def test_executor_decompression_pending_input(
+    executor_protocol: ResponseHandler, framing: str
+) -> None:
+    protocol = executor_protocol
+    body = b"streamed body" * 10_000
+    compressed = gzip.compress(body)
+    if framing == "length":
+        header = b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        wire_body = compressed
+    elif framing == "chunked":
+        header = b"Transfer-Encoding: chunked\r\n"
+        wire_body = b"%x\r\n" % len(compressed) + compressed + b"\r\n0\r\n\r\n"
+    else:
+        header = b""
+        wire_body = compressed
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+        + header
+        + b"\r\n"
+        + wire_body[:12]
+    )
+    # A transport can already have another delivery queued when paused.
+    protocol.data_received(wire_body[12:])
+    _, payload = await protocol.read()
+    if framing == "eof":
+        protocol.connection_lost(None)
+    chunks = [chunk async for chunk in payload.iter_chunked(2048)]
+    assert b"".join(chunks) == body
+    assert payload.total_raw_bytes == len(compressed)
+
+
+async def test_executor_decompression_pending_input_completed_decode(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    body = b"streamed body" * 10_000
+    compressed = gzip.compress(body)
+
+    def decode_already_done(
+        executor: Any, fn: Any, *args: Any
+    ) -> asyncio.Future[bytes]:
+        result = loop.create_future()
+        result.set_result(fn(*args))
+        return result
+
+    monkeypatch.setattr(loop, "run_in_executor", decode_already_done)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed[:12]
+    )
+    _, payload = await protocol.read()
+    protocol.data_received(compressed[12:])
+    assert payload.total_raw_bytes == len(compressed)
+    assert await asyncio.wait_for(payload.read(), 2) == body
+
+
+async def test_executor_decompression_chunk_framing_after_completed_decode(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    body = b"streamed body" * 10_000
+    compressed = gzip.compress(body)
+    gzip_header, rest = compressed[:10], compressed[10:]
+    unread = [b"%x\r\n" % len(rest) + rest + b"\r\n0\r\n\r\n"]
+
+    def decode_already_done(
+        executor: Any, fn: Any, *args: Any
+    ) -> asyncio.Future[bytes]:
+        result = loop.create_future()
+        result.set_result(fn(*args))
+        return result
+
+    def deliver_unread() -> None:
+        if unread:
+            loop.call_soon(protocol.data_received, unread.pop())
+
+    monkeypatch.setattr(loop, "run_in_executor", decode_already_done)
+    assert protocol.transport is not None
+    monkeypatch.setattr(protocol.transport, "resume_reading", deliver_unread)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n"
+        b"Transfer-Encoding: chunked\r\n\r\na\r\n" + gzip_header
+    )
+    protocol.data_received(b"\r\n")
+    _, payload = await protocol.read()
+
+    async def read_body() -> bytes:
+        return b"".join([chunk async for chunk in payload.iter_chunked(2048)])
+
+    assert await asyncio.wait_for(read_body(), 2) == body
+    assert payload.total_raw_bytes == len(compressed)
+
+
+async def test_executor_decompression_done_respects_high_water(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    body = b"streamed body" * 10_000
+    compressed = gzip.compress(body)
+    half = len(compressed) // 2
+
+    def decode_already_done(
+        executor: Any, fn: Any, *args: Any
+    ) -> asyncio.Future[bytes]:
+        result = loop.create_future()
+        result.set_result(fn(*args))
+        return result
+
+    monkeypatch.setattr(loop, "run_in_executor", decode_already_done)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed[:half]
+    )
+    _, payload = await protocol.read()
+    _, high_water = payload.get_read_buffer_limits()
+
+    async def wait_for_buffer() -> None:
+        while payload.total_bytes <= high_water:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(wait_for_buffer(), 2)
+    buffered = payload.total_bytes
+    protocol.data_received(compressed[half:])
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert payload.total_bytes == buffered
+    assert await asyncio.wait_for(payload.read(), 2) == body
+
+
+async def test_executor_decompression_failure_over_high_water_is_retrieved(
+    executor_protocol: ResponseHandler, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    compressed = gzip.compress(b"streamed body" * 10_000)
+    half = len(compressed) // 2
+    failed: list[asyncio.Future[bytes]] = []
+
+    def decode_already_done(
+        executor: Any, fn: Any, *args: Any
+    ) -> asyncio.Future[bytes]:
+        result = loop.create_future()
+        result.set_result(fn(*args))
+        return result
+
+    def decode_fails(executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        result = loop.create_future()
+        result.set_exception(zlib.error("invalid block type"))
+        failed.append(result)
+        return result
+
+    monkeypatch.setattr(loop, "run_in_executor", decode_already_done)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(len(compressed)).encode()
+        + b"\r\n\r\n"
+        + compressed[:half]
+    )
+    _, payload = await protocol.read()
+    _, high_water = payload.get_read_buffer_limits()
+
+    async def wait_for_buffer() -> None:
+        while payload.total_bytes <= high_water:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(wait_for_buffer(), 2)
+    monkeypatch.setattr(loop, "run_in_executor", decode_fails)
+    protocol.data_received(compressed[half:])
+    for _ in range(5):
+        await asyncio.sleep(0)
+    protocol.close()
+    assert len(failed) == 1
+    assert not failed[0]._log_traceback
+
+
+async def test_executor_decompression_cancelled_after_close(
+    executor_protocol: ResponseHandler,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    executor = ThreadPoolExecutor(max_workers=1)
+    loop.set_default_executor(executor)
+    release_worker = Event()
+    worker_started = Event()
+
+    def block_executor() -> None:
+        worker_started.set()
+        release_worker.wait()
+
+    executor.submit(block_executor)
+    loop_errors: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, context: loop_errors.append(context))
+
+    try:
+        assert worker_started.wait(2)
+        compressed = gzip.compress(b"body")
+        protocol.data_received(
+            b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+            + str(len(compressed)).encode()
+            + b"\r\n\r\n"
+            + compressed
+        )
+        await protocol.read()
+
+        # Shutting down an executor can cancel work that has not started.
+        # Closing the response before the cancellation callback runs must not
+        # ask a cancelled asyncio Future for its exception.
+        executor.shutdown(wait=False, cancel_futures=True)
+        protocol.close()
+        for _ in range(5):
+            await asyncio.sleep(0)
+
+        assert not loop_errors
+    finally:
+        release_worker.set()
+        executor.shutdown(wait=True)
+
+
+async def test_executor_decompression_upgrade_preserves_queued_data(
+    executor_protocol: ResponseHandler,
+) -> None:
+    protocol = executor_protocol
+    loop = asyncio.get_running_loop()
+    release_decode = Event()
+    submitted: list[Future[bytes]] = []
+
+    class GatedExecutor(ThreadPoolExecutor):
+        def submit(
+            self, fn: Callable[..., Any], /, *args: Any, **kwargs: Any
+        ) -> Future[Any]:
+            def wait_then_decode() -> Any:
+                release_decode.wait()
+                return fn(*args, **kwargs)
+
+            future = super().submit(wait_then_decode)
+            submitted.append(future)
+            return future
+
+    executor = GatedExecutor(max_workers=1)
+    loop.set_default_executor(executor)
+    delivery_processed = asyncio.Event()
+
+    def deliver_new_data(_future: Future[bytes]) -> None:
+        def deliver() -> None:
+            protocol.data_received(b"NEW")
+            delivery_processed.set()
+
+        loop.call_soon_threadsafe(deliver)
+
+    try:
+        compressed = gzip.compress(b"hello")
+        protocol.data_received(
+            b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+            + str(len(compressed)).encode()
+            + b"\r\n\r\n"
+            + compressed
+            + b"HTTP/1.1 101 Switching Protocols\r\n"
+            + b"Connection: Upgrade\r\n"
+            + b"Upgrade: websocket\r\n\r\nOLD"
+        )
+        _, payload = await protocol.read()
+        assert len(submitted) == 1
+
+        # asyncio's completion transfer is already registered on the executor
+        # future; this callback queues a data delivery immediately after it.
+        submitted[0].add_done_callback(deliver_new_data)
+        release_decode.set()
+
+        await asyncio.wait_for(delivery_processed.wait(), 2)
+        message, _upgrade_payload = await asyncio.wait_for(protocol.read(), 2)
+        assert message.code == 101
+        assert await asyncio.wait_for(payload.read(), 2) == b"hello"
+        assert protocol.upgraded
+        assert protocol._tail == b"OLDNEW"
+    finally:
+        release_decode.set()
+        executor.shutdown(wait=True)
+
+
+@pytest.mark.parametrize(
+    "encoding",
+    [
+        "gzip",
+        "deflate",
+        "raw-deflate",
+        pytest.param(
+            "br", marks=pytest.mark.skipif(brotli is None, reason="brotli unavailable")
+        ),
+        pytest.param(
+            "zstd",
+            marks=pytest.mark.skipif(zstandard is None, reason="zstd unavailable"),
+        ),
+    ],
+)
+async def test_executor_decompression_chunk_boundaries(
+    executor_protocol: ResponseHandler, encoding: str
+) -> None:
+    body = b"bounded streaming" * 10_000
+    if encoding == "gzip":
+        compressed = gzip.compress(body)
+    elif encoding == "deflate":
+        compressed = zlib.compress(body)
+    elif encoding == "raw-deflate":
+        compressor = zlib.compressobj(wbits=-zlib.MAX_WBITS)
+        compressed = compressor.compress(body) + compressor.flush()
+        encoding = "deflate"
+    elif encoding == "br":
+        compressed = brotli.compress(body)
+    else:
+        compressed = zstandard.compress(body)
+    executor_protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\nContent-Encoding: "
+        + encoding.encode()
+        + b"\r\n\r\n"
+        + b"%x\r\n" % len(compressed)
+        + compressed
+        + b"\r\n0\r\n\r\n"
+    )
+    _, payload = await executor_protocol.read()
+    _, high_water = payload.get_read_buffer_limits()
+
+    async def wait_for_buffer() -> None:
+        while payload.total_bytes <= high_water:
+            await asyncio.sleep(0)
+
+    await asyncio.wait_for(wait_for_buffer(), 2)
+    # Brotli's output limit can overshoot by an internal block.
+    if encoding != "br":
+        assert payload.total_bytes <= high_water + 1024
+    assert payload.total_bytes < len(body)
+    assert not payload.is_eof()
+    chunks = [chunk async for chunk in payload.iter_chunks()]
+    assert b"".join(data for data, _ in chunks) == body
+    assert sum(end for _, end in chunks) == 1
+    assert payload.total_raw_bytes == len(compressed)
+
+
+@pytest.mark.parametrize("failure", ["encoding", "length", "chunked"])
+async def test_executor_decompression_errors(
+    executor_protocol: ResponseHandler, failure: str
+) -> None:
+    body = b"body" * 100_000 if failure == "chunked" else b"body"
+    compressed = b"invalid gzip" if failure == "encoding" else gzip.compress(body)
+    if failure == "chunked":
+        framing = b"Transfer-Encoding: chunked\r\n"
+        wire_body = b"%x\r\n" % len(compressed) + compressed
+    else:
+        length = len(compressed) + (failure == "length")
+        framing = b"Content-Length: %d\r\n" % length
+        wire_body = compressed
+    executor_protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n" + framing + b"\r\n" + wire_body
+    )
+    _, payload = await executor_protocol.read()
+    if failure != "encoding":
+        executor_protocol.connection_lost(None)
+    with pytest.raises(aiohttp.ClientPayloadError):
+        await asyncio.wait_for(payload.read(), 2)
+    assert executor_protocol.should_close
+
+
+async def test_executor_decompression_close_after_connection_lost(
+    executor_protocol: ResponseHandler,
+) -> None:
+    compressed = gzip.compress(b"body")
+    executor_protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n\r\n" + compressed
+    )
+    _, payload = await executor_protocol.read()
+    executor_protocol.connection_lost(None)
+    payload.set_exception(aiohttp.ClientConnectionError("Connection closed"))
+    executor_protocol.close()
+    assert not executor_protocol.connected
+    assert not executor_protocol.can_receive_data
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+@pytest.mark.parametrize("encoding", ["gzip", "deflate"])
+async def test_executor_decompression_concatenated_members(
+    executor_protocol: ResponseHandler, encoding: str
+) -> None:
+    first_body, second_body = b"first" * 5000, b"second" * 5000
+    compress = gzip.compress if encoding == "gzip" else zlib.compress
+    first, second = compress(first_body), compress(second_body)
+    executor_protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: "
+        + encoding.encode()
+        + b"\r\nContent-Length: %d\r\n\r\n" % (len(first) + len(second))
+        + first
+    )
+    executor_protocol.data_received(second)
+    _, payload = await executor_protocol.read()
+    chunks = [chunk async for chunk in payload.iter_chunked(2048)]
+    assert b"".join(chunks) == first_body + second_body
 
 
 async def test_compressed_chunked_split_chunk_size_line(

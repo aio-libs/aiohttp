@@ -56,6 +56,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._closed: None | asyncio.Future[None] = None
         self._connection_lost_called = False
+        self._deferred_eof = False
+        self._offload_decompression = False
 
     @property
     def closed(self) -> None | asyncio.Future[None]:
@@ -96,6 +98,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def close(self) -> None:
         self._exception = None  # Break cyclic references
+        if self._deferred_eof:
+            self._fail_deferred_payload(
+                ClientPayloadError("Response payload was closed")
+            )
         transport = self.transport
         if transport is not None:
             transport.close()
@@ -105,6 +111,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def abort(self) -> None:
         self._exception = None  # Break cyclic references
+        if self._deferred_eof:
+            self._fail_deferred_payload(
+                ClientPayloadError("Response payload was aborted")
+            )
         transport = self.transport
         if transport is not None:
             transport.abort()
@@ -114,6 +124,11 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def is_connected(self) -> bool:
         return self.transport is not None and not self.transport.is_closing()
+
+    @property
+    def can_receive_data(self) -> bool:
+        # StreamReader can still await decoded data after the transport reaches EOF.
+        return self.transport is not None or self._deferred_eof
 
     def connection_lost(self, exc: BaseException | None) -> None:
         self._connection_lost_called = True
@@ -147,6 +162,12 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 self._payload_parser.feed_eof()
 
         uncompleted = None
+        if (
+            self._offload_decompression
+            and self._parser is not None
+            and not self._upgraded
+        ):
+            self.data_received(b"")
         if self._parser is not None:
             try:
                 uncompleted = self._parser.feed_eof()
@@ -183,11 +204,19 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             self.set_exception(reraised_exc, underlying_non_eof_exc)
 
         self._should_close = True
-        self._parser = None
-        self._payload = None
+        self._deferred_eof = (
+            self._offload_decompression
+            and isinstance(self._payload, StreamReader)
+            and not self._payload.is_eof()
+            and self._payload.exception() is None
+        )
+        if not self._deferred_eof:
+            self._parser = None
+            self._payload = None
         self._payload_parser = None
         self._payload_parser_failed = False
-        self._reading_paused = False
+        if not self._deferred_eof:
+            self._reading_paused = False
         self._buffer_paused = False
 
         super().connection_lost(reraised_exc)
@@ -203,10 +232,36 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def resume_reading(self, resume_parser: bool = True) -> None:
         was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        # sock_read measures the peer, so it stays stopped while the tail
-        # bound is still holding the transport.
-        if was_paused and not self._buffer_paused:
+        if resume_parser and self._deferred_eof:
+            self._finish_deferred_eof()
+        # sock_read measures the peer, so it stays stopped while a local pause
+        # still holds the transport.
+        if (
+            was_paused
+            and not self._reading_paused
+            and not self._buffer_paused
+            and not self._connection_lost_called
+        ):
             self._reschedule_timeout()
+
+    def _finish_deferred_eof(self) -> None:
+        assert self._parser is not None
+        assert isinstance(self._payload, StreamReader)
+        payload = self._payload
+        if not payload.is_eof() and payload.exception() is None:
+            try:
+                self._parser.feed_eof()
+            except Exception as exc:
+                set_exception(
+                    payload,
+                    ClientPayloadError(f"Response payload is not completed: {exc !r}"),
+                    exc,
+                )
+        if payload.is_eof() or payload.exception() is not None:
+            self._deferred_eof = False
+            self._parser = None
+            self._payload = None
+            self._reading_paused = False
 
     def _drain_tail(self) -> None:
         if self._tail:
@@ -259,6 +314,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
+        self._offload_decompression = auto_decompress
 
         self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
@@ -274,6 +330,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             response_with_body=not skip_payload,
             read_until_eof=read_until_eof,
             auto_decompress=auto_decompress,
+            offload_decompression=auto_decompress,
             max_line_size=max_line_size,
             max_field_size=max_field_size,
             max_headers=max_headers,
@@ -365,6 +422,14 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
                 # data_received(), the transport is already
                 # closed in this case
                 self.transport.close()
+            if (
+                isinstance(underlying_exc, asyncio.CancelledError)
+                and self._deferred_eof
+            ):
+                self._fail_deferred_payload(underlying_exc)
+                return
+            if self._deferred_eof:
+                self._fail_deferred_payload(underlying_exc)
             if not isinstance(underlying_exc, Exception):
                 raise
             # should_close is True after the call
@@ -405,3 +470,18 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         if upgraded and tail:
             self.data_received(tail)
+
+    def _fail_deferred_payload(self, exc: BaseException) -> None:
+        payload = self._payload
+        if isinstance(payload, StreamReader) and payload.exception() is None:
+            message = (
+                str(exc)
+                if isinstance(exc, ClientPayloadError)
+                else f"Response payload is not completed: {exc!r}"
+            )
+            set_exception(payload, ClientPayloadError(message), exc)
+
+        self._deferred_eof = False
+        self._parser = None
+        self._payload = None
+        self._reading_paused = False

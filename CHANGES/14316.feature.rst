@@ -1,0 +1,2 @@
+Offloaded client response decompression to the event loop's default executor to
+keep decompression work from blocking the event loop -- by :user:`PLPeeters`.

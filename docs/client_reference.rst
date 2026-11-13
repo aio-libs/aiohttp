@@ -170,9 +170,15 @@ The client session supports the context manager protocol for self closing.
 
          The default value for the ``sock_connect`` timeout has been changed to 30 seconds.
 
-   :param bool auto_decompress: Automatically decompress response body (``True`` by default).
+   :param bool auto_decompress: Automatically decompress response body in the
+      event loop's default thread pool (``True`` by default).
 
       .. versionadded:: 2.3
+
+      .. versionchanged:: 4.0
+
+         Automatic response decompression now runs in the event loop's default
+         thread pool.
 
    :param ssl: Default SSL validation mode for requests made through this
       session. ``True`` for default SSL check
