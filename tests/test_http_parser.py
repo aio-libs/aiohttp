@@ -19,6 +19,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
+from aiohttp.client_exceptions import ClientPayloadError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -3004,6 +3005,26 @@ async def test_final_trailer_error_reaches_active_payload(
         parser.feed_data(b"0\r\n" + trailers + b"\r\n")
 
     assert isinstance(payload.exception(), http_exceptions.BadHttpMessage)
+
+
+async def test_parse_error_wrapped_for_active_payload(
+    event_loop: asyncio.AbstractEventLoop,
+    response_cls: type[HttpResponseParser],
+) -> None:
+    parser = response_cls(
+        ResponseHandler(event_loop),
+        event_loop,
+        2**16,
+        payload_exception=ClientPayloadError,
+    )
+    text = b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n1\r\na\r\n"
+    messages, upgraded, _ = parser.feed_data(text)
+    payload = messages[0][1]
+
+    with pytest.raises(http_exceptions.BadHttpMessage):
+        parser.feed_data(b"zz\r\n")
+
+    assert isinstance(payload.exception(), ClientPayloadError)
 
 
 def test_parse_no_length_or_te_on_post(
