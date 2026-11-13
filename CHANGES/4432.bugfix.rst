@@ -1,0 +1,2 @@
+Fixed uploads from named and text-mode spooled temporary files without forcing in-memory spools onto disk
+-- by :user:`DeviousCardi`.
