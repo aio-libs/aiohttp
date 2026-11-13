@@ -1,0 +1,1 @@
+Automatic and custom ``raise_for_status`` handling now preserves redirect history on the response and resulting ClientResponseError -- by :user:`PLPeeters`.

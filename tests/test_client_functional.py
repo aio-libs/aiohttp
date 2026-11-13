@@ -3654,6 +3654,58 @@ async def test_raise_for_status(aiohttp_client: AiohttpClient) -> None:
         await client.get("/")
 
 
+async def test_raise_for_status_preserves_redirect_history(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "/error"})
+
+    async def error(request: web.Request) -> web.Response:
+        raise web.HTTPBadRequest()
+
+    app = web.Application()
+    app.router.add_get("/", redirect)
+    app.router.add_get("/step", redirect_again)
+    app.router.add_get("/error", error)
+    client = await aiohttp_client(app, raise_for_status=True)
+
+    with pytest.raises(aiohttp.ClientResponseError) as ctx:
+        await client.get("/")
+
+    assert [response.status for response in ctx.value.history] == [301, 302]
+
+
+async def test_custom_raise_for_status_preserves_redirect_history(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "/error"})
+
+    async def error(request: web.Request) -> web.Response:
+        return web.Response(status=400)
+
+    async def raise_for_status(response: aiohttp.ClientResponse) -> None:
+        assert [item.status for item in response.history] == [301, 302]
+        response.raise_for_status()
+
+    app = web.Application()
+    app.router.add_get("/", redirect)
+    app.router.add_get("/step", redirect_again)
+    app.router.add_get("/error", error)
+    client = await aiohttp_client(app, raise_for_status=raise_for_status)
+
+    with pytest.raises(aiohttp.ClientResponseError) as ctx:
+        await client.get("/")
+
+    assert [response.status for response in ctx.value.history] == [301, 302]
+
+
 async def test_raise_for_status_per_request(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         raise web.HTTPBadRequest()

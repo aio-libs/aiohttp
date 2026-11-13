@@ -930,6 +930,7 @@ class ClientSession:
 
             if req._body is not None:
                 await req._body.close()
+            resp._history = tuple(history)
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
@@ -945,8 +946,6 @@ class ClientSession:
                     resp.connection.add_callback(handle.cancel)
                 else:
                     handle.cancel()
-
-            resp._history = tuple(history)
 
             for trace in traces:
                 await trace.send_request_end(
