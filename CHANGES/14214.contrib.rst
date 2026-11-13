@@ -1,0 +1,2 @@
+Fixed tests that computed comparisons without asserting them, so they could never fail
+-- by :user:`guirguispierre`.
