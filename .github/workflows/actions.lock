@@ -7,6 +7,10 @@ workflows:
         - 'matteogabriele/agentscan-action@v2.5.0'
     '.github/workflows/auto-merge.yml':
         - 'dependabot/fetch-metadata@v3.1.0'
+    '.github/workflows/cifuzz.yml':
+        - 'actions/github-script@v9.0.0'
+        - 'actions/upload-artifact@v4.6.2'
+        - 'google/oss-fuzz@master'
     '.github/workflows/codeql.yml':
         - 'actions/checkout@v7.0.1'
         - 'github/codeql-action@v4.39.3'
@@ -55,6 +59,11 @@ dependencies:
         commit: 'sha1-4391f3da665fdf50b6810c1a66712fb9ba21aa93'
         owner_id: 44036562
         repo_id: 200437066
+    'actions/upload-artifact@v4.6.2':
+        ref: 'v4.6.2'
+        commit: 'sha1-ea165f8d65b6e75b540449e92b4886f43607fa02'
+        owner_id: 44036562
+        repo_id: 192625955
     'actions/upload-artifact@v7.0.2':
         ref: 'v7.0.2'
         commit: 'sha1-cf430e030ddbb5b0abf93d22962f4752f3646cd9'
@@ -75,6 +84,11 @@ dependencies:
         commit: 'sha1-33d7b85da1a04171e211befe2c739303b9a4c066'
         owner_id: 9919
         repo_id: 259445878
+    'google/oss-fuzz@master':
+        ref: 'master'
+        commit: 'sha1-9c0f1229b74e908026991c9f7d9efbb1db75f5c3'
+        owner_id: 1342004
+        repo_id: 63809205
     'matteogabriele/agentscan-action@v2.5.0':
         ref: 'v2.5.0'
         commit: 'sha1-8112fb79b33fafb8506159df20129a34209ac410'
