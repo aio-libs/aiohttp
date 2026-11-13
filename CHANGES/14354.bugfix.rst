@@ -1,0 +1,4 @@
+Fixed :class:`~aiohttp.MultipartWriter` ``as_bytes()`` ignoring per-part content
+and transfer encodings; it now serializes through the same code path as
+``write()``, so the result is byte-identical to the wire format
+-- by :user:`Dreamsorcerer`.
