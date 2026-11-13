@@ -71,6 +71,7 @@ from aiohttp.payload import (
     StringIOPayload,
     StringPayload,
 )
+from aiohttp.resolver import ThreadedResolver
 from aiohttp.test_utils import TestClient, TestServer
 from aiohttp.typedefs import Handler
 
@@ -3706,6 +3707,72 @@ async def test_custom_raise_for_status_preserves_redirect_history(
     assert [response.status for response in ctx.value.history] == [301, 302]
 
 
+async def test_connection_error_preserves_redirect_history(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    class FailingResolver(ThreadedResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            raise OSError("DNS failure")
+
+    async def redirect(request: web.Request) -> web.Response:
+        return web.Response(status=301, headers={"Location": "/step"})
+
+    async def redirect_again(request: web.Request) -> web.Response:
+        return web.Response(status=302, headers={"Location": "http://failure.invalid/"})
+
+    app = web.Application()
+    app.router.add_get("/", redirect)
+    app.router.add_get("/step", redirect_again)
+    resolver = FailingResolver()
+    connector = aiohttp.TCPConnector(resolver=resolver)
+    client = await aiohttp_client(app, connector=connector)
+
+    with pytest.raises(aiohttp.ClientConnectorError) as ctx:
+        await client.get("/")
+
+    assert [response.status for response in ctx.value.history] == [301, 302]
+    await resolver.close()
+
+
+async def test_client_error_without_redirects_has_empty_history() -> None:
+    class FailingResolver(ThreadedResolver):
+        async def resolve(
+            self,
+            host: str,
+            port: int = 0,
+            family: socket.AddressFamily = socket.AF_INET,
+        ) -> list[ResolveResult]:
+            raise OSError("DNS failure")
+
+    resolver = FailingResolver()
+    connector = aiohttp.TCPConnector(resolver=resolver)
+    async with aiohttp.ClientSession(connector=connector) as client:
+        with pytest.raises(aiohttp.ClientConnectorError) as ctx:
+            await client.get("http://failure.invalid/")
+
+    assert ctx.value.history == ()
+    await resolver.close()
+
+
+async def test_client_error_from_json_serializer_has_empty_history() -> None:
+    error = aiohttp.ClientError("serializer failed")
+
+    def serialize(value: object) -> str:
+        raise error
+
+    async with aiohttp.ClientSession(json_serialize=serialize) as client:
+        with pytest.raises(aiohttp.ClientError) as ctx:
+            await client.post("http://127.0.0.1/", json={})
+
+    assert ctx.value is error
+    assert ctx.value.history == ()
+
+
 async def test_raise_for_status_per_request(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         raise web.HTTPBadRequest()
@@ -5388,7 +5455,7 @@ async def test_client_side_network_error_connection_closed(
     client = await aiohttp_client(app)
 
     # POST request that will fail due to client-side network error
-    with pytest.raises(aiohttp.ClientPayloadError):
+    with pytest.raises(aiohttp.ClientPayloadError) as exc_info:
         resp = await client.post("/", data=b"request body")
         async with resp:
             # Simulate client-side network error by closing the transport
@@ -5400,6 +5467,9 @@ async def test_client_side_network_error_connection_closed(
 
             # This should fail with connection error
             await resp.read()
+
+    assert exc_info.value.request_info == resp.request_info
+    assert exc_info.value.history == ()
 
     # Signal handler to finish
     handler_done.set()

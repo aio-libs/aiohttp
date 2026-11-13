@@ -2816,6 +2816,17 @@ All exceptions are available as members of *aiohttp* module.
 
    Derived from :exc:`Exception`
 
+   .. attribute:: request_info
+
+      An instance of :class:`RequestInfo` for the request that raised the
+      exception, or ``None`` when request context is unavailable.
+
+   .. attribute:: history
+
+      A tuple of :class:`ClientResponse` objects received before the
+      exception, such as redirect responses. Empty when no redirects
+      occurred.
+
 
 .. class:: ClientPayloadError
    :canonical: aiohttp.client_exceptions.ClientPayloadError

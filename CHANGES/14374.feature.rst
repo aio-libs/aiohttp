@@ -1,0 +1,3 @@
+All :exc:`aiohttp.ClientError` exceptions now expose the failing request's
+request information and redirect history when available, including connection
+failures and errors raised while reading response bodies -- by :user:`PLPeeters`.
