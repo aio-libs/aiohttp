@@ -1207,6 +1207,34 @@ async def test_bad_request_payload(aiohttp_client: AiohttpClient) -> None:
     resp.release()
 
 
+async def test_payload_access_after_response_raises_new_exception(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A shared exception would accumulate tracebacks and keep their frames alive."""
+    requests: list[web.Request] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        requests.append(request)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_post("/", handler)
+    client = await aiohttp_client(app)
+
+    errors = []
+    for _ in range(2):
+        async with client.post("/", data=b"test") as resp:
+            assert resp.status == 200
+        request = requests.pop()
+        while request.content.exception() is None:
+            await asyncio.sleep(0)  # pragma: no cover
+        with pytest.raises(web.PayloadAccessError) as exc_info:
+            await request.content.read()
+        errors.append(exc_info.value)
+
+    assert errors[0] is not errors[1]
+
+
 async def test_stream_response_multiple_chunks(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.StreamResponse:
         resp = web.StreamResponse()
