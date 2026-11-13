@@ -1269,9 +1269,12 @@ class DeflateBuffer:
         # zip bomb vulnerability as it will decompress all remaining data at once.
         assert not chunk
 
-        if self.size > 0:
-            if self.encoding == "deflate" and not self.decompressor.eof:
-                raise ContentEncodingError("deflate")
+        if self.size > 0 and not self.decompressor.stream_complete:
+            # The stream must end exactly on a stream/member boundary,
+            # or bytes were lost in transit.
+            raise ContentEncodingError(
+                "Truncated stream for content-encoding: %s" % self.encoding
+            )
 
         self.out.feed_eof()
 
