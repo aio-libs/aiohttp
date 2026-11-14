@@ -251,7 +251,7 @@ Multipart reference
 
          Support ``close_boundary`` argument.
 
-   .. method:: as_bytes(encoding='utf-8', errors='strict')
+   .. method:: as_bytes(encoding=None, errors=None)
       :async:
 
       Return the multipart body as :class:`bytes`.
@@ -259,6 +259,10 @@ Multipart reference
       Part bodies are encoded according to their own ``Content-Encoding``
       and ``Content-Transfer-Encoding`` headers, so the result is
       byte-identical to the body that :meth:`write` sends on the wire.
+
+      The *encoding* and *errors* arguments are deprecated and ignored;
+      they exist only for compatibility with the :class:`~aiohttp.Payload`
+      interface.
 
       Payloads that can be replayed (seekable files, cached async
       iterables) are left reusable, so the request body can still be
@@ -268,6 +272,10 @@ Multipart reference
                          (e.g. a part wrapping a :class:`BodyPartReader`).
 
       .. versionadded:: 3.12.1
+
+      .. deprecated:: 3.15
+
+         The *encoding* and *errors* parameters; they have no effect.
 
       .. versionchanged:: 3.15
 

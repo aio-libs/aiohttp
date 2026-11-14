@@ -1189,8 +1189,25 @@ class MultipartWriter(Payload):
             for part, _e, _te in self._parts
         )
 
-    async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
-        """Return bytes representation of the multipart data."""
+    async def as_bytes(
+        self, encoding: str | None = None, errors: str | None = None
+    ) -> bytes:
+        """Return the multipart data exactly as write() would serialize it.
+
+        ``encoding`` and ``errors`` are ignored and deprecated: the result
+        is the raw serialized body, where each part is encoded according
+        to its own headers.
+
+        .. deprecated:: 3.15
+            The ``encoding`` and ``errors`` parameters have no effect.
+        """
+        if encoding is not None or errors is not None:
+            warnings.warn(
+                "The encoding and errors parameters are ignored by "
+                "MultipartWriter.as_bytes() and are deprecated",
+                DeprecationWarning,
+                stacklevel=2,
+            )
         buffer = bytearray()
         await self._write(None, True, buffer)
         return bytes(buffer)
@@ -1213,11 +1230,7 @@ class MultipartWriter(Payload):
             assert writer is not None
             emit = writer.write
         else:
-
-            async def _buffer_emit(chunk: bytes) -> None:
-                buffer.extend(chunk)
-
-            emit = _buffer_emit
+            emit = MultipartPayloadWriter(None, buffer)._write_chunk
 
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:

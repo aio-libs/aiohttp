@@ -1896,6 +1896,16 @@ async def test_writer_decode_deprecated(writer: aiohttp.MultipartWriter) -> None
         assert "foo bar" in writer.decode()
 
 
+async def test_writer_as_bytes_encoding_params_deprecated(
+    writer: aiohttp.MultipartWriter,
+) -> None:
+    writer.append("foo bar")
+
+    with pytest.warns(DeprecationWarning, match="encoding and errors"):
+        with_params = await writer.as_bytes("utf-8")
+    assert with_params == await writer.as_bytes()
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 @pytest.mark.parametrize("encoding", ("gzip", "deflate"))
 async def test_writer_as_bytes_applies_content_encoding(
