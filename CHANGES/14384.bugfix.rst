@@ -1,0 +1,1 @@
+Improved performance when reading response bodies in small chunks by avoiding redundant parser and transport resumes -- by :user:`PLPeeters`.

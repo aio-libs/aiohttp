@@ -1827,9 +1827,11 @@ async def test_compressed_chunked_with_pending(response: HttpResponseParser) -> 
 
     msgs, upgrade, tail = response.feed_data(data)
     payload = msgs[0][-1]
+    assert payload._protocol._reading_paused
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+    assert payload.at_eof()
 
 
 async def test_compressed_chunked_split_chunk_size_line(
