@@ -217,6 +217,16 @@ class DecompressionBaseHandler(ABC):
     def data_available(self) -> bool:
         """Return True if more output is available by passing b""."""
 
+    @property
+    @abstractmethod
+    def stream_complete(self) -> bool:
+        """Return True if all input so far forms a complete stream.
+
+        False means the stream was truncated mid-member/mid-frame: some
+        codings (e.g. gzip missing its trailer) still decode the full
+        payload, so callers must consult this at EOF to detect the loss.
+        """
+
 
 class ConcatDecompressionHandler(DecompressionBaseHandler, Generic[_DecompressObjT]):
     """Handler for a codec whose streams may concatenate independent members.
@@ -385,9 +395,18 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
         if self._pending_unused_data is not None:
             data = self._pending_unused_data + bytes(data)
             self._pending_unused_data = None
-        result = self._decompressor.decompress(
-            self._decompressor.unconsumed_tail + data, max_length
-        )
+        combined = self._decompressor.unconsumed_tail + data
+        # Previous member ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
+        # confirm the stream is complete.
+        if (
+            combined
+            and self._decompressor.eof
+            and self._mode > self._zlib_backend.MAX_WBITS
+        ):
+            self._decompressor = self._new_decompressor()
+        result = self._decompressor.decompress(combined, max_length)
 
         # Concatenated gzip/deflate stream: decode the members after this one.
         if self._decompressor.eof and self._decompressor.unused_data:
@@ -395,13 +414,6 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
 
         # Only way to know that isal has no further data is checking we get no output
         self._last_empty = result == b""
-
-        # Member ended exactly at chunk boundary — no unused_data, but the
-        # next feed_data() call would fail on the spent decompressor.
-        # Only reset for gzip; deflate's feed_eof() relies on eof=True to
-        # confirm the stream is complete.
-        if self._decompressor.eof and self._mode > self._zlib_backend.MAX_WBITS:
-            self._decompressor = self._new_decompressor()
 
         return result
 
@@ -421,8 +433,13 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
         )
 
     @property
-    def eof(self) -> bool:
-        return self._decompressor.eof
+    def stream_complete(self) -> bool:
+        """True when all input so far ends exactly at a stream/member boundary."""
+        return (
+            self._pending_unused_data is None
+            and not self._decompressor.unconsumed_tail
+            and self._decompressor.eof
+        )
 
 
 class BrotliDecompressor(DecompressionBaseHandler):
@@ -472,6 +489,11 @@ class BrotliDecompressor(DecompressionBaseHandler):
     def data_available(self) -> bool:
         return not self._obj.is_finished() and not self._last_empty
 
+    @property
+    def stream_complete(self) -> bool:
+        """True when the stream reached its end-of-stream marker."""
+        return bool(self._obj.is_finished())
+
 
 class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
     _unlimited = ZSTD_MAX_LENGTH_UNLIMITED
@@ -505,17 +527,17 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
         if self._pending_unused_data is not None:
             data = self._pending_unused_data + data
             self._pending_unused_data = None
+        # Previous frame ended exactly at chunk boundary — no unused_data, but the
+        # next feed_data() call would fail on the spent decompressor.
+        if self._decompressor.eof:
+            if not data:
+                return b""
+            self._decompressor = self._new_decompressor()
         result = self._decompressor.decompress(data, zstd_max_length)
 
         # Concatenated zstd stream: decode the frames after this one.
         if self._decompressor.eof and self._decompressor.unused_data:
             result = self._decompress_members(result, zstd_max_length)
-
-        # Frame ended exactly at chunk boundary — no unused_data, but the
-        # next feed_data() call would fail on the spent decompressor.
-        # Prepare a fresh one for the next chunk.
-        if self._decompressor.eof:
-            self._decompressor = self._new_decompressor()
 
         return result
 
@@ -527,3 +549,13 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
         return (
             not self._decompressor.needs_input and not self._decompressor.eof
         ) or self._pending_unused_data is not None
+
+    @property
+    def stream_complete(self) -> bool:
+        """True when all input so far ends exactly at a frame boundary.
+
+        The decompressor spent by the last frame survives until new data
+        arrives, so eof=True here means the stream ended cleanly, while a
+        stream truncated mid-frame leaves eof=False.
+        """
+        return self._pending_unused_data is None and self._decompressor.eof

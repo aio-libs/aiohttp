@@ -20,7 +20,7 @@ atheris==3.0.0
     # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
-backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
+backports-zstd==1.8.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via -r requirements/lint.in
 blockbuster==1.5.29
     # via -r requirements/lint.in
@@ -34,7 +34,7 @@ cryptography==50.0.2
     # via trustme
 distlib==0.4.4
     # via virtualenv
-filelock==4.2.9
+filelock==4.2.10
     # via
     #   python-discovery
     #   virtualenv
@@ -119,7 +119,7 @@ pytest-mock==3.17.0
     # via -r requirements/lint.in
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.4
+python-discovery==1.9.5
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
@@ -149,7 +149,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.5
+virtualenv==21.15.6
     # via pre-commit
 yarl==1.25.1
     # via aiohttp

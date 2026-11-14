@@ -35,9 +35,11 @@ async def fuzz_run_one_async(data: bytes) -> None:  # type: ignore[misc]
     except ValueError:
         return
 
-    headers = CIMultiDict(
-        {fdp.ConsumeString(20): fdp.ConsumeString(fdp.ConsumeIntInRange(0, 512))}
-    )
+    # Decode like the parsers do, so that non-UTF-8 header bytes are covered.
+    name = fdp.ConsumeBytes(20).decode("utf-8", "surrogateescape")
+    value_len = fdp.ConsumeIntInRange(0, 512)
+    value = fdp.ConsumeBytes(value_len).decode("utf-8", "surrogateescape")
+    headers = CIMultiDict({name: value})
     req = make_mocked_request("GET", url_s, headers=headers)
 
     req.forwarded

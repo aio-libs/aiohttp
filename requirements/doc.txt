@@ -14,7 +14,7 @@ certifi==2026.10.23
     # via requests
 charset-normalizer==3.5.2
     # via requests
-click==8.5.0
+click==8.5.1
     # via towncrier
 docutils==0.21.2
     # via
