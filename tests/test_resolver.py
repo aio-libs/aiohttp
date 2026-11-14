@@ -166,27 +166,35 @@ def fake_ipv6_nameinfo(host: str) -> Callable[..., Awaitable[tuple[str, int]]]:
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_async_resolver_positive_ipv4_lookup() -> None:
+@pytest.mark.parametrize("socket_flags", [32, 1024])
+async def test_async_resolver_positive_ipv4_lookup(
+    monkeypatch: pytest.MonkeyPatch, socket_flags: int
+) -> None:
+    monkeypatch.setattr("aiohttp.resolver._AI_ADDRCONFIG", socket_flags)
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv4_result(
             ["127.0.0.1"]
         )
         resolver = AsyncResolver()
         real = await resolver.resolve("www.python.org")
+        await resolver.close()
         ipaddress.ip_address(real[0]["host"])
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=64,
             port=0,
             type=socket.SOCK_STREAM,
         )
-        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
+@pytest.mark.parametrize("socket_flags", [3, 10])
+async def test_async_resolver_positive_link_local_ipv6_lookup(
+    monkeypatch: pytest.MonkeyPatch, socket_flags: int
+) -> None:
+    monkeypatch.setattr("aiohttp.resolver._NAME_SOCKET_FLAGS", socket_flags)
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
             ["fe80::1"]
@@ -196,16 +204,20 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
         )
         resolver = AsyncResolver()
         real = await resolver.resolve("www.python.org")
+        await resolver.close()
         ipaddress.ip_address(real[0]["host"])
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=64,
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
-        await resolver.close()
+        mock().getnameinfo.assert_called_with(
+            ("fe80::1", 0, 0, 3),
+            10,
+        )
+        assert real[0]["flags"] == socket.AI_NUMERICHOST | socket.AI_NUMERICSERV
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -255,7 +267,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
                 call(
                     "localhost",
                     family=socket.AF_UNSPEC,
-                    flags=socket.AI_ADDRCONFIG,
+                    flags=64,
                     port=0,
                     type=socket.SOCK_STREAM,
                 ),
@@ -463,15 +475,15 @@ async def test_async_resolver_ipv6_positive_lookup() -> None:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(["::1"])
         resolver = AsyncResolver()
         real = await resolver.resolve("www.python.org")
+        await resolver.close()
         ipaddress.ip_address(real[0]["host"])
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=64,
             port=0,
             type=socket.SOCK_STREAM,
         )
-        await resolver.close()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
@@ -759,3 +771,24 @@ async def test_async_resolver_close_with_none_resolver() -> None:
 
         # This should not raise AttributeError
         await resolver.close()
+
+
+@pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
+@pytest.mark.usefixtures("check_no_lingering_resolvers")
+async def test_async_resolver_real_numeric_lookup() -> None:
+    resolver = AsyncResolver()
+    try:
+        result = await resolver.resolve("127.0.0.1", port=8080)
+    finally:
+        await resolver.close()
+
+    assert result == [
+        {
+            "hostname": "127.0.0.1",
+            "host": "127.0.0.1",
+            "port": 8080,
+            "family": socket.AF_INET,
+            "proto": 0,
+            "flags": socket.AI_NUMERICHOST | socket.AI_NUMERICSERV,
+        }
+    ]
