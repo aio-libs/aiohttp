@@ -1,0 +1,2 @@
+Close leaked connections when a connection trace callback fails
+-- by :user:`BlueX888`.
