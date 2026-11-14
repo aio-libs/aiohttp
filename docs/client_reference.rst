@@ -197,6 +197,10 @@ The client session supports the context manager protocol for self closing.
       If :envvar:`NETRC` environment variable is set, read from file specified
       there rather than from :file:`~/.netrc`.
 
+      The session reads the netrc file once, on the first request that needs
+      it, and reuses the parsed result for later requests. Changes to the file
+      or to :envvar:`NETRC` after that take effect in a new session.
+
       .. seealso::
 
          ``.netrc`` documentation: https://www.gnu.org/software/inetutils/manual/html_node/The-_002enetrc-file.html
@@ -210,6 +214,10 @@ The client session supports the context manager protocol for self closing.
       .. versionchanged:: 3.9
 
          Added support for reading HTTP Basic Auth credentials from :file:`~/.netrc` file.
+
+      .. versionchanged:: 3.15
+
+         The netrc file is read once per session instead of on every request.
 
    :param bool requote_redirect_url: Apply *URL requoting* for redirection URLs if
                                      automatic redirection is enabled (``True`` by

@@ -1,0 +1,5 @@
+Fixed :py:class:`~aiohttp.ClientSession` with ``trust_env=True`` reading
+and parsing the netrc file in a worker thread on every request, which
+delayed each request by tens of milliseconds under high concurrency.
+The session now reads the file once, on the first request that needs it,
+and reuses the result -- by :user:`oscar030406`.

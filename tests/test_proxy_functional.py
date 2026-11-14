@@ -1,4 +1,5 @@
 import asyncio
+import netrc
 import os
 import pathlib
 import platform
@@ -785,6 +786,31 @@ async def test_proxy_from_env_http_with_auth_from_netrc(
     assert proxy.request.host == "aiohttp.io"
     assert proxy.request.path_qs == "/path"
     assert proxy.request.headers["Proxy-Authorization"] == expected_header
+
+
+async def test_proxy_from_env_netrc_read_once_per_session(
+    proxy_test_server: Callable[[], Awaitable[mock.Mock]],
+    tmp_path: pathlib.Path,
+    mocker: MockerFixture,
+) -> None:
+    proxy = await proxy_test_server()
+    expected_header = aiohttp.encode_basic_auth("user", "pass")
+    netrc_file = tmp_path / "test_netrc"
+    netrc_file.write_text("machine 127.0.0.1 login user password pass")
+    mocker.patch.dict(
+        os.environ, {"http_proxy": str(proxy.url), "NETRC": str(netrc_file)}
+    )
+    parse = mocker.spy(netrc, "netrc")
+
+    async with aiohttp.ClientSession(trust_env=True) as session:
+        for _ in range(3):
+            async with session.get("http://aiohttp.io/path"):
+                pass
+
+    assert len(proxy.requests_list) == 3
+    for request in proxy.requests_list:
+        assert request.headers["Proxy-Authorization"] == expected_header
+    assert parse.call_count == 1
 
 
 async def test_proxy_from_env_http_without_auth_from_netrc(

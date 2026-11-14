@@ -5,6 +5,7 @@ import base64
 import dataclasses
 import hashlib
 import json
+import netrc
 import os
 import sys
 import traceback
@@ -324,6 +325,7 @@ class ClientSession:
         "_raise_for_status",
         "_auto_decompress",
         "_trust_env",
+        "_netrc",
         "_default_headers",
         "_skip_auto_headers",
         "_request_class",
@@ -440,6 +442,7 @@ class ClientSession:
         self._raise_for_status = raise_for_status
         self._auto_decompress = auto_decompress
         self._trust_env = trust_env
+        self._netrc: asyncio.Future[netrc.netrc | None] | None = None
         self._requote_redirect_url = requote_redirect_url
         self._read_bufsize = read_bufsize
         self._max_line_size = max_line_size
@@ -700,11 +703,11 @@ class ClientSession:
                         and hdrs.AUTHORIZATION not in headers
                     ):
                         # Fall back to ~/.netrc credentials when trust_env is set.
-                        netrc_auth = await self._loop.run_in_executor(
-                            None, self._get_netrc_auth, url.host
-                        )
-                        if netrc_auth is not None:
-                            headers[hdrs.AUTHORIZATION] = netrc_auth
+                        netrc_obj = await self._load_netrc()
+                        with suppress(LookupError):
+                            headers[hdrs.AUTHORIZATION] = _auth_header_from_netrc(
+                                netrc_obj, url.host
+                            )
 
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
@@ -726,9 +729,10 @@ class ClientSession:
                         # Re-resolve per iteration; drop stale env-proxy auth so
                         # a redirect that switches proxies can't leak credentials.
                         resolved_proxy_headers = None
+                        netrc_obj = await self._load_netrc()
                         with suppress(LookupError):
-                            proxy_, env_proxy_auth = await asyncio.to_thread(
-                                get_env_proxy_for_url, url
+                            proxy_, env_proxy_auth = get_env_proxy_for_url(
+                                url, netrc_obj
                             )
                             if env_proxy_auth is not None:
                                 resolved_proxy_headers = CIMultiDict(
@@ -1315,17 +1319,16 @@ class ClientSession:
                     added_names.add(key)
         return result
 
-    def _get_netrc_auth(self, host: str) -> str | None:
-        """Return an ``Authorization`` header value for ``host`` from netrc.
+    async def _load_netrc(self) -> netrc.netrc | None:
+        """Return the session's netrc, reading the file on first use only.
 
-        Designed to be called in an executor to avoid blocking I/O on the
-        event loop.
+        The file is read in an executor to avoid blocking I/O on the event
+        loop. Concurrent first requests share one read.
         """
-        netrc_obj = netrc_from_env()
-        try:
-            return _auth_header_from_netrc(netrc_obj, host)
-        except LookupError:
-            return None
+        if self._netrc is None:
+            self._netrc = self._loop.run_in_executor(None, netrc_from_env)
+        # Shield the shared read from cancellation of the awaiting request.
+        return await asyncio.shield(self._netrc)
 
     if TYPE_CHECKING:
 
