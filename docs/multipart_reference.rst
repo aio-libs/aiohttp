@@ -273,4 +273,4 @@ Multipart reference
 
          Part ``Content-Encoding``/``Content-Transfer-Encoding`` are now
          applied; previously the parts' raw bodies were returned, which
-         did not match the wire format.
+         did not match what :meth:`write` sent.

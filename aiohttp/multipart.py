@@ -1154,7 +1154,7 @@ class MultipartWriter(Payload):
         """
         warnings.warn(
             "MultipartWriter.decode() is deprecated and will be removed "
-            "in a future release, use (await as_bytes()).decode() instead",
+            "in a future release, use (await writer.as_bytes()).decode() instead",
             DeprecationWarning,
             stacklevel=2,
         )
@@ -1383,10 +1383,10 @@ class MultipartPayloadWriter:
 
             # b2a_qp output depends on seeing a complete line, so encode up
             # to the last newline and keep the partial line buffered until
-            # more data or write_eof() completes it.  To bound that buffer,
+            # more data or write_eof() completes it. To bound that buffer,
             # also flush every complete _QP_BLOCK_SIZE block of the partial
             # line (with the soft break _encode_quoted_printable_line() puts
-            # after non-final blocks).  Flushed data always ends on a line or
+            # after non-final blocks). Flushed data always ends on a line or
             # block boundary, so the wire bytes stay a pure function of the
             # payload bytes regardless of chunking.
             parts: list[bytes] = []

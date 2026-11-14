@@ -1889,10 +1889,7 @@ async def test_as_bytes_form_data_matches_write(
     assert await writer.as_bytes() == bytes(buf)
 
 
-async def test_writer_decode_deprecated(
-    writer: aiohttp.MultipartWriter,
-) -> None:
-    """decode() still works but warns."""
+async def test_writer_decode_deprecated(writer: aiohttp.MultipartWriter) -> None:
     writer.append("foo bar")
 
     with pytest.warns(DeprecationWarning, match="as_bytes"):
