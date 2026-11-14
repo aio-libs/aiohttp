@@ -32,7 +32,7 @@ from aiohttp.multipart import (
     MultipartPayloadWriter,
     MultipartReader,
     MultipartResponseWrapper,
-    _encode_quoted_printable,
+    _encode_quoted_printable_line,
 )
 from aiohttp.streams import StreamReader
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
@@ -2066,7 +2066,7 @@ async def test_multipart_payload_writer_qp_partial_line_buffer_is_bounded(
         assert len(buf) > written_before
     await payload_writer.write_eof()
 
-    assert bytes(buf) == _encode_quoted_printable(body)
+    assert bytes(buf) == _encode_quoted_printable_line(body)
     assert binascii.a2b_qp(bytes(buf)) == body
 
 

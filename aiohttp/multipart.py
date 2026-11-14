@@ -96,28 +96,6 @@ def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
     return b"".join(parts)
 
 
-def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
-    r"""Encode data as quoted-printable, one line at a time.
-
-    binascii.b2a_qp derives the line-ending convention, soft line-break
-    positions, and trailing-whitespace quoting from the whole buffer it
-    is given, so encoding a body in one call produces different bytes
-    than encoding it chunk by chunk. Encoding each ``\n``-terminated
-    line separately (in _QP_BLOCK_SIZE blocks) makes the result a pure
-    function of the payload bytes, so the streamed wire bytes
-    (MultipartPayloadWriter) and as_bytes() stay identical no matter how
-    the payload was chunked.
-    """
-    parts: list[bytes] = []
-    start = 0
-    while (end := data.find(b"\n", start)) != -1:
-        parts.append(_encode_quoted_printable_line(data[start : end + 1]))
-        start = end + 1
-    if start < len(data):
-        parts.append(_encode_quoted_printable_line(data[start:]))
-    return b"".join(parts)
-
-
 class BadContentDispositionHeader(RuntimeWarning):
     pass
 
@@ -1349,7 +1327,9 @@ class MultipartPayloadWriter:
                 await self._write_chunk(base64.b64encode(self._encoding_buffer))
         elif self._encoding == "quoted-printable":
             if self._encoding_buffer:
-                await self._write_chunk(_encode_quoted_printable(self._encoding_buffer))
+                await self._write_chunk(
+                    _encode_quoted_printable_line(self._encoding_buffer)
+                )
 
     async def write(self, chunk: bytes) -> None:
         if self._compress is not None:
