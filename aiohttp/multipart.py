@@ -7,7 +7,14 @@ import sys
 import uuid
 import warnings
 from collections import deque
-from collections.abc import AsyncIterator, Iterator, Mapping, Sequence
+from collections.abc import (
+    AsyncIterator,
+    Awaitable,
+    Callable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Self, cast
 from urllib.parse import parse_qsl, unquote, urlencode
@@ -1179,13 +1186,16 @@ class MultipartWriter(Payload):
         buffer: bytearray | None = None,
     ) -> None:
         """Serialize all parts into ``writer``, or into ``buffer`` if given."""
+        emit: Callable[[bytes], Awaitable[None]]
+        if buffer is None:
+            assert writer is not None
+            emit = writer.write
+        else:
 
-        async def emit(chunk: bytes) -> None:
-            if buffer is not None:
+            async def _buffer_emit(chunk: bytes) -> None:
                 buffer.extend(chunk)
-            else:
-                assert writer is not None
-                await writer.write(chunk)
+
+            emit = _buffer_emit
 
         for part, encoding, te_encoding in self._parts:
             if self._is_form_data:
