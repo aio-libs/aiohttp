@@ -1,0 +1,2 @@
+Fixed :class:`aiohttp.web.FileResponse` returning HTTP 416 for valid, satisfiable
+requests for multiple byte ranges by serving the entire file instead -- by :user:`emadleo13`.

@@ -160,6 +160,52 @@ class FileResponse(StreamResponse):
             etag.value == etag_value for etag in etags if weak or not etag.is_weak
         )
 
+    @staticmethod
+    def _is_satisfiable_multi_range(range_header: str, file_size: int) -> bool:
+        unit, separator, ranges = range_header.partition("=")
+        if separator != "=" or unit.lower() != "bytes" or "," not in ranges:
+            return False
+
+        def is_ascii_digits(value: str) -> bool:
+            return value.isascii() and value.isdecimal()
+
+        def less_than(left: str, right: str) -> bool:
+            left = left.lstrip("0") or "0"
+            right = right.lstrip("0") or "0"
+            return (len(left), left) < (len(right), right)
+
+        satisfiable = False
+        file_size_text = str(file_size)
+
+        empty_members = 0
+        for byte_range in ranges.split(","):
+            byte_range = byte_range.strip(" \t")
+            if not byte_range:
+                # RFC 9110 permits a reasonable number of empty list members.
+                empty_members += 1
+                if empty_members > 8:
+                    return False
+                continue
+
+            first, dash, last = byte_range.partition("-")
+
+            if not dash or "-" in last or not (first or last):
+                return False
+
+            if (first and not is_ascii_digits(first)) or (
+                last and not is_ascii_digits(last)
+            ):
+                return False
+
+            if first:
+                if last and less_than(last, first):
+                    return False
+                satisfiable |= less_than(first, file_size_text)
+            else:
+                satisfiable |= file_size > 0 and bool(last.lstrip("0"))
+
+        return satisfiable
+
     async def _not_modified(
         self, request: "BaseRequest", etag_value: str, last_modified: float
     ) -> AbstractStreamWriter | None:
@@ -310,6 +356,7 @@ class FileResponse(StreamResponse):
         file_mtime: float = st.st_mtime
         count: int = file_size
         start: int | None = None
+        end: int | None = None
         etag_value = f"{st.st_mtime_ns:x}-{st.st_size:x}"
 
         # https://www.rfc-editor.org/info/rfc9110/#name-if-range
@@ -336,9 +383,15 @@ class FileResponse(StreamResponse):
             # if True but Range header missing
             #   return 200
             try:
-                rng = request.http_range
-                start = rng.start
-                end: int | None = rng.stop
+                if self._is_satisfiable_multi_range(
+                    request.headers.get(hdrs.RANGE, ""), file_size
+                ):
+                    # Multipart responses are unsupported, so ignore valid ranges.
+                    start = end = None
+                else:
+                    rng = request.http_range
+                    start = rng.start
+                    end = rng.stop
             except ValueError:
                 # https://tools.ietf.org/html/rfc7233:
                 # A server generating a 416 (Range Not Satisfiable) response to
