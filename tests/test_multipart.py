@@ -2080,6 +2080,40 @@ async def test_multipart_payload_writer_qp_partial_line_buffer_is_bounded(
     assert binascii.a2b_qp(bytes(buf)) == body
 
 
+@pytest.mark.parametrize(
+    "cr_offset",
+    (_QP_BLOCK_SIZE - 1, _QP_BLOCK_SIZE, 2 * _QP_BLOCK_SIZE - 1),
+)
+@pytest.mark.parametrize("chunk_size", (1, _QP_BLOCK_SIZE, _QP_BLOCK_SIZE + 1))
+async def test_multipart_payload_writer_qp_block_cut_never_splits_crlf(
+    buf: bytearray, stream: AbstractStreamWriter, cr_offset: int, chunk_size: int
+) -> None:
+    r"""A ``\r\n`` pair straddling a block cut must not be split.
+
+    Splitting it would make binascii.b2a_qp emit a bare CR at the end of
+    one block and a bare LF at the start of the next, which RFC 2045
+    forbids on the wire.
+    """
+    body = b"A" * cr_offset + b"\r\n" + b"B" * 100 + b"\n"
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    for pos in range(0, len(body), chunk_size):
+        await payload_writer.write(body[pos : pos + chunk_size])
+    await payload_writer.write_eof()
+
+    wire = bytes(buf)
+    assert b"\r" not in wire.replace(b"\r\n", b"")  # every CR is part of a CRLF
+    assert binascii.a2b_qp(wire) == body
+    # identical to the one-shot per-line encoder regardless of chunking
+    segments = body.split(b"\n")
+    assert b"" == segments[-1]
+    expected = b"".join(
+        _encode_quoted_printable_line(segment + b"\n") for segment in segments[:-1]
+    )
+    assert wire == expected
+
+
 async def test_body_part_reader_payload_as_bytes() -> None:
     """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
     # Create a mock BodyPartReader

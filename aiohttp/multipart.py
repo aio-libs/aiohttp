@@ -82,16 +82,22 @@ def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
     Lines longer than _QP_BLOCK_SIZE raw bytes are encoded one
     _QP_BLOCK_SIZE block at a time, with a soft line break inserted
     between blocks (binascii.a2b_qp decodes a soft break to nothing).
-    Block boundaries sit at fixed offsets from the start of the line, so
+    A block never ends with ``\r``: the cut moves back one byte so a
+    ``\r\n`` pair is never split across blocks, which would make
+    binascii.b2a_qp emit a bare CR and a bare LF (RFC 2045 forbids a CR
+    not followed by LF). Cut positions depend only on the line bytes, so
     the encoding stays a pure function of the line bytes while letting
     the streaming writer flush every complete block as it arrives.
     """
     parts: list[bytes] = []
     pos = 0
     while len(line) - pos > _QP_BLOCK_SIZE:
-        parts.append(binascii.b2a_qp(line[pos : pos + _QP_BLOCK_SIZE]))
+        block_end = pos + _QP_BLOCK_SIZE
+        if line[block_end - 1] == 0x0D:  # \r: don't split a \r\n pair
+            block_end -= 1
+        parts.append(binascii.b2a_qp(line[pos:block_end]))
         parts.append(_QP_SOFT_BREAK)
-        pos += _QP_BLOCK_SIZE
+        pos = block_end
     parts.append(binascii.b2a_qp(line[pos:]))
     return b"".join(parts)
 
@@ -1381,9 +1387,12 @@ class MultipartPayloadWriter:
                 parts.append(_encode_quoted_printable_line(buf[start : end + 1]))
                 start = end + 1
             while len(buf) - start > _QP_BLOCK_SIZE:
-                parts.append(binascii.b2a_qp(buf[start : start + _QP_BLOCK_SIZE]))
+                block_end = start + _QP_BLOCK_SIZE
+                if buf[block_end - 1] == 0x0D:  # \r: don't split a \r\n pair
+                    block_end -= 1
+                parts.append(binascii.b2a_qp(buf[start:block_end]))
                 parts.append(_QP_SOFT_BREAK)
-                start += _QP_BLOCK_SIZE
+                start = block_end
             if start:
                 del buf[:start]
                 await self._write_chunk(b"".join(parts))
