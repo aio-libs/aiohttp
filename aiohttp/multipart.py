@@ -1170,7 +1170,7 @@ class MultipartWriter(Payload):
         """Return string representation of the multipart data.
 
         .. deprecated:: 3.15
-            Use ``(await as_bytes()).decode()`` instead; this method may
+            Use ``(await writer.as_bytes()).decode()`` instead; this method may
             do blocking I/O if parts contain file payloads and should
             not be called in the event loop.
         """
