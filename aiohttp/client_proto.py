@@ -51,6 +51,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._read_timeout: float | None = None
         self._read_timeout_handle: asyncio.TimerHandle | None = None
+        self._read_timeout_deadline: float | None = None
 
         self._timeout_ceil_threshold: float | None = 5
 
@@ -285,18 +286,26 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         if self._read_timeout_handle is not None:
             self._read_timeout_handle.cancel()
             self._read_timeout_handle = None
+        self._read_timeout_deadline = None
 
     def _reschedule_timeout(self) -> None:
         timeout = self._read_timeout
-        if self._read_timeout_handle is not None:
-            self._read_timeout_handle.cancel()
-
         if timeout:
+            deadline = self._loop.time() + timeout
+            self._read_timeout_deadline = deadline
+            handle = self._read_timeout_handle
+            if handle is not None and handle.when() <= deadline:
+                return
+
+            if handle is not None:
+                handle.cancel()
+                self._read_timeout_handle = None
+
             self._read_timeout_handle = self._loop.call_later(
                 timeout, self._on_read_timeout
             )
         else:
-            self._read_timeout_handle = None
+            self._drop_timeout()
 
     def start_timeout(self) -> None:
         self._reschedule_timeout()
@@ -310,6 +319,16 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         self._read_timeout = read_timeout
 
     def _on_read_timeout(self) -> None:
+        self._read_timeout_handle = None
+        deadline = self._read_timeout_deadline
+        assert deadline is not None
+        remaining = deadline - self._loop.time()
+        if remaining > 0:
+            self._read_timeout_handle = self._loop.call_later(
+                remaining, self._on_read_timeout
+            )
+            return
+
         exc = SocketTimeoutError("Timeout on reading data from socket")
         self.set_exception(exc)
         if self._payload is not None:
