@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 import pytest
 
 from aiohttp.resolver import (
+    _ARES_AI_ADDRCONFIG,
+    _ARES_NAME_FLAGS,
     _NAME_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
@@ -81,7 +83,6 @@ def dns_resolver_manager() -> Generator[_DNSResolverManager, None, None]:
 
 
 class FakeAIODNSAddrInfoNode(NamedTuple):
-
     family: int
     addr: tuple[bytes, int] | tuple[bytes, int, int, int]
 
@@ -177,7 +178,7 @@ async def test_async_resolver_positive_ipv4_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
@@ -200,11 +201,11 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _ARES_NAME_FLAGS)
         await resolver.close()
 
 
@@ -255,7 +256,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
                 call(
                     "localhost",
                     family=socket.AF_UNSPEC,
-                    flags=socket.AI_ADDRCONFIG,
+                    flags=_ARES_AI_ADDRCONFIG,
                     port=0,
                     type=socket.SOCK_STREAM,
                 ),
@@ -467,7 +468,7 @@ async def test_async_resolver_ipv6_positive_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
@@ -759,3 +760,8 @@ async def test_async_resolver_close_with_none_resolver() -> None:
 
         # This should not raise AttributeError
         await resolver.close()
+
+
+def test_ares_flags_constants() -> None:
+    assert _ARES_AI_ADDRCONFIG == 0x0040
+    assert _ARES_NAME_FLAGS == 0x0002 | 0x0008

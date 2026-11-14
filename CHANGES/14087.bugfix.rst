@@ -1,0 +1,1 @@
+Fixed :class:`~aiohttp.AsyncResolver` passing standard library socket flags to c-ares instead of c-ares flags -- by :user:`RinZ27`.
