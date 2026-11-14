@@ -1,0 +1,6 @@
+Fixed ``ClientResponse.links`` losing every link after the first one
+when a ``Link`` header URL contains a comma, e.g.
+``<https://example.com/a,b>; rel=next``. Link-values are now split only
+on commas outside ``<...>`` and quoted parameter values, while keeping
+the previous comma handling of quoted parameters, empty list elements
+and quoted-pair escapes -- by :user:`Lushiyao5`.

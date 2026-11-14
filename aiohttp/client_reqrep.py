@@ -38,6 +38,7 @@ from .client_exceptions import (
 from .compression_utils import HAS_BROTLI, HAS_ZSTD
 from .formdata import FormData
 from .helpers import (
+    _QUOTED_PAIR_SUB,
     _SENTINEL,
     HTTP_AND_EMPTY_SCHEMA_SET,
     BaseTimerContext,
@@ -85,6 +86,45 @@ _CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 _LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
+# link-value = "<" URI-Reference ">" *( ";" param ). A URI-Reference cannot
+# contain a literal ">" (RFC 3986), so capture up to the first one; a greedy
+# match would instead stop at a ">" inside a quoted parameter value.
+_LINK_VALUE_RE = re.compile(r"\s*<([^>]*)>(.*)")
+
+
+def _split_link_values(value: str) -> list[str]:
+    """Split a joined Link header into individual link-values.
+
+    A comma separates link-values only when it sits outside the
+    URI-Reference (<...>) and outside quoted-string parameter values;
+    inside either it is part of the value, e.g. a comma in
+    "<https://example.com/a,b>" belongs to the URL and a comma inside
+    title="first, second" belongs to the parameter. Empty elements, such
+    as from a trailing comma or an empty header line, are dropped, as
+    HeadersDictProxy.getall() did.
+    """
+    fragments: list[str] = []
+    start = 0
+    in_angle = in_quotes = escaped = False
+    for i, ch in enumerate(value):
+        if in_quotes:
+            if escaped:
+                escaped = False
+            elif ch == "\\":
+                escaped = True
+            elif ch == '"':
+                in_quotes = False
+        elif ch == "<":
+            in_angle = True
+        elif ch == ">":
+            in_angle = False
+        elif ch == '"':
+            in_quotes = True
+        elif ch == "," and not in_angle:
+            fragments.append(value[start:i])
+            start = i + 1
+    fragments.append(value[start:])
+    return [fragment for fragment in fragments if fragment.strip()]
 
 
 @frozen_dataclass_decorator
@@ -675,8 +715,15 @@ class ClientResponse(HeadersMixin):
     @reify
     def links(self) -> "MultiDictProxy[MultiDictProxy[str | URL]]":
         links: MultiDict[MultiDictProxy[str | URL]] = MultiDict()
-        for val in self.headers.getall("link"):
-            match = re.match(r"\s*<(.*)>(.*)", val)
+        # __getitem__ joins every same-named header line into one value;
+        # split it into link-values on commas that do not sit inside the
+        # URI-Reference or a quoted parameter value, so a comma in a URL
+        # like "<https://example.com/a,b>" does not break the header.
+        links_str = self.headers.get("Link", "")
+        if not links_str:
+            return MultiDictProxy(links)
+        for val in _split_link_values(links_str):
+            match = _LINK_VALUE_RE.match(val)
             if match is None:  # Malformed link
                 continue
             url, params_str = match.groups()
@@ -689,6 +736,11 @@ class ClientResponse(HeadersMixin):
                 if match is None:  # Malformed param
                     continue
                 key, _, value_quoted, value_unquoted = match.groups()
+
+                if value_quoted is not None:
+                    # getall() unescaped quoted-pairs before the values were
+                    # parsed; keep that behavior (RFC 9110 quoted-string).
+                    value_quoted = _QUOTED_PAIR_SUB.sub(r"\1", value_quoted)
 
                 link.add(key, value_unquoted if value_quoted is None else value_quoted)
 
