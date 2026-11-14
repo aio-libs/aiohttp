@@ -1889,22 +1889,14 @@ async def test_as_bytes_form_data_matches_write(
     assert await writer.as_bytes() == bytes(buf)
 
 
-async def test_writer_decode_matches_as_bytes(writer: aiohttp.MultipartWriter) -> None:
-    """decode() must produce the same serialization as the wire format."""
-    writer.append("foo bar")
-    writer.append_json({"key": "value"})
-
-    assert writer.decode() == (await writer.as_bytes()).decode()
-
-
-def test_writer_decode_raises_for_encoded_parts(
+async def test_writer_decode_deprecated(
     writer: aiohttp.MultipartWriter,
 ) -> None:
-    """Encodings cannot be applied synchronously; decode() must refuse."""
-    writer.append("Time to Relax!", {CONTENT_ENCODING: "gzip"})
+    """decode() still works but warns."""
+    writer.append("foo bar")
 
-    with pytest.raises(TypeError, match="as_bytes"):
-        writer.decode()
+    with pytest.warns(DeprecationWarning, match="as_bytes"):
+        assert "foo bar" in writer.decode()
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")

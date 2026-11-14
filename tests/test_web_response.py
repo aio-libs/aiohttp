@@ -1207,6 +1207,7 @@ class CustomIO(io.IOBase):
         ),
     ),
 )
+@pytest.mark.filterwarnings("ignore:MultipartWriter.decode:DeprecationWarning")
 def test_payload_body_get_text(payload: object, expected: str | None) -> None:
     resp = web.Response(body=payload)
     if expected is None:

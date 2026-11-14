@@ -1140,24 +1140,25 @@ class MultipartWriter(Payload):
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
         """Return string representation of the multipart data.
 
-        WARNING: This method may do blocking I/O if parts contain file payloads.
-        It should not be called in the event loop. Use as_bytes().decode() instead.
-
-        :raises TypeError: if a part has a content or transfer encoding;
-            applying those requires the event loop, use as_bytes() instead.
+        .. deprecated:: 3.15
+            Use ``(await as_bytes()).decode()`` instead; this method may
+            do blocking I/O if parts contain file payloads and should
+            not be called in the event loop.
         """
-        out: list[str] = []
-        for part, part_encoding, te_encoding in self._parts:
-            if part_encoding or te_encoding:
-                raise TypeError(
-                    "Cannot decode multipart data with content/transfer encoded "
-                    "parts synchronously; use as_bytes() instead"
-                )
-            out.append("--" + self.boundary + "\r\n")
-            out.append(part._binary_headers.decode(encoding, errors))
-            out.append(part.decode() + "\r\n")
-        out.append("--" + self.boundary + "--\r\n")
-        return "".join(out)
+        warnings.warn(
+            "MultipartWriter.decode() is deprecated and will be removed "
+            "in a future release, use (await as_bytes()).decode() instead",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        return "".join(
+            "--"
+            + self.boundary
+            + "\r\n"
+            + part._binary_headers.decode(encoding, errors)
+            + part.decode()
+            for part, _e, _te in self._parts
+        )
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """Return bytes representation of the multipart data."""
@@ -1256,7 +1257,7 @@ _QP_SOFT_BREAK = b"=\r\n"
 
 
 def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
-    """Encode one line (any \\n is its final byte) as quoted-printable.
+    r"""Encode one line (any ``\n`` is its final byte) as quoted-printable.
 
     Lines longer than _QP_BLOCK_SIZE raw bytes are encoded one
     _QP_BLOCK_SIZE block at a time, with a soft line break inserted
@@ -1276,7 +1277,7 @@ def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
 
 
 def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
-    """Encode data as quoted-printable, one line at a time.
+    r"""Encode data as quoted-printable, one line at a time.
 
     binascii.b2a_qp derives the line-ending convention, soft line-break
     positions, and trailing-whitespace quoting from the whole buffer it
