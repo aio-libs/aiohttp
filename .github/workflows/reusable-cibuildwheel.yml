@@ -100,14 +100,14 @@ jobs:
       shell: python
 
     - name: Download the source distribution
-      uses: actions/download-artifact@v8
+      uses: actions/download-artifact@v8.0.2
       with:
         name: ${{ inputs.dists-artifact-name }}
         path: dist/
 
     - name: Set up QEMU
       if: inputs.qemu
-      uses: docker/setup-qemu-action@v4
+      uses: docker/setup-qemu-action@v4.4.0
       with:
         platforms: all
         # This should be temporary
@@ -130,7 +130,7 @@ jobs:
         extras: uv
 
     - name: Upload built artifacts for testing and publishing
-      uses: actions/upload-artifact@v7
+      uses: actions/upload-artifact@v7.0.2
       with:
         name: ${{ inputs.dists-artifact-name }}-
           ${{ inputs.runner-vm-os }}-

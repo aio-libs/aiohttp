@@ -18,7 +18,7 @@ blockbuster==1.5.29
     # via -r requirements/test-common.in
 cffi==2.1.1
     # via cryptography
-coverage==7.17.0
+coverage==7.17.2
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -54,7 +54,7 @@ multidict==7.2.1
     #   yarl
 mypy==2.4.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via mypy
 packaging==26.3
     # via pytest
@@ -74,9 +74,9 @@ proxy-py==2.4.10
     # via -r requirements/test-common-base.in
 pycparser==3.12
     # via cffi
-pydantic==2.14.2
+pydantic==2.14.3
     # via python-on-whales
-pydantic-core==2.50.2
+pydantic-core==2.50.4
     # via pydantic
 pygments==2.21.0
     # via
@@ -126,13 +126,13 @@ typing-extensions==4.16.0
     #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.4
+typing-inspection==0.4.5
     # via pydantic
 tzdata==2026.6
     # via python-dateutil
 yarl==1.25.1
     # via aiohttp
-zlib-ng==1.0.0
+zlib-ng==1.1.0
     # via -r requirements/test-common.in
 
 # The following packages are considered to be unsafe in a requirements file:

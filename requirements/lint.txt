@@ -20,7 +20,7 @@ atheris==3.0.0
     # via -r requirements/lint.in
 attrs==26.1.0
     # via aiohttp
-backports-zstd==1.3.0 ; implementation_name == "cpython" and python_version < "3.14"
+backports-zstd==1.8.0 ; implementation_name == "cpython" and python_version < "3.14"
     # via -r requirements/lint.in
 blockbuster==1.5.29
     # via -r requirements/lint.in
@@ -34,7 +34,7 @@ cryptography==50.0.2
     # via trustme
 distlib==0.4.4
     # via virtualenv
-filelock==4.2.8
+filelock==4.2.10
     # via
     #   python-discovery
     #   virtualenv
@@ -68,7 +68,7 @@ multidict==7.2.1
     #   yarl
 mypy==2.4.1 ; implementation_name == "cpython"
     # via -r requirements/lint.in
-mypy-extensions==1.1.0
+mypy-extensions==1.2.0
     # via mypy
 nodeenv==1.12.0
     # via pre-commit
@@ -78,7 +78,7 @@ packaging==26.3
     #   virtualenv
 pathspec==1.1.1
     # via mypy
-platformdirs==4.14.3
+platformdirs==4.14.5
     # via virtualenv
 pluggy==1.7.0
     # via pytest
@@ -94,9 +94,9 @@ pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
-pydantic==2.14.2
+pydantic==2.14.3
     # via python-on-whales
-pydantic-core==2.50.2
+pydantic-core==2.50.4
     # via pydantic
 pygments==2.21.0
     # via
@@ -119,7 +119,7 @@ pytest-mock==3.17.0
     # via -r requirements/lint.in
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.4
+python-discovery==1.9.5
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
@@ -141,7 +141,7 @@ typing-extensions==4.16.0
     #   pytest-asyncio
     #   python-on-whales
     #   typing-inspection
-typing-inspection==0.4.4
+typing-inspection==0.4.5
     # via pydantic
 tzdata==2026.6
     # via python-dateutil
@@ -149,11 +149,11 @@ uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.2
+virtualenv==21.15.6
     # via pre-commit
 yarl==1.25.1
     # via aiohttp
-zlib-ng==1.0.0
+zlib-ng==1.1.0
     # via -r requirements/lint.in
 
 # The following packages are considered to be unsafe in a requirements file:
