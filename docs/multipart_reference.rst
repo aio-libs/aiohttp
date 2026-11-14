@@ -260,9 +260,7 @@ Multipart reference
       and ``Content-Transfer-Encoding`` headers, so the result is
       byte-identical to the body that :meth:`write` sends on the wire.
 
-      The *encoding* and *errors* arguments are deprecated and ignored;
-      they exist only for compatibility with the :class:`~aiohttp.Payload`
-      interface.
+      The *encoding* and *errors* arguments are deprecated and ignored.
 
       Payloads that can be replayed (seekable files, cached async
       iterables) are left reusable, so the request body can still be
