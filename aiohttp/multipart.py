@@ -68,10 +68,54 @@ _BASE64_CHARS = frozenset(
     b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/="
 )
 _NON_BASE64_BYTES = bytes(b for b in range(256) if b not in _BASE64_CHARS)
+_QP_BLOCK_SIZE = 4096
+_QP_SOFT_BREAK = b"=\r\n"
 
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
+
+
+def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
+    r"""Encode one line (any ``\n`` is its final byte) as quoted-printable.
+
+    Lines longer than _QP_BLOCK_SIZE raw bytes are encoded one
+    _QP_BLOCK_SIZE block at a time, with a soft line break inserted
+    between blocks (binascii.a2b_qp decodes a soft break to nothing).
+    Block boundaries sit at fixed offsets from the start of the line, so
+    the encoding stays a pure function of the line bytes while letting
+    the streaming writer flush every complete block as it arrives.
+    """
+    parts: list[bytes] = []
+    pos = 0
+    while len(line) - pos > _QP_BLOCK_SIZE:
+        parts.append(binascii.b2a_qp(line[pos : pos + _QP_BLOCK_SIZE]))
+        parts.append(_QP_SOFT_BREAK)
+        pos += _QP_BLOCK_SIZE
+    parts.append(binascii.b2a_qp(line[pos:]))
+    return b"".join(parts)
+
+
+def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
+    r"""Encode data as quoted-printable, one line at a time.
+
+    binascii.b2a_qp derives the line-ending convention, soft line-break
+    positions, and trailing-whitespace quoting from the whole buffer it
+    is given, so encoding a body in one call produces different bytes
+    than encoding it chunk by chunk. Encoding each ``\n``-terminated
+    line separately (in _QP_BLOCK_SIZE blocks) makes the result a pure
+    function of the payload bytes, so the streamed wire bytes
+    (MultipartPayloadWriter) and as_bytes() stay identical no matter how
+    the payload was chunked.
+    """
+    parts: list[bytes] = []
+    start = 0
+    while (end := data.find(b"\n", start)) != -1:
+        parts.append(_encode_quoted_printable_line(data[start : end + 1]))
+        start = end + 1
+    if start < len(data):
+        parts.append(_encode_quoted_printable_line(data[start:]))
+    return b"".join(parts)
 
 
 class BadContentDispositionHeader(RuntimeWarning):
@@ -1255,57 +1299,6 @@ class MultipartWriter(Payload):
                     internal_logger.error(
                         "Failed to close multipart part %d: %s", idx, exc, exc_info=True
                     )
-
-
-# Raw bytes of a quoted-printable line encoded per binascii.b2a_qp call.
-# Lines longer than this are encoded in fixed-size blocks joined by soft
-# line breaks, so MultipartPayloadWriter can flush a partial line without
-# ever buffering more than one block of it (a newline-free payload would
-# otherwise buffer in full before anything reached the transport).
-_QP_BLOCK_SIZE = 4096
-_QP_SOFT_BREAK = b"=\r\n"
-
-
-def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
-    r"""Encode one line (any ``\n`` is its final byte) as quoted-printable.
-
-    Lines longer than _QP_BLOCK_SIZE raw bytes are encoded one
-    _QP_BLOCK_SIZE block at a time, with a soft line break inserted
-    between blocks (binascii.a2b_qp decodes a soft break to nothing).
-    Block boundaries sit at fixed offsets from the start of the line, so
-    the encoding stays a pure function of the line bytes while letting
-    the streaming writer flush every complete block as it arrives.
-    """
-    parts: list[bytes] = []
-    pos = 0
-    while len(line) - pos > _QP_BLOCK_SIZE:
-        parts.append(binascii.b2a_qp(line[pos : pos + _QP_BLOCK_SIZE]))
-        parts.append(_QP_SOFT_BREAK)
-        pos += _QP_BLOCK_SIZE
-    parts.append(binascii.b2a_qp(line[pos:]))
-    return b"".join(parts)
-
-
-def _encode_quoted_printable(data: bytes | bytearray) -> bytes:
-    r"""Encode data as quoted-printable, one line at a time.
-
-    binascii.b2a_qp derives the line-ending convention, soft line-break
-    positions, and trailing-whitespace quoting from the whole buffer it
-    is given, so encoding a body in one call produces different bytes
-    than encoding it chunk by chunk. Encoding each ``\n``-terminated
-    line separately (in _QP_BLOCK_SIZE blocks) makes the result a pure
-    function of the payload bytes, so the streamed wire bytes
-    (MultipartPayloadWriter) and as_bytes() stay identical no matter how
-    the payload was chunked.
-    """
-    parts: list[bytes] = []
-    start = 0
-    while (end := data.find(b"\n", start)) != -1:
-        parts.append(_encode_quoted_printable_line(data[start : end + 1]))
-        start = end + 1
-    if start < len(data):
-        parts.append(_encode_quoted_printable_line(data[start:]))
-    return b"".join(parts)
 
 
 class MultipartPayloadWriter:
