@@ -62,6 +62,9 @@ _BASE64_CHARS = frozenset(
 )
 _NON_BASE64_BYTES = bytes(b for b in range(256) if b not in _BASE64_CHARS)
 
+# https://www.rfc-editor.org/info/rfc9110/#section-5.6.4
+_QUOTED_STRING_RE = re.compile(r'"(?:[^"\\]|\\.)*"')
+
 
 if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
@@ -105,6 +108,9 @@ def parse_content_disposition(
 
     # https://www.rfc-editor.org/info/rfc9110/#section-5.6.6-2
     disptype, *parts = header.split(";")
+    # Offset in header of the next part, to match a quoted value that spans
+    # several parts in place instead of joining them again.
+    pos = len(disptype) + 1
     disptype = disptype.strip()
     if not is_token(disptype):
         warnings.warn(BadContentDispositionHeader(header))
@@ -113,6 +119,8 @@ def parse_content_disposition(
     params: dict[str, str] = {}
     while parts:
         item = parts.pop(0)
+        start = pos
+        pos += len(item) + 1
 
         if not item:  # To handle trailing semicolons
             warnings.warn(BadContentDispositionHeader(header))
@@ -159,25 +167,31 @@ def parse_content_disposition(
                 continue
 
         else:
-            failed = True
             rstripped = value.rstrip()
-            if is_quoted(rstripped):
-                failed = False
+            if is_quoted(rstripped) and rstripped[-2] != "\\":
                 value = unescape(rstripped[1:-1].lstrip("\\/"))
-            elif is_token(value):
-                failed = False
-            elif parts:
-                # maybe just ; in filename, in any case this is just
-                # one case fix, for proper fix we need to redesign parser
-                _value = f"{value};{parts[0]}"
-                if is_quoted(_value):
-                    parts.pop(0)
-                    value = unescape(_value[1:-1].lstrip("\\/"))
-                    failed = False
+            elif not is_token(value):
+                # The quoted value contains ";" or ends with an escaped quote,
+                # so match it in the header itself rather than in this part.
+                value_start = start + len(item) - len(value)
+                match = _QUOTED_STRING_RE.match(header, value_start)
+                end = len(header)
+                if match:
+                    end = header.find(";", match.end())
+                    if end == -1:
+                        end = len(header)
+                    if header[match.end() : end].strip():
+                        match = None
 
-            if failed:
-                warnings.warn(BadContentDispositionHeader(header))
-                return None, {}
+                if match:
+                    del parts[: header.count(";", value_start, match.end())]
+                    pos = end + 1
+                    value = unescape(match.group()[1:-1].lstrip("\\/"))
+                elif is_quoted(rstripped):
+                    value = unescape(rstripped[1:-1].lstrip("\\/"))
+                else:
+                    warnings.warn(BadContentDispositionHeader(header))
+                    return None, {}
 
         params[key] = value
 
