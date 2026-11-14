@@ -157,6 +157,41 @@ async def test_keepalive_after_head_requests_success(
     assert 1 == cnt_conn_reuse
 
 
+async def test_keepalive_after_head_request_without_length(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        return resp
+
+    cnt_conn_reuse = 0
+
+    async def on_reuseconn(session: object, ctx: object, params: object) -> None:
+        nonlocal cnt_conn_reuse
+        cnt_conn_reuse += 1
+
+    trace_config = aiohttp.TraceConfig()
+    trace_config._on_connection_reuseconn.append(on_reuseconn)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+
+    connector = aiohttp.TCPConnector(limit=1)
+    client = await aiohttp_client(
+        app, connector=connector, trace_configs=[trace_config]
+    )
+
+    async with client.head("/") as resp1:
+        assert hdrs.CONTENT_LENGTH not in resp1.headers
+        assert hdrs.TRANSFER_ENCODING not in resp1.headers
+        await resp1.read()
+    async with client.get("/") as resp2:
+        await resp2.read()
+
+    assert 1 == cnt_conn_reuse
+
+
 @pytest.mark.parametrize("status", (101, 204, 304))
 async def test_keepalive_after_empty_body_status(
     aiohttp_client: AiohttpClient, status: int

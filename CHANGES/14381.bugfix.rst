@@ -1,0 +1,2 @@
+Fixed the client closing the connection after a ``HEAD`` response without
+``Content-Length`` or ``Transfer-Encoding`` -- by :user:`MaestroOfAutomation`.

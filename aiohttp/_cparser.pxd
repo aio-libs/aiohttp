@@ -60,7 +60,8 @@ cdef extern from "llhttp.h":
 
     enum llhttp_flags:
         F_CHUNKED,
-        F_CONTENT_LENGTH
+        F_CONTENT_LENGTH,
+        F_SKIPBODY
 
     enum llhttp_type:
         HTTP_REQUEST,
