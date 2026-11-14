@@ -61,7 +61,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
-from .http2.adapter import Http2StreamWriter, get_version
+from .http2.adapter import Http2StreamWriter
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
@@ -715,12 +715,13 @@ class ClientResponse(HeadersMixin):
                 # read response
                 try:
                     protocol = self._protocol
-                    # conditional branching to pass the stream id
-                    # to the protocol
                     assert protocol is not None
-                    if get_version(protocol) == "h2":
-                        message, payload = await protocol.read_stream(self.stream_id)  # type: ignore[attr-defined]
+                    if hasattr(protocol, "version") and protocol.version.major == 2:
+                        message, payload = await connection.read_response(
+                            self.stream_id
+                        )
                     else:
+                        # backwards compatibility
                         message, payload = await protocol.read()
                 except HttpProcessingError as exc:
                     raise ClientResponseError(
@@ -1631,7 +1632,7 @@ class ClientRequest(ClientRequestBase):
     def _create_writer(
         self, protocol: BaseProtocol
     ) -> StreamWriter | Http2StreamWriter:
-        if get_version(protocol) == "h2":
+        if hasattr(protocol, "version") and protocol.version.major == 2:
             if self.compress:
                 raise ValueError("Payload compression is not supported over HTTP/2")
             return Http2StreamWriter(protocol, self.loop, self)

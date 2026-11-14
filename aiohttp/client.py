@@ -101,7 +101,6 @@ from .helpers import (
     strip_auth_from_url,
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
-from .http2.adapter import get_version
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
 from .tracing import Trace, TraceConfig
 from .typedefs import (
@@ -301,35 +300,12 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     assert conn.protocol is not None
     assert conn.protocol.transport is not None
 
-    alpn_protocol = get_version(conn.protocol)
-
     resp = None
     started = False
 
     try:
-        # backwards compatibility
-        if alpn_protocol == "h2":
-            if req._continue:
-                # `expect100` is not inherently incompatible
-                # but the implementation does not appear to be
-                # straightforward.
-                # We have to set the result of the future in
-                # the HTTP/2 stream yet we can not close the stream
-                # because we have to wait for the second response.
-                #
-                # Also, it's not really necessary in HTTP/2
-                # because the server can simply reset the stream.
-                raise NotImplementedError("expect100 is not supported over HTTP/2")
-            stream = await conn.protocol.create_stream()  # type: ignore[attr-defined]
-            req.stream_id = stream.stream_id
-            conn.protocol.set_response_params(**req._response_params)
-            resp = await req._send(conn)
-            resp.stream_id = stream.stream_id
-        else:
-            conn.protocol.set_response_params(**req._response_params)
-            resp = await req._send(conn)
+        resp = await conn.send_request(req)
         await resp.start(conn)
-
         started = True
     finally:
         if resp is not None and not started:

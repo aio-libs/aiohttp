@@ -40,6 +40,7 @@ from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientRequestBase,
+    ClientResponse,
     Fingerprint,
 )
 from .helpers import (
@@ -54,9 +55,11 @@ from .helpers import (
 )
 from .http2.connection import HTTP2_ENABLED
 from .http2.synchro import HostProbeSynchronizer
+from .http_parser import RawResponseMessage
 from .http_protocol import HttpDispatcherProtocol
 from .log import client_logger
 from .resolver import DefaultResolver
+from .streams import StreamReader
 
 try:
     import aiofastnet
@@ -250,6 +253,65 @@ class Connection:
     @property
     def closed(self) -> bool:
         return self._protocol is None or not self._protocol.is_connected()
+
+    @property
+    def is_multiplexed(self) -> bool:
+        """Whether the underlying protocol carries concurrent streams."""
+        return self._protocol is not None and self._protocol.version.major == 2
+
+    async def acquire_stream(self, req: ClientRequest) -> int | None:
+        """Reserve a stream for this request.
+
+        Returns the stream id for multiplexed protocols, or ``None`` for
+        single-stream (HTTP/1.x) connections.
+        """
+        protocol = self._protocol
+        assert protocol is not None
+        if not self.is_multiplexed:
+            return None
+
+        # ``expect100`` requires a second response on the same exchange;
+        # HTTP/2 has no straightforward equivalent.
+        if req._continue is not None:
+            raise NotImplementedError("expect100 is not supported over HTTP/2")
+
+        assert hasattr(protocol, "create_stream")
+        stream = await protocol.create_stream()
+        return stream.stream_id  # type: ignore[no-any-return]
+
+    async def send_request(self, req: ClientRequest) -> ClientResponse:
+        """Send a request on this connection.
+
+        Allocates a stream for multiplexed protocols, sets ``req.stream_id``
+        and ``resp.stream_id`` accordingly, and returns the response before
+        it has started reading.
+        """
+        protocol = self._protocol
+        assert protocol is not None
+
+        stream_id = await self.acquire_stream(req)
+        req.stream_id = stream_id
+
+        protocol.set_response_params(**req._response_params)
+        resp = await req._send(self)
+        resp.stream_id = stream_id
+        return resp
+
+    async def read_response(
+        self, stream_id: int | None
+    ) -> tuple[RawResponseMessage, StreamReader]:
+        """Read one response message from this connection.
+
+        For multiplexed protocols, reads from the given stream id.
+        For single-stream connections, ``stream_id`` is ignored.
+        """
+        protocol = self._protocol
+        assert protocol is not None
+        if self.is_multiplexed:
+            assert stream_id is not None
+            assert hasattr(protocol, "read_stream")
+            return await protocol.read_stream(stream_id)  # type: ignore[no-any-return]
+        return await protocol.read()
 
 
 class _ConnectTunnelConnection(Connection):
