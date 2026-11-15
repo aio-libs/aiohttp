@@ -211,9 +211,6 @@ jobs:
         SDIST_PATH: >-
           dist/${{ needs.build-pure-python-dists.outputs.sdist-filename }}
         AIOHTTP_NO_EXTENSIONS: 1
-    - name: Run mypy
-      run: |
-        make mypy
     - name: Run slotscheck
       run: |
         # Some extra requirements are needed to ensure all modules
@@ -259,6 +256,39 @@ jobs:
     - name: Making sure that CONTRIBUTORS.txt remains sorted
       run: |
         LC_ALL=C sort --check --ignore-case CONTRIBUTORS.txt
+
+  mypy:
+    permissions:
+      contents: read # to fetch code (actions/checkout)
+
+    name: Mypy / Python ${{ matrix.pyver }}
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        pyver: ['3.11', '3.12', '3.13', '3.14', '3.15']
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+      with:
+        submodules: true
+    - name: Setup Python ${{ matrix.pyver }}
+      uses: astral-sh/setup-uv@v10.3.3
+      with:
+        python-version: ${{ matrix.pyver }}
+        activate-environment: true
+        enable-cache: true
+    - name: Install lint dependencies
+      run: |
+        CLANG_BIN="$(command -v clang)" \
+          uv pip install -U pip -r requirements/lint.in -c requirements/lint.txt
+    - name: Install aiohttp
+      run: |
+        uv pip install . -c requirements/runtime-deps.txt
+      env:
+        AIOHTTP_NO_EXTENSIONS: 1
+    - name: Run mypy
+      run: |
+        make mypy
 
   test:
     name: Test
@@ -643,6 +673,7 @@ jobs:
     - test
     - test-mobile
     - autobahn
+    - mypy
 
     runs-on: ubuntu-latest
 
