@@ -43,7 +43,7 @@ class AsyncioWorker(BaseTestWorker, base_worker.GunicornWebWorker):
     pass
 
 
-PARAMS = [AsyncioWorker]
+PARAMS: list[type[base_worker.GunicornWebWorker]] = [AsyncioWorker]
 if uvloop is not None:
 
     class UvloopWorker(BaseTestWorker, base_worker.GunicornUVLoopWebWorker):
@@ -249,6 +249,7 @@ async def test__run_ok_parent_changed(
 
     await worker._run()
 
+    assert isinstance(worker.notify, mock.Mock)
     worker.notify.assert_called_with()
     worker.log.info.assert_called_with("Parent changed, shutting down: %s", worker)
 
@@ -297,6 +298,7 @@ async def test__run_exc(
     loop.call_later(0.1, raiser)
     await worker._run()
 
+    assert isinstance(worker.notify, mock.Mock)
     worker.notify.assert_called_with()
 
 
