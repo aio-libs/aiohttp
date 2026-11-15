@@ -3253,6 +3253,52 @@ async def test_no_body_for_1xx_204_304_responses(
     resp.release()
 
 
+@pytest.mark.parametrize("compress", (False, True))
+@pytest.mark.parametrize(
+    ("method", "status"), (("HEAD", 200), ("GET", 204), ("GET", 304))
+)
+async def test_stream_response_no_body_bytes_for_head_204_304(
+    aiohttp_server: AiohttpServer, method: str, status: int, compress: bool
+) -> None:
+    """Bytes after the head of a body-less response would desync keep-alive."""
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        resp = web.StreamResponse(status=status)
+        if compress:
+            resp.enable_compression()
+        await resp.prepare(request)
+        await resp.write(b"BODY")
+        await resp.write_eof(b"MORE")
+        return resp
+
+    async def other(request: web.Request) -> web.Response:
+        return web.Response(text="OTHER")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/other", other)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        first = f"{method} / HTTP/1.1\r\nHost: localhost\r\nAccept-Encoding: gzip\r\n"
+        writer.write(
+            first.encode()
+            + b"\r\nGET /other HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        )
+        await writer.drain()
+        data = await reader.read()
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    head, _, rest = data.partition(b"\r\n\r\n")
+    assert head.startswith(f"HTTP/1.1 {status} ".encode())
+    assert rest.startswith(b"HTTP/1.1 200 OK\r\n")
+    assert rest.endswith(b"\r\n\r\nOTHER")
+
+
 async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
     protocol: RequestHandler[web.Request] | None = None
     orig_data_received = RequestHandler.data_received

@@ -85,6 +85,7 @@ class StreamResponse(
     _payload_writer: AbstractStreamWriter | None = None
     _eof_sent: bool = False
     _must_be_empty_body: bool | None = None
+    _discard_body = False
     _body_length = 0
     _send_headers_immediately = True
 
@@ -341,9 +342,11 @@ class StreamResponse(
             return
         assert self._payload_writer is not None
         self._headers[hdrs.CONTENT_ENCODING] = coding.value
-        self._payload_writer.enable_compression(
-            coding.value, self._compression_strategy
-        )
+        # The compressor flushes a gzip/deflate stream at EOF, even when empty.
+        if not self._discard_body:
+            self._payload_writer.enable_compression(
+                coding.value, self._compression_strategy
+            )
         # Compressed payload may have different content length,
         # remove the header
         self._headers.popall(hdrs.CONTENT_LENGTH, None)
@@ -366,6 +369,12 @@ class StreamResponse(
         if self._payload_writer is not None:
             return self._payload_writer
         self._must_be_empty_body = must_be_empty_body(request.method, self.status)
+        # Body bytes on these would be read as the start of the next response.
+        # 101 and CONNECT 2xx are left alone: what follows them is tunnel data.
+        self._discard_body = request.method == hdrs.METH_HEAD or self.status in (
+            204,
+            304,
+        )
         return await self._start(request)
 
     async def _start(self, request: "BaseRequest") -> AbstractStreamWriter:
@@ -467,6 +476,8 @@ class StreamResponse(
             raise RuntimeError("Cannot call write() after write_eof()")
         if self._payload_writer is None:
             raise RuntimeError("Cannot call write() before prepare()")
+        if self._discard_body:
+            return
 
         await self._payload_writer.write(data)
 
@@ -490,7 +501,7 @@ class StreamResponse(
 
         assert self._payload_writer is not None, "Response has not been started"
 
-        await self._payload_writer.write_eof(data)
+        await self._payload_writer.write_eof(b"" if self._discard_body else data)
         self._eof_sent = True
         self._req = None
         self._body_length = self._payload_writer.output_size
