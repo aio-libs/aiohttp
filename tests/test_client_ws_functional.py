@@ -1546,8 +1546,8 @@ async def test_websocket_connection_cancellation(aiohttp_client: AiohttpClient) 
         await task
 
     websocket = websockets.pop()
-    # Call the `__del__` methods manually since when it gets gc'd it not reproducible
-    del websocket._response
+    # shouldn't raise
+    websocket._response.__del__()
 
     # Cleanup properly
     websocket._response = mock.Mock()
