@@ -4,7 +4,7 @@
 version: 'v0.0.3'
 workflows:
     '.github/workflows/agent-scan.yml':
-        - 'matteogabriele/agentscan-action@v2.5.0'
+        - 'matteogabriele/agentscan-action@v2.7.0'
     '.github/workflows/auto-merge.yml':
         - 'dependabot/fetch-metadata@v3.1.0'
     '.github/workflows/codeql.yml':
@@ -68,9 +68,9 @@ dependencies:
         commit: 'sha1-33d7b85da1a04171e211befe2c739303b9a4c066'
         owner_id: 9919
         repo_id: 259445878
-    'matteogabriele/agentscan-action@v2.5.0':
-        ref: 'v2.5.0'
-        commit: 'sha1-8112fb79b33fafb8506159df20129a34209ac410'
+    'matteogabriele/agentscan-action@v2.7.0':
+        ref: 'v2.7.0'
+        commit: 'sha1-686cb0ad53e79b34a55cfe740b12724356a66c0e'
         owner_id: 5337152
         repo_id: 1183120486
     'pypa/cibuildwheel@v4.3.5':
