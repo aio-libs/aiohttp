@@ -378,6 +378,7 @@ Sin-Woo Bang
 Soheil Dolatabadi
 Stanislas Plum
 Stanislav Prokop
+Stefan Agner
 Stefan Tjarks
 Stepan Pletnev
 Stephan Jaensch
