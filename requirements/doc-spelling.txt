@@ -36,11 +36,11 @@ markdown-it-py==4.3.0
     #   myst-parser
 markupsafe==3.0.4
     # via jinja2
-mdit-py-plugins==0.6.1
+mdit-py-plugins==0.7.0
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
-myst-parser==5.1.0
+myst-parser==5.2.0
     # via -r requirements/doc.in
 packaging==26.3
     # via sphinx
