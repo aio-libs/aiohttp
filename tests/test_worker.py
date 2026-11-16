@@ -62,6 +62,35 @@ def worker(
     return ret  # type: ignore[no-any-return]
 
 
+def test_worker_init() -> None:
+    app = web.Application()
+    cfg = mock.Mock(
+        max_requests=0,
+        umask=0o022,
+        worker_tmp_dir=None,
+        uid=os.geteuid(),
+        gid=os.getegid(),
+    )
+    log = mock.Mock()
+    worker = base_worker.GunicornWebWorker(
+        age=1,
+        ppid=os.getpid(),
+        sockets=[],
+        app=app,
+        timeout=30,
+        cfg=cfg,
+        log=log,
+    )
+    try:
+        assert worker.age == 1
+        assert worker.app is app
+        assert worker.log is log
+        assert worker._task is None
+        assert worker.exit_code == 0
+    finally:
+        worker.tmp.close()  # type: ignore[no-untyped-call]
+
+
 def test_init_process(worker: base_worker.GunicornWebWorker) -> None:
     with mock.patch("aiohttp.worker.asyncio") as m_asyncio:
         try:
