@@ -1,0 +1,2 @@
+Fixed the ``%%`` escape in the access log format, which made every access
+log line fail with ``Error in logging`` -- by :user:`ArnabDutta01`.
