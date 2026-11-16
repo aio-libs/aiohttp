@@ -401,9 +401,14 @@ class BaseRunner(ABC, Generic[_Request]):
                 except NotImplementedError:
                     # remove_signal_handler is not implemented on Windows
                     pass
+        except Exception:
+            # Ensure cleanup failure marks server as cleared so repeated cleanup calls
+            # do not re-run shutdown hooks twice.
+            self._server = None
+            self._cleanup_done = True
+            raise
         finally:
-            # Wake the pending serve_forever() waiter even when cleanup fails, so a task
-            # awaiting the serving task cannot hang because an on_cleanup hook raised.
+            # Wake the pending serve_forever() waiter when cleanup finishes (successfully or with an error).
             serve_forever_fut = self._serve_forever_fut
             if serve_forever_fut is not None and not serve_forever_fut.done():
                 serve_forever_fut.set_result(None)
