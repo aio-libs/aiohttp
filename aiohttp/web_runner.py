@@ -373,36 +373,40 @@ class BaseRunner(ABC, Generic[_Request]):
         """Call any shutdown hooks to help server close gracefully."""
 
     async def cleanup(self) -> None:
-        # The loop over sites is intentional, an exception on gather()
-        # leaves self._sites in unpredictable state.
-        # The loop guarantees that a site is either deleted on success or
-        # still present on failure
-        for site in list(self._sites):
-            await site.stop()
+        try:
+            # The loop over sites is intentional, an exception on gather()
+            # leaves self._sites in unpredictable state.
+            # The loop guarantees that a site is either deleted on success or
+            # still present on failure
+            for site in list(self._sites):
+                await site.stop()
 
-        if self._server:  # If setup succeeded
-            # Yield to event loop to ensure incoming requests prior to stopping the sites
-            # have all started to be handled before we proceed to close idle connections.
-            await asyncio.sleep(0)
-            self._server.pre_shutdown()
-            await self.shutdown()
-            await self._server.shutdown(self._shutdown_timeout)
-        if not self._cleanup_done:
-            await self._cleanup_server()
-            self._cleanup_done = True
+            if self._server:  # If setup succeeded
+                # Yield to event loop to ensure incoming requests prior to stopping the sites
+                # have all started to be handled before we proceed to close idle connections.
+                await asyncio.sleep(0)
+                self._server.pre_shutdown()
+                await self.shutdown()
+                await self._server.shutdown(self._shutdown_timeout)
+            if not self._cleanup_done:
+                await self._cleanup_server()
+                self._cleanup_done = True
 
-        self._server = None
-        serve_forever_fut = self._serve_forever_fut
-        if serve_forever_fut is not None and not serve_forever_fut.done():
-            serve_forever_fut.set_result(None)
-        if self._handle_signals:
-            loop = asyncio.get_running_loop()
-            try:
-                loop.remove_signal_handler(signal.SIGINT)
-                loop.remove_signal_handler(signal.SIGTERM)
-            except NotImplementedError:
-                # remove_signal_handler is not implemented on Windows
-                pass
+            self._server = None
+            if self._handle_signals:
+                loop = asyncio.get_running_loop()
+                try:
+                    loop.remove_signal_handler(signal.SIGINT)
+                    loop.remove_signal_handler(signal.SIGTERM)
+                except NotImplementedError:
+                    # remove_signal_handler is not implemented on Windows
+                    pass
+        finally:
+            # Wake the pending serve_forever() waiter even when cleanup fails, so a task
+            # awaiting the serving task cannot hang because an on_cleanup hook raised.
+            serve_forever_fut = self._serve_forever_fut
+            if serve_forever_fut is not None and not serve_forever_fut.done():
+                serve_forever_fut.set_result(None)
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:

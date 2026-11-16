@@ -1075,6 +1075,10 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
         await runner.cleanup()
 
 .. versionadded:: 3.0
+   The :class:`AppRunner`-based startup.
+
+.. versionchanged:: 4.0
+   The example waits in :meth:`BaseRunner.serve_forever`, which is new in 4.0.
 
 .. _aiohttp-web-graceful-shutdown:
 
