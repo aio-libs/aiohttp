@@ -25,10 +25,25 @@ Result = tuple[str, str, dict[str, object] | None]
 # the memory behind the large messages it exchanges. Running all cases in one
 # process grows it past 10GB and gets it OOM-killed (exit code 137) on some CI
 # runners, so each group of compression cases runs in a fresh process instead.
+SERVER_CASE_GROUPS = (
+    "12.1.*",
+    "12.2.*",
+    "12.3.*",
+    "12.4.*",
+    "12.5.*",
+    "13.1.*",
+    "13.2.*",
+    "13.3.*",
+    "13.4.*",
+    "13.5.*",
+    "13.6.*",
+)
 SERVER_CASE_BATCHES: tuple[dict[str, list[str]], ...] = (
     {"cases": ["*"], "exclude-cases": ["12.*", "13.*"]},
-    *({"cases": [f"12.{i}.*"]} for i in range(1, 6)),
-    *({"cases": [f"13.{i}.*"]} for i in range(1, 8)),
+    *({"cases": [group]} for group in SERVER_CASE_GROUPS),
+    # 13.7.* plus any groups added by a testsuite bump. This must never match
+    # zero cases, as wstest then never connects and hangs instead of exiting.
+    {"cases": ["12.*", "13.*"], "exclude-cases": list(SERVER_CASE_GROUPS)},
 )
 
 
