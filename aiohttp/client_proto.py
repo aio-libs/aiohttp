@@ -241,6 +241,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             and not self._reading_paused
             and not self._buffer_paused
             and not self._connection_lost_called
+            and (self._payload is None or not self._payload.is_eof())
         ):
             self._reschedule_timeout()
 

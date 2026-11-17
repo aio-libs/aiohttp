@@ -21,7 +21,7 @@ from yarl import URL
 import aiohttp
 from aiohttp import hdrs, http_exceptions, streams
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.client_exceptions import ClientPayloadError
+from aiohttp.client_exceptions import ClientPayloadError, SocketTimeoutError
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
@@ -1900,6 +1900,52 @@ async def test_uncompressed_connection_lost_drains_buffered_payload(
     assert payload.is_eof()
     assert not protocol.can_receive_data
     assert protocol.should_close
+
+
+@pytest.mark.parametrize("complete", [False, True], ids=["incomplete", "complete"])
+async def test_executor_decompression_resume_read_timeout(
+    executor_protocol: ResponseHandler,
+    monkeypatch: pytest.MonkeyPatch,
+    complete: bool,
+) -> None:
+    protocol = executor_protocol
+    protocol.read_timeout = 0.02
+    loop = asyncio.get_running_loop()
+    run_in_executor = loop.run_in_executor
+    pending: asyncio.Future[bytes] = loop.create_future()
+    first_result: list[bytes] = []
+
+    def queue_decode(_executor: Any, fn: Any, *args: Any) -> asyncio.Future[bytes]:
+        if first_result:
+            return run_in_executor(_executor, fn, *args)
+        first_result.append(fn(*args))
+        return pending
+
+    monkeypatch.setattr(loop, "run_in_executor", queue_decode)
+    body = b"buffered response" * 10
+    compressed = gzip.compress(body)
+    content_length = len(compressed) + (not complete)
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\nContent-Length: "
+        + str(content_length).encode()
+        + b"\r\n\r\n"
+        + compressed
+    )
+    _, payload = await protocol.read()
+    assert protocol._reading_paused
+
+    try:
+        pending.set_result(first_result[0])
+        if complete:
+            await asyncio.wait_for(payload.wait_eof(), 1)
+            await asyncio.sleep(0.04)
+            assert await payload.read() == body
+            assert protocol._read_timeout_handle is None
+        else:
+            with pytest.raises(SocketTimeoutError):
+                await asyncio.wait_for(payload.read(), 1)
+    finally:
+        protocol._drop_timeout()
 
 
 @pytest.mark.parametrize("truncated", [False, True], ids=["complete", "truncated"])
