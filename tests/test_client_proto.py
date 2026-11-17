@@ -184,6 +184,53 @@ async def test_abort_clears_deferred_decompression_state(
     assert proto._payload is None
 
 
+def _assert_deferred_eof_cleanup(proto: ResponseHandler) -> None:
+    assert not proto._deferred_eof
+    assert proto._parser is None
+    assert proto._payload is None
+    assert proto._reading_paused is False
+
+
+@pytest.mark.parametrize(
+    ("parser_error", "assert_protocol_error"),
+    [
+        (asyncio.CancelledError, False),
+        (ValueError, True),
+    ],
+)
+async def test_parser_error_after_connection_lost_fails_deferred_payload(
+    monkeypatch: pytest.MonkeyPatch,
+    parser_error: type[BaseException],
+    assert_protocol_error: bool,
+) -> None:
+    monkeypatch.setattr("aiohttp.client_proto.HttpResponseParser", HttpResponseParserPy)
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    proto.connection_made(mock.Mock())
+    proto.set_response_params(read_until_eof=True, read_bufsize=1024)
+
+    body = b"deferred body" * 10_000
+    compressed = gzip.compress(body)
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Encoding: gzip\r\n\r\n" + compressed
+    )
+    _, payload = await proto.read()
+    proto.connection_lost(None)
+
+    assert proto._deferred_eof
+    parser = proto._parser
+    assert parser is not None
+    with mock.patch.object(parser, "feed_data", side_effect=parser_error):
+        proto.data_received(b"")
+
+    payload_exception = payload.exception()
+    assert isinstance(payload_exception, ClientPayloadError)
+    assert payload_exception.__cause__ is not None
+    assert isinstance(payload_exception.__cause__, parser_error)
+    _assert_deferred_eof_cleanup(proto)
+    if assert_protocol_error:
+        assert isinstance(proto.exception(), http.HttpProcessingError)
+
+
 async def test_multiple_responses_one_byte_at_a_time() -> None:
     loop = asyncio.get_running_loop()
     proto = ResponseHandler(loop=loop)
