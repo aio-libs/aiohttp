@@ -16,6 +16,7 @@ from multidict import CIMultiDict, CIMultiDictProxy, MultiDict
 
 from aiohttp import HttpVersion, HttpVersion10, HttpVersion11, hdrs, web
 from aiohttp.abc import AbstractStreamWriter
+from aiohttp.client_exceptions import ClientConnectionResetError
 from aiohttp.helpers import ETag, HeadersDictProxy
 from aiohttp.http_writer import StreamWriter, _serialize_headers
 from aiohttp.multipart import BodyPartReader, MultipartWriter
@@ -1646,6 +1647,49 @@ async def test_passing_cimultidict_to_web_response_not_mutated(
     await resp.prepare(req)
     assert resp.content_length == 6
     assert not headers
+
+
+@pytest.mark.parametrize(
+    ("method", "status", "discarded"),
+    (
+        ("HEAD", 200, True),
+        ("GET", 103, True),
+        ("GET", 204, True),
+        ("GET", 304, True),
+        ("GET", 101, False),
+        ("CONNECT", 200, False),
+        ("CONNECT", 204, False),
+    ),
+)
+async def test_stream_response_write_discarded_for_empty_body(
+    method: str, status: int, discarded: bool
+) -> None:
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request(method, "/", writer=writer)
+    resp = web.StreamResponse(status=status)
+    await resp.prepare(req)
+    await resp.write(b"data")
+    await resp.write_eof(b"tail")
+
+    if discarded:
+        writer.write.assert_not_called()
+        writer.write_eof.assert_awaited_once_with(b"")
+    else:
+        writer.write.assert_awaited_once_with(b"data")
+        writer.write_eof.assert_awaited_once_with(b"tail")
+
+
+async def test_stream_response_discarded_write_after_connection_lost() -> None:
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    req = make_request("HEAD", "/", writer=writer)
+    resp = web.StreamResponse()
+    await resp.prepare(req)
+    await resp.write(b"data")
+
+    req._protocol.transport = None
+    with pytest.raises(ClientConnectionResetError):
+        await resp.write(b"data")
+    writer.write.assert_not_called()
 
 
 async def test_stream_response_sends_headers_immediately() -> None:

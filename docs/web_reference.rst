@@ -913,7 +913,8 @@ and :ref:`aiohttp-web-signals` handlers::
       Raises :exc:`RuntimeError` if :meth:`write_eof` has been called.
 
       The data is discarded when the response is to a ``HEAD`` request or
-      has status ``204`` or ``304``, since such a response has no body.
+      has status ``1xx`` (other than ``101``), ``204`` or ``304``, since such
+      a response has no body.
 
    .. method:: write_eof()
       :async:

@@ -3299,6 +3299,44 @@ async def test_stream_response_no_body_bytes_for_head_204_304(
     assert rest.endswith(b"\r\n\r\nOTHER")
 
 
+@pytest.mark.parametrize("status", (100, 102, 103))
+async def test_stream_response_no_body_bytes_after_interim_response(
+    aiohttp_server: AiohttpServer, status: int
+) -> None:
+    async def handler(request: web.Request) -> web.StreamResponse:
+        early = web.StreamResponse(status=status)
+        await early.prepare(request)
+        await early.write(b"LEAK")
+        await early.write_eof(b"MORE")
+        return early
+
+    async def other(request: web.Request) -> web.Response:
+        return web.Response(text="OTHER")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/other", other)
+    server = await aiohttp_server(app)
+
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n"
+            b"GET /other HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        )
+        await writer.drain()
+        data = await reader.read()
+    finally:
+        writer.close()
+        with suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    head, _, rest = data.partition(b"\r\n\r\n")
+    assert head.startswith(f"HTTP/1.1 {status} ".encode())
+    assert rest.startswith(b"HTTP/1.1 200 OK\r\n")
+    assert rest.endswith(b"\r\n\r\nOTHER")
+
+
 async def test_keepalive_race_condition(aiohttp_client: AiohttpClient) -> None:
     protocol: RequestHandler[web.Request] | None = None
     orig_data_received = RequestHandler.data_received

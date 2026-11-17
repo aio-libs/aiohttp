@@ -14,6 +14,7 @@ from multidict import CIMultiDict, istr
 
 from . import hdrs, payload
 from .abc import AbstractStreamWriter
+from .client_exceptions import ClientConnectionResetError
 from .compression_utils import MAX_SYNC_CHUNK_SIZE, ZLibCompressor
 from .helpers import (
     ETAG_ANY,
@@ -371,9 +372,10 @@ class StreamResponse(
         self._must_be_empty_body = must_be_empty_body(request.method, self.status)
         # Body bytes on these would be read as the start of the next response.
         # 101 and CONNECT 2xx are left alone: what follows them is tunnel data.
-        self._discard_body = request.method == hdrs.METH_HEAD or self.status in (
-            204,
-            304,
+        self._discard_body = (
+            self._must_be_empty_body
+            and self.status != 101
+            and not (200 <= self.status < 300 and request.method == hdrs.METH_CONNECT)
         )
         return await self._start(request)
 
@@ -477,6 +479,10 @@ class StreamResponse(
         if self._payload_writer is None:
             raise RuntimeError("Cannot call write() before prepare()")
         if self._discard_body:
+            # Nothing is sent, but a lost connection still has to end the handler.
+            assert self._req is not None
+            if self._req.transport is None:
+                raise ClientConnectionResetError("Cannot write to closing transport")
             return
 
         await self._payload_writer.write(data)
