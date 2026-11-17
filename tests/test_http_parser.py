@@ -1902,6 +1902,31 @@ async def test_uncompressed_connection_lost_drains_buffered_payload(
     assert protocol.should_close
 
 
+@pytest.mark.parametrize("truncated", [False, True], ids=["complete", "truncated"])
+async def test_raw_chunked_connection_lost_reports_payload_error(
+    executor_protocol: ResponseHandler,
+    response_cls: type[HttpResponseParser],
+    truncated: bool,
+) -> None:
+    protocol = executor_protocol
+    protocol.set_response_params(auto_decompress=False, read_bufsize=1024)
+    body = b"x" * 65_536
+    wire_body = b"10000\r\n" + body + b"\r\n"
+    if not truncated:
+        wire_body += b"0\r\n\r\n"
+    protocol.data_received(
+        b"HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n" + wire_body
+    )
+    _, payload = await protocol.read()
+    protocol.connection_lost(None)
+
+    if truncated or response_cls.__module__ == "aiohttp._http_parser":
+        with pytest.raises(ClientPayloadError):
+            await payload.read()
+    else:
+        assert await payload.read() == body
+
+
 @pytest.mark.parametrize("shutdown", ["close", "abort"])
 async def test_executor_decompression_shutdown_wakes_payload_reader(
     executor_protocol: ResponseHandler,

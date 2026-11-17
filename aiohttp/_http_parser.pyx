@@ -643,7 +643,7 @@ cdef class HttpParser:
     def feed_eof(self):
         cdef bytes desc
 
-        if self._payload is not None and self._tail:
+        if self._offload_decompression and self._payload is not None and self._tail:
             return None
         if self._payload is not None:
             if self._cparser.flags & cparser.F_CHUNKED:
