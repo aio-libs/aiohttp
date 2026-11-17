@@ -84,8 +84,12 @@ def get_report(path: Path, result: dict[str, str]) -> dict[str, object] | None:
     return json.loads((path / result["reportfile"]).read_text())  # type: ignore[no-any-return]
 
 
-def get_test_results(path: Path, name: str) -> tuple[Result, ...]:
-    results = json.loads((path / "index.json").read_text())[name]
+def get_test_results(
+    path: Path, name: str, index: dict[str, dict[str, dict[str, str]]] | None = None
+) -> tuple[Result, ...]:
+    if index is None:
+        index = json.loads((path / "index.json").read_text())
+    results = index[name]
     return tuple(
         (k, r["behaviorClose"], get_report(path, r)) for k, r in results.items()
     )
@@ -184,7 +188,7 @@ def test_server(
     spec_file = request.path.parent / "server" / "fuzzingclient.json"
     spec: dict[str, object] = json.loads(spec_file.read_text())
     index_file = report_dir / "servers" / "index.json"
-    index: dict[str, dict[str, object]] = {}
+    index: dict[str, dict[str, dict[str, str]]] = {}
     server = subprocess.Popen(
         (
             sys.executable,
@@ -230,8 +234,7 @@ def test_server(
         server.terminate()
         server.wait()
 
-    index_file.write_text(json.dumps(index))
-    results = get_test_results(report_dir / "servers", "AutobahnServer")
+    results = get_test_results(report_dir / "servers", "AutobahnServer", index)
     xfail = {
         "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
