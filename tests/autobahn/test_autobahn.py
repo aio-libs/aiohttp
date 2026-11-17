@@ -21,6 +21,16 @@ else:
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
 
+# The fuzzing client (PyPy 2.7 in the autobahn-testsuite image) never gives back
+# the memory behind the large messages it exchanges. Running all cases in one
+# process grows it past 10GB and gets it OOM-killed (exit code 137) on some CI
+# runners, so each group of compression cases runs in a fresh process instead.
+SERVER_CASE_BATCHES: tuple[dict[str, list[str]], ...] = (
+    {"cases": ["*"], "exclude-cases": ["12.*", "13.*"]},
+    *({"cases": [f"12.{i}.*"]} for i in range(1, 6)),
+    *({"cases": [f"13.{i}.*"]} for i in range(1, 8)),
+)
+
 
 def wait_for_port(port: int, timeout: float = 15.0) -> None:
     deadline = time.monotonic() + timeout
@@ -153,7 +163,13 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
 
 @pytest.mark.autobahn
-def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
+def test_server(
+    report_dir: Path, request: pytest.FixtureRequest, tmp_path: Path
+) -> None:
+    spec_file = request.path.parent / "server" / "fuzzingclient.json"
+    spec: dict[str, object] = json.loads(spec_file.read_text())
+    index_file = report_dir / "servers" / "index.json"
+    index: dict[str, dict[str, object]] = {}
     server = subprocess.Popen(
         (
             sys.executable,
@@ -170,27 +186,36 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
     )
     try:
         wait_for_port(9001)
-        docker.run(
-            image="autobahn-testsuite",
-            name="autobahn",
-            remove=True,
-            volumes=[
-                (request.path.parent / "server", "/config"),
-                (report_dir, "/reports"),
-            ],
-            networks=("host",),
-            command=(
-                "wstest",
-                "--mode",
-                "fuzzingclient",
-                "--spec",
-                "/config/fuzzingclient.json",
-            ),
-        )
+        for i, batch in enumerate(SERVER_CASE_BATCHES):
+            batch_spec = f"fuzzingclient-{i}.json"
+            (tmp_path / batch_spec).write_text(json.dumps(spec | batch))
+            docker.run(
+                image="autobahn-testsuite",
+                name="autobahn",
+                remove=True,
+                volumes=[
+                    (tmp_path, "/config"),
+                    (report_dir, "/reports"),
+                ],
+                networks=("host",),
+                # Unbuffered, so a killed run still shows the case it was on.
+                envs={"PYTHONUNBUFFERED": "1"},
+                command=(
+                    "wstest",
+                    "--mode",
+                    "fuzzingclient",
+                    "--spec",
+                    f"/config/{batch_spec}",
+                ),
+            )
+            # Every run rewrites index.json with just its own cases.
+            for agent, cases in json.loads(index_file.read_text()).items():
+                index.setdefault(agent, {}).update(cases)
     finally:
         server.terminate()
         server.wait()
 
+    index_file.write_text(json.dumps(index))
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     xfail = {
         "9.1.4": "Did not receive message within 100 seconds.",
