@@ -819,6 +819,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 # check payload
                 if not payload.is_eof():
                     lingering_time = self._lingering_time
+                    # Draining an auto-decompressed body means inflating it, and
+                    # readany() keeps returning without yielding while the parser
+                    # refills it: a few KiB of nested gzip hold the event loop for
+                    # the whole lingering time. Close the connection instead.
+                    if payload.total_compressed_bytes is not None:
+                        lingering_time = 0
                     # Could be force closed while awaiting above tasks.
                     if not self._force_close and lingering_time:  # type: ignore[redundant-expr]
                         self.log_debug(

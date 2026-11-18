@@ -1,0 +1,4 @@
+Fixed lingering close inflating an unread auto-decompressed request body
+without yielding to the event loop, which let a few KiB of nested ``gzip``
+block the server for the whole ``lingering_time``; the connection is now
+closed instead of draining such a body -- by :user:`insaf021`.
