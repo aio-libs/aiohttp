@@ -1,0 +1,2 @@
+Removed the dead Gitter chat link from the issue template
+-- by :user:`KuligKamil`.
