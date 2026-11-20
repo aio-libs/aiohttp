@@ -1,0 +1,1 @@
+Fixed ``receive(timeout=0)`` on :class:`~aiohttp.web.WebSocketResponse` and :class:`~aiohttp.ClientWebSocketResponse` waiting for the default receive timeout instead of timing out immediately; a configured default of ``0`` now also times out immediately, use ``None`` for no timeout -- by :user:`Yasser-Ameur`.
