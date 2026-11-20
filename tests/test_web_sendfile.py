@@ -1,13 +1,21 @@
 import asyncio
 import io
+import ssl
 from pathlib import Path
 from stat import S_IFREG, S_IRUSR, S_IWUSR
 from unittest import mock
+
+import pytest
 
 from aiohttp import hdrs
 from aiohttp.http_writer import StreamWriter
 from aiohttp.test_utils import make_mocked_request
 from aiohttp.web_fileresponse import FileResponse
+
+try:
+    import aiofastnet
+except ImportError:
+    aiofastnet = None  # type: ignore[assignment]
 
 MOCK_MODE = S_IFREG | S_IRUSR | S_IWUSR
 
@@ -168,6 +176,98 @@ async def test_file_response_sends_headers_immediately() -> None:
 
     # Headers should be sent immediately
     writer.send_headers.assert_called_once()
+
+
+@pytest.fixture
+def regular_file(tmp_path: Path) -> Path:
+    filepath = tmp_path / "logo.png"
+    filepath.write_bytes(b"x" * 1024)
+    return filepath
+
+
+async def test_sendfile_tls_uses_own_fallback(regular_file: Path) -> None:
+    """Test loop.sendfile() is bypassed for TLS transports.
+
+    asyncio does not raise NotImplementedError for TLS transports, it uses
+    its own much slower fallback instead.
+    """
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    request = make_mocked_request(
+        "GET",
+        "http://python.org/logo.png",
+        writer=writer,
+        sslcontext=mock.create_autospec(ssl.SSLContext, instance=True),
+    )
+    file_sender = FileResponse(regular_file)
+
+    with (
+        mock.patch.object(
+            file_sender, "_sendfile_fallback", autospec=True, spec_set=True
+        ) as sendfile_fallback,
+        mock.patch.object(
+            request._loop, "sendfile", autospec=True, spec_set=True
+        ) as loop_sendfile,
+        mock.patch("aiohttp.web_fileresponse.aiofastnet", None),
+    ):
+        sendfile_fallback.return_value = writer
+        await file_sender.prepare(request)
+
+    sendfile_fallback.assert_called_once()
+    assert sendfile_fallback.call_args.args[2:] == (0, 1024)
+    loop_sendfile.assert_not_called()
+
+
+async def test_sendfile_without_tls_uses_loop_sendfile(regular_file: Path) -> None:
+    """Test loop.sendfile() is still used for transports without TLS."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    request = make_mocked_request("GET", "http://python.org/logo.png", writer=writer)
+    file_sender = FileResponse(regular_file)
+
+    with (
+        mock.patch.object(
+            file_sender, "_sendfile_fallback", autospec=True, spec_set=True
+        ) as sendfile_fallback,
+        mock.patch.object(
+            request._loop, "sendfile", autospec=True, spec_set=True
+        ) as loop_sendfile,
+        mock.patch("aiohttp.web_fileresponse.aiofastnet", None),
+    ):
+        await file_sender.prepare(request)
+
+    loop_sendfile.assert_called_once()
+    assert loop_sendfile.call_args.args[0] is request.transport
+    assert loop_sendfile.call_args.args[2:] == (0, 1024)
+    sendfile_fallback.assert_not_called()
+
+
+@pytest.mark.skipif(aiofastnet is None, reason="aiofastnet not installed")
+async def test_sendfile_tls_aiofastnet_transport_uses_aiofastnet(
+    regular_file: Path,
+) -> None:
+    """Test aiofastnet transports with TLS still try native sendfile."""
+    writer = mock.create_autospec(StreamWriter, spec_set=True, instance=True)
+    transport = mock.Mock(spec=aiofastnet.Transport)
+    transport.get_extra_info.return_value = mock.create_autospec(
+        ssl.SSLContext, instance=True
+    )
+    request = make_mocked_request(
+        "GET", "http://python.org/logo.png", writer=writer, transport=transport
+    )
+    file_sender = FileResponse(regular_file)
+
+    with (
+        mock.patch.object(
+            file_sender, "_sendfile_fallback", autospec=True, spec_set=True
+        ) as sendfile_fallback,
+        mock.patch.object(
+            aiofastnet, "sendfile", autospec=True, spec_set=True
+        ) as aiofastnet_sendfile,
+    ):
+        await file_sender.prepare(request)
+
+    aiofastnet_sendfile.assert_called_once()
+    assert aiofastnet_sendfile.call_args.args[1] is transport
+    sendfile_fallback.assert_not_called()
 
 
 async def test_sendfile_fallback_respects_count_boundary() -> None:

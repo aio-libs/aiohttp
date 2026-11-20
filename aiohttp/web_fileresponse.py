@@ -35,6 +35,9 @@ try:
     import aiofastnet
 except ImportError:
     aiofastnet = None  # type: ignore[assignment]
+    _AIOFASTNET_TRANSPORTS: tuple[type, ...] = ()
+else:
+    _AIOFASTNET_TRANSPORTS = (aiofastnet.Transport,)
 
 
 _T_OnChunkSent = Callable[[bytes], Awaitable[None]] | None
@@ -140,6 +143,15 @@ class FileResponse(StreamResponse):
         transport = request.transport
         if transport is None:
             raise ConnectionResetError("Connection lost")
+
+        # asyncio has no native sendfile for TLS and silently falls back to
+        # sending 16 KiB blocks (256 KiB as of Python 3.16), which is several
+        # times slower than our own fallback. aiofastnet transports raise
+        # NotImplementedError themselves if TLS sendfile is not available.
+        if transport.get_extra_info("sslcontext") is not None and not isinstance(
+            transport, _AIOFASTNET_TRANSPORTS
+        ):
+            return await self._sendfile_fallback(writer, fobj, offset, count)
 
         try:
             if aiofastnet is not None:
