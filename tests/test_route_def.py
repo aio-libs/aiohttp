@@ -107,6 +107,19 @@ def test_delete(router: UrlDispatcher) -> None:
     assert str(route.url_for()) == "/"
 
 
+def test_query(router: UrlDispatcher) -> None:
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    router.add_routes([web.query("/", handler)])
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.handler is handler
+    assert route.method == "QUERY"
+    assert str(route.url_for()) == "/"
+
+
 def test_route(router: UrlDispatcher) -> None:
     async def handler(request: web.Request) -> NoReturn:
         assert False
@@ -230,6 +243,22 @@ def test_delete_deco(router: UrlDispatcher) -> None:
 
     route = list(router.routes())[0]
     assert route.method == "DELETE"
+    assert str(route.url_for()) == "/path"
+
+
+def test_query_deco(router: UrlDispatcher) -> None:
+    routes = web.RouteTableDef()
+
+    @routes.query("/path")
+    async def handler(request: web.Request) -> NoReturn:
+        assert False
+
+    router.add_routes(routes)
+
+    assert len(router.routes()) == 1
+
+    route = list(router.routes())[0]
+    assert route.method == "QUERY"
     assert str(route.url_for()) == "/path"
 
 

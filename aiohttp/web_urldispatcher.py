@@ -1224,6 +1224,10 @@ class UrlDispatcher(AbstractRouter, Mapping[str, AbstractResource]):
         """Shortcut for add_route with method DELETE."""
         return self.add_route(hdrs.METH_DELETE, path, handler, **kwargs)
 
+    def add_query(self, path: str, handler: Handler, **kwargs: Any) -> AbstractRoute:
+        """Shortcut for add_route with method QUERY."""
+        return self.add_route(hdrs.METH_QUERY, path, handler, **kwargs)
+
     def add_view(
         self, path: str, handler: type[AbstractView], **kwargs: Any
     ) -> AbstractRoute:

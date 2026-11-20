@@ -28,6 +28,7 @@ METH_ALL: Final[set[str]] = {
     METH_PATCH,
     METH_POST,
     METH_PUT,
+    METH_QUERY,
     METH_TRACE,
 }
 
