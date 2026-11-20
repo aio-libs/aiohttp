@@ -2,8 +2,11 @@
 
 import asyncio
 import logging
+import operator
+import socket
 import time
-from collections.abc import AsyncIterator, Sequence
+import weakref
+from collections.abc import AsyncIterator, Awaitable, Callable, Hashable, Sequence
 from contextlib import asynccontextmanager, suppress
 
 from aiohttp import (
@@ -14,7 +17,7 @@ from aiohttp import (
     ClientSession,
     TCPConnector,
 )
-from aiohttp.abc import ResolveResult
+from aiohttp.abc import AbstractResolver, ResolveResult
 from aiohttp.tracing import Trace
 
 
@@ -141,3 +144,62 @@ class SSRFConnector(TCPConnector):
         if any(r["host"] in {"127.0.0.1"} for r in res):
             raise SSRFError()
         return res
+
+
+async def by_host(req: ClientRequest) -> Hashable:
+    return req.url.raw_host
+
+
+class RateLimitMiddleware:
+    def __init__(
+        self,
+        limit: int,
+        period: float,
+        key: Callable[[ClientRequest], Awaitable[Hashable]] = by_host,
+    ):
+        if operator.index(limit) < 1 or not period > 0:
+            raise ValueError("limit must be at least 1, and period positive")
+        self.limit = limit
+        self.period = period
+        self.key = key
+        # The release timers keep a semaphore alive while any of its slots is taken
+        self.slots: weakref.WeakValueDictionary[Hashable, asyncio.Semaphore] = (
+            weakref.WeakValueDictionary()
+        )
+
+    async def __call__(
+        self, req: ClientRequest, handler: ClientHandlerType
+    ) -> ClientResponse:
+        key = await self.key(req)
+        slots = self.slots.setdefault(key, asyncio.Semaphore(self.limit))
+        await slots.acquire()
+        asyncio.get_running_loop().call_later(self.period, slots.release)
+        return await handler(req)
+
+
+def by_resolved_ip(
+    resolver: AbstractResolver,
+) -> Callable[[ClientRequest], Awaitable[Hashable]]:
+    lookups: dict[str, asyncio.Task[str]] = {}
+
+    async def lookup(host: str) -> str:
+        try:
+            results = await resolver.resolve(host, family=socket.AF_UNSPEC)
+        except OSError:
+            # The connector's own lookup reports the error
+            lookups.pop(host, None)
+            return host
+        # AF_INET sorts before AF_INET6, so IPv4 addresses come first
+        return min((r["family"], r["host"]) for r in results)[1]
+
+    async def by_ip(req: ClientRequest) -> Hashable:
+        host = req.url.raw_host
+        assert host is not None
+        if req.proxy is not None:
+            return host
+        if host not in lookups:
+            lookups[host] = asyncio.create_task(lookup(host))
+        # A cancelled request must not cancel the lookup that other requests await
+        return await asyncio.shield(lookups[host])
+
+    return by_ip
