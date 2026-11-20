@@ -612,7 +612,7 @@ def test_set_content_disposition_bad_param() -> None:
 @pytest.mark.usefixtures("proxy_env_vars")
 def test_proxies_from_env(url_input: str, expected_scheme: str) -> None:
     url = URL(url_input)
-    ret = helpers.proxies_from_env()
+    ret = helpers.proxies_from_env(None)
     assert ret.keys() == {expected_scheme}
     assert ret[expected_scheme].proxy == url
     assert ret[expected_scheme].proxy_auth is None
@@ -636,7 +636,7 @@ def test_proxies_from_env_skipped(
     caplog: pytest.LogCaptureFixture, url_input: str, expected_scheme: str
 ) -> None:
     url = URL(url_input)
-    assert helpers.proxies_from_env() == {}
+    assert helpers.proxies_from_env(None) == {}
     assert len(caplog.records) == 1
     log_message = (
         f"{expected_scheme.upper()!s} proxies {url!s} are not supported, ignoring"
@@ -659,7 +659,7 @@ def test_proxies_from_env_skipped(
 @pytest.mark.usefixtures("proxy_env_vars")
 def test_proxies_from_env_http_with_auth(url_input: str, expected_scheme: str) -> None:
     url = URL("http://user:pass@aiohttp.io/path")
-    ret = helpers.proxies_from_env()
+    ret = helpers.proxies_from_env(None)
     assert ret.keys() == {expected_scheme}
     assert ret[expected_scheme].proxy == url.with_user(None)
     assert ret[expected_scheme].proxy_auth == helpers.encode_basic_auth("user", "pass")
@@ -729,7 +729,7 @@ def proxy_env_vars(
 def test_get_env_proxy_for_url_negative(url_input: str, expected_err_msg: str) -> None:
     url = URL(url_input)
     with pytest.raises(LookupError, match=expected_err_msg):
-        helpers.get_env_proxy_for_url(url)
+        helpers.get_env_proxy_for_url(url, None)
 
 
 @pytest.mark.parametrize(
@@ -751,7 +751,7 @@ def test_get_env_proxy_for_url_negative(url_input: str, expected_err_msg: str) -
 )
 def test_get_env_proxy_for_url(proxy_env_vars: dict[str, str], url_input: str) -> None:
     url = URL(url_input)
-    proxy, proxy_auth = helpers.get_env_proxy_for_url(url)
+    proxy, proxy_auth = helpers.get_env_proxy_for_url(url, None)
     proxy_list = proxy_env_vars[url.scheme + "_proxy"]
     assert proxy == URL(proxy_list)
     assert proxy_auth is None

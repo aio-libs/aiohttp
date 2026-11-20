@@ -244,13 +244,12 @@ def _auth_header_from_netrc(netrc_obj: netrc.netrc | None, host: str) -> str:
     return encode_basic_auth(login or account, password)
 
 
-def proxies_from_env() -> dict[str, ProxyInfo]:
+def proxies_from_env(netrc_obj: netrc.netrc | None) -> dict[str, ProxyInfo]:
     proxy_urls = {
         k: URL(v)
         for k, v in getproxies().items()
         if k in ("http", "https", "ws", "wss")
     }
-    netrc_obj = netrc_from_env()
     stripped = {k: strip_auth_from_url(v) for k, v in proxy_urls.items()}
     ret = {}
     for proto, val in stripped.items():
@@ -270,12 +269,14 @@ def proxies_from_env() -> dict[str, ProxyInfo]:
     return ret
 
 
-def get_env_proxy_for_url(url: URL) -> tuple[URL, str | None]:
+def get_env_proxy_for_url(
+    url: URL, netrc_obj: netrc.netrc | None
+) -> tuple[URL, str | None]:
     """Get a permitted proxy for the given URL from the env."""
     if url.host is not None and proxy_bypass(url.host):
         raise LookupError(f"Proxying is disallowed for `{url.host!r}`")
 
-    proxies_in_env = proxies_from_env()
+    proxies_in_env = proxies_from_env(netrc_obj)
     try:
         proxy_info = proxies_in_env[url.scheme]
     except KeyError:
