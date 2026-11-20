@@ -1,0 +1,4 @@
+Wrote the backslash test case of the digest authentication ``uri`` test
+percent-encoded, so the test passes with yarl releases that keep a literal
+backslash in the query, as the WHATWG URL Standard does
+-- by :user:`asvetlov`.
