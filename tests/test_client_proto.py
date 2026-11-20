@@ -281,7 +281,6 @@ async def test_reschedule_timeout() -> None:
     assert proto._read_timeout_handle is not h
 
 
-
 async def test_resume_that_finishes_the_response_leaves_no_timeout() -> None:
     """A response completed by resume_reading() must not re-arm sock_read.
 
@@ -332,6 +331,7 @@ async def test_resume_mid_body_reschedules_timeout() -> None:
 
     assert not payload.is_eof()
     assert proto._read_timeout_handle is not None
+
 
 async def test_eof_received() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
