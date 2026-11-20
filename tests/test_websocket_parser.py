@@ -874,6 +874,55 @@ def test_msg_too_large_across_fragments(out: WebSocketDataQueue) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+def test_set_max_msg_size_lowers_limit(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    parser.set_max_msg_size(256)
+
+    header = PACK_LEN3(0x80 | WSMsgType.TEXT, 127, 1024 * 1024)
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 1048576 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(header)
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_set_max_msg_size_raises_limit(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 256, compress=False, decode_text=True)
+    parser.set_max_msg_size(4096)
+
+    parser._feed_data(build_frame(b"a" * 1000, WSMsgType.TEXT))
+    assert out._buffer[0] == WSMessageText(data="a" * 1000, size=1000, extra="")
+
+
+def test_set_max_msg_size_rejects_frame_in_progress(out: WebSocketDataQueue) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 1024, WSMsgType.TEXT)
+    assert parser.feed_data(frame[:100]) == (False, b"")
+
+    parser.set_max_msg_size(256)
+
+    exc = out.exception()
+    assert isinstance(exc, WebSocketError)
+    assert exc.code == WSCloseCode.MESSAGE_TOO_BIG
+    assert str(exc) == "Message size 1024 exceeds limit 256"
+    assert parser.feed_data(frame[100:]) == (True, frame[100:])
+    assert not out._buffer
+
+
+def test_set_max_msg_size_raised_for_frame_in_progress(
+    out: WebSocketDataQueue,
+) -> None:
+    parser = WebSocketReader(out, 2048, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 1024, WSMsgType.TEXT)
+    parser.feed_data(frame[:100])
+
+    parser.set_max_msg_size(4096)
+    parser.feed_data(frame[100:])
+
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(data="a" * 1024, size=1024, extra="")
+
+
 def test_msg_too_large_text_after_non_fin_text(out: WebSocketDataQueue) -> None:
     # Protocol-violating sequence: a fresh TEXT arrives while a fragmented
     # message is still open.
