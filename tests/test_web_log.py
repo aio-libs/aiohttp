@@ -24,8 +24,27 @@ def test_access_logger_format() -> None:
     log_format = '%T "%{ETag}o" %X {X} %%P'
     mock_logger = mock.Mock()
     access_logger = AccessLogger(mock_logger, log_format)
-    expected = '%s "%s" %%X {X} %%%s'
+    expected = '%s "%s" %%X {X} %%P'
     assert expected == access_logger._log_format
+
+
+@pytest.mark.parametrize(
+    ("log_format", "expected"),
+    [
+        ("%s 100%%", "200 100%"),
+        ("%% %s", "% 200"),
+        ("%%s %s", "%s 200"),
+        ("%%%s", "%200"),
+        ("%%%% %s", "%% 200"),
+    ],
+)
+def test_access_logger_literal_percent(log_format: str, expected: str) -> None:
+    mock_logger = mock.Mock()
+    access_logger = AccessLogger(mock_logger, log_format)
+    response = mock.Mock(headers={}, status=200)
+    access_logger.log(mock.Mock(), response, 0.1)
+    assert not mock_logger.exception.called, mock_logger.exception.call_args
+    mock_logger.info.assert_called_once_with(expected, extra={"response_status": 200})
 
 
 @pytest.mark.skipif(
