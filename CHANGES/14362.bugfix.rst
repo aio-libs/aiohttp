@@ -1,0 +1,1 @@
+Directory index links now preserve filenames and route prefixes containing HTML character references -- by :user:`anticipate218`.

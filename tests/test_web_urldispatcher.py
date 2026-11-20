@@ -5,6 +5,7 @@ import pathlib
 import socket
 import sys
 from collections.abc import Generator
+from html.parser import HTMLParser
 from stat import S_IFIFO, S_IMODE
 from typing import Any, NoReturn
 
@@ -196,6 +197,43 @@ async def test_access_root_of_static_handler_xss(
             assert r.headers["Content-Type"] == "text/html; charset=utf-8"
             read_ = await r.read()
             assert read_ == data
+
+
+@pytest.mark.parametrize(
+    "prefix,filename",
+    [
+        ("/static", "report&copy;.txt"),
+        ("/static&copy;", "report.txt"),
+        ("/static", "report.txt"),
+    ],
+)
+async def test_static_index_links_preserve_html_entities(
+    tmp_path: pathlib.Path,
+    aiohttp_client: AiohttpClient,
+    prefix: str,
+    filename: str,
+) -> None:
+    (tmp_path / filename).write_text("file contents", encoding="utf-8")
+    app = web.Application()
+    app.router.add_static(prefix, tmp_path, show_index=True)
+    client = await aiohttp_client(app)
+    links: list[str] = []
+
+    class LinkParser(HTMLParser):
+        def handle_starttag(
+            self, tag: str, attrs: list[tuple[str, str | None]]
+        ) -> None:
+            href = dict(attrs).get("href")
+            if tag == "a" and href is not None:
+                links.append(href)
+
+    response = await client.get(prefix)
+    assert response.status == 200
+    LinkParser().feed(await response.text())
+    assert len(links) == 1
+    response = await client.get(links[0])
+    assert response.status == 200
+    assert await response.text() == "file contents"
 
 
 async def test_follow_symlink(
