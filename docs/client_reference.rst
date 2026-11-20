@@ -1541,7 +1541,7 @@ Response object
       ``(host, port)`` tuple, an IPv6 ``(host, port, flowinfo, scope_id)``
       tuple, or a Unix socket address. It is ``None`` if unavailable.
 
-      .. versionadded:: 4.0
+      .. versionadded:: 3.15
 
    .. attribute:: content
 
