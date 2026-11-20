@@ -1,0 +1,1 @@
+Added :attr:`ClientResponse.peername <aiohttp.ClientResponse.peername>` to expose the remote address used for each response, including redirects, after the connection is released -- by :user:`lebwa82`.

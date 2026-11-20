@@ -24,6 +24,7 @@ from .helpers import (
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .http_exceptions import HttpProcessingError
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
+from .typedefs import PeerName
 
 
 class _Payload(ErrorableProtocol, Protocol):
@@ -37,6 +38,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         BaseProtocol.__init__(self, loop=loop, parser=None)
         DataQueue.__init__(self, loop)
 
+        self.peername: PeerName | None = None
         self._should_close = False
 
         self._payload: _Payload | None = None
@@ -114,6 +116,10 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
     def is_connected(self) -> bool:
         return self.transport is not None and not self.transport.is_closing()
+
+    def connection_made(self, transport: asyncio.BaseTransport) -> None:
+        super().connection_made(transport)
+        self.peername = transport.get_extra_info("peername")
 
     def connection_lost(self, exc: BaseException | None) -> None:
         self._connection_lost_called = True

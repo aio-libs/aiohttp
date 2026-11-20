@@ -41,6 +41,25 @@ async def test_oserror() -> None:
     assert isinstance(proto.exception(), ClientOSError)
 
 
+@pytest.mark.parametrize(
+    "peername",
+    [("127.0.0.1", 8080), ("fe80::1", 8080, 0, 3), None],
+)
+async def test_peername_survives_connection_lost(
+    peername: tuple[str, int] | tuple[str, int, int, int] | None,
+) -> None:
+    proto = ResponseHandler(loop=asyncio.get_running_loop())
+    transport = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    transport.get_extra_info.side_effect = {"peername": peername}.get
+
+    proto.connection_made(transport)
+    assert proto.peername == peername
+
+    proto.connection_lost(None)
+    assert proto.transport is None
+    assert proto.peername == peername
+
+
 async def test_pause_resume_on_error() -> None:
     parser = mock.create_autospec(HttpParser, spec_set=True, instance=True)
     proto = ResponseHandler(loop=asyncio.get_running_loop())

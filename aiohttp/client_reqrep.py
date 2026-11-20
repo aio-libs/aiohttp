@@ -62,7 +62,7 @@ from .http import (
     StreamWriter,
 )
 from .streams import EMPTY_PAYLOAD, StreamReader
-from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
+from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, PeerName, RawHeaders
 
 try:
     import ssl
@@ -77,6 +77,7 @@ __all__ = ("ClientRequest", "ClientResponse", "RequestInfo", "Fingerprint")
 
 if TYPE_CHECKING:
     from .client import ClientSession
+    from .client_proto import ResponseHandler
     from .connector import Connection
     from .tracing import Trace
 
@@ -431,6 +432,7 @@ class ClientResponse(HeadersMixin):
     _upgraded: bool = False  # parser saw a Connection: upgrade token
 
     _connection: "Connection | None" = None  # current connection
+    _protocol: "ResponseHandler | None" = None
     _cookies: SimpleCookie | None = None
     _raw_cookie_headers: tuple[str, ...] | None = None
     _continue: asyncio.Future[bool] | None = None
@@ -666,6 +668,11 @@ class ClientResponse(HeadersMixin):
     @property
     def connection(self) -> "Connection | None":
         return self._connection
+
+    @property
+    def peername(self) -> PeerName | None:
+        """Remote address used for this response, if available."""
+        return self._protocol.peername if self._protocol is not None else None
 
     @reify
     def history(self) -> tuple["ClientResponse", ...]:
