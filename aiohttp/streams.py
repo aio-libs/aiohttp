@@ -3,7 +3,7 @@ import collections
 import sys
 import warnings
 from collections.abc import Awaitable, Callable, Coroutine
-from typing import Final, Generic, TypeVar
+from typing import Final, Generic, NoReturn, TypeVar
 
 from .base_protocol import BaseProtocol
 from .helpers import (
@@ -99,6 +99,7 @@ class StreamReader:
         "_eof_waiter",
         "_exception",
         "_timer",
+        "_exception_handler",
         "_eof_callbacks",
         "_eof_counter",
         "_on_chunk_received",
@@ -133,6 +134,7 @@ class StreamReader:
         self._eof_waiter: asyncio.Future[None] | None = None
         self._exception: type[BaseException] | BaseException | None = None
         self._timer = TimerNoop() if timer is None else timer
+        self._exception_handler: Callable[[BaseException], None] | None = None
         self._eof_callbacks: list[Callable[[], None]] = []
         self._eof_counter = 0
         self._on_chunk_received: (
@@ -204,6 +206,23 @@ class StreamReader:
         if waiter is not None:
             self._eof_waiter = None
             set_exception(waiter, exc, exc_cause)
+
+    def _set_exception_handler(
+        self, handler: Callable[[BaseException], None] | None
+    ) -> None:
+        self._exception_handler = handler
+
+    def _notify_exception(self, exc: BaseException) -> None:
+        if self._exception_handler is not None:
+            self._exception_handler(exc)
+
+    def _raise_exception(self) -> NoReturn:
+        exc = self._exception
+        assert exc is not None
+        if isinstance(exc, type):
+            exc = exc()
+        self._notify_exception(exc)
+        raise exc
 
     def on_eof(self, callback: Callable[[], None]) -> None:
         if self._eof:
@@ -364,6 +383,9 @@ class StreamReader:
         try:
             with self._timer:
                 await waiter
+        except BaseException as exc:
+            self._notify_exception(exc)
+            raise
         finally:
             self._waiter = None
 
@@ -372,8 +394,12 @@ class StreamReader:
         assert cb is not None
         # Run under the same per-stream timer that _wait() uses, so a hung
         # trace handler is bounded by sock_read just like a hung socket read would be.
-        with self._timer:
-            await cb(chunk)
+        try:
+            with self._timer:
+                await cb(chunk)
+        except BaseException as exc:
+            self._notify_exception(exc)
+            raise
 
     async def readline(self, *, max_line_length: int | None = None) -> bytes:
         return await self.readuntil(max_size=max_line_length)
@@ -386,7 +412,7 @@ class StreamReader:
             raise ValueError("Separator should be at least one-byte string")
 
         if self._exception is not None:
-            raise self._exception
+            self._raise_exception()
 
         chunk = b""
         chunk_size = 0
@@ -432,7 +458,7 @@ class StreamReader:
 
     async def read(self, n: int = -1) -> bytes:
         if self._exception is not None:
-            raise self._exception
+            self._raise_exception()
 
         if not n:
             return b""
@@ -463,7 +489,7 @@ class StreamReader:
 
     async def readany(self) -> bytes:
         if self._exception is not None:
-            raise self._exception
+            self._raise_exception()
 
         # TODO: should be `if` instead of `while`
         # because waiter maybe triggered on chunk end,
@@ -486,7 +512,7 @@ class StreamReader:
         """
         while True:
             if self._exception is not None:
-                raise self._exception
+                self._raise_exception()
 
             while self._http_chunk_splits:
                 pos = self._http_chunk_splits.popleft()
@@ -518,7 +544,7 @@ class StreamReader:
 
     async def readexactly(self, n: int) -> bytes:
         if self._exception is not None:
-            raise self._exception
+            self._raise_exception()
 
         blocks: list[bytes] = []
         while n > 0:
@@ -537,7 +563,7 @@ class StreamReader:
         # I believe the most users don't know about the method and
         # they are not affected.
         if self._exception is not None:
-            raise self._exception
+            self._raise_exception()
 
         if self._waiter and not self._waiter.done():
             raise RuntimeError(
@@ -585,7 +611,11 @@ class StreamReader:
 
     def _read_nowait(self, n: int) -> bytes:
         """Read not more than n bytes, or whole buffer if n == -1"""
-        self._timer.assert_timeout()
+        try:
+            self._timer.assert_timeout()
+        except BaseException as exc:
+            self._notify_exception(exc)
+            raise
 
         if n == -1:
             # Drain only chunks present now; _read_nowait_chunk() can

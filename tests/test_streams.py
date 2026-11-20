@@ -682,6 +682,27 @@ class TestStreamReader:
         stream.set_exception(exc)
         assert stream.exception() is exc
 
+    async def test_exception_class(self) -> None:
+        stream = self._make_one()
+        stream.set_exception(ValueError)
+
+        with pytest.raises(ValueError) as exc_info:
+            await stream.readany()
+
+        assert exc_info.type is ValueError
+        assert stream.exception() is ValueError
+
+    async def test_exception_class_with_waiter(self) -> None:
+        stream = self._make_one()
+        read_task = asyncio.create_task(stream.read())
+        await asyncio.sleep(0)
+
+        stream.set_exception(ValueError)
+
+        assert stream.exception() is ValueError
+        with pytest.raises(ValueError):
+            await read_task
+
     async def test_exception_waiter(self) -> None:
         loop = asyncio.get_running_loop()
         stream = self._make_one()
@@ -707,6 +728,7 @@ class TestStreamReader:
         await asyncio.sleep(0)
         t.cancel()
         await asyncio.sleep(0)
+        assert t.cancelled()
         # The following line fails if set_exception() isn't careful.
         stream.set_exception(RuntimeError("message"))
         await asyncio.sleep(0)

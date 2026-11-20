@@ -626,9 +626,12 @@ class TimeoutHandle:
         else:
             return None
 
-    def timer(self) -> "BaseTimerContext":
+    def timer(
+        self,
+        timeout_error_factory: Callable[[], asyncio.TimeoutError] | None = None,
+    ) -> "BaseTimerContext":
         if self._timeout is not None and self._timeout > 0:
-            timer = TimerContext(self._loop)
+            timer = TimerContext(self._loop, timeout_error_factory)
             self.register(timer.timeout)
             return timer
         else:
@@ -669,18 +672,34 @@ class TimerNoop(BaseTimerContext):
 class TimerContext(BaseTimerContext):
     """Low resolution timeout context manager"""
 
-    __slots__ = ("_loop", "_tasks", "_cancelled", "_cancelling")
+    __slots__ = (
+        "_loop",
+        "_tasks",
+        "_cancelled",
+        "_cancelling",
+        "_timeout_error_factory",
+    )
 
-    def __init__(self, loop: asyncio.AbstractEventLoop) -> None:
+    def __init__(
+        self,
+        loop: asyncio.AbstractEventLoop,
+        timeout_error_factory: Callable[[], asyncio.TimeoutError] | None = None,
+    ) -> None:
         self._loop = loop
         self._tasks: list[asyncio.Task[Any]] = []
         self._cancelled = False
         self._cancelling = 0
+        self._timeout_error_factory = timeout_error_factory
+
+    def _timeout_error(self) -> asyncio.TimeoutError:
+        if self._timeout_error_factory is None:
+            return TimeoutError()
+        return self._timeout_error_factory()
 
     def assert_timeout(self) -> None:
         """Raise TimeoutError if timer has already been cancelled."""
         if self._cancelled:
-            raise TimeoutError from None
+            raise self._timeout_error() from None
 
     def __enter__(self) -> BaseTimerContext:
         task = asyncio.current_task(loop=self._loop)
@@ -693,7 +712,7 @@ class TimerContext(BaseTimerContext):
         self._cancelling = task.cancelling()
 
         if self._cancelled:
-            raise TimeoutError from None
+            raise self._timeout_error() from None
 
         self._tasks.append(task)
         return self
@@ -718,7 +737,7 @@ class TimerContext(BaseTimerContext):
             # to allow the cancellation to propagate
             if enter_task.uncancel() > self._cancelling:
                 return None
-            raise TimeoutError from exc_val
+            raise self._timeout_error() from exc_val
         return None
 
     def timeout(self) -> None:
