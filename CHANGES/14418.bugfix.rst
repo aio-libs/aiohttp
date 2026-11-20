@@ -1,0 +1,5 @@
+Fixed the ``sock_read`` timeout being re-armed after a response finished
+while the client resumed reading. A large response that paused reading
+mid-read could leave the pooled connection with a pending read timeout,
+so the next request reusing it failed immediately with
+:exc:`aiohttp.SocketTimeoutError` -- by :user:`xblackhand`.

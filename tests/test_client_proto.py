@@ -281,6 +281,58 @@ async def test_reschedule_timeout() -> None:
     assert proto._read_timeout_handle is not h
 
 
+async def test_resume_that_finishes_the_response_leaves_no_timeout() -> None:
+    """A response completed by resume_reading() must not re-arm sock_read.
+
+    One read larger than the payload's high-water mark pauses the parser
+    with the end of the message unparsed. Reading the body resumes it, the
+    parser finishes the message and EOF drops the timer, after which the
+    connection is released to the pool. A timer re-armed at that point
+    fires while the connection idles and fails the next request using it.
+    """
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    proto.start_timeout()
+    body = b"x" * (1 << 20)
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % len(body) + body
+    )
+
+    _, payload = await proto.read()
+    assert await payload.read() == body
+
+    assert payload.is_eof()
+    assert not proto.should_close
+    assert proto._read_timeout_handle is None
+
+
+async def test_resume_mid_body_reschedules_timeout() -> None:
+    """A resume that leaves the body unfinished keeps sock_read running."""
+    loop = asyncio.get_running_loop()
+    proto = ResponseHandler(loop=loop)
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    proto.connection_made(transport)
+    proto.set_response_params(read_timeout=30)
+    proto.start_timeout()
+    body_len = 1 << 20
+    proto.data_received(
+        b"HTTP/1.1 200 OK\r\nContent-Length: %d\r\n\r\n" % body_len
+        + b"x" * (3 * body_len // 4)
+    )
+    _, payload = await proto.read()
+    assert proto._reading_paused
+
+    payload.read_nowait()
+
+    assert not payload.is_eof()
+    assert proto._read_timeout_handle is not None
+
+
 async def test_eof_received() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.set_response_params(read_timeout=1)
