@@ -3,12 +3,14 @@ import gc
 import ipaddress
 import socket
 from collections.abc import Awaitable, Callable, Collection, Generator
+from importlib.util import module_from_spec, spec_from_file_location
 from ipaddress import ip_address
 from typing import Any, NamedTuple
 from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 
 import pytest
 
+from aiohttp import resolver as resolver_module
 from aiohttp.resolver import (
     _NAME_SOCKET_FLAGS,
     AsyncResolver,
@@ -21,9 +23,12 @@ try:
     import aiodns
 
     getaddrinfo = hasattr(aiodns.DNSResolver, "getaddrinfo")
+    _pycares = aiodns.pycares  # type: ignore[attr-defined]
+    _EXPECTED_NI_FLAGS = _pycares.ARES_NI_NUMERICHOST | _pycares.ARES_NI_NUMERICSERV
 except ImportError:  # pragma: no cover
     aiodns = None  # type: ignore[assignment]
     getaddrinfo = False
+    _EXPECTED_NI_FLAGS = 0
 
 _AddrInfo4 = list[
     tuple[socket.AddressFamily, None, socket.SocketKind, None, tuple[str, int]]
@@ -186,7 +191,11 @@ async def test_async_resolver_positive_ipv4_lookup() -> None:
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
 @pytest.mark.usefixtures("check_no_lingering_resolvers")
-async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
+async def test_async_resolver_positive_link_local_ipv6_lookup(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Exercise the Linux flag mismatch even where the native constants coincide.
+    monkeypatch.setattr(resolver_module, "_NAME_SOCKET_FLAGS", 0x1 | 0x2)
     with patch("aiodns.DNSResolver") as mock:
         mock().getaddrinfo.return_value = fake_aiodns_getaddrinfo_ipv6_result(
             ["fe80::1"]
@@ -204,7 +213,7 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _EXPECTED_NI_FLAGS)
         await resolver.close()
 
 
@@ -509,6 +518,20 @@ async def test_async_resolver_aiodns_not_present(
     monkeypatch.setattr("aiohttp.resolver.aiodns", None)
     with pytest.raises(RuntimeError):
         AsyncResolver()
+
+
+def test_resolver_import_without_aiodns() -> None:
+    spec = spec_from_file_location(
+        "aiohttp._resolver_without_aiodns", resolver_module.__file__
+    )
+    assert spec is not None and spec.loader is not None
+    module = module_from_spec(spec)
+    with patch.dict("sys.modules", {"aiodns": None}):
+        spec.loader.exec_module(module)
+
+    assert module.DefaultResolver is module.ThreadedResolver
+    with pytest.raises(RuntimeError, match="requires aiodns"):
+        module.AsyncResolver()
 
 
 @pytest.mark.skipif(not getaddrinfo, reason="aiodns >=3.2.0 required")
