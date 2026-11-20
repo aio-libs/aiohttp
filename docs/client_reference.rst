@@ -1530,6 +1530,19 @@ Response object
 
       :class:`Connection` used for handling response.
 
+   .. attribute:: peername
+
+      Remote address of the connection used for this response. It remains
+      available after the connection is released, including on responses in
+      :attr:`history`. When using a proxy, the address identifies the proxy.
+
+      The value comes from the transport's
+      :meth:`~asyncio.BaseTransport.get_extra_info`: an IPv4
+      ``(host, port)`` tuple, an IPv6 ``(host, port, flowinfo, scope_id)``
+      tuple, or a Unix socket address. It is ``None`` if unavailable.
+
+      .. versionadded:: 3.15
+
    .. attribute:: content
 
       Payload stream, which contains response's BODY (:class:`StreamReader`).

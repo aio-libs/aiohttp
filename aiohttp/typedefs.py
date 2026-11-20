@@ -14,6 +14,7 @@ if TYPE_CHECKING:
     from .web import Request, StreamResponse
 
 Byteish = bytes | bytearray | memoryview
+PeerName = tuple[str, int] | tuple[str, int, int, int] | str | bytes
 JSONEncoder = Callable[[Any], str]
 JSONBytesEncoder = Callable[[Any], bytes]
 JSONDecoder = Callable[[str], Any]
