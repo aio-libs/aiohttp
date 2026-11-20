@@ -1,0 +1,3 @@
+Fixed the Autobahn tests being OOM-killed on CI runners whose CPU reports a
+large cache size, by pinning the PyPy GC nursery size used by ``wstest``
+-- by :user:`Dreamsorcerer`.

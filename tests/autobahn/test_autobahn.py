@@ -21,6 +21,12 @@ else:
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
 
+# wstest runs on PyPy, which sizes its GC nursery from the CPU cache size in
+# /proc/cpuinfo (240MB on some CI runners). The zlib memory used by the
+# permessage-deflate cases is invisible to the GC, so with a large nursery
+# wstest grows past 14GB and gets OOM-killed. A small nursery keeps it ~1GB.
+WSTEST_ENV = {"PYPY_GC_NURSERY": "4MB"}
+
 
 def wait_for_port(port: int, timeout: float = 15.0) -> None:
     deadline = time.monotonic() + timeout
@@ -90,6 +96,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         image="autobahn-testsuite",
         name="autobahn",
         remove=True,
+        envs=WSTEST_ENV,
         volumes=[
             (request.path.parent / "client", "/config"),
             (report_dir, "/reports"),
@@ -174,6 +181,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
+            envs=WSTEST_ENV,
             volumes=[
                 (request.path.parent / "server", "/config"),
                 (report_dir, "/reports"),
