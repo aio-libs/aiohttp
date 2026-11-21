@@ -1,0 +1,1 @@
+Fixed brittle test -- by :user:`Moist-Cat`.
