@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import datetime
 import gc
 import ipaddress
@@ -175,6 +176,17 @@ def test_encode_basic_auth_latin1() -> None:
 def test_encode_basic_auth_rejects_colon_in_login() -> None:
     with pytest.raises(ValueError, match=r'":" is not allowed in login.*RFC 7617'):
         helpers.encode_basic_auth("user:1", "pwd")
+
+
+def test_encode_basic_auth_non_ascii_encoding() -> None:
+    # Base64 output is always ASCII, even when credentials use another encoding.
+    result = helpers.encode_basic_auth("user", "pass", encoding="utf-16")
+    assert result.isascii()
+    # Compare decoded bytes instead of a hardcoded string: utf-16 uses the
+    # machine's byte order, so the Base64 value differs on big-endian hosts.
+    assert base64.b64decode(result.removeprefix("Basic ")) == "user:pass".encode(
+        "utf-16"
+    )
 
 
 def test_strip_auth_from_url() -> None:
