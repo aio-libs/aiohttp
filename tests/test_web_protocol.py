@@ -282,6 +282,11 @@ async def test_connection_lost_with_buffered_request_no_task_exception() -> None
     task = proto._task_handler
     assert task is not None
 
+    # On Python 3.11 connection_made() schedules start() with
+    # loop.create_task(), so give the task a chance to actually start before
+    # the connection is lost below.
+    await asyncio.sleep(0)
+
     # A full request is parsed and buffered, waking the waiter, but the
     # start() task has not had a chance to run yet.
     proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
@@ -296,6 +301,43 @@ async def test_connection_lost_with_buffered_request_no_task_exception() -> None
     # The task must finish cleanly instead of raising on the dead protocol.
     assert task.exception() is None
     request_factory.assert_not_called()
+
+    del task, proto
+    await _assert_no_unretrieved_task_exception(loop, contexts)
+
+
+async def test_request_factory_exception_is_logged_and_connection_closed() -> None:
+    """A request factory raising Exception is logged and closes the connection. (#6978)
+
+    Covers the ``except Exception`` branch around request construction in
+    start(): the error must be logged, the connection force-closed, and the
+    handler task must finish without an unretrieved exception.
+    """
+    loop = asyncio.get_running_loop()
+    contexts: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, ctx: contexts.append(ctx))
+
+    def bad_factory(*args: Any, **kwargs: Any) -> BaseRequest:
+        raise RuntimeError("boom")
+
+    proto, transport = _make_protocol(loop, request_factory=bad_factory)
+    task = proto._task_handler
+    assert task is not None
+
+    with mock.patch.object(type(proto), "log_exception") as log_exception:
+        proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        await asyncio.sleep(0.1)
+
+        # The task finished cleanly (the factory error was handled, not raised).
+        assert task.done()
+        assert not task.cancelled()
+        assert task.exception() is None
+        # The error was logged and the connection was force-closed.
+        log_exception.assert_called_once()
+        assert log_exception.call_args.args[0] == "Unhandled exception"
+        assert isinstance(log_exception.call_args.kwargs["exc_info"], RuntimeError)
+        transport.close.assert_called_once_with()
+        assert proto.transport is None
 
     del task, proto
     await _assert_no_unretrieved_task_exception(loop, contexts)
