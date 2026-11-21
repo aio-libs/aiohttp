@@ -23,7 +23,7 @@ from ._websocket.models import (
     WSMsgType,
 )
 from ._websocket.reader import WebSocketReader
-from ._websocket.writer import WebSocketWriter
+from ._websocket.writer import WebSocketWriter, validate_close_frame
 
 # Messages that the WebSocketResponse.receive needs to handle internally
 _INTERNAL_RECEIVE_TYPES = frozenset(
@@ -37,6 +37,7 @@ __all__ = (
     "WS_KEY",
     "WebSocketReader",
     "WebSocketWriter",
+    "validate_close_frame",
     "WSMessage",
     "WSMessageDecodeText",
     "WSMessageNoDecodeText",
