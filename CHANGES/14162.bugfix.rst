@@ -1,0 +1,5 @@
+Fixed :py:meth:`aiohttp.web.DynamicResource.url_for` emitting a raw ``/``
+from the value of a plain ``{var}``, which split the segment and let a value
+such as ``/evil.example`` produce the protocol-relative URL
+``////evil.example``; ``/`` is now encoded as ``%2F``
+-- by :user:`insaf021`.
