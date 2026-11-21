@@ -4,6 +4,8 @@ import gzip
 import os
 import sys
 import zlib
+from array import array
+from concurrent.futures import Executor, Future
 from typing import Any
 
 import pytest
@@ -44,6 +46,17 @@ class _RecordingDecompressObj:
         return self._obj.decompress(data, max_length)
 
 
+class _RecordingExecutor(Executor):
+    def __init__(self) -> None:
+        self.submissions = 0
+
+    def submit(self, fn: Any, /, *args: Any, **kwargs: Any) -> Future[Any]:
+        self.submissions += 1
+        future: Future[Any] = Future()
+        future.set_result(fn(*args, **kwargs))
+        return future
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_compression_round_trip_in_executor() -> None:
     """Ensure that compression and decompression work correctly in the executor."""
@@ -72,6 +85,50 @@ async def test_compression_round_trip_in_event_loop() -> None:
     compressed_data = await compressor.compress(data) + compressor.flush()
     decompressed_data = await decompressor.decompress(compressed_data)
     assert data == decompressed_data
+
+
+if sys.version_info >= (3, 12):
+
+    class _BufferWithoutLen:
+        def __init__(self, data: bytes) -> None:
+            self._data = data
+
+        def __buffer__(self, flags: int) -> memoryview:
+            return memoryview(self._data)
+
+    @pytest.mark.parametrize(
+        ("max_sync_chunk_size", "expected_submissions"), [(4, 1), (5, 0)]
+    )
+    async def test_compressor_uses_buffer_size_for_executor_threshold(
+        max_sync_chunk_size: int, expected_submissions: int
+    ) -> None:
+        executor = _RecordingExecutor()
+        compressor = ZLibCompressor(
+            executor=executor,
+            max_sync_chunk_size=max_sync_chunk_size,
+        )
+
+        compressed = await compressor.compress(_BufferWithoutLen(b"hello"))
+
+        assert compressed + compressor.flush() == zlib.compress(b"hello")
+        assert executor.submissions == expected_submissions
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_compressor_offloads_by_buffer_byte_size() -> None:
+    data = memoryview(array("I", [1, 2]))
+    assert data.nbytes > len(data)
+
+    executor = _RecordingExecutor()
+    compressor = ZLibCompressor(
+        executor=executor,
+        max_sync_chunk_size=data.nbytes - 1,
+    )
+
+    compressed = await compressor.compress(data) + compressor.flush()
+
+    assert zlib.decompress(compressed) == data.tobytes()
+    assert executor.submissions == 1
 
 
 @pytest.mark.skipif(zstandard is None, reason="zstandard is not installed")

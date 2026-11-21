@@ -1,0 +1,4 @@
+Fixed an issue where sending compressed multipart uploads from certain
+``memoryview`` objects could block the event loop instead of using a worker
+thread. Compression also no longer raises :exc:`TypeError` for valid buffers
+without ``len()`` support -- by :user:`PLPeeters`.
