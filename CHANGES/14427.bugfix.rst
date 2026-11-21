@@ -1,0 +1,3 @@
+Fixed a ``KeyError`` raised to requests waiting on a shared DNS lookup when
+:py:meth:`~aiohttp.TCPConnector.clear_dns_cache` was called before they resumed
+-- by :user:`cloakedkeys`.
