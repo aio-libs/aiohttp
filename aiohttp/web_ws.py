@@ -140,7 +140,9 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
             self._pong_response_cb = None
 
     def _on_data_received(self) -> None:
-        if self._heartbeat is None or self._need_heartbeat_reset:
+        # GH-14125: data arriving during the close handshake must not rearm
+        # the heartbeat on a connection whose close already completed.
+        if self._heartbeat is None or self._need_heartbeat_reset or self._closed:
             return
         loop = self._loop
         assert loop is not None
@@ -157,7 +159,7 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
         self._need_heartbeat_reset = False
 
     def _reset_heartbeat(self) -> None:
-        if self._heartbeat is None:
+        if self._heartbeat is None or self._closed:
             return
         self._cancel_pong_response_cb()
         req = self._req
@@ -179,6 +181,11 @@ class WebSocketResponse(StreamResponse, Generic[_DecodeText]):
 
     def _send_heartbeat(self) -> None:
         self._heartbeat_cb = None
+
+        # A timer scheduled before close must not resurrect the heartbeat
+        # after the close handshake completed (GH-14125).
+        if self._closed:
+            return
 
         # If heartbeat reset is pending (data is being received), skip sending
         # the ping and let the reset callback handle rescheduling the heartbeat.
