@@ -323,3 +323,114 @@ def test_run_after_asyncio_run() -> None:
 
     web.run_app(app)
     assert called, "run_app() should work after asyncio.run()."
+
+
+async def test_app_runner_serve_forever_uninitialized(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    with pytest.raises(RuntimeError, match="Call setup\\(\\) first"):
+        await runner.serve_forever()
+
+
+async def test_app_runner_serve_forever_concurrent_call(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    with pytest.raises(RuntimeError, match="Concurrent calls"):
+        await runner.serve_forever()
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+
+
+async def test_app_runner_serve_forever_multiple_times(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    for _ in range(3):
+        task = asyncio.ensure_future(runner.serve_forever())
+        await asyncio.sleep(0)
+        assert not task.done()
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+async def test_app_runner_serve_forever_serves_requests(
+    app: web.Application, make_runner: _RunnerMaker
+) -> None:
+    async def hello(request: web.Request) -> web.Response:
+        return web.Response(text="Hello, world")
+
+    app.router.add_get("/", hello)
+    runner = make_runner()
+    await runner.setup()
+    site = web.TCPSite(runner, "127.0.0.1", 0)
+    await site.start()
+    task = asyncio.ensure_future(runner.serve_forever())
+    try:
+        await asyncio.sleep(0)
+        assert not task.done()
+        host, port = runner.addresses[0]
+        reader, writer = await asyncio.open_connection(host, port)
+        try:
+            writer.write(
+                b"GET / HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n"
+            )
+            raw = await reader.read(-1)
+        finally:
+            writer.close()
+        assert raw.split(b"\r\n", 1)[0].endswith(b"200 OK")
+        assert b"Hello, world" in raw
+    finally:
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+
+async def test_app_runner_serve_forever_cleanup_wakes_waiter(
+    make_runner: _RunnerMaker,
+) -> None:
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    await runner.cleanup()
+    await task
+    assert task.done()
+    assert not task.cancelled()
+
+
+async def test_app_runner_double_cleanup_runs_callbacks_once(
+    app: web.Application, make_runner: _RunnerMaker
+) -> None:
+    shutdown_calls = 0
+    cleanup_calls = 0
+
+    async def on_shutdown(app: web.Application) -> None:
+        nonlocal shutdown_calls
+        shutdown_calls += 1
+
+    async def on_cleanup(app: web.Application) -> None:
+        nonlocal cleanup_calls
+        cleanup_calls += 1
+
+    app.on_shutdown.append(on_shutdown)
+    app.on_cleanup.append(on_cleanup)
+    runner = make_runner()
+    await runner.setup()
+    task = asyncio.ensure_future(runner.serve_forever())
+    await asyncio.sleep(0)
+    assert not task.done()
+    await runner.cleanup()
+    await task
+    await runner.cleanup()
+    assert shutdown_calls == 1
+    assert cleanup_calls == 1
