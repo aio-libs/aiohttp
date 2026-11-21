@@ -1,0 +1,4 @@
+Corrected the documented :class:`~aiohttp.UnixConnector` constructor signature,
+which listed two parameters the constructor does not accept (``conn_timeout``
+and ``loop``), gave ``30`` as the ``keepalive_timeout`` default where it is
+``15``, and omitted ``limit_per_host`` -- by :user:`Hero0p`.
