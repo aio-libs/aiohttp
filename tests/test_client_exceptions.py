@@ -92,6 +92,23 @@ class TestClientResponseError:
         )
         assert str(err) == ("400, message='Something wrong', url='http://example.com'")
 
+    def test_str_hides_password(self) -> None:
+        request_info = client.RequestInfo(
+            url=URL("http://user:pass@example.com"),
+            method="GET",
+            headers=CIMultiDictProxy(CIMultiDict()),
+        )
+        err = client.ClientResponseError(
+            request_info=request_info,
+            history=(),
+            status=400,
+            message="Something wrong",
+            headers=HeadersDictProxy(CIMultiDict()),
+        )
+        assert str(err) == (
+            "400, message='Something wrong', url='http://user:*hidden*@example.com'"
+        )
+
 
 class TestClientConnectorError:
     connection_key = client_reqrep.ConnectionKey(
@@ -338,6 +355,40 @@ class TestInvalidURL:
         err = client.InvalidURL(":wrong:url:")
         assert err.description is None
 
+    def test_str_hides_password(self) -> None:
+        # This URL cannot be parsed, which is why it ends up in the exception;
+        # the credentials still must not be rendered.
+        err = client.InvalidURL(url="http://user:pass@127.0.0.1:bad")
+        assert err.url == "http://user:pass@127.0.0.1:bad"
+        assert str(err) == "http://user:*hidden*@127.0.0.1:bad"
+
+        # A user without a password must not gain one.
+        err = client.InvalidURL(url="http://user@127.0.0.1:bad")
+        assert str(err) == "http://user@127.0.0.1:bad"
+
+        # The password itself may contain an "@".
+        err = client.InvalidURL(url="http://user:p@ss@127.0.0.1:bad")
+        assert str(err) == "http://user:*hidden*@127.0.0.1:bad"
+
     def test_str_with_description(self) -> None:
         err = client.InvalidURL(url=":wrong:url:", description=":description:")
         assert str(err) == ":wrong:url: - :description:"
+
+
+class TestNonHttpUrlClientError:
+    def test_str_hides_password(self) -> None:
+        err = client.NonHttpUrlClientError(URL("ftp://user:pass@example.com/"))
+        assert str(err) == "ftp://user:*hidden*@example.com/"
+
+    def test_str_keeps_opaque_url(self) -> None:
+        # "user@example.com" after a scheme is a path, not a credential.
+        err = client.NonHttpUrlClientError(URL("mailto:user@example.com"))
+        assert str(err) == "mailto:user@example.com"
+
+    def test_str_keeps_query(self) -> None:
+        # An "@" in the query is not a credential and must survive.
+        err = client.NonHttpUrlClientError(URL("ftp://user:pass@example.com/x?to=a@b"))
+        assert str(err) == "ftp://user:*hidden*@example.com/x?to=a@b"
+
+    def test_str_without_url(self) -> None:
+        assert str(client.NonHttpUrlClientError()) == ""
