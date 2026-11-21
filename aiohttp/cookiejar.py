@@ -498,7 +498,7 @@ class CookieJar(AbstractCookieJar):
                 # TODO(https://github.com/python/typeshed/pull/16346): Remove cast
                 cookie = cast("Morsel[str]", cookie.copy())
 
-            domain = cookie["domain"]
+            domain = cookie["domain"] = cookie["domain"].lower()
 
             # ignore domains with trailing dots
             if domain and domain[-1] == ".":
