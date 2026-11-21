@@ -25,6 +25,7 @@ from aiohttp.tracing import (
     TraceRequestRedirectParams,
     TraceRequestStartParams,
     TraceResponseChunkReceivedParams,
+    TraceResponseHeadersReceivedParams,
 )
 
 
@@ -86,6 +87,7 @@ class TestTraceConfig:
         assert trace_config.on_dns_cache_hit.frozen
         assert trace_config.on_dns_cache_miss.frozen
         assert trace_config.on_request_headers_sent.frozen
+        assert trace_config.on_response_headers_received.frozen
 
 
 class TestTrace:
@@ -123,6 +125,11 @@ class TestTrace:
             ("dns_resolvehost_end", (Mock(),), TraceDnsResolveHostEndParams),
             ("dns_cache_hit", (Mock(),), TraceDnsCacheHitParams),
             ("dns_cache_miss", (Mock(),), TraceDnsCacheMissParams),
+            (
+                "response_headers_received",
+                (Mock(), Mock(), Mock()),
+                TraceResponseHeadersReceivedParams,
+            ),
         ],
     )
     async def test_send(  # type: ignore[misc]
