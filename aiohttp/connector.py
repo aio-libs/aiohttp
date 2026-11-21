@@ -1180,7 +1180,11 @@ class TCPConnector(BaseConnector):
                 await future
             finally:
                 futures.discard(future)
-            return self._cached_hosts.next_addrs(key)
+            if key in self._cached_hosts:
+                return self._cached_hosts.next_addrs(key)
+            # clear_dns_cache() ran after the lookup finished and before
+            # this waiter resumed, so there is nothing cached to read.
+            return await self._resolve_host(host, port, traces)
 
         # update dict early, before any await (#4014)
         self._throttle_dns_futures[key] = futures = set()

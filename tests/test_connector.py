@@ -2680,6 +2680,61 @@ async def test_tcp_connector_clear_dns_cache_bad_args() -> None:
     await conn.close()
 
 
+@pytest.mark.parametrize("clear_args", [(), ("localhost", 8080)])
+async def test_tcp_connector_clear_dns_cache_while_throttled(
+    clear_args: tuple[()] | tuple[str, int],
+) -> None:
+    loop = asyncio.get_running_loop()
+    addrs: list[ResolveResult] = [
+        {
+            "hostname": "localhost",
+            "host": "127.0.0.1",
+            "port": 8080,
+            "family": socket.AF_INET,
+            "proto": 0,
+            "flags": socket.AI_NUMERICHOST,
+        }
+    ]
+    lookup_can_finish = asyncio.Event()
+    lookups = 0
+
+    with mock.patch("aiohttp.connector.DefaultResolver") as m_resolver:
+        mock_default_resolver = mock.create_autospec(
+            AbstractResolver, instance=True, spec_set=True
+        )
+
+        async def mock_resolve(
+            *_args: object, **_kwargs: object
+        ) -> list[ResolveResult]:
+            nonlocal lookups
+            lookups += 1
+            if lookups == 1:
+                await lookup_can_finish.wait()
+                # Runs after the lookup's result is cached and before the
+                # throttled waiter resumes.
+                loop.call_soon(conn.clear_dns_cache, *clear_args)
+            return addrs
+
+        mock_default_resolver.resolve.side_effect = mock_resolve
+        m_resolver.return_value = mock_default_resolver
+
+        conn = aiohttp.TCPConnector(use_dns_cache=True, ttl_dns_cache=10)
+
+        t = loop.create_task(conn._resolve_host("localhost", 8080))
+        t2 = loop.create_task(conn._resolve_host("localhost", 8080))
+        await asyncio.sleep(0)
+        await asyncio.sleep(0)
+        assert lookups == 1
+        lookup_can_finish.set()
+
+        r1, r2 = await asyncio.gather(t, t2)
+        assert r1 == addrs
+        assert r2 == addrs
+        assert lookups == 2
+
+        await conn.close()
+
+
 async def test___get_ssl_context1() -> None:
     conn = aiohttp.TCPConnector()
     req = mock.Mock()
