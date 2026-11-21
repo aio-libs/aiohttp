@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 from typing import TYPE_CHECKING, Any, Generic, Protocol, TypeVar, overload
+from weakref import ref
 
 from aiosignal import Signal
 from multidict import CIMultiDict
@@ -41,6 +42,23 @@ class _Factory(Protocol[_T]):
     def __call__(self, **kwargs: Any) -> _T: ...
 
 
+class _TraceSignalOwner(ref["TraceConfig[Any]"]):
+    """Format a signal's owner without keeping its TraceConfig alive."""
+
+    __slots__ = ()
+
+    def __str__(self) -> str:
+        owner = self()
+        return "<released TraceConfig>" if owner is None else format(owner)
+
+    def __reduce__(self) -> tuple[object, tuple[object]]:
+        # Rebind signals to their config when the whole config is copied.
+        owner = self()
+        if owner is None:
+            return str, (str(self),)
+        return type(self), (owner,)
+
+
 class TraceConfig(Generic[_T]):
     """First-class used to trace requests launched via ClientSession objects."""
 
@@ -51,52 +69,53 @@ class TraceConfig(Generic[_T]):
     def __init__(
         self, trace_config_ctx_factory: _Factory[Any] = SimpleNamespace
     ) -> None:
+        owner = _TraceSignalOwner(self)
         self._on_request_start: _TracingSignal[_T, TraceRequestStartParams] = Signal(
-            self
+            owner
         )
         self._on_request_chunk_sent: _TracingSignal[_T, TraceRequestChunkSentParams] = (
-            Signal(self)
+            Signal(owner)
         )
         self._on_response_chunk_received: _TracingSignal[
             _T, TraceResponseChunkReceivedParams
-        ] = Signal(self)
-        self._on_request_end: _TracingSignal[_T, TraceRequestEndParams] = Signal(self)
+        ] = Signal(owner)
+        self._on_request_end: _TracingSignal[_T, TraceRequestEndParams] = Signal(owner)
         self._on_request_exception: _TracingSignal[_T, TraceRequestExceptionParams] = (
-            Signal(self)
+            Signal(owner)
         )
         self._on_request_redirect: _TracingSignal[_T, TraceRequestRedirectParams] = (
-            Signal(self)
+            Signal(owner)
         )
         self._on_connection_queued_start: _TracingSignal[
             _T, TraceConnectionQueuedStartParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_connection_queued_end: _TracingSignal[
             _T, TraceConnectionQueuedEndParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_connection_create_start: _TracingSignal[
             _T, TraceConnectionCreateStartParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_connection_create_end: _TracingSignal[
             _T, TraceConnectionCreateEndParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_connection_reuseconn: _TracingSignal[
             _T, TraceConnectionReuseconnParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_dns_resolvehost_start: _TracingSignal[
             _T, TraceDnsResolveHostStartParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_dns_resolvehost_end: _TracingSignal[
             _T, TraceDnsResolveHostEndParams
-        ] = Signal(self)
+        ] = Signal(owner)
         self._on_dns_cache_hit: _TracingSignal[_T, TraceDnsCacheHitParams] = Signal(
-            self
+            owner
         )
         self._on_dns_cache_miss: _TracingSignal[_T, TraceDnsCacheMissParams] = Signal(
-            self
+            owner
         )
         self._on_request_headers_sent: _TracingSignal[
             _T, TraceRequestHeadersSentParams
-        ] = Signal(self)
+        ] = Signal(owner)
 
         self._trace_config_ctx_factory: _Factory[_T] = trace_config_ctx_factory
 

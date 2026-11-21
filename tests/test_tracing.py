@@ -1,3 +1,7 @@
+import gc
+import pickle
+import weakref
+from copy import deepcopy
 from types import SimpleNamespace
 from typing import Any, assert_type
 from unittest import mock
@@ -5,6 +9,7 @@ from unittest.mock import Mock
 
 import pytest
 from aiosignal import Signal
+from frozenlist import FrozenList, PyFrozenList
 
 from aiohttp import ClientSession
 from aiohttp.tracing import (
@@ -29,6 +34,38 @@ from aiohttp.tracing import (
 
 
 class TestTraceConfig:
+    def test_signals_do_not_keep_config_alive(self) -> None:
+        class NamedConfig(TraceConfig[SimpleNamespace]):
+            def __format__(self, spec: str) -> str:
+                return "named config"
+
+        config = NamedConfig()
+        owner = weakref.ref(config)
+        signals = [
+            getattr(config, name) for name in dir(config) if name.startswith("on_")
+        ]
+        assert "owner=named config," in repr(config.on_request_start)
+
+        del config
+        gc.collect()
+
+        assert owner() is None
+        for signal in signals:
+            assert "owner=<released TraceConfig>," in repr(signal)
+
+    @pytest.mark.skipif(
+        FrozenList is not PyFrozenList, reason="Requires pickleable signals"
+    )
+    def test_copied_signals_use_copied_config(self) -> None:
+        config = TraceConfig()
+        for copied in (deepcopy(config), pickle.loads(pickle.dumps(config))):
+            assert f"owner={copied}," in repr(copied.on_request_start)
+
+        signal = config.on_request_start
+        del config
+        gc.collect()
+        assert repr(pickle.loads(pickle.dumps(signal))) == repr(signal)
+
     def test_trace_config_ctx_default(self) -> None:
         trace_config = TraceConfig()
         assert isinstance(trace_config.trace_config_ctx(), SimpleNamespace)
