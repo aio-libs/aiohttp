@@ -23,6 +23,7 @@ from .helpers import (
 )
 from .http import HttpResponseParser, RawResponseMessage, WebSocketReader
 from .http_exceptions import HttpProcessingError
+from .http_writer import HttpVersion11
 from .streams import EMPTY_PAYLOAD, DataQueue, StreamReader
 
 
@@ -56,6 +57,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
 
         self._closed: None | asyncio.Future[None] = None
         self._connection_lost_called = False
+
+        self.version = HttpVersion11
 
     @property
     def closed(self) -> None | asyncio.Future[None]:

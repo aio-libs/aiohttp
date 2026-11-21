@@ -46,7 +46,6 @@ from yarl import URL
 
 from . import hdrs
 from .log import client_logger
-from .typedefs import PathLike  # noqa
 
 if TYPE_CHECKING:
     from dataclasses import dataclass as frozen_dataclass_decorator
