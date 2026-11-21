@@ -1,0 +1,2 @@
+Fixed spurious ``Bad file descriptor`` log messages when shutting down
+Gunicorn workers using uvloop -- by :user:`MahmoudAshraf97`.

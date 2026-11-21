@@ -110,7 +110,7 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
         for sock in self.sockets:
             site = web.SockSite(
                 runner,
-                sock,
+                sock.sock,
                 ssl_context=ctx,
                 backlog=self.cfg.backlog,
             )
