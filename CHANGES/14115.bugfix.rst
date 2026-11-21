@@ -1,0 +1,3 @@
+Fixed :class:`~aiohttp.CookieJar` keeping a cookie whose ``Expires`` attribute parses to
+exactly the epoch (``Expires=Thu, 01 Jan 1970 00:00:00 GMT``) as a session cookie instead of
+discarding it as expired, per :rfc:`6265` section 5.3 -- by :user:`guocn`.
