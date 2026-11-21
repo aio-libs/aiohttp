@@ -1,0 +1,1 @@
+Fixed :py:class:`~aiohttp.web.FileResponse` returning ``416 Range Not Satisfiable`` for valid multi-range requests.  Multi-range requests are now gracefully handled by ignoring the ``Range`` header and serving the full file with ``200 OK``, which is permitted by :rfc:`9110` §14.2 -- by :user:`saisarans2007`.
