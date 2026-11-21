@@ -1,4 +1,6 @@
 import asyncio
+import gc
+from typing import Any
 from unittest import mock
 
 import pytest
@@ -6,6 +8,7 @@ import pytest
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import BaseRequest
+from aiohttp.web_response import Response
 from aiohttp.web_server import Server
 
 
@@ -224,3 +227,190 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+class _FatalError(BaseException):
+    """Escapes RequestHandler.start() (not caught by ``except Exception``)."""
+
+
+async def _ok_handler(request: BaseRequest) -> Response:
+    return Response(text="ok")
+
+
+def _make_protocol(
+    loop: asyncio.AbstractEventLoop, request_factory: Any = None
+) -> tuple[RequestHandler[BaseRequest], mock.Mock]:
+    server = Server(_ok_handler, request_factory=request_factory)
+    proto = RequestHandler(server, loop=loop)
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    proto.connection_made(transport)
+    return proto, transport
+
+
+async def _assert_no_unretrieved_task_exception(
+    loop: asyncio.AbstractEventLoop, contexts: list[dict[str, Any]]
+) -> None:
+    """Force collection of dead tasks and check nothing was left unretrieved."""
+    gc.collect()
+    await asyncio.sleep(0.1)
+    gc.collect()
+    await asyncio.sleep(0.1)
+    gc.collect()
+    unretrieved = [
+        ctx for ctx in contexts if "never retrieved" in str(ctx.get("message", ""))
+    ]
+    assert unretrieved == []
+
+
+async def test_connection_lost_with_buffered_request_no_task_exception() -> None:
+    """A request buffered just before connection_lost must not be processed.
+
+    Regression test for #6978: when the connection was lost while the
+    start() task was parked on the waiter and a message was already buffered,
+    the task woke up and tried to build a request on the torn-down protocol.
+    That raised (``TypeError``/``AssertionError``) inside the handler task
+    and, since nobody awaited the finished task, the loop reported
+    "Task exception was never retrieved".
+    """
+    loop = asyncio.get_running_loop()
+    contexts: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, ctx: contexts.append(ctx))
+
+    request_factory = mock.Mock()
+    proto, _transport = _make_protocol(loop, request_factory=request_factory)
+    task = proto._task_handler
+    assert task is not None
+
+    # On Python 3.11 connection_made() schedules start() with
+    # loop.create_task(), so give the task a chance to actually start before
+    # the connection is lost below.
+    await asyncio.sleep(0)
+
+    # A full request is parsed and buffered, waking the waiter, but the
+    # start() task has not had a chance to run yet.
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    assert len(proto._messages) == 1
+
+    # The connection is lost before the task processes the buffered message.
+    proto.connection_lost(None)
+
+    await asyncio.sleep(0.1)
+    assert task.done()
+    assert not task.cancelled()
+    # The task must finish cleanly instead of raising on the dead protocol.
+    assert task.exception() is None
+    request_factory.assert_not_called()
+
+    del task, proto
+    await _assert_no_unretrieved_task_exception(loop, contexts)
+
+
+async def test_request_factory_exception_is_logged_and_connection_closed() -> None:
+    """A request factory raising Exception is logged and closes the connection. (#6978)
+
+    Covers the ``except Exception`` branch around request construction in
+    start(): the error must be logged, the connection force-closed, and the
+    handler task must finish without an unretrieved exception.
+    """
+    loop = asyncio.get_running_loop()
+    contexts: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, ctx: contexts.append(ctx))
+
+    def bad_factory(*args: Any, **kwargs: Any) -> BaseRequest:
+        raise RuntimeError("boom")
+
+    proto, transport = _make_protocol(loop, request_factory=bad_factory)
+    task = proto._task_handler
+    assert task is not None
+
+    with mock.patch.object(type(proto), "log_exception") as log_exception:
+        proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+        await asyncio.sleep(0.1)
+
+        # The task finished cleanly (the factory error was handled, not raised).
+        assert task.done()
+        assert not task.cancelled()
+        assert task.exception() is None
+        # The error was logged and the connection was force-closed.
+        log_exception.assert_called_once()
+        assert log_exception.call_args.args[0] == "Unhandled exception"
+        assert isinstance(log_exception.call_args.kwargs["exc_info"], RuntimeError)
+        transport.close.assert_called_once_with()
+        assert proto.transport is None
+
+    del task, proto
+    await _assert_no_unretrieved_task_exception(loop, contexts)
+
+
+async def test_connection_lost_marks_failed_handler_task_exception_retrieved() -> None:
+    """connection_lost() must consume the handler task exception. (#6978)
+
+    If the start() task already finished with an exception when the
+    connection is lost, dropping the _task_handler reference must not leave
+    the exception unretrieved.
+    """
+    loop = asyncio.get_running_loop()
+    contexts: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, ctx: contexts.append(ctx))
+
+    def bad_factory(*args: Any, **kwargs: Any) -> BaseRequest:
+        raise _FatalError("boom")
+
+    proto, _transport = _make_protocol(loop, request_factory=bad_factory)
+    task = proto._task_handler
+    assert task is not None
+
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    # Let the start() task run: request construction fails with a
+    # BaseException, which escapes the task.
+    await asyncio.sleep(0.1)
+    assert task.done()
+    assert not task.cancelled()
+    # The task failed with an exception that is not retrieved yet.
+    log_traceback = task._log_traceback
+    assert log_traceback
+
+    proto.connection_lost(None)
+    assert proto._task_handler is None
+
+    # The done callback registered by connection_lost() must mark the
+    # exception as retrieved.
+    await asyncio.sleep(0.1)
+    assert not task._log_traceback
+
+    del task, proto
+    await _assert_no_unretrieved_task_exception(loop, contexts)
+
+
+async def test_shutdown_marks_failed_handler_task_exception_retrieved() -> None:
+    """shutdown() must consume the exception of an already failed task. (#6978)
+
+    shutdown() only awaits _task_handler when it is not done yet; when the
+    task already failed, its exception must still be marked as retrieved.
+    """
+    loop = asyncio.get_running_loop()
+    contexts: list[dict[str, Any]] = []
+    loop.set_exception_handler(lambda _loop, ctx: contexts.append(ctx))
+
+    def bad_factory(*args: Any, **kwargs: Any) -> BaseRequest:
+        raise _FatalError("boom")
+
+    proto, _transport = _make_protocol(loop, request_factory=bad_factory)
+    task = proto._task_handler
+    assert task is not None
+
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n")
+    await asyncio.sleep(0.1)
+    assert task.done()
+    assert not task.cancelled()
+    # The task failed with an exception that is not retrieved yet.
+    log_traceback = task._log_traceback
+    assert log_traceback
+
+    await proto.shutdown(timeout=1.0)
+    # shutdown() must mark the already-finished task's exception as retrieved.
+    assert not task._log_traceback
+
+    del task, proto
+    await _assert_no_unretrieved_task_exception(loop, contexts)

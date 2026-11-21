@@ -113,6 +113,20 @@ class PayloadAccessError(Exception):
 _PAYLOAD_ACCESS_ERROR = PayloadAccessError()
 
 
+def _retrieve_task_exception(task: "asyncio.Task[Any]") -> None:
+    """Mark a finished task's exception as retrieved.
+
+    Used as a done callback (or called directly on an already finished task)
+    when the handler task is dropped without being awaited anymore, so the
+    event loop does not report a spurious "Task exception was never
+    retrieved" for it (see #6978).  Cancelled tasks have no exception to
+    retrieve, and calling ``exception()`` on a pending task would raise
+    ``InvalidStateError``, so both cases are guarded against.
+    """
+    if task.done() and not task.cancelled():
+        task.exception()
+
+
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     """Wrap an AbstractAccessLogger so it behaves like an AbstractAsyncAccessLogger."""
 
@@ -390,6 +404,12 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
                 if self._task_handler is not None and not self._task_handler.done():
                     await asyncio.shield(self._task_handler)
+                elif self._task_handler is not None:
+                    # The task already finished before we got here, so it is
+                    # not awaited above.  Mark its exception as retrieved to
+                    # avoid a spurious "Task exception was never retrieved"
+                    # report from the event loop.  (#6978)
+                    _retrieve_task_exception(self._task_handler)
         except (asyncio.CancelledError, TimeoutError):
             if (task := asyncio.current_task()) and task.cancelling():
                 raise
@@ -397,6 +417,11 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
         # force-close non-idle handler
         if self._task_handler is not None:
             self._task_handler.cancel()
+            # If the task was already finished (e.g. the timeout above fired at
+            # the same moment), cancel() is a no-op and its exception would
+            # never be retrieved.  Otherwise make sure the exception is marked
+            # as retrieved once the cancelled task completes.  (#6978)
+            self._task_handler.add_done_callback(_retrieve_task_exception)
 
         self.force_close()
 
@@ -454,6 +479,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
 
         if handler_cancellation and self._task_handler is not None:
             self._task_handler.cancel()
+
+        if self._task_handler is not None:
+            # The reference is dropped below and nothing will await the task
+            # anymore.  Make sure an exception it finishes with is still
+            # marked as retrieved, otherwise the event loop reports a spurious
+            # "Task exception was never retrieved" for it.  (#6978)
+            self._task_handler.add_done_callback(_retrieve_task_exception)
 
         self._task_handler = None
 
@@ -749,6 +781,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     await self._waiter
                 finally:
                     self._waiter = None
+                if self._parser is None:
+                    # The connection was lost while waiting for the next
+                    # request: connection_lost() has torn down the parser and
+                    # the request factory, so a message buffered in the
+                    # meantime must not be processed (building the request
+                    # would fail and escape this task unretrieved).  (#6978)
+                    break
 
             message, payload = self._messages.popleft()
 
@@ -781,14 +820,23 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
             # Important don't hold a reference to the current task
             # as on traceback it will prevent the task from being
             # collected and will cause a memory leak.
-            request = self._request_factory(
-                message,
-                payload,
-                self,
-                writer,
-                self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
-                pre_handler_error,
-            )
+            try:
+                request = self._request_factory(
+                    message,
+                    payload,
+                    self,
+                    writer,
+                    self._task_handler or asyncio.current_task(loop),  # type: ignore[arg-type]
+                    pre_handler_error,
+                )
+            except Exception as exc:
+                # Request construction failed (e.g. the connection was lost
+                # while this message was buffered and the protocol was torn
+                # down).  Log and close instead of letting the exception
+                # escape this task where it would never be retrieved.  (#6978)
+                self.log_exception("Unhandled exception", exc_info=exc)
+                self.force_close()
+                break
             try:
                 # a new task is used for copy context vars (#3406)
                 coro = self._handle_request(request, start, self._request_handler)
