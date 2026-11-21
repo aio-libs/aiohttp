@@ -310,6 +310,8 @@ class BaseConnector:
     # abort transport after 2 seconds (cleanup broken connections)
     _cleanup_closed_period = 2.0
 
+    _abort_ssl_on_discard = False
+
     allowed_protocol_schema_set = HIGH_LEVEL_SCHEMA_SET
 
     def __init__(
@@ -842,7 +844,15 @@ class BaseConnector:
 
         if self._force_close or should_close or protocol.should_close:
             transport = protocol.transport
-            protocol.close()
+            if (
+                self._abort_ssl_on_discard
+                and transport is not None
+                and transport.get_extra_info("sslcontext") is not None
+                and protocol.should_abort
+            ):
+                protocol.abort()
+            else:
+                protocol.close()
             if key.is_ssl and not self._cleanup_closed_disabled:
                 self._cleanup_closed_transports.append(transport)
             return
@@ -1068,6 +1078,8 @@ class TCPConnector(BaseConnector):
                 stacklevel=2,
             )
             self._ssl_shutdown_timeout = ssl_shutdown_timeout
+
+        self._abort_ssl_on_discard = self._ssl_shutdown_timeout == 0
 
     async def close(self, *, abort_ssl: bool = False) -> None:
         """Close all opened transports.

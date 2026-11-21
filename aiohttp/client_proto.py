@@ -91,6 +91,13 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             or self._tail
         )
 
+    @property
+    def should_abort(self) -> bool:
+        """Discard an incomplete HTTP response without a TLS shutdown handshake."""
+        return not self.upgraded and (
+            self._payload is None or not self._payload.is_eof()
+        )
+
     def force_close(self) -> None:
         self._should_close = True
 
@@ -259,6 +266,7 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
         max_headers: int = 128,
     ) -> None:
         self._skip_payload = skip_payload
+        self._payload = None
 
         self._read_bufsize = read_bufsize
         self._read_timeout = read_timeout
@@ -386,7 +394,8 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
             if message.should_close:
                 self._should_close = True
 
-            self._payload = payload
+            if message.code >= 200 or message.code == 101:
+                self._payload = payload
 
             if self._skip_payload or message.code in EMPTY_BODY_STATUS_CODES:
                 self.feed_data((message, EMPTY_PAYLOAD))
