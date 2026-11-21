@@ -55,6 +55,7 @@ The client session supports the context manager protocol for self closing.
                          requote_redirect_url=True, \
                          trace_configs=None, \
                          middlewares=(), \
+                         retry_connection=True, \
                          read_bufsize=2**18, \
                          max_line_size=8190, \
                          max_field_size=8190, \
@@ -221,6 +222,15 @@ The client session supports the context manager protocol for self closing.
                          tracing.  ``None`` (default) is used for request tracing
                          disabling.  See :ref:`aiohttp-client-tracing-reference` for
                          more information.
+
+   :param bool retry_connection: Retry an idempotent request once after certain
+      connection errors before response headers are received (``True`` by default).
+      Set to ``False`` when the application needs to control retries itself.
+      This applies to both new and reused connections, including when the
+      connector uses ``force_close=True``. It does not control retries performed
+      by application code or client middleware.
+
+      .. versionadded:: 4.0
 
    :param middlewares: A sequence of middleware instances to apply to all session requests.
                       Each middleware must match the :type:`ClientMiddlewareType` signature.
