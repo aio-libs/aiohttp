@@ -534,7 +534,7 @@ async def test_ceil_timeout_none() -> None:
         assert cm.when() is None
 
 
-async def test_ceil_timeout_small_with_overriden_threshold() -> None:
+async def test_ceil_timeout_small_with_overridden_threshold() -> None:
     async with helpers.ceil_timeout(1.5, ceil_threshold=1) as cm:
         w = cm.when()
         assert w is not None
