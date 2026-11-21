@@ -670,6 +670,7 @@ class BaseConnector:
             if self._limit_per_host:
                 self._acquired_per_host[key].add(placeholder)
 
+            proto: ResponseHandler | None = None
             try:
                 # Traces are done inside the try block to ensure that the
                 # that the placeholder is still cleaned up if an exception
@@ -683,12 +684,20 @@ class BaseConnector:
                         await trace.send_connection_create_end()
             except BaseException:
                 self._release_acquired(key, placeholder)
+                if proto is not None:
+                    # The trace callback failed after the connection was
+                    # created, so close it instead of leaving an orphan.
+                    transport = proto.transport
+                    proto.close()
+                    if not self._cleanup_closed_disabled and key.is_ssl:
+                        self._cleanup_closed_transports.append(transport)
                 raise
             else:
                 if self._closed:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
 
+        assert proto is not None
         # The connection was successfully created, drop the placeholder
         # and add the real connection to the acquired set. There should
         # be no awaits after the proto is added to the acquired set
@@ -774,6 +783,12 @@ class BaseConnector:
                             await trace.send_connection_reuseconn()
                         except BaseException:
                             self._release_acquired(key, proto)
+                            # The trace callback failed after the connection
+                            # left the pool; close it so it is not orphaned.
+                            transport = proto.transport
+                            proto.close()
+                            if not self._cleanup_closed_disabled and key.is_ssl:
+                                self._cleanup_closed_transports.append(transport)
                             raise
                 return Connection(self, key, proto, self._loop)
 
