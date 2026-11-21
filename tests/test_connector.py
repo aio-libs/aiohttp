@@ -2833,7 +2833,7 @@ async def test_tcp_connector_clear_dns_cache_while_throttled_then_closed() -> No
         # The waiter does not start a lookup on a closed connector.
         with pytest.raises(aiohttp.ClientConnectionError, match="Connector is closed"):
             await t2
-        assert lookups == 1
+        mock_default_resolver.resolve.assert_called_once()
 
         await conn.close()
 
