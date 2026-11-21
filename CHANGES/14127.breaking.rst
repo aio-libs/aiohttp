@@ -1,0 +1,5 @@
+Fixed :class:`~aiohttp.CookieJar` letting an insecure origin set a ``Secure``
+cookie or replace an existing one, as required by RFC 6265bis and done by
+browsers. A plain-HTTP server that sets ``Secure`` cookies, such as a local
+test server, now needs to be listed in ``treat_as_secure_origin``
+-- by :user:`insaf021`.
