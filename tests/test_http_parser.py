@@ -1545,6 +1545,46 @@ def test_max_header_combined_size(parser: HttpRequestParser) -> None:
         parser.feed_data(text)
 
 
+def test_max_header_combined_size_not_first(parser: HttpRequestParser) -> None:
+    k = b"t" * 4100
+    text = b"GET /test HTTP/1.1\r\nHost: a\r\n" + k + b":" + k + b"\r\n\r\n"
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        parser.feed_data(text)
+
+
+def test_max_header_combined_size_not_first_response(
+    response: HttpResponseParser,
+) -> None:
+    k = b"t" * 4100
+    text = b"HTTP/1.1 200 Ok\r\nContent-Length: 0\r\n" + k + b": " + k + b"\r\n\r\n"
+
+    match = "400, message:\n  Got more than 8190 bytes when reading"
+    with pytest.raises(http_exceptions.LineTooLong, match=match):
+        response.feed_data(text)
+
+
+def test_max_header_field_size_after_long_field(parser: HttpRequestParser) -> None:
+    long_name = b"a" * 8000
+    short_name = b"b" * 200
+    text = (
+        b"GET /test HTTP/1.1\r\nHost: a\r\n"
+        + long_name
+        + b": v\r\n"
+        + short_name
+        + b": v\r\n\r\n"
+    )
+
+    messages, upgrade, tail = parser.feed_data(text)
+    msg = messages[0][0]
+    assert msg.raw_headers == (
+        (b"Host", b"a"),
+        (long_name, b"v"),
+        (short_name, b"v"),
+    )
+
+
 @pytest.mark.parametrize("size", [40960, 8191])
 async def test_max_trailer_size(parser: HttpRequestParser, size: int) -> None:
     value = b"t" * size
