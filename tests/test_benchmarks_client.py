@@ -2,6 +2,7 @@
 
 import asyncio
 import ssl
+import zlib
 from collections.abc import Awaitable, Callable, Iterator
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -10,7 +11,7 @@ import pytest
 from pytest_aiohttp import AiohttpClient, AiohttpServer
 from yarl import URL
 
-from aiohttp import hdrs, request, web
+from aiohttp import ClientSession, hdrs, request, web
 from aiohttp.test_utils import TestClient, TestServer
 
 if TYPE_CHECKING:
@@ -356,6 +357,58 @@ def test_get_request_with_251308_compressed_chunked_payload(
     @benchmark
     def _run() -> None:
         event_loop.run_until_complete(run_client_benchmark())
+
+
+@pytest.mark.parametrize(
+    "encoded",
+    (False, True),
+    ids=("raw", "gzip"),
+)
+def test_get_precompressed_response_decode(
+    event_loop: asyncio.AbstractEventLoop,
+    aiohttp_client_sync: Callable[
+        [web.Application], Awaitable[TestClient[web.Request, web.Application]]
+    ],
+    benchmark: BenchmarkFixture,
+    encoded: bool,
+) -> None:
+    """Benchmark reading raw bytes and decoding precompressed responses."""
+    payload = b"".join(
+        bytes((*range(i), *range(i, 0, -1))) for _ in range(255) for i in range(255)
+    )
+    compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+    compressed_payload = compressor.compress(payload) + compressor.flush()
+
+    async def handler(request: web.Request) -> web.Response:
+        headers = {hdrs.CONTENT_ENCODING: "gzip"} if encoded else {}
+        return web.Response(
+            body=compressed_payload,
+            headers=headers,
+        )
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = event_loop.run_until_complete(aiohttp_client_sync(app))
+
+    async def create_session() -> ClientSession:
+        return ClientSession()
+
+    session = event_loop.run_until_complete(create_session())
+
+    async def run_client_benchmark() -> None:
+        async with session.get(client.make_url("/")) as response:
+            await response.read()
+
+    try:
+
+        @benchmark
+        def _run() -> None:
+            event_loop.run_until_complete(run_client_benchmark())
+
+    finally:
+        event_loop.run_until_complete(session.close())
+        event_loop.run_until_complete(client.close())
 
 
 def test_one_hundred_get_requests_with_1024_content_length_payload(
