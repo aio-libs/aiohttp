@@ -633,6 +633,12 @@ with the peer::
 
         return ws
 
+The loop ends without yielding the :const:`~aiohttp.WSMsgType.CLOSE`
+message. After the loop, use
+:attr:`~aiohttp.web.WebSocketResponse.close_code` and
+:attr:`~aiohttp.web.WebSocketResponse.close_reason` to inspect the close
+code and reason.
+
 The handler should be registered as HTTP GET processor::
 
     app.add_routes([web.get('/ws', websocket_handler)])

@@ -1740,6 +1740,22 @@ manually.
       Read-only property, ``True`` if :meth:`close` has been called or
       :const:`~aiohttp.WSMsgType.CLOSE` message has been received from peer.
 
+   .. attribute:: close_code
+
+      Read-only property, the WebSocket close code. Initially ``None``.
+      The code may come from the peer's :const:`~aiohttp.WSMsgType.CLOSE`
+      message or be set locally, for example to
+      :attr:`~aiohttp.WSCloseCode.ABNORMAL_CLOSURE` when closing times out
+      or the connection fails.
+
+   .. attribute:: close_reason
+
+      Read-only property, reason from the :const:`~aiohttp.WSMsgType.CLOSE`
+      message received from peer, or an empty string if the peer sent none.
+      ``None`` until such a message has been received.
+
+      .. versionadded:: 3.15
+
    .. attribute:: protocol
 
       Websocket *subprotocol* chosen after :meth:`start` call.
