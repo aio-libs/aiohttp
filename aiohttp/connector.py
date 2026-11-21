@@ -678,9 +678,22 @@ class BaseConnector:
                     for trace in traces:
                         await trace.send_connection_create_start()
                 proto = await self._create_connection(req, traces, timeout)
-                if traces:
-                    for trace in traces:
-                        await trace.send_connection_create_end()
+                try:
+                    if traces:
+                        for trace in traces:
+                            await trace.send_connection_create_end()
+                except BaseException:
+                    # The connection exists but cannot be handed out: close it
+                    # the same way a pooled connection that cannot be reused is.
+                    transport = proto.transport
+                    proto.close()
+                    if self._closed:
+                        # close() has already run its cleanup; the queued
+                        # transport would never be aborted
+                        transport.abort()
+                    elif transport.get_extra_info("sslcontext") is not None:
+                        self._cleanup_closed_transports.append(transport)
+                    raise
             except BaseException:
                 self._release_acquired(key, placeholder)
                 raise
@@ -774,6 +787,14 @@ class BaseConnector:
                             await trace.send_connection_reuseconn()
                         except BaseException:
                             self._release_acquired(key, proto)
+                            transport = proto.transport
+                            proto.close()
+                            if self._closed:
+                                # close() has already run its cleanup; the
+                                # queued transport would never be aborted
+                                transport.abort()
+                            elif transport.get_extra_info("sslcontext") is not None:
+                                self._cleanup_closed_transports.append(transport)
                             raise
                 return Connection(self, key, proto, self._loop)
 
