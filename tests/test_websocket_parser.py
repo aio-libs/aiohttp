@@ -849,6 +849,43 @@ def test_msg_too_large_at_header(out: WebSocketDataQueue, fin: int) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+def test_msg_at_max_size_accepted(out: WebSocketDataQueue) -> None:
+    # max_msg_size is the maximum accepted size, so a message of exactly
+    # max_msg_size bytes must be accepted, matching the decompressed path.
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    parser._feed_data(build_frame(b"a" * 256, WSMsgType.TEXT))
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(data="a" * 256, size=256, extra="")
+
+
+def test_msg_above_max_size_rejected(out: WebSocketDataQueue) -> None:
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    with pytest.raises(
+        WebSocketError, match=r"^Message size 257 exceeds limit 256$"
+    ) as ctx:
+        parser._feed_data(build_frame(b"a" * 257, WSMsgType.TEXT))
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+def test_fragments_at_max_size_accepted(out: WebSocketDataQueue) -> None:
+    # Fragments accumulating to exactly max_msg_size must be accepted.
+    max_msg_size = 256
+    parser = WebSocketReader(out, max_msg_size, compress=False, decode_text=True)
+
+    first = build_frame(b"a" * 100, WSMsgType.TEXT, is_fin=False)
+    parser._feed_data(first)
+    last = build_frame(b"b" * 156, WSMsgType.CONTINUATION, is_fin=True)
+    parser._feed_data(last)
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(
+        data="a" * 100 + "b" * 156, size=256, extra=""
+    )
+
+
 def test_msg_too_large_across_fragments(out: WebSocketDataQueue) -> None:
     # Individual fragments fit under max_msg_size but accumulate past it.
     max_msg_size = 256
@@ -901,6 +938,22 @@ def test_set_max_msg_size_rejects_frame_in_progress(out: WebSocketDataQueue) -> 
     assert str(exc) == "Message size 1024 exceeds limit 256"
     assert parser.feed_data(frame[100:]) == (True, frame[100:])
     assert not out._buffer
+
+
+def test_set_max_msg_size_accepts_frame_of_exact_size(
+    out: WebSocketDataQueue,
+) -> None:
+    parser = WebSocketReader(out, 4 * 1024 * 1024, compress=False, decode_text=True)
+    frame = build_frame(b"a" * 256, WSMsgType.TEXT)
+    assert parser.feed_data(frame[:100]) == (False, b"")
+
+    # The in-flight frame is exactly the new limit: it must be accepted.
+    parser.set_max_msg_size(256)
+    assert out.exception() is None
+
+    parser.feed_data(frame[100:])
+    assert out.exception() is None
+    assert out._buffer[0] == WSMessageText(data="a" * 256, size=256, extra="")
 
 
 def test_set_max_msg_size_raised_for_frame_in_progress(

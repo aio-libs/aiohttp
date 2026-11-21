@@ -241,7 +241,7 @@ class WebSocketReader:
         msg_size = (
             self._frame_payload_len + self._payload_bytes_to_read + len(self._partial)
         )
-        if msg_size >= max_msg_size:
+        if msg_size > max_msg_size:
             self._exc = WebSocketError(
                 WSCloseCode.MESSAGE_TOO_BIG,
                 f"Message size {msg_size} exceeds limit {max_msg_size}",
@@ -573,7 +573,7 @@ class WebSocketReader:
                     partial_len = len(self._partial)
                     # payload_bytes_to_read is a signed Py_ssize_t C value,
                     # use subtraction here to avoid an integer overflow.
-                    if self._payload_bytes_to_read >= self._max_msg_size - partial_len:
+                    if self._payload_bytes_to_read > self._max_msg_size - partial_len:
                         raise WebSocketError(
                             WSCloseCode.MESSAGE_TOO_BIG,
                             f"Message size {int(self._payload_bytes_to_read) + partial_len} "

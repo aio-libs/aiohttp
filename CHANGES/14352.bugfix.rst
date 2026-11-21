@@ -1,0 +1,4 @@
+Accept WebSocket messages of exactly ``max_msg_size`` bytes instead of
+rejecting them with close code 1009, matching the documented meaning of
+``max_msg_size`` and the behavior of the decompression path -- by
+:user:`officialpm`.

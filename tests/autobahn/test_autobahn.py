@@ -124,30 +124,10 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "clients", "aiohttp")
     xfail = {
-        "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",
-        "9.2.4": "Did not receive message within 10 seconds.",
         "9.2.5": "Did not receive message within 100 seconds.",
         "9.2.6": "Did not receive message within 100 seconds.",
-        "9.3.1": "Did not receive message within 100 seconds.",
-        "9.3.2": "Did not receive message within 100 seconds.",
-        "9.3.3": "Did not receive message within 100 seconds.",
-        "9.3.4": "Did not receive message within 100 seconds.",
-        "9.3.5": "Did not receive message within 100 seconds.",
-        "9.3.6": "Did not receive message within 100 seconds.",
-        "9.3.7": "Did not receive message within 100 seconds.",
-        "9.3.8": "Did not receive message within 100 seconds.",
-        "9.3.9": "Did not receive message within 100 seconds.",
-        "9.4.1": "Did not receive message within 100 seconds.",
-        "9.4.2": "Did not receive message within 100 seconds.",
-        "9.4.3": "Did not receive message within 100 seconds.",
-        "9.4.4": "Did not receive message within 100 seconds.",
-        "9.4.5": "Did not receive message within 100 seconds.",
-        "9.4.6": "Did not receive message within 100 seconds.",
-        "9.4.7": "Did not receive message within 100 seconds.",
-        "9.4.8": "Did not receive message within 100 seconds.",
-        "9.4.9": "Did not receive message within 100 seconds.",
     }
     assert not process_xfail(results, xfail)
 
@@ -193,29 +173,9 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
 
     results = get_test_results(report_dir / "servers", "AutobahnServer")
     xfail = {
-        "9.1.4": "Did not receive message within 100 seconds.",
         "9.1.5": "Did not receive message within 100 seconds.",
         "9.1.6": "Did not receive message within 100 seconds.",
-        "9.2.4": "Did not receive message within 10 seconds.",
         "9.2.5": "Did not receive message within 100 seconds.",
         "9.2.6": "Did not receive message within 100 seconds.",
-        "9.3.1": "Did not receive message within 100 seconds.",
-        "9.3.2": "Did not receive message within 100 seconds.",
-        "9.3.3": "Did not receive message within 100 seconds.",
-        "9.3.4": "Did not receive message within 100 seconds.",
-        "9.3.5": "Did not receive message within 100 seconds.",
-        "9.3.6": "Did not receive message within 100 seconds.",
-        "9.3.7": "Did not receive message within 100 seconds.",
-        "9.3.8": "Did not receive message within 100 seconds.",
-        "9.3.9": "Did not receive message within 100 seconds.",
-        "9.4.1": "Did not receive message within 100 seconds.",
-        "9.4.2": "Did not receive message within 100 seconds.",
-        "9.4.3": "Did not receive message within 100 seconds.",
-        "9.4.4": "Did not receive message within 100 seconds.",
-        "9.4.5": "Did not receive message within 100 seconds.",
-        "9.4.6": "Did not receive message within 100 seconds.",
-        "9.4.7": "Did not receive message within 100 seconds.",
-        "9.4.8": "Did not receive message within 100 seconds.",
-        "9.4.9": "Did not receive message within 100 seconds.",
     }
     assert not process_xfail(results, xfail)
