@@ -224,3 +224,30 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+async def test_start_exits_quietly_when_connection_lost_after_data() -> None:
+    """A request queued just before connection_lost must not use the cleared
+    request factory (see #14000)."""
+    from aiohttp import web
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="ok")
+
+    proto = web.Server(handler)()
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    transport.get_extra_info.return_value = None
+    proto.connection_made(transport)
+    task = proto._task_handler
+    assert task is not None
+    await asyncio.sleep(0)  # start() parks waiting for the next request
+
+    # Same event-loop iteration: a request arrives, then the peer disconnects.
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+    proto.connection_lost(None)
+
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert task.done()
+    assert task.exception() is None

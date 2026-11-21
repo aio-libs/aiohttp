@@ -1,0 +1,5 @@
+Fixed ``RequestHandler.start()`` calling the cleared request factory when a
+request was queued just before ``connection_lost()`` ran, which killed the
+connection task with ``TypeError: 'NoneType' object is not callable``.
+``start()`` now exits quietly once the connection is lost -- by
+:user:`rinopatrick`.
