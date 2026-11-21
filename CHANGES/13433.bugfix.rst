@@ -1,0 +1,8 @@
+Fixed dynamic resources and static prefixes whose fixed part needs
+percent-encoding (a space or non-ASCII characters, for example) returning
+``404``. They are now matched against the unquoted request path, the way plain
+resources already were, so the URLs built by ``url_for()`` route back to their
+resource. As a consequence the route metadata reports those fixed parts
+without percent-encoding as well: ``canonical`` on dynamic and prefix-based
+resources, and the ``prefix`` entry of ``get_info()`` on static and
+sub-application resources -- by :user:`loonister1`.
