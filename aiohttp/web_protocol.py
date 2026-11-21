@@ -749,6 +749,8 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                     await self._waiter
                 finally:
                     self._waiter = None
+                # connection_lost can set _force_close after a completed wake
+                continue
 
             message, payload = self._messages.popleft()
 
