@@ -1225,7 +1225,7 @@ class MultipartWriter(Payload):
         # we do not use asyncio.gather() here because we are not allowed
         # to suspend given we may be called during cleanup
         for idx, (part, _, _) in enumerate(self._parts):
-            if not part.autoclose and not part.consumed:
+            if not part.autoclose:
                 try:
                     await part.close()
                 except Exception as exc:

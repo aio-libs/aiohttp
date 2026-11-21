@@ -1924,7 +1924,7 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     part3.consumed = False
     part3.close = mock.AsyncMock()
 
-    # Fourth part already consumed should not be closed
+    # A consumed part may still own resources that need closing.
     part4 = mock.Mock()
     part4.autoclose = False
     part4.consumed = True
@@ -1945,7 +1945,7 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     part1.close.assert_called_once()
     part2.close.assert_called_once()  # Should still be called despite part1 failing
     part3.close.assert_not_called()  # autoclose=True
-    part4.close.assert_not_called()  # consumed=True
+    part4.close.assert_called_once()
 
     # Verify writer is marked as consumed
     assert writer._consumed is True
@@ -1954,6 +1954,7 @@ async def test_multipart_writer_close_with_exceptions() -> None:
     await writer.close()
     assert part1.close.call_count == 1
     assert part2.close.call_count == 1
+    assert part4.close.call_count == 1
 
 
 async def test_multipart_writer_consumed_follows_parts() -> None:
