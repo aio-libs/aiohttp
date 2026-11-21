@@ -1,0 +1,7 @@
+Fixed the server reporting a spurious ``Task exception was never retrieved``
+for the request handler task when the connection was lost while a parsed
+request was still buffered (or when the handler task failed before
+``shutdown()``/``connection_lost()`` could await it).  The buffered message is
+no longer processed after the protocol was torn down, and the handler task's
+exception is now always marked as retrieved when the reference to it is
+dropped -- by :user:`DeviousCardi`.
