@@ -398,6 +398,7 @@ Thanos Lefteris
 Thijs Vermeir
 Thomas Forbes
 Thomas Grainger
+Thorvald Natvig
 Tim Menninger
 Tolga Tezel
 Tom Whittock

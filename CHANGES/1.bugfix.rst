@@ -1,0 +1,1 @@
+Removed a reference cycle so that dropping a :class:`~aiohttp.TraceConfig` releases its signals without waiting for cyclic garbage collection -- by :user:`thorvald-oai`.
