@@ -24,6 +24,8 @@ backports-zstd==1.8.0 ; implementation_name == "cpython" and python_version < "3
     # via -r requirements/lint.in
 blockbuster==1.5.29
     # via -r requirements/lint.in
+brotli==1.2.1 ; implementation_name == "cpython"
+    # via -r requirements/lint.in
 cffi==2.1.1
     # via
     #   cryptography
@@ -46,6 +48,8 @@ frozenlist==1.8.0
     # via
     #   aiohttp
     #   aiosignal
+gunicorn==27.0.1
+    # via -r requirements/lint.in
 identify==2.6.20
     # via pre-commit
 idna==3.20
