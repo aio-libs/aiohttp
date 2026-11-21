@@ -5,11 +5,12 @@ import json
 import mimetypes
 import os
 import sys
+import tempfile
 import warnings
 from abc import ABC, abstractmethod
-from collections.abc import AsyncIterable, AsyncIterator, Iterable
+from collections.abc import AsyncIterable, AsyncIterator, Callable, Iterable
 from itertools import chain
-from typing import IO, Any, Final, TextIO
+from typing import IO, Any, Final, TextIO, cast
 
 from multidict import CIMultiDict
 
@@ -78,7 +79,7 @@ class payload_type:
         return factory
 
 
-PayloadType = type["Payload"]
+PayloadType = Callable[..., "Payload"]
 _PayloadRegistryItem = tuple[PayloadType, Any]
 
 
@@ -542,6 +543,12 @@ class IOBasePayload(Payload):
 
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
+        # fileno() would roll an in-memory spool over to disk.
+        if (
+            isinstance(self._value, tempfile.SpooledTemporaryFile)
+            and not self._value._rolled  # type: ignore[attr-defined]
+        ):
+            return None
         try:
             # Store the start position on first access.
             # This is critical when the same payload instance is reused (e.g., 307/308
@@ -1110,6 +1117,12 @@ class StreamReaderPayload(AsyncIterablePayload):
         super().__init__(value.iter_any(), *args, **kwargs)
 
 
+def _temporary_file_payload(value: IO[Any], *args: Any, **kwargs: Any) -> IOBasePayload:
+    if getattr(value, "encoding", None) is not None:
+        return TextIOPayload(cast(TextIO, value), *args, **kwargs)
+    return IOBasePayload(value, *args, **kwargs)
+
+
 PAYLOAD_REGISTRY = PayloadRegistry()
 PAYLOAD_REGISTRY.register(BytesPayload, (bytes, bytearray, memoryview))
 PAYLOAD_REGISTRY.register(StringPayload, str)
@@ -1117,6 +1130,10 @@ PAYLOAD_REGISTRY.register(StringIOPayload, io.StringIO)
 PAYLOAD_REGISTRY.register(TextIOPayload, io.TextIOBase)
 PAYLOAD_REGISTRY.register(BytesIOPayload, io.BytesIO)
 PAYLOAD_REGISTRY.register(BufferedReaderPayload, (io.BufferedReader, io.BufferedRandom))
+PAYLOAD_REGISTRY.register(
+    _temporary_file_payload,
+    (tempfile._TemporaryFileWrapper, tempfile.SpooledTemporaryFile),
+)
 PAYLOAD_REGISTRY.register(IOBasePayload, io.IOBase)
 PAYLOAD_REGISTRY.register(StreamReaderPayload, StreamReader)
 # try_last for giving a chance to more specialized async interables like

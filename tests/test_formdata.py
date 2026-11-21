@@ -1,10 +1,12 @@
+import asyncio
 import io
+import tempfile
 from unittest import mock
 
 import pytest
 from pytest_aiohttp import AiohttpClient
 
-from aiohttp import FormData, web
+from aiohttp import FormData, payload, web
 from aiohttp.http_writer import StreamWriter
 
 
@@ -316,3 +318,20 @@ async def test_formdata_reusability_with_io_fields(
 
     # Should produce identical results
     assert result1 == result2
+
+
+async def test_formdata_named_temporary_file(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    with tempfile.NamedTemporaryFile() as source:
+        source.write(b"temporary content")
+        source.seek(0)
+        form = FormData(source)
+        assert form.is_multipart
+        body = form()
+        await body.write(writer)
+        assert b"temporary content" in buf
+        assert not source.closed
+        await body.close()
+        await asyncio.gather(*payload._CLOSE_FUTURES)
+        assert source.closed
