@@ -1,0 +1,2 @@
+Fixed a race in the WebSocket shutdown test that could cause intermittent CI
+failures -- by :user:`PLPeeters`.
