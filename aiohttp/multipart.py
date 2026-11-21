@@ -32,7 +32,7 @@ from .helpers import (
     reify,
 )
 from .http import HeadersParser
-from .http_exceptions import BadHttpMessage
+from .http_exceptions import BadHttpMessage, ContentEncodingError
 from .log import internal_logger
 from .payload import (
     JsonPayload,
@@ -604,10 +604,28 @@ class BodyPartReader:
         if encoding == "identity":
             return data
         if encoding in {"deflate", "gzip"}:
-            return ZLibDecompressor(
+            decompressor = ZLibDecompressor(
                 encoding=encoding,
                 suppress_deflate_header=True,
-            ).decompress_sync(data, max_length=self._max_decompress_size)
+            )
+            result = decompressor.decompress_sync(
+                data, max_length=self._max_decompress_size
+            )
+            # decompress_sync() caps its output at max_length; drain the
+            # decompressor like _decode_content_async() does, otherwise
+            # the output past the cap is silently dropped.
+            while decompressor.data_available:
+                result += decompressor.decompress_sync(
+                    b"", max_length=self._max_decompress_size
+                )
+            if data and not decompressor.stream_complete:
+                # data is the complete body, so a stream that does not end
+                # on a member boundary was truncated; zlib still decodes
+                # the surviving payload without raising.
+                raise ContentEncodingError(
+                    "Truncated stream for content-encoding: %s" % encoding
+                )
+            return result
 
         raise RuntimeError(f"unknown content encoding: {encoding}")
 
@@ -623,6 +641,11 @@ class BodyPartReader:
             yield await d.decompress(data, max_length=self._max_decompress_size)
             while d.data_available:
                 yield await d.decompress(b"", max_length=self._max_decompress_size)
+            if data and not d.stream_complete:
+                # Same truncation check as _decode_content(); see there.
+                raise ContentEncodingError(
+                    "Truncated stream for content-encoding: %s" % encoding
+                )
         else:
             raise RuntimeError(f"unknown content encoding: {encoding}")
 
