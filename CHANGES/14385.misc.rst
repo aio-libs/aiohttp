@@ -1,0 +1,1 @@
+Reduced socket read timeout timer scheduling overhead while preserving read timeout behavior -- by :user:`PLPeeters`.

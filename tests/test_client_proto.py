@@ -13,6 +13,7 @@ from aiohttp.client_exceptions import (
     ClientOSError,
     ClientPayloadError,
     ServerDisconnectedError,
+    SocketTimeoutError,
 )
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientResponse
@@ -277,8 +278,94 @@ async def test_reschedule_timeout() -> None:
     assert proto._read_timeout_handle is not None
     h = proto._read_timeout_handle
     proto._reschedule_timeout()
-    assert proto._read_timeout_handle is not None
-    assert proto._read_timeout_handle is not h
+    assert proto._read_timeout_handle is h
+
+
+async def test_early_read_timeout_reschedules_to_latest_deadline() -> None:
+    loop = asyncio.get_running_loop()
+    proto = _upgraded_proto(loop, mock.Mock())
+    proto.read_timeout = 1
+    first_handle, second_handle = mock.Mock(), mock.Mock()
+    first_handle.when.return_value = 11
+    second_handle.when.return_value = 11.5
+    with mock.patch.object(loop, "time", side_effect=[10, 10.5, 11, 12]):
+        with mock.patch.object(
+            loop, "call_later", side_effect=[first_handle, second_handle]
+        ) as schedule:
+            proto.start_timeout()
+            proto.data_received(b"received")
+            first_callback = schedule.call_args.args[1]
+            first_callback()
+
+            assert proto._read_timeout_handle is second_handle
+            schedule.assert_called_with(0.5, proto._on_read_timeout)
+            second_callback = proto._on_read_timeout
+            second_callback()
+
+    assert isinstance(proto.exception(), SocketTimeoutError)
+    assert proto._read_timeout_handle is None
+
+
+async def test_read_timeout_reuses_timer_on_receive() -> None:
+    loop = asyncio.get_running_loop()
+    proto = _upgraded_proto(loop, mock.Mock())
+    proto.read_timeout = 1
+    first_handle = mock.Mock()
+    first_handle.when.return_value = 11
+    with mock.patch.object(loop, "time", side_effect=[10, 10.25, 10.5]):
+        with mock.patch.object(
+            loop, "call_later", return_value=first_handle
+        ) as schedule:
+            proto.start_timeout()
+            proto.data_received(b"first")
+            proto.data_received(b"second")
+
+    assert proto._read_timeout_handle is first_handle
+    assert schedule.call_count == 1
+    first_handle.cancel.assert_not_called()
+    assert proto._read_timeout_deadline == 11.5
+
+
+async def test_read_timeout_change_applies_on_next_receive() -> None:
+    loop = asyncio.get_running_loop()
+    proto = _upgraded_proto(loop, mock.Mock())
+    proto.read_timeout = 1
+    handle = mock.Mock()
+    handle.when.return_value = 11
+    with mock.patch.object(loop, "time", side_effect=[10, 10.5]):
+        with mock.patch.object(loop, "call_later", return_value=handle) as schedule:
+            proto.start_timeout()
+            proto.read_timeout = 2
+
+            assert proto._read_timeout_handle is handle
+            assert proto._read_timeout_deadline == 11
+
+            proto.data_received(b"after change")
+
+    assert proto._read_timeout_handle is handle
+    assert proto._read_timeout_deadline == 12.5
+    assert schedule.call_count == 1
+
+
+async def test_shortened_read_timeout_replaces_later_timer() -> None:
+    loop = asyncio.get_running_loop()
+    proto = _upgraded_proto(loop, mock.Mock())
+    proto.read_timeout = 10
+    first_handle, second_handle = mock.Mock(), mock.Mock()
+    first_handle.when.return_value = 20
+    second_handle.when.return_value = 11.5
+    with mock.patch.object(loop, "time", side_effect=[10, 10.5]):
+        with mock.patch.object(
+            loop, "call_later", side_effect=[first_handle, second_handle]
+        ) as schedule:
+            proto.start_timeout()
+            proto.read_timeout = 1
+            proto.data_received(b"after shortening")
+
+    assert first_handle.cancel.call_count == 1
+    assert proto._read_timeout_handle is second_handle
+    assert proto._read_timeout_deadline == 11.5
+    schedule.assert_called_with(1, proto._on_read_timeout)
 
 
 async def test_eof_received() -> None:
