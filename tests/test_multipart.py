@@ -2114,6 +2114,38 @@ async def test_multipart_payload_writer_qp_block_cut_never_splits_crlf(
     assert wire == expected
 
 
+@pytest.mark.parametrize(
+    "body",
+    (
+        b"x" * 5000 + b"\r\n",  # newline-free block: soft breaks must be CRLF
+        b"=" * 15 + b"x" * 4081 + b"z",  # block break after an already full line
+    ),
+    ids=("crlf_soft_breaks", "no_77_char_line"),
+)
+@pytest.mark.parametrize("chunk_size", (1, _QP_BLOCK_SIZE, _QP_BLOCK_SIZE + 1))
+async def test_multipart_payload_writer_qp_block_output_is_valid(
+    buf: bytearray, stream: AbstractStreamWriter, body: bytes, chunk_size: int
+) -> None:
+    r"""Block-at-a-time encoding must still produce valid quoted-printable.
+
+    binascii.b2a_qp picks LF-only soft breaks for a block without ``\r\n``
+    and wraps lines up to 76 characters, so a soft break appended after
+    its raw output can exceed the RFC 2045 line limit.
+    """
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    for pos in range(0, len(body), chunk_size):
+        await payload_writer.write(body[pos : pos + chunk_size])
+    await payload_writer.write_eof()
+
+    wire = bytes(buf)
+    assert binascii.a2b_qp(wire) == body
+    lines = wire.split(b"\r\n")
+    assert all(len(line) <= 76 for line in lines)
+    assert all(b"\n" not in line for line in lines)  # no LF-only soft breaks
+
+
 async def test_body_part_reader_payload_as_bytes() -> None:
     """Test that BodyPartReaderPayload.as_bytes raises TypeError."""
     # Create a mock BodyPartReader

@@ -76,6 +76,29 @@ if TYPE_CHECKING:
     from .client_reqrep import ClientResponse
 
 
+def _encode_qp_block(block: bytes | bytearray) -> bytes:
+    r"""Encode a newline-free block of bytes as quoted-printable.
+
+    binascii.b2a_qp does the wrapping, but its raw output is not safe to
+    glue soft breaks onto: it picks LF-only soft breaks when the input
+    contains no ``\r\n``, and its last line can be the full 76 characters,
+    so a soft break appended after it would make a 77-character line.
+    Normalize soft breaks to CRLF (a literal ``=`` is always encoded as
+    ``=3D``, so ``=\n`` can only be a soft break) and split the last line
+    once if it exceeds 75 characters, without splitting an ``=XX`` escape.
+    """
+    quoted = binascii.b2a_qp(block).replace(b"=\n", b"=\r\n")
+    last_len = len(quoted) - quoted.rfind(b"\n") - 1
+    if last_len > 75:
+        cut = len(quoted) - last_len + 75
+        if quoted[cut - 1] == 0x3D:  # =X|X: escape starts on this line
+            cut -= 1
+        elif quoted[cut - 2] == 0x3D:  # =|XX
+            cut -= 2
+        quoted = quoted[:cut] + _QP_SOFT_BREAK + quoted[cut:]
+    return quoted
+
+
 def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
     r"""Encode one line (any ``\n`` is its final byte) as quoted-printable.
 
@@ -83,22 +106,27 @@ def _encode_quoted_printable_line(line: bytes | bytearray) -> bytes:
     _QP_BLOCK_SIZE block at a time, with a soft line break inserted
     between blocks (binascii.a2b_qp decodes a soft break to nothing).
     A block never ends with ``\r``: the cut moves back one byte so a
-    ``\r\n`` pair is never split across blocks, which would make
-    binascii.b2a_qp emit a bare CR and a bare LF (RFC 2045 forbids a CR
-    not followed by LF). Cut positions depend only on the line bytes, so
-    the encoding stays a pure function of the line bytes while letting
-    the streaming writer flush every complete block as it arrives.
+    ``\r\n`` pair is never split across blocks. Cut positions depend only
+    on the bytes before the final ``\n``, matching the cuts the streaming
+    writer makes before that ``\n`` has arrived, so the encoding stays a
+    pure function of the line bytes regardless of chunking.
     """
+    newline = b""
+    if line.endswith(b"\n"):
+        line, newline = line[:-1], b"\n"
     parts: list[bytes] = []
     pos = 0
     while len(line) - pos > _QP_BLOCK_SIZE:
         block_end = pos + _QP_BLOCK_SIZE
         if line[block_end - 1] == 0x0D:  # \r: don't split a \r\n pair
             block_end -= 1
-        parts.append(binascii.b2a_qp(line[pos:block_end]))
+        parts.append(_encode_qp_block(line[pos:block_end]))
         parts.append(_QP_SOFT_BREAK)
         pos = block_end
-    parts.append(binascii.b2a_qp(line[pos:]))
+    rest = line[pos:]
+    if newline and rest.endswith(b"\r"):
+        rest, newline = rest[:-1], b"\r\n"
+    parts.append(_encode_qp_block(rest) + newline)
     return b"".join(parts)
 
 
@@ -1390,7 +1418,7 @@ class MultipartPayloadWriter:
                 block_end = start + _QP_BLOCK_SIZE
                 if buf[block_end - 1] == 0x0D:  # \r: don't split a \r\n pair
                     block_end -= 1
-                parts.append(binascii.b2a_qp(buf[start:block_end]))
+                parts.append(_encode_qp_block(buf[start:block_end]))
                 parts.append(_QP_SOFT_BREAK)
                 start = block_end
             if start:
