@@ -1,0 +1,3 @@
+Fixed flaky coverage of the client WebSocket heartbeat's closed check by
+adding a test where the heartbeat fires after the connection is closed
+-- by :user:`Dreamsorcerer`.
