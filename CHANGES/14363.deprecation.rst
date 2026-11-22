@@ -1,3 +1,2 @@
-Deprecated ``MultipartWriter.decode()``; use
-:meth:``MultipartWriter.as_bytes`` and decode the result instead
+Deprecated ``MultipartWriter.decode()``; use ``MultipartWriter.as_bytes`` and decode the result instead
 -- by :user:`Dreamsorcerer`.
