@@ -1214,9 +1214,9 @@ class MultipartWriter(Payload):
                 DeprecationWarning,
                 stacklevel=2,
             )
-        buffer = bytearray()
+        buffer: list[bytes] = []
         await self._write(None, True, buffer)
-        return bytes(buffer)
+        return b"".join(buffer)
 
     async def write(
         self, writer: AbstractStreamWriter, close_boundary: bool = True
@@ -1228,7 +1228,7 @@ class MultipartWriter(Payload):
         self,
         writer: AbstractStreamWriter | None,
         close_boundary: bool,
-        buffer: bytearray | None = None,
+        buffer: list[bytes] | None = None,
     ) -> None:
         """Serialize all parts into ``writer``, or into ``buffer`` if given."""
         emit: Callable[[bytes], Awaitable[None]]
@@ -1262,7 +1262,7 @@ class MultipartWriter(Payload):
                     await part.write(w)  # type: ignore[arg-type]
                 await w.write_eof()
             elif buffer is not None:
-                buffer += await part.as_bytes()
+                buffer.append(await part.as_bytes())
             else:
                 assert writer is not None
                 await part.write(writer)
@@ -1302,7 +1302,7 @@ class MultipartPayloadWriter:
     def __init__(
         self,
         writer: AbstractStreamWriter | None,
-        buffer: bytearray | None = None,
+        buffer: list[bytes] | None = None,
     ) -> None:
         self._writer = writer
         self._buffer = buffer
@@ -1312,7 +1312,7 @@ class MultipartPayloadWriter:
 
     async def _write_chunk(self, chunk: bytes) -> None:
         if self._buffer is not None:
-            self._buffer.extend(chunk)
+            self._buffer.append(chunk)
         else:
             assert self._writer is not None
             await self._writer.write(chunk)
