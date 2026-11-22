@@ -1,1 +1,1 @@
-Added :data:`~aiohttp.hdrs.X_FORWARDED_PREFIX` for the ``X-Forwarded-Prefix`` header -- by :user:`felipecrs`.
+Added ``aiohttp.hdrs.X_FORWARDED_PREFIX`` for the ``X-Forwarded-Prefix`` header -- by :user:`felipecrs`.
