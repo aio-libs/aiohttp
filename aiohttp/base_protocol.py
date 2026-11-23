@@ -153,4 +153,4 @@ class BaseProtocol(asyncio.Protocol):
         if waiter is None:
             waiter = self._loop.create_future()
             self._drain_waiter = waiter
-        await waiter
+        await asyncio.shield(waiter)

@@ -254,3 +254,26 @@ async def test_parallel_drain_race_condition() -> None:
     pr.resume_writing()
     await asyncio.gather(*ts)
     assert pr._drain_waiter is None
+
+
+async def test_drain_helper_cancel_does_not_cancel_other_waiter() -> None:
+    loop = asyncio.get_running_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.Mock()
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    t1 = loop.create_task(pr._drain_helper())
+    t2 = loop.create_task(pr._drain_helper())
+    await asyncio.sleep(0)
+    assert not t1.done() and not t2.done()
+
+    t1.cancel()
+    with suppress(asyncio.CancelledError):
+        await t1
+
+    assert not t2.done()
+    assert pr._drain_waiter is not None
+    pr.resume_writing()
+    await t2
+    assert pr._drain_waiter is None
