@@ -254,3 +254,51 @@ async def test_parallel_drain_race_condition() -> None:
     pr.resume_writing()
     await asyncio.gather(*ts)
     assert pr._drain_waiter is None
+
+
+
+async def test_parallel_drain_cancelled() -> None:
+    loop = asyncio.get_running_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.Mock()
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    ts = [loop.create_task(pr._drain_helper()) for _ in range(2)]
+    assert not (await asyncio.wait(ts, timeout=0.5))[0]
+
+    ts[0].cancel()
+    with suppress(asyncio.CancelledError):
+        await ts[0]
+
+    assert not ts[1].done()
+    assert pr._drain_waiter is not None
+    pr.resume_writing()
+    await ts[1]
+    assert pr._drain_waiter is None
+
+
+async def test_cancelled_drain_waiter_does_not_warn_on_connection_loss() -> None:
+    import gc
+
+    loop = asyncio.get_running_loop()
+    captured = []
+    previous_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: captured.append(context))
+    try:
+        pr = BaseProtocol(loop=loop)
+        pr.connection_made(mock.Mock())
+        pr.pause_writing()
+
+        task = loop.create_task(pr._drain_helper())
+        await asyncio.sleep(0)
+        task.cancel()
+        with suppress(asyncio.CancelledError):
+            await task
+
+        pr.connection_lost(RuntimeError("connection failed"))
+        gc.collect()
+        await asyncio.sleep(0)
+        assert captured == []
+    finally:
+        loop.set_exception_handler(previous_handler)
