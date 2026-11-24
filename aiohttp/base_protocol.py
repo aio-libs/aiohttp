@@ -159,6 +159,6 @@ class BaseProtocol(asyncio.Protocol):
         if waiter is None:
             waiter = self._loop.create_future()
             self._drain_waiter = waiter
-        shielded_waiter = asyncio.shield(waiter)
-        shielded_waiter.add_done_callback(_consume_future_exception)
-        await shielded_waiter
+            waiter.add_done_callback(_consume_future_exception)
+        await asyncio.wait((waiter,))
+        waiter.result()
