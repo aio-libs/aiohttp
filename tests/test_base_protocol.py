@@ -302,7 +302,6 @@ async def test_cancelled_drain_waiter_does_not_warn_on_connection_loss() -> None
         loop.set_exception_handler(previous_handler)
 
 
-
 async def test_cancelled_drain_waiter_is_ignored_by_exception_callback() -> None:
     loop = asyncio.get_running_loop()
     captured = []
