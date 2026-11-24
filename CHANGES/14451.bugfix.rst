@@ -1,1 +1,1 @@
-Prevent cancellation of one writer from interrupting concurrent writers waiting for transport backpressure -- by :user:`anuroop258`.
+Prevent cancellation of one writer from interrupting concurrent writers waiting for transport flow control to resume -- by :user:`anuroop258`.
