@@ -1,0 +1,1 @@
+Deprecated the ``encoding`` and ``errors`` parameters of ``MultipartWriter.as_bytes()`` -- by :user:`Dreamsorcerer`.
