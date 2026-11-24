@@ -768,7 +768,11 @@ class Response(StreamResponse):
         # Note: When _body is a Payload (e.g. FilePayload), this may do blocking I/O
         # This is generally safe as most common payloads (BytesPayload, StringPayload)
         # don't do blocking I/O, but be careful with file-based payloads
-        return self._body.decode(self.charset or "utf-8")
+        with warnings.catch_warnings():
+            warnings.filterwarnings(
+                "ignore", "MultipartWriter.decode", DeprecationWarning
+            )
+            return self._body.decode(self.charset or "utf-8")
 
     @text.setter
     def text(self, text: str) -> None:

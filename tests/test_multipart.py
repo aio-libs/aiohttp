@@ -1,5 +1,6 @@
 import asyncio
 import base64
+import binascii
 import gzip
 import io
 import json
@@ -23,9 +24,12 @@ from aiohttp.hdrs import (
 )
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, parse_mimetype
 from aiohttp.multipart import (
+    _QP_BLOCK_SIZE,
     BodyPartReader,
     BodyPartReaderPayload,
+    MultipartPayloadWriter,
     MultipartResponseWrapper,
+    _encode_quoted_printable_line,
 )
 from aiohttp.streams import StreamReader
 from aiohttp.web_exceptions import HTTPRequestEntityTooLarge
@@ -1933,6 +1937,295 @@ async def test_multipart_writer_reusability_with_io_payloads(
     # Test as_bytes after writes (IO objects should auto-reset)
     bytes3 = await writer.as_bytes()
     assert bytes1 == bytes3
+
+
+async def test_as_bytes_async_iterable_part_remains_reusable(
+    buf: bytearray,
+    stream: AbstractStreamWriter,
+    writer: aiohttp.MultipartWriter,
+) -> None:
+    """as_bytes() must not irreversibly drain parts backed by async iterables."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        yield b"chunk one "
+        yield b"chunk two"
+
+    writer.append(gen(), {CONTENT_TYPE: "application/octet-stream"})
+
+    bytes1 = await writer.as_bytes()
+    bytes2 = await writer.as_bytes()
+    assert bytes1 == bytes2
+    assert b"chunk one chunk two" in bytes1
+
+    await writer.write(stream)
+    assert bytes(buf) == bytes1
+
+
+async def test_as_bytes_form_data_matches_write(
+    buf: bytearray, stream: AbstractStreamWriter
+) -> None:
+    with aiohttp.MultipartWriter("form-data", boundary=":") as writer:
+        writer.append("value")
+    await writer.write(stream)
+
+    assert await writer.as_bytes() == bytes(buf)
+
+
+async def test_writer_decode_deprecated(writer: aiohttp.MultipartWriter) -> None:
+    writer.append("foo bar")
+
+    with pytest.warns(DeprecationWarning, match="as_bytes"):
+        assert "foo bar" in writer.decode()
+
+
+async def test_writer_as_bytes_encoding_params_deprecated(
+    writer: aiohttp.MultipartWriter,
+) -> None:
+    writer.append("foo bar")
+
+    with pytest.warns(DeprecationWarning, match="encoding and errors"):
+        with_params = await writer.as_bytes("utf-8")
+    assert with_params == await writer.as_bytes()
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+@pytest.mark.parametrize("encoding", ("gzip", "deflate"))
+async def test_writer_as_bytes_applies_content_encoding(
+    buf: bytearray,
+    stream: AbstractStreamWriter,
+    writer: aiohttp.MultipartWriter,
+    encoding: str,
+) -> None:
+    """as_bytes() must apply part Content-Encoding just like write() does."""
+    writer.append("Time to Relax!", {CONTENT_ENCODING: encoding})
+    await writer.write(stream)
+    result = await writer.as_bytes()
+
+    assert result == bytes(buf)
+
+    _, message = result.split(b"\r\n\r\n", 1)
+    wbits = 16 + ZLibBackend.MAX_WBITS if encoding == "gzip" else -ZLibBackend.MAX_WBITS
+    decompressor = ZLibBackend.decompressobj(wbits=wbits)
+    data = decompressor.decompress(message.split(b"\r\n")[0])
+    data += decompressor.flush()
+    assert b"Time to Relax!" == data
+
+
+async def test_writer_as_bytes_applies_content_transfer_encoding_qp(
+    buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
+) -> None:
+    """as_bytes() must apply quoted-printable encoding just like write() does."""
+    writer.append("Привет, мир!", {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+    await writer.write(stream)
+    result = await writer.as_bytes()
+
+    assert result == bytes(buf)
+    _, message = result.split(b"\r\n\r\n", 1)
+    assert (
+        b"=D0=9F=D1=80=D0=B8=D0=B2=D0=B5=D1=82,"
+        b" =D0=BC=D0=B8=D1=80!" == message.split(b"\r\n")[0]
+    )
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    (
+        pytest.param((b"line one\r", b"\nline two\r\n"), id="crlf-split"),
+        pytest.param((b"x" * 100, b"y" * 100 + b"\r\n"), id="long-line-split"),
+        pytest.param((b"hello ", b"world\r\n"), id="space-at-chunk-end"),
+        pytest.param((b"tab\t", b"stop\r\n"), id="tab-at-chunk-end"),
+    ),
+)
+async def test_writer_qp_wire_matches_as_bytes_across_chunk_splits(
+    buf: bytearray,
+    stream: AbstractStreamWriter,
+    writer: aiohttp.MultipartWriter,
+    chunks: list[bytes],
+) -> None:
+    """Quoted-printable output must not depend on payload chunk boundaries.
+
+    Any chunking sensitivity makes the wire bytes diverge from as_bytes()
+    (which digest auth hashes for qop=auth-int) and can corrupt line
+    endings split across chunks.
+    """
+
+    async def gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    writer.append(gen(), {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+    result = await writer.as_bytes()
+    await writer.write(stream)
+
+    assert result == bytes(buf)
+    _, wire_body = bytes(buf).split(b"\r\n\r\n", 1)
+    qp_body = wire_body.rsplit(b"\r\n--:--\r\n", 1)[0]
+    assert binascii.a2b_qp(qp_body) == b"".join(chunks)
+
+
+@pytest.mark.parametrize(
+    "chunks",
+    (
+        pytest.param((b"a", b"bc", b"defg"), id="unaligned-groups"),
+        pytest.param((b"ab", b"cd", b"ef", b"g"), id="two-byte-chunks"),
+    ),
+)
+async def test_writer_base64_wire_matches_as_bytes_across_chunk_splits(
+    buf: bytearray,
+    stream: AbstractStreamWriter,
+    writer: aiohttp.MultipartWriter,
+    chunks: list[bytes],
+) -> None:
+    """Base64 output must not depend on payload chunk boundaries."""
+
+    async def gen() -> AsyncIterator[bytes]:
+        for chunk in chunks:
+            yield chunk
+
+    writer.append(gen(), {CONTENT_TRANSFER_ENCODING: "base64"})
+    result = await writer.as_bytes()
+    await writer.write(stream)
+
+    assert result == bytes(buf)
+    _, wire_body = bytes(buf).split(b"\r\n\r\n", 1)
+    b64_body = wire_body.rsplit(b"\r\n--:--\r\n", 1)[0]
+    assert base64.b64decode(b64_body) == b"".join(chunks)
+
+
+async def test_writer_qp_bytesio_larger_than_chunk_size(
+    buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
+) -> None:
+    """QP output must not depend on the payload's own internal chunking."""
+    body = b"x" * (DEFAULT_CHUNK_SIZE + 50) + b"\r\n"
+    writer.append(io.BytesIO(body), {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+    result = await writer.as_bytes()
+    await writer.write(stream)
+
+    assert result == bytes(buf)
+    _, wire_body = bytes(buf).split(b"\r\n\r\n", 1)
+    qp_body = wire_body.rsplit(b"\r\n--:--\r\n", 1)[0]
+    assert binascii.a2b_qp(qp_body) == body
+
+
+async def test_writer_qp_newline_free_multi_megabyte_body(
+    buf: bytearray, stream: AbstractStreamWriter, writer: aiohttp.MultipartWriter
+) -> None:
+    """A newline-free multi-megabyte body must not depend on chunking.
+
+    Without a newline the quoted-printable encoder can never complete a
+    line, so the wire bytes must still match as_bytes() and decode to the
+    original.
+    """
+    body = b"a=b \xff\x00\tc\r" * 300_000  # 3 MB, no newline
+    sizes = [65536, 1, 4095, 4096, 4097, 33333]
+
+    async def gen() -> AsyncIterator[bytes]:
+        pos = 0
+        while pos < len(body):
+            size = sizes[pos % len(sizes)]
+            yield body[pos : pos + size]
+            pos += size
+
+    writer.append(gen(), {CONTENT_TRANSFER_ENCODING: "quoted-printable"})
+    result = await writer.as_bytes()
+    await writer.write(stream)
+
+    assert result == bytes(buf)
+    _, wire_body = bytes(buf).split(b"\r\n\r\n", 1)
+    qp_body = wire_body.rsplit(b"\r\n--:--\r\n", 1)[0]
+    assert binascii.a2b_qp(qp_body) == body
+
+
+async def test_multipart_payload_writer_qp_partial_line_buffer_is_bounded(
+    buf: bytearray, stream: AbstractStreamWriter
+) -> None:
+    """A newline-free body must stream without unbounded buffering.
+
+    The partial-line buffer must never retain more than one
+    quoted-printable block between write() calls, and every large input
+    chunk must make progress downstream instead of accumulating.
+    """
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    body = b"no newline here " * 65_536  # 1 MB, no newline
+    chunk_size = 65_536
+    for pos in range(0, len(body), chunk_size):
+        written_before = len(buf)
+        await payload_writer.write(body[pos : pos + chunk_size])
+        assert payload_writer._encoding_buffer is not None
+        assert len(payload_writer._encoding_buffer) <= _QP_BLOCK_SIZE
+        assert len(buf) > written_before
+    await payload_writer.write_eof()
+
+    assert bytes(buf) == _encode_quoted_printable_line(body)
+    assert binascii.a2b_qp(bytes(buf)) == body
+
+
+@pytest.mark.parametrize(
+    "cr_offset",
+    (_QP_BLOCK_SIZE - 1, _QP_BLOCK_SIZE, 2 * _QP_BLOCK_SIZE - 1),
+)
+@pytest.mark.parametrize("chunk_size", (1, _QP_BLOCK_SIZE, _QP_BLOCK_SIZE + 1))
+async def test_multipart_payload_writer_qp_block_cut_never_splits_crlf(
+    buf: bytearray, stream: AbstractStreamWriter, cr_offset: int, chunk_size: int
+) -> None:
+    r"""A ``\r\n`` pair straddling a block cut must not be split.
+
+    Splitting it would make binascii.b2a_qp emit a bare CR at the end of
+    one block and a bare LF at the start of the next, which RFC 2045
+    forbids on the wire.
+    """
+    body = b"A" * cr_offset + b"\r\n" + b"B" * 100 + b"\n"
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    for pos in range(0, len(body), chunk_size):
+        await payload_writer.write(body[pos : pos + chunk_size])
+    await payload_writer.write_eof()
+
+    wire = bytes(buf)
+    assert b"\r" not in wire.replace(b"\r\n", b"")  # every CR is part of a CRLF
+    assert binascii.a2b_qp(wire) == body
+    # identical to the one-shot per-line encoder regardless of chunking
+    segments = body.split(b"\n")
+    assert b"" == segments[-1]
+    expected = b"".join(
+        _encode_quoted_printable_line(segment + b"\n") for segment in segments[:-1]
+    )
+    assert wire == expected
+
+
+@pytest.mark.parametrize(
+    "body",
+    (
+        b"x" * 5000 + b"\r\n",  # newline-free block: soft breaks must be CRLF
+        b"=" * 15 + b"x" * 4081 + b"z",  # block break after an already full line
+    ),
+    ids=("crlf_soft_breaks", "no_77_char_line"),
+)
+@pytest.mark.parametrize("chunk_size", (1, _QP_BLOCK_SIZE, _QP_BLOCK_SIZE + 1))
+async def test_multipart_payload_writer_qp_block_output_is_valid(
+    buf: bytearray, stream: AbstractStreamWriter, body: bytes, chunk_size: int
+) -> None:
+    r"""Block-at-a-time encoding must still produce valid quoted-printable.
+
+    binascii.b2a_qp picks LF-only soft breaks for a block without ``\r\n``
+    and wraps lines up to 76 characters, so a soft break appended after
+    its raw output can exceed the RFC 2045 line limit.
+    """
+    payload_writer = MultipartPayloadWriter(stream)
+    payload_writer.enable_encoding("quoted-printable")
+
+    for pos in range(0, len(body), chunk_size):
+        await payload_writer.write(body[pos : pos + chunk_size])
+    await payload_writer.write_eof()
+
+    wire = bytes(buf)
+    assert binascii.a2b_qp(wire) == body
+    lines = wire.split(b"\r\n")
+    assert all(len(line) <= 76 for line in lines)
+    assert all(b"\n" not in line for line in lines)  # no LF-only soft breaks
 
 
 async def test_body_part_reader_payload_as_bytes() -> None:
