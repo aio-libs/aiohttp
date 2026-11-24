@@ -42,7 +42,7 @@ iniconfig==2.3.1
     # via pytest
 isal==1.9.1 ; python_version < "3.14" and implementation_name == "cpython"
     # via -r requirements/test-common.in
-librt==0.16.0
+librt==0.17.0
     # via mypy
 markdown-it-py==4.3.0
     # via rich
@@ -55,7 +55,9 @@ multidict==7.2.1
 mypy==2.4.1 ; implementation_name == "cpython"
     # via -r requirements/test-common.in
 mypy-extensions==1.2.0
-    # via mypy
+    # via
+    #   librt
+    #   mypy
 packaging==26.3
     # via pytest
 pathspec==1.1.1
