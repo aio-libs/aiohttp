@@ -257,7 +257,6 @@ async def test_parallel_drain_race_condition() -> None:
     assert pr._drain_waiter is None
 
 
-
 async def test_parallel_drain_cancelled() -> None:
     loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
