@@ -16,6 +16,12 @@ if TYPE_CHECKING:
 PAUSE_RESUME_READING_ERRORS = (AttributeError, NotImplementedError, RuntimeError)
 
 
+def _consume_future_exception(future: asyncio.Future[None]) -> None:
+    """Retrieve drain-waiter exceptions to prevent unhandled-future warnings."""
+    if not future.cancelled():
+        future.exception()
+
+
 class BaseProtocol(asyncio.Protocol):
     __slots__ = (
         "_loop",
@@ -153,4 +159,5 @@ class BaseProtocol(asyncio.Protocol):
         if waiter is None:
             waiter = self._loop.create_future()
             self._drain_waiter = waiter
-        await waiter
+            waiter.add_done_callback(_consume_future_exception)
+        await asyncio.shield(waiter)
