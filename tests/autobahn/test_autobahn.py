@@ -21,10 +21,7 @@ else:
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
 
-# wstest runs on PyPy, which sizes its GC nursery from the CPU cache size in
-# /proc/cpuinfo (240MB on some CI runners). The zlib memory used by the
-# permessage-deflate cases is invisible to the GC, so with a large nursery
-# wstest grows past 14GB and gets OOM-killed. A small nursery keeps it ~1GB.
+# https://github.com/crossbario/autobahn-testsuite/blob/master/docs/index.rst#memory-usage
 WSTEST_ENV = {"PYPY_GC_NURSERY": "4MB"}
 
 
