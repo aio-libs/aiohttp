@@ -1,4 +1,5 @@
 import asyncio
+import gc
 from contextlib import suppress
 from unittest import mock
 
@@ -279,8 +280,6 @@ async def test_parallel_drain_cancelled() -> None:
 
 
 async def test_cancelled_drain_waiter_does_not_warn_on_connection_loss() -> None:
-    import gc
-
     loop = asyncio.get_running_loop()
     captured = []
     previous_handler = loop.get_exception_handler()
