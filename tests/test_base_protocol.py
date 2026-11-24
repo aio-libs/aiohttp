@@ -300,3 +300,30 @@ async def test_cancelled_drain_waiter_does_not_warn_on_connection_loss() -> None
         assert captured == []
     finally:
         loop.set_exception_handler(previous_handler)
+
+
+
+async def test_cancelled_drain_waiter_is_ignored_by_exception_callback() -> None:
+    loop = asyncio.get_running_loop()
+    captured = []
+    previous_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: captured.append(context))
+    try:
+        pr = BaseProtocol(loop=loop)
+        pr.connection_made(mock.Mock())
+        pr.pause_writing()
+
+        task = loop.create_task(pr._drain_helper())
+        await asyncio.sleep(0)
+
+        waiter = pr._drain_waiter
+        assert waiter is not None
+        waiter.cancel()
+
+        with suppress(asyncio.CancelledError):
+            await task
+
+        await asyncio.sleep(0)
+        assert captured == []
+    finally:
+        loop.set_exception_handler(previous_handler)
