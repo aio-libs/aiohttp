@@ -3041,6 +3041,19 @@ def test_parse_bad_method_for_c_parser_raises(
         messages, upgrade, tail = parser.feed_data(payload)
 
 
+class _CopyCountingBytes(bytes):
+    """bytes recording the size of every slice taken of it, or of a slice of it."""
+
+    copied: list[int]
+
+    def __getitem__(self, key: Any) -> Any:
+        assert isinstance(key, slice)
+        item = _CopyCountingBytes(super().__getitem__(key))
+        item.copied = self.copied
+        self.copied.append(len(item))
+        return item
+
+
 class TestParsePayload:
     async def test_parse_eof_payload(self, protocol: BaseProtocol) -> None:
         out = aiohttp.StreamReader(protocol, 2**16, loop=asyncio.get_running_loop())
@@ -3204,6 +3217,23 @@ class TestParsePayload:
         assert len(size_line) == 33
         with pytest.raises(http_exceptions.LineTooLong):
             p.feed_data(size_line + b"\r\nx\r\n0\r\n\r\n")
+
+    async def test_parse_chunked_payload_walks_input_once(
+        self, protocol: BaseProtocol
+    ) -> None:
+        count = 1000
+        data = _CopyCountingBytes(b"1\r\nx\r\n" * count + b"0\r\n\r\n")
+        data.copied = []
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(out, chunked=True, headers_parser=HeadersParser())
+
+        p.feed_data(data)
+
+        assert out.is_eof()
+        assert b"x" * count == b"".join(out._buffer)
+        assert sum(data.copied) < len(data)
 
     async def test_parse_chunked_payload_size_data_mismatch(
         self, protocol: BaseProtocol
