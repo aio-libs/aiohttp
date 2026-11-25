@@ -1,6 +1,7 @@
 import asyncio
 import gc
 import socket
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from typing import Any, NoReturn
 from unittest import mock
@@ -371,6 +372,50 @@ async def test_no_handler_cancellation(unused_port_socket: socket.socket) -> Non
         assert done_event.is_set()
     finally:
         await asyncio.gather(runner.shutdown(), site.stop())
+
+
+async def test_response_returned_after_cancelled_prepare(
+    aiohttp_client: AiohttpClient, slow_executor: ThreadPoolExecutor
+) -> None:
+    """Test a handler that returns a response whose prepare() was cancelled.
+
+    The cancelled attempt wrote no headers, so the response must not count as
+    prepared, or the peer gets a body with no status line or headers on a
+    connection that is then reused.
+    """
+    body_thread_size = 1024
+    body = b"answer" * body_thread_size
+    transports: list[asyncio.Transport | None] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        resp = web.Response(
+            body=body, zlib_executor_size=body_thread_size, zlib_executor=slow_executor
+        )
+        resp.enable_compression(web.ContentCoding.gzip)
+        with pytest.raises(TimeoutError):
+            async with asyncio.timeout(0):
+                await resp.prepare(request)
+        return resp
+
+    async def ping(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/ping", ping)
+    cli = await aiohttp_client(app)
+
+    async with cli.get("/") as resp:
+        assert resp.status == 200
+        assert resp.headers["Content-Encoding"] == "gzip"
+        assert await resp.read() == body
+    async with cli.get("/ping") as resp:
+        assert resp.status == 200
+
+    cancelled, reused = transports
+    assert cancelled is reused
 
 
 async def test_no_future_warning_on_disconnect_during_backpressure(
