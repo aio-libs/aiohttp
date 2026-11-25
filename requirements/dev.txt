@@ -60,7 +60,7 @@ click==8.5.1
     # via
     #   pip-tools
     #   towncrier
-coverage==7.17.2
+coverage==7.17.4
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -121,7 +121,7 @@ markdown-it-py==4.3.0
     #   rich
 markupsafe==3.0.4
     # via jinja2
-mdit-py-plugins==0.6.1
+mdit-py-plugins==0.7.0
     # via myst-parser
 mdurl==0.1.2
     # via markdown-it-py
@@ -138,7 +138,7 @@ mypy-extensions==1.2.0
     # via
     #   librt
     #   mypy
-myst-parser==5.1.0
+myst-parser==5.2.0
     # via -r requirements/doc.in
 nodeenv==1.12.0
     # via pre-commit
@@ -153,11 +153,11 @@ pathspec==1.1.1
     # via mypy
 pip==26.3
     # via pip-tools
-pip-tools==7.6.2
+pip-tools==7.7.0
     # via -r requirements/dev.in
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
-platformdirs==4.14.5
+platformdirs==4.14.8
     # via virtualenv
 pluggy==1.7.0
     # via
@@ -178,9 +178,9 @@ pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
-pydantic==2.14.3
+pydantic==2.14.4
     # via python-on-whales
-pydantic-core==2.50.4
+pydantic-core==2.50.5
     # via pydantic
 pygments==2.21.0
     # via
@@ -206,7 +206,7 @@ pytest-aiohttp==1.1.1
     # via
     #   -r requirements/lint.in
     #   -r requirements/test-common-base.in
-pytest-asyncio==1.4.1.post1
+pytest-asyncio==1.5.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.4
     # via
@@ -303,7 +303,7 @@ uvloop==0.23.0 ; platform_system != "Windows" and implementation_name == "cpytho
     #   -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.7
+virtualenv==21.15.11
     # via pre-commit
 wheel==0.48.0
     # via pip-tools

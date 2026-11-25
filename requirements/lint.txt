@@ -80,7 +80,7 @@ packaging==26.3
     #   virtualenv
 pathspec==1.1.1
     # via mypy
-platformdirs==4.14.5
+platformdirs==4.14.8
     # via virtualenv
 pluggy==1.7.0
     # via pytest
@@ -96,9 +96,9 @@ pycares==5.2.1
     # via aiodns
 pycparser==3.12
     # via cffi
-pydantic==2.14.3
+pydantic==2.14.4
     # via python-on-whales
-pydantic-core==2.50.4
+pydantic-core==2.50.5
     # via pydantic
 pygments==2.21.0
     # via
@@ -113,7 +113,7 @@ pytest==9.2.0
     #   pytest-mock
 pytest-aiohttp==1.1.1
     # via -r requirements/lint.in
-pytest-asyncio==1.4.1.post1
+pytest-asyncio==1.5.0
     # via pytest-aiohttp
 pytest-codspeed==5.0.4
     # via -r requirements/lint.in
@@ -151,7 +151,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.7
+virtualenv==21.15.11
     # via pre-commit
 yarl==1.25.1
     # via aiohttp

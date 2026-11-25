@@ -1,0 +1,2 @@
+Deprecated ``MultipartWriter.decode()``; use ``MultipartWriter.as_bytes`` and decode the result instead
+-- by :user:`Dreamsorcerer`.
