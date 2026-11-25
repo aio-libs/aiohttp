@@ -1027,6 +1027,58 @@ async def test_prepare_calls_signal() -> None:
     sig.assert_called_with(req, resp)
 
 
+async def test_prepare_failure_leaves_response_unprepared(
+    buf: bytearray, writer: AbstractStreamWriter
+) -> None:
+    app = mock.create_autospec(web.Application, spec_set=True)
+    sig = mock.AsyncMock(side_effect=(RuntimeError("boom"), None))
+    app.on_response_prepare = aiosignal.Signal(app)
+    app.on_response_prepare.append(sig)
+    req = make_request("GET", "/", app=app, writer=writer)
+    resp = web.StreamResponse()
+
+    with pytest.raises(RuntimeError, match="boom"):
+        await resp.prepare(req)
+
+    assert not resp.prepared
+    assert resp.task is None
+    assert not buf
+    with pytest.raises(RuntimeError, match=r"Cannot call write\(\) before prepare\(\)"):
+        await resp.write(b"data")
+
+    assert await resp.prepare(req) is writer
+    assert buf.startswith(b"HTTP/1.1 200 OK\r\n")
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_prepare_cancelled_during_compression(
+    buf: bytearray, writer: AbstractStreamWriter, slow_executor: ThreadPoolExecutor
+) -> None:
+    req = make_request("GET", "/", writer=writer)
+    body_thread_size = 1024
+    body = b"answer" * body_thread_size
+    resp = web.Response(
+        body=body, zlib_executor_size=body_thread_size, zlib_executor=slow_executor
+    )
+    resp.enable_compression(web.ContentCoding.gzip)
+
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0):
+            await resp.prepare(req)
+
+    assert not resp.prepared
+    assert not buf
+
+    await resp.prepare(req)
+    await resp.write_eof()
+
+    headers, _, payload = bytes(buf).partition(b"\r\n\r\n")
+    assert headers.startswith(b"HTTP/1.1 200 OK\r\n")
+    assert b"Content-Encoding: gzip\r\n" in headers
+    assert f"Content-Length: {len(payload)}\r\n".encode() in headers
+    assert gzip.decompress(payload) == body
+
+
 # Response class
 
 
