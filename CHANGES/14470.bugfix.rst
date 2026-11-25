@@ -1,0 +1,1 @@
+Used offsets in the Python parser rather than slicing to improve performance by avoiding copies -- by :user:`Dreamsorcerer`.
