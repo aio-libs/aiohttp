@@ -421,6 +421,55 @@ async def test_no_future_warning_on_disconnect_during_backpressure(
     assert not exc_handler_calls
 
 
+@pytest.mark.parametrize("keeps_writing", (True, False))
+async def test_drain_cancelled_during_backpressure(
+    keeps_writing: bool, aiohttp_client: AiohttpClient
+) -> None:
+    """Test a handler that carries on after a write timed out on back-pressure.
+
+    Whether it writes more or just returns, the next drain has to wait for the
+    peer rather than be cancelled as well, leaving the connection reusable.
+    """
+    sent = 0
+    transports: list[asyncio.Transport | None] = []
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        nonlocal sent
+        transports.append(request.transport)
+        resp = web.StreamResponse()
+        await resp.prepare(request)
+        chunk = b"x" * 65536
+        with suppress(TimeoutError):
+            async with asyncio.timeout(0):
+                # Nothing yields to the event loop until writing is paused.
+                while True:
+                    sent += len(chunk)
+                    await resp.write(chunk)
+        if keeps_writing:
+            # Large enough to need another drain.
+            sent += len(chunk) * 2
+            await resp.write(chunk * 2)
+        return resp
+
+    async def ping(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/ping", ping)
+    cli = await aiohttp_client(app)
+
+    async with cli.get("/") as resp:
+        assert resp.status == 200
+        assert len(await resp.read()) == sent
+    async with cli.get("/ping") as resp:
+        assert resp.status == 200
+
+    stalled, reused = transports
+    assert stalled is reused
+
+
 async def test_idle_connection_closed_before_first_request(
     aiohttp_raw_server: AiohttpRawServer,
 ) -> None:
