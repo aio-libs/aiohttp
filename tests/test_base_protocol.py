@@ -265,8 +265,7 @@ async def test_parallel_drain_cancelled() -> None:
     pr.pause_writing()
 
     ts = [loop.create_task(pr._drain_helper()) for _ in range(2)]
-    await asyncio.sleep(0)
-    assert all(not task.done() for task in ts)
+    assert not (await asyncio.wait(ts, timeout=0.5))[0]
 
     ts[0].cancel()
     with suppress(asyncio.CancelledError):
