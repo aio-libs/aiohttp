@@ -1,0 +1,1 @@
+Fixed the limit on concatenated compressed members being applied to each HTTP chunk or WebSocket message separately, it now follows the stream -- by :user:`Dreamsorcerer`.
