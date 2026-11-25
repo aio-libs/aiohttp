@@ -1,0 +1,7 @@
+Fixed a response being ended twice when ``write_eof()`` was cancelled while
+waiting for the peer to read (e.g. by a timeout in a web handler) and then
+called again, as the server does once the handler returns
+-- by :user:`Dreamsorcerer`.
+
+The repeated call sent the chunk terminator, the last chunk or a ``bytes``
+body a second time, or raised ``zlib.error`` for a compressed response.
