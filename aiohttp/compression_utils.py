@@ -412,12 +412,13 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
-        if self._member_input is not None and (size := len(data)):
-            self._member_input += size + self._call_credit
+        tail = self._decompressor.unconsumed_tail
         if self._pending_unused_data is not None:
-            data = self._pending_unused_data + bytes(data)
+            tail += self._pending_unused_data
             self._pending_unused_data = None
-        combined = self._decompressor.unconsumed_tail + data
+        combined = tail + data
+        if self._member_input is not None and (size := len(combined) - len(tail)):
+            self._member_input += size + self._call_credit
         # Previous member ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.
         # Only reset for gzip; deflate's feed_eof() relies on eof=True to
@@ -547,7 +548,9 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
             else max_length
         )
         if self._member_input is not None:
-            self._member_input += len(data)
+            self._member_input += (
+                len(data) if type(data) is bytes else memoryview(data).nbytes
+            )
         if self._pending_unused_data is not None:
             data = self._pending_unused_data + data
             self._pending_unused_data = None
@@ -556,7 +559,9 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
         if self._decompressor.eof:
             if not data:
                 return b""
-            self._start_member(len(data))
+            self._start_member(
+                len(data) if type(data) is bytes else memoryview(data).nbytes
+            )
         result = self._decompressor.decompress(data, zstd_max_length)
 
         # Concatenated zstd stream: decode the frames after this one.

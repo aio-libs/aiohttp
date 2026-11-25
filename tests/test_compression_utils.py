@@ -5,7 +5,7 @@ import os
 import sys
 import zlib
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -360,24 +360,25 @@ def test_members_paying_their_way_never_run_out(
     assert out == make().decompress_sync(member) * count
 
 
-@pytest.mark.parametrize(
-    ("make", "make_member"),
-    (
-        pytest.param(
-            lambda: ZLibDecompressor(encoding="gzip"),
-            lambda: gzip.compress(b"A" * 64),
-            id="gzip",
+# Members holding data, yet too small to pay for the one after them.
+_SMALL_MEMBERS = (
+    pytest.param(
+        lambda: ZLibDecompressor(encoding="gzip"),
+        lambda: gzip.compress(b"A" * 64),
+        id="gzip",
+    ),
+    pytest.param(
+        ZSTDDecompressor,
+        lambda: zstandard.compress(b"A" * 64),
+        marks=pytest.mark.skipif(
+            zstandard is None, reason="zstandard is not installed"
         ),
-        pytest.param(
-            ZSTDDecompressor,
-            lambda: zstandard.compress(b"A" * 64),
-            marks=pytest.mark.skipif(
-                zstandard is None, reason="zstandard is not installed"
-            ),
-            id="zstd",
-        ),
+        id="zstd",
     ),
 )
+
+
+@pytest.mark.parametrize(("make", "make_member"), _SMALL_MEMBERS)
 def test_member_limit_ignores_max_length(
     make: Callable[[], ZLibDecompressor | ZSTDDecompressor],
     make_member: Callable[[], bytes],
@@ -397,6 +398,29 @@ def test_member_limit_ignores_max_length(
     assert out == b"A" * 64 * limit
     with pytest.raises(TooManyMembersError):
         d.decompress_sync(member)
+
+
+@pytest.mark.parametrize(("make", "make_member"), _SMALL_MEMBERS)
+def test_member_limit_measures_buffers_in_bytes(
+    make: Callable[[], ZLibDecompressor | ZSTDDecompressor],
+    make_member: Callable[[], bytes],
+) -> None:
+    """A buffer of wider items is cut off at the same member as its bytes.
+
+    Its len() is a number of items, and input counted that way would earn a
+    fraction of the credit it should.
+    """
+    # Four members a call, for a length that divides into four-byte items.
+    group = make_member() * 4
+    limit = _members_accepted(make(), group)
+    # Annotated as bytes for zstd, though it takes whatever its backend does.
+    view = cast(bytes, memoryview(group).cast("I"))
+
+    d = make()
+    for _ in range(limit):
+        d.decompress_sync(view)
+    with pytest.raises(TooManyMembersError):
+        d.decompress_sync(view)
 
 
 def test_zlib_gzip_member_credit_restored_up_to_allowance() -> None:
