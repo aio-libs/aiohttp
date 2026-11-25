@@ -59,7 +59,7 @@ def _members_accepted(d: ZLibDecompressor | ZSTDDecompressor, member: bytes) -> 
     """Feed ``member`` a call at a time until refused, returning how many decoded."""
     accepted = 0
     with pytest.raises(TooManyMembersError):
-        for _ in range(10 * MAX_DECOMPRESS_MEMBERS):
+        for _ in range(10 * MAX_DECOMPRESS_MEMBERS):  # pragma: no branch
             d.decompress_sync(member)
             accepted += 1
     return accepted

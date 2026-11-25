@@ -767,7 +767,7 @@ def test_compressed_member_flood_across_messages_rejected(
     frame = PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
 
     with pytest.raises(WebSocketError) as ctx:
-        for _ in range(50):
+        for _ in range(50):  # pragma: no branch
             reader._feed_data(frame)
 
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
