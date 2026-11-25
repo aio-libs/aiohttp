@@ -4,12 +4,14 @@ import gzip
 import os
 import sys
 import zlib
+from collections.abc import Callable
 from typing import Any
 
 import pytest
 
 from aiohttp.compression_utils import (
     MAX_DECOMPRESS_MEMBERS,
+    MEMBER_COST,
     MEMBER_WINDOW_MAX,
     MEMBER_WINDOW_MIN,
     TooManyMembersError,
@@ -42,6 +44,25 @@ class _RecordingDecompressObj:
     def decompress(self, data: Any, max_length: int = 0) -> bytes:
         self._feeds.append(len(data))
         return self._obj.decompress(data, max_length)
+
+
+def _gzip_member(size: int) -> bytes:
+    """Return a gzip member of exactly ``size`` bytes."""
+    co = zlib.compressobj(0, wbits=31)
+    # Stored, so 10 bytes of header, 5 of block header, the data, 8 of trailer.
+    member = co.compress(os.urandom(size - 23)) + co.flush()
+    assert len(member) == size
+    return member
+
+
+def _members_accepted(d: ZLibDecompressor | ZSTDDecompressor, member: bytes) -> int:
+    """Feed ``member`` a call at a time until refused, returning how many decoded."""
+    accepted = 0
+    with pytest.raises(TooManyMembersError):
+        for _ in range(10 * MAX_DECOMPRESS_MEMBERS):
+            d.decompress_sync(member)
+            accepted += 1
+    return accepted
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
@@ -242,24 +263,161 @@ def test_zlib_deflate_member_flood_rejected() -> None:
 
 
 def test_zlib_deflate_members_at_limit() -> None:
-    """The limit counts the member decoded before the walk started."""
+    """The allowance covers this many members, however little they hold."""
     co = zlib.compressobj(wbits=-15)
     empty_member = co.compress(b"") + co.flush()
     d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
     assert d.decompress_sync(empty_member * MAX_DECOMPRESS_MEMBERS) == b""
 
 
-def test_zlib_deflate_members_one_over_limit() -> None:
-    co = zlib.compressobj(wbits=-15)
-    empty_member = co.compress(b"") + co.flush()
-    d = ZLibDecompressor(encoding="deflate", suppress_deflate_header=True)
+@pytest.mark.parametrize(
+    "per_call",
+    (2, 1000, 10 * MAX_DECOMPRESS_MEMBERS),
+    ids=("pairs", "thousands", "joined"),
+)
+@pytest.mark.parametrize(
+    ("make", "make_member"),
+    (
+        pytest.param(
+            lambda: ZLibDecompressor(encoding="gzip"),
+            lambda: gzip.compress(b""),
+            id="gzip",
+        ),
+        pytest.param(
+            lambda: ZLibDecompressor(encoding="deflate"),
+            lambda: zlib.compress(b""),
+            id="deflate",
+        ),
+        pytest.param(
+            lambda: ZLibDecompressor(encoding="deflate", suppress_deflate_header=True),
+            lambda: b"\x03\x00",
+            id="raw-deflate",
+        ),
+        pytest.param(
+            ZSTDDecompressor,
+            lambda: zstandard.compress(b""),
+            marks=pytest.mark.skipif(
+                zstandard is None, reason="zstandard is not installed"
+            ),
+            id="zstd",
+        ),
+    ),
+)
+def test_member_limit_ignores_call_boundaries(
+    make: Callable[[], ZLibDecompressor | ZSTDDecompressor],
+    make_member: Callable[[], bytes],
+    per_call: int,
+) -> None:
+    """A stream is cut off at the same member however it is split across calls.
+
+    A member per call starts each one at a call boundary and a joined stream
+    starts them all within a call, which each coding handles separately.
+    """
+    member = make_member()
+    limit = _members_accepted(make(), member)
+    assert MAX_DECOMPRESS_MEMBERS <= limit <= 3 * MAX_DECOMPRESS_MEMBERS
+
+    d = make()
+    for fed in range(0, limit, per_call):
+        assert d.decompress_sync(member * min(per_call, limit - fed)) == b""
     with pytest.raises(TooManyMembersError):
-        d.decompress_sync(empty_member * (MAX_DECOMPRESS_MEMBERS + 1))
+        d.decompress_sync(member)
+
+
+@pytest.mark.parametrize(
+    "per_call", (1, 4 * MAX_DECOMPRESS_MEMBERS), ids=("split", "joined")
+)
+@pytest.mark.parametrize(
+    ("make", "make_member"),
+    (
+        pytest.param(
+            lambda: ZLibDecompressor(encoding="gzip"),
+            lambda: _gzip_member(MEMBER_COST),
+            id="gzip",
+        ),
+        pytest.param(
+            ZSTDDecompressor,
+            lambda: zstandard.compress(os.urandom(MEMBER_COST)),
+            marks=pytest.mark.skipif(
+                zstandard is None, reason="zstandard is not installed"
+            ),
+            id="zstd",
+        ),
+    ),
+)
+def test_members_paying_their_way_never_run_out(
+    make: Callable[[], ZLibDecompressor | ZSTDDecompressor],
+    make_member: Callable[[], bytes],
+    per_call: int,
+) -> None:
+    """A member at least as large as MEMBER_COST pays for the one after it."""
+    member = make_member()
+    count = 4 * MAX_DECOMPRESS_MEMBERS
+    d = make()
+    out = b"".join(
+        d.decompress_sync(member * per_call) for _ in range(count // per_call)
+    )
+    assert out == make().decompress_sync(member) * count
+
+
+@pytest.mark.parametrize(
+    ("make", "make_member"),
+    (
+        pytest.param(
+            lambda: ZLibDecompressor(encoding="gzip"),
+            lambda: gzip.compress(b"A" * 64),
+            id="gzip",
+        ),
+        pytest.param(
+            ZSTDDecompressor,
+            lambda: zstandard.compress(b"A" * 64),
+            marks=pytest.mark.skipif(
+                zstandard is None, reason="zstandard is not installed"
+            ),
+            id="zstd",
+        ),
+    ),
+)
+def test_member_limit_ignores_max_length(
+    make: Callable[[], ZLibDecompressor | ZSTDDecompressor],
+    make_member: Callable[[], bytes],
+) -> None:
+    """A stream decoded a little at a time is cut off at the same member.
+
+    The input a capped call leaves undecoded is handed back on later calls,
+    where it must neither lose the credit it brought nor be credited again.
+    """
+    member = make_member()
+    limit = _members_accepted(make(), member)
+
+    d = make()
+    out = d.decompress_sync(member * limit, max_length=1024)
+    while d.data_available:
+        out += d.decompress_sync(b"", max_length=1024)
+    assert out == b"A" * 64 * limit
+    with pytest.raises(TooManyMembersError):
+        d.decompress_sync(member)
+
+
+def test_zlib_gzip_member_credit_restored_up_to_allowance() -> None:
+    """Input earns spent credit back, but never beyond the initial allowance."""
+    empty = gzip.compress(b"")
+    d = ZLibDecompressor(encoding="gzip")
+    d.decompress_sync(empty)
+    allowance = _members_accepted(d, empty)
+
+    d = ZLibDecompressor(encoding="gzip")
+    d.decompress_sync(empty * (allowance // 2))
+    # Worth several allowances, were the credit it earns not capped.
+    d.decompress_sync(
+        gzip.compress(os.urandom(4 * MAX_DECOMPRESS_MEMBERS * MEMBER_COST))
+    )
+    assert _members_accepted(d, empty) == allowance
 
 
 @pytest.mark.parametrize("max_length", (0, 4096), ids=("unlimited", "capped"))
 def test_zlib_gzip_many_members(max_length: int) -> None:
-    """A call may decode up to the member limit, resuming across calls."""
+    """The allowance's worth of members decodes, resuming across calls."""
     member = gzip.compress(b"A" * 64)
     count = MAX_DECOMPRESS_MEMBERS
     d = ZLibDecompressor(encoding="gzip")

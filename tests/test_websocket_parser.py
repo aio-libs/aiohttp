@@ -754,6 +754,52 @@ def test_compressed_member_flood_rejected(out: WebSocketDataQueue) -> None:
     assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
 
 
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+def test_compressed_member_flood_across_messages_rejected(
+    out: WebSocketDataQueue,
+) -> None:
+    """Spreading the members over messages does not get them through."""
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    # Few enough members for any one message to pass. The last octet opens the
+    # block that the trailer the reader appends completes, so that the next
+    # message finds the stream intact.
+    payload = EMPTY_DEFLATE_MEMBER * 500 + b"\x00"
+    frame = PACK_LEN2(0x80 | 0x40 | WSMsgType.BINARY, 126, len(payload)) + payload
+
+    with pytest.raises(WebSocketError) as ctx:
+        for _ in range(50):
+            reader._feed_data(frame)
+
+    assert ctx.value.code == WSCloseCode.MESSAGE_TOO_BIG
+
+
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_compressed_member_per_message() -> None:
+    """A peer may end its deflate stream in every message, however many it sends.
+
+    Each BFINAL block makes what follows a fresh member, and a short message
+    brings too little input to pay for one. The payload is the form given in
+    https://datatracker.ietf.org/doc/html/rfc7692#section-7.2.3.4.
+    """
+    # More than a stream may hold of members that bring this little input.
+    count = 4096
+    # Room for every message, so that backpressure does not stop the reader.
+    out = WebSocketDataQueue(
+        mock.Mock(_reading_paused=False),
+        count * MSG_SIZE_OVERHEAD,
+        loop=asyncio.get_running_loop(),
+    )
+    reader = WebSocketReader(out, 4 * 1024 * 1024, compress=True, decode_text=True)
+    compressobj = zlib.compressobj(wbits=-15)
+    payload = compressobj.compress(b"hello world") + compressobj.flush() + b"\x00"
+    frame = PACK_LEN1(0x80 | 0x40 | WSMsgType.BINARY, len(payload)) + payload
+
+    error, _ = reader.feed_data(frame * count)
+
+    assert error is False
+    assert len(out._buffer) == count
+
+
 @pytest.mark.parametrize("opcode", (WSMsgType.PING, WSMsgType.PONG, WSMsgType.CLOSE))
 def test_control_frame_with_rsv1(
     parser: PatchableWebSocketReader, opcode: WSMsgType
