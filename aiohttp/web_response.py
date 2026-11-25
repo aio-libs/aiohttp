@@ -372,9 +372,16 @@ class StreamResponse(
         self._req = request
         writer = self._payload_writer = request._payload_writer
 
-        await self._prepare_headers()
-        await request._prepare_hook(self)
-        await self._write_headers()
+        try:
+            await self._prepare_headers()
+            await request._prepare_hook(self)
+            await self._write_headers()
+        except BaseException:
+            # No headers were written, so the response must not be left looking
+            # prepared, otherwise its body could later be sent without them.
+            self._req = None
+            self._payload_writer = None
+            raise
 
         return writer
 
