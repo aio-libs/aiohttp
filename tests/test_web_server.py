@@ -294,6 +294,46 @@ async def test_raw_server_html_exception_debug(
     )
 
 
+@pytest.mark.parametrize("compress", (False, True))
+async def test_write_eof_cancelled_while_draining_in_handler(
+    compress: bool, aiohttp_client: AiohttpClient
+) -> None:
+    """Test a handler that survives the cancellation of write_eof().
+
+    The message is complete by then, so the server must not end it again
+    when it calls write_eof() itself, or the connection can't be reused.
+    """
+    transports: list[asyncio.Transport | None] = []
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        transports.append(request.transport)
+        resp = web.StreamResponse()
+        if compress:
+            resp.enable_compression(web.ContentCoding.gzip)
+        await resp.prepare(request)
+        await resp.write(b"data")
+        # What the transport does while the client is slow to read. Writing
+        # resumes only after the server has called write_eof() again.
+        request.protocol.pause_writing()
+        with pytest.raises(TimeoutError):
+            async with asyncio.timeout(0):
+                await resp.write_eof()
+        asyncio.get_running_loop().call_soon(request.protocol.resume_writing)
+        return resp
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    cli = await aiohttp_client(app)
+
+    for _ in range(2):
+        async with cli.get("/") as resp:
+            assert resp.status == 200
+            assert await resp.read() == b"data"
+
+    first, second = transports
+    assert first is second
+
+
 async def test_handler_cancellation(unused_port_socket: socket.socket) -> None:
     event = asyncio.Event()
     started = asyncio.Event()
