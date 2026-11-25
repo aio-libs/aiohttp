@@ -237,7 +237,18 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
                 ctx.set_ciphers(cfg.ciphers)
             return ctx
 
-        ctx: SSLContext = cfg.ssl_context(cfg, default_ssl_context_factory)
+        # The hook was added in gunicorn 21; older versions have no such
+        # setting and Config.__getattr__ raises AttributeError for it.
+        ssl_context_hook = getattr(cfg, "ssl_context", None)
+        if ssl_context_hook is None:
+            return default_ssl_context_factory()
+
+        ctx = ssl_context_hook(cfg, default_ssl_context_factory)
+        if not isinstance(ctx, ssl.SSLContext):
+            raise TypeError(
+                "The ssl_context hook must return an ssl.SSLContext instance, "
+                f"got {type(ctx).__name__}"
+            )
         return ctx
 
     def _get_valid_log_format(self, source_format: str) -> str:

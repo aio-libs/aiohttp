@@ -377,3 +377,35 @@ def test__create_ssl_context_applies_ssl_context_hook(
     ctx = worker._create_ssl_context(worker.cfg)
     assert ctx.minimum_version is ssl.TLSVersion.TLSv1_3
     assert ctx.verify_mode is ssl.CERT_REQUIRED
+
+
+def test__create_ssl_context_without_ssl_context_setting(
+    worker: base_worker.GunicornWebWorker,
+    tls_certificate_pem_path: str,
+) -> None:
+    """gunicorn < 21 has no ssl_context setting, so the default is used."""
+    worker.cfg.ssl_version = ssl.PROTOCOL_TLS_SERVER
+    worker.cfg.cert_reqs = ssl.CERT_NONE
+    worker.cfg.certfile = tls_certificate_pem_path
+    worker.cfg.keyfile = tls_certificate_pem_path
+    worker.cfg.ca_certs = None
+    worker.cfg.ciphers = None
+    del worker.cfg.ssl_context
+    ctx = worker._create_ssl_context(worker.cfg)
+    assert isinstance(ctx, ssl.SSLContext)
+
+
+def test__create_ssl_context_rejects_non_context_hook_result(
+    worker: base_worker.GunicornWebWorker,
+    tls_certificate_pem_path: str,
+) -> None:
+    """A hook that forgets to return a context must not silently disable TLS."""
+    worker.cfg.ssl_version = ssl.PROTOCOL_TLS_SERVER
+    worker.cfg.cert_reqs = ssl.CERT_NONE
+    worker.cfg.certfile = tls_certificate_pem_path
+    worker.cfg.keyfile = tls_certificate_pem_path
+    worker.cfg.ca_certs = None
+    worker.cfg.ciphers = None
+    worker.cfg.ssl_context = lambda conf, default_ssl_context_factory: None
+    with pytest.raises(TypeError, match="must return an ssl.SSLContext"):
+        worker._create_ssl_context(worker.cfg)

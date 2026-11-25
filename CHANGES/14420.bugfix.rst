@@ -1,3 +1,0 @@
-Fixed :class:`~aiohttp.GunicornWebWorker` ignoring gunicorn's ``ssl_context``
-hook, so TLS settings applied there (such as a minimum TLS version or
-requiring client certificates) now take effect -- by :user:`insaf021`.
