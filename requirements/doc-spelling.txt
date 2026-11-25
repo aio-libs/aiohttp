@@ -48,7 +48,7 @@ pyenchant==3.3.0
     # via sphinxcontrib-spelling
 pygments==2.21.0
     # via sphinx
-pyyaml==6.0.3
+pyyaml==6.0.4
     # via
     #   myst-parser
     #   sphinxcontrib-mermaid
