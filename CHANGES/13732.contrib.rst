@@ -1,0 +1,5 @@
+Reduced Dependabot noise by checking only ``master`` quarterly with a
+14-day cooldown and grouping GitHub Actions major bumps into a single PR,
+following CPython's configuration; release branches now receive version
+bumps through Patchback backports
+-- by :user:`aiolibsbot`.
