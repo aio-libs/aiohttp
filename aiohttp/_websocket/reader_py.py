@@ -327,7 +327,10 @@ class WebSocketReader:
             # received.
             if compressed:
                 if not self._decompressobj:
-                    self._decompressobj = ZLibDecompressor(suppress_deflate_header=True)
+                    # https://www.rfc-editor.org/info/rfc7692/#section-7.2.3.4
+                    self._decompressobj = ZLibDecompressor(
+                        suppress_deflate_header=True, member_per_call=True
+                    )
                 # XXX: It's possible that the zlib backend (isal is known to
                 # do this, maybe others too?) will return max_length bytes,
                 # but internally buffer more data such that the payload is
