@@ -89,7 +89,7 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
 @pytest.fixture
 def patched_loop(
     event_loop: asyncio.AbstractEventLoop,
-    create_server_mock: mock.AsyncMock,  # aiofastnet bypasses loop.create_server()
+    create_server_mock: mock.AsyncMock,
 ) -> Iterator[asyncio.AbstractEventLoop]:
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
