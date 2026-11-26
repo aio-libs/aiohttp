@@ -442,26 +442,29 @@ def test_timeout_handle(loop) -> None:
 
 def test_when_timeout_smaller_second(loop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout)
+    before = loop.time()
     when = handle.start()._when
+    after = loop.time()
     handle.close()
 
+    # Below the ceil threshold the deadline keeps sub-second precision.
     assert isinstance(when, float)
-    assert when - timer == pytest.approx(0, abs=0.001)
+    assert before + timeout <= when <= after + timeout
 
 
 def test_when_timeout_smaller_second_with_low_threshold(loop) -> None:
     timeout = 0.1
-    timer = loop.time() + timeout
 
     handle = helpers.TimeoutHandle(loop, timeout, 0.01)
+    before = loop.time()
     when = handle.start()._when
+    after = loop.time()
     handle.close()
 
     assert isinstance(when, int)
-    assert when == ceil(timer)
+    assert ceil(before + timeout) <= when <= ceil(after + timeout)
 
 
 def test_timeout_handle_cb_exc(loop) -> None:
