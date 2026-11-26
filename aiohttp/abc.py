@@ -262,6 +262,14 @@ class AbstractStreamWriter(ABC):
         For backwards compatibility, this method does nothing by default.
         """
 
+    def reset(self) -> None:
+        """Undo enable_compression() and enable_chunking(), and clear the length.
+
+        Called when a message is abandoned before any of it has been sent, so that
+        another one can be written instead.
+        For backwards compatibility, this method does nothing by default.
+        """
+
 
 class AbstractAccessLogger(ABC):
     """Abstract writer to access log."""

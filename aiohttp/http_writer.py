@@ -244,6 +244,11 @@ class StreamWriter(AbstractStreamWriter):
 
         self._write(headers_buf)
 
+    def reset(self) -> None:
+        self.length = None
+        self.chunked = False
+        self._compress = None
+
     def set_eof(self) -> None:
         """Indicate that the message is complete."""
         if self._eof:
