@@ -50,6 +50,7 @@ MEMBER_WINDOW_MAX = 65536
 # as a number of bytes to avoid accepting too many tiny members.
 MEMBER_COST = 32
 MAX_DECOMPRESS_MEMBERS = 1024
+MAX_MEMBER_CREDIT = MAX_DECOMPRESS_MEMBERS * MEMBER_COST
 
 
 class TooManyMembersError(ValueError):
@@ -253,22 +254,24 @@ class ConcatDecompressionHandler(DecompressionBaseHandler, Generic[_DecompressOb
     def _new_decompressor(self) -> _DecompressObjT:
         """Return a decompressor for the next member."""
 
-    def _start_member(self, unread: int) -> None:
+    def _start_member(self, unread_bytes: int) -> None:
         """Replace the spent decompressor with one for the next member.
 
-        ``unread`` is how much of the input received is still to be decoded.
+        ``unread_bytes`` is how much of the input received is still to be decoded.
         The rest belonged to the member that just ended and is credited before
         this one is charged, so the balance follows member sizes alone and not
         how the stream was split across calls.
         """
-        credit = MAX_DECOMPRESS_MEMBERS * MEMBER_COST
+        credit = MAX_MEMBER_CREDIT
         if self._member_input is not None:
-            credit = min(credit, self._member_credit + self._member_input - unread)
+            credit = min(
+                credit, self._member_credit + self._member_input - unread_bytes
+            )
         credit -= MEMBER_COST
         if credit < 0:
             raise TooManyMembersError("Compressed stream has too many small members")
         self._member_credit = credit
-        self._member_input = unread
+        self._member_input = unread_bytes
         self._decompressor = self._new_decompressor()
 
     def _decompress_members(self, first: bytes, max_length: int) -> bytes:
