@@ -555,8 +555,11 @@ def main(argv: list[str]) -> None:
         func = getattr(module, func_str)
     except AttributeError:
         arg_parser.error(f"module {mod_str!r} has no attribute {func_str!r}")
-    if not callable(func):
-        arg_parser.error(f"module {mod_str!r} attribute {func_str!r} is not callable")
+    else:
+        if not callable(func):
+            arg_parser.error(
+                f"module {mod_str!r} attribute {func_str!r} is not callable"
+            )
 
     # Compatibility logic
     if args.path is not None and not hasattr(socket, "AF_UNIX"):
