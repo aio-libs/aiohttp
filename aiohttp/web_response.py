@@ -381,6 +381,9 @@ class StreamResponse(
             # prepared, otherwise its body could later be sent without them.
             self._req = None
             self._payload_writer = None
+            # Nor may the writer stay set up for this response, otherwise another
+            # one sent in its place would be chunked, compressed or cut short like it.
+            writer.reset()
             raise
 
         return writer
