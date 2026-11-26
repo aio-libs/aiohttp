@@ -346,7 +346,7 @@ class ZLibCompressor:
         # For large payloads, offload compression to executor to avoid blocking event loop
         should_use_executor = (
             self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
+            and memoryview(data).nbytes > self._max_sync_chunk_size
         )
         if should_use_executor:
             return await asyncio.get_running_loop().run_in_executor(
