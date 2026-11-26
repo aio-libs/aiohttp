@@ -94,7 +94,7 @@ def test_port_out_of_range(mocker: MockerFixture, port: str) -> None:
     with pytest.raises(SystemExit):
         web.main(argv)
 
-    error.assert_called_with("port must be between 0 and 65535, got {}".format(port))
+    error.assert_called_with(f"port must be between 0 and 65535, got {port}")
     run_app.assert_not_called()
 
 
