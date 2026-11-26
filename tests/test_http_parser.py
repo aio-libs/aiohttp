@@ -1516,6 +1516,28 @@ async def test_decompress_error_while_draining_pending_data(
     assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
 
 
+async def test_chunked_gzip_member_flood(parser: HttpRequestParser) -> None:
+    """A flood is rejected though no HTTP chunk holds many members.
+
+    Every chunk is a decompression call of its own, so a limit that restarted
+    on each one would never be reached.
+    """
+    members = gzip.compress(b"") * 1000
+    text = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: a\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n"
+    )
+    chunk = b"%x\r\n" % len(members) + members + b"\r\n"
+
+    msgs, upgrade, tail = parser.feed_data(text + chunk * 20)
+
+    payload = msgs[0][-1]
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+
+
 async def test_two_content_length_responses_in_one_call(
     response: HttpResponseParser,
 ) -> None:
@@ -3601,6 +3623,23 @@ class TestParsePayload:
         )
         with pytest.raises(http_exceptions.ContentEncodingError):
             p.feed_data(payload)
+
+    async def test_http_payload_gzip_empty_member_flood_chunked(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Spreading the members over HTTP chunks does not get them through."""
+        members = gzip.compress(b"") * 1000
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            chunked=True,
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            p.feed_data((b"%x\r\n" % len(members) + members + b"\r\n") * 20)
 
 
 class TestDeflateBuffer:

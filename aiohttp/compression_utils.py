@@ -46,9 +46,11 @@ ZSTD_MAX_LENGTH_UNLIMITED = -1  # zstd uses -1 to mean unlimited
 MEMBER_WINDOW_MIN = 64
 MEMBER_WINDOW_MAX = 65536
 
-# Cap on concatenated members decoded in one call. Real payloads are unlikely
-# to have more than a few members.
+# Each member costs a new decompressor, so this sets the minimum cost per member
+# as a number of bytes to avoid accepting too many tiny members.
+MEMBER_COST = 32
 MAX_DECOMPRESS_MEMBERS = 1024
+MAX_MEMBER_CREDIT = MAX_DECOMPRESS_MEMBERS * MEMBER_COST
 
 
 class TooManyMembersError(ValueError):
@@ -243,10 +245,34 @@ class ConcatDecompressionHandler(DecompressionBaseHandler, Generic[_DecompressOb
     _decompressor: _DecompressObjT
     # Input a max_length-capped walk stopped short of, fed back on the next call.
     _pending_unused_data: bytes | None = None
+    # Input received since the member being decoded started.
+    _member_input: int | None = None
+    # Credit left to start members with.
+    _member_credit: int
 
     @abstractmethod
     def _new_decompressor(self) -> _DecompressObjT:
         """Return a decompressor for the next member."""
+
+    def _start_member(self, unread_bytes: int) -> None:
+        """Replace the spent decompressor with one for the next member.
+
+        ``unread_bytes`` is how much of the input received is still to be decoded.
+        The rest belonged to the member that just ended and is credited before
+        this one is charged, so the balance follows member sizes alone and not
+        how the stream was split across calls.
+        """
+        credit = MAX_MEMBER_CREDIT
+        if self._member_input is not None:
+            credit = min(
+                credit, self._member_credit + self._member_input - unread_bytes
+            )
+        credit -= MEMBER_COST
+        if credit < 0:
+            raise TooManyMembersError("Compressed stream has too many small members")
+        self._member_credit = credit
+        self._member_input = unread_bytes
+        self._decompressor = self._new_decompressor()
 
     def _decompress_members(self, first: bytes, max_length: int) -> bytes:
         """Decode the members following the one ``first`` came from."""
@@ -256,20 +282,13 @@ class ConcatDecompressionHandler(DecompressionBaseHandler, Generic[_DecompressOb
         pos = 0
         window = MEMBER_WINDOW_MIN
         budget = max_length
-        members = 1
 
         while pos < len(remaining):
             if self._decompressor.eof:
-                members += 1
-                if members > MAX_DECOMPRESS_MEMBERS:
-                    raise TooManyMembersError(
-                        f"Compressed stream has more than "
-                        f"{MAX_DECOMPRESS_MEMBERS} members"
-                    )
                 # Replace the spent decompressor before the budget check below
                 # can break out of the loop: it still lists these bytes in its
                 # unused_data and would hand them back on the next call.
-                self._decompressor = self._new_decompressor()
+                self._start_member(len(remaining) - pos)
                 window = MEMBER_WINDOW_MIN
             if max_length != self._unlimited:
                 budget = max_length - produced
@@ -379,12 +398,16 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
         suppress_deflate_header: bool = False,
         executor: Executor | None = None,
         max_sync_chunk_size: int | None = MAX_SYNC_CHUNK_SIZE,
+        member_per_call: bool = False,
     ):
         super().__init__(executor=executor, max_sync_chunk_size=max_sync_chunk_size)
         self._mode = encoding_to_mode(encoding, suppress_deflate_header)
         self._zlib_backend: Final = ZLibBackendWrapper(ZLibBackend._zlib_backend)
         self._decompressor = self._new_decompressor()
         self._last_empty = False
+        # Credit each call brings on top of its input: enough for one member
+        # when a call is a unit that may end one legitimately, however short.
+        self._call_credit = MEMBER_COST if member_per_call else 0
 
     def _new_decompressor(self) -> ZLibDecompressObjProtocol:
         return self._zlib_backend.decompressobj(wbits=self._mode)
@@ -392,10 +415,13 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
     def decompress_sync(
         self, data: Buffer, max_length: int = ZLIB_MAX_LENGTH_UNLIMITED
     ) -> bytes:
+        tail = self._decompressor.unconsumed_tail
         if self._pending_unused_data is not None:
-            data = self._pending_unused_data + bytes(data)
+            tail += self._pending_unused_data
             self._pending_unused_data = None
-        combined = self._decompressor.unconsumed_tail + data
+        combined = tail + data
+        if self._member_input is not None and (size := len(combined) - len(tail)):
+            self._member_input += size + self._call_credit
         # Previous member ended exactly at chunk boundary — no unused_data, but the
         # next feed_data() call would fail on the spent decompressor.
         # Only reset for gzip; deflate's feed_eof() relies on eof=True to
@@ -405,7 +431,7 @@ class ZLibDecompressor(ConcatDecompressionHandler[ZLibDecompressObjProtocol]):
             and self._decompressor.eof
             and self._mode > self._zlib_backend.MAX_WBITS
         ):
-            self._decompressor = self._new_decompressor()
+            self._start_member(len(combined))
         result = self._decompressor.decompress(combined, max_length)
 
         # Concatenated gzip/deflate stream: decode the members after this one.
@@ -524,6 +550,10 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
             if max_length == ZLIB_MAX_LENGTH_UNLIMITED
             else max_length
         )
+        if self._member_input is not None:
+            self._member_input += (
+                len(data) if type(data) is bytes else memoryview(data).nbytes
+            )
         if self._pending_unused_data is not None:
             data = self._pending_unused_data + data
             self._pending_unused_data = None
@@ -532,7 +562,9 @@ class ZSTDDecompressor(ConcatDecompressionHandler["ZstdDecompressor"]):
         if self._decompressor.eof:
             if not data:
                 return b""
-            self._decompressor = self._new_decompressor()
+            self._start_member(
+                len(data) if type(data) is bytes else memoryview(data).nbytes
+            )
         result = self._decompressor.decompress(data, zstd_max_length)
 
         # Concatenated zstd stream: decode the frames after this one.
