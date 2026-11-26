@@ -268,7 +268,7 @@ jobs:
       matrix:
         pyver: ['3.11', '3.12', '3.13', '3.14', '3.15']
         no-extensions: ['', 'Y']
-        os: [ubuntu-24.04-firewall, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         experimental: [false]
         exclude:
           - os: macos-latest
