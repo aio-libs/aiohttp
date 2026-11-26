@@ -1,0 +1,3 @@
+Fixed ``tests/test_run_app.py`` tests binding the real default port 8080 when
+``aiofastnet`` is installed, which made them fail intermittently with
+``address already in use`` under ``pytest-xdist`` -- by :user:`Dreamsorcerer`.
