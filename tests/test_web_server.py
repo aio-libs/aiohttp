@@ -418,6 +418,90 @@ async def test_response_returned_after_cancelled_prepare(
     assert cancelled is reused
 
 
+@pytest.mark.parametrize("compress", (False, True))
+async def test_raw_server_error_page_after_failed_prepare(
+    compress: bool, aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
+    """Test the error page sent after prepare() failed on a streaming response.
+
+    The failed response had already set the writer up for its own body, which
+    must not carry over to the error page that is sent instead.
+    """
+    # disable debug mode not to print traceback
+    asyncio.get_running_loop().set_debug(False)
+
+    async def handler(request: web.BaseRequest) -> web.StreamResponse:
+        resp = web.StreamResponse(headers={"X-Injected": "a\r\nb"})
+        if compress:
+            resp.enable_compression(web.ContentCoding.gzip)
+        await resp.prepare(request)
+        assert False
+
+    logger = mock.Mock()
+    server = await aiohttp_raw_server(handler, logger=logger)
+    cli = await aiohttp_client(server)  # type: ignore[var-annotated]
+    resp = await cli.get("/path/to")
+    assert resp.status == 500
+    txt = await resp.text()
+    assert txt == "500 Internal Server Error\n\nServer got itself in trouble"
+
+
+@pytest.mark.parametrize("leftover", ("chunked", "compressed", "length"))
+async def test_other_response_after_failed_prepare(
+    leftover: str, aiohttp_client: AiohttpClient
+) -> None:
+    """Test a handler that sends another response after prepare() failed.
+
+    The failed response had already set the writer up for its own body, which
+    must not carry over, or the response sent instead is chunked, compressed
+    or cut short like it on a connection that is then reused.
+    """
+    transports: list[asyncio.Transport | None] = []
+    failures = [RuntimeError("signal failed")]
+
+    async def on_prepare(request: web.Request, response: web.StreamResponse) -> None:
+        if failures:
+            raise failures.pop()
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        transports.append(request.transport)
+        failed = web.StreamResponse()
+        if leftover == "compressed":
+            failed.enable_compression(web.ContentCoding.gzip)
+        elif leftover == "length":
+            failed.content_length = 2
+        with pytest.raises(RuntimeError, match="signal failed"):
+            await failed.prepare(request)
+
+        if leftover != "length":
+            return web.Response(text="fallback")
+        # Only an explicitly chunked response does not set a length of its own.
+        resp = web.StreamResponse()
+        resp.enable_chunked_encoding()
+        await resp.prepare(request)
+        await resp.write(b"fallback")
+        return resp
+
+    async def ping(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response()
+
+    app = web.Application()
+    app.on_response_prepare.append(on_prepare)
+    app.router.add_get("/", handler)
+    app.router.add_get("/ping", ping)
+    cli = await aiohttp_client(app)
+
+    async with cli.get("/") as resp:
+        assert resp.status == 200
+        assert await resp.text() == "fallback"
+    async with cli.get("/ping") as resp:
+        assert resp.status == 200
+
+    first, reused = transports
+    assert first is reused
+
+
 async def test_no_future_warning_on_disconnect_during_backpressure(
     aiohttp_server: AiohttpServer,
 ) -> None:
