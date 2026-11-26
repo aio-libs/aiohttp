@@ -2285,27 +2285,24 @@ async def test_declined_websocket_upgrade_reads_body(
     assert response.count(b" 200 ") == 2, response
 
 
-@pytest.mark.parametrize("decompressed_size", [4 * 1024 * 1024, 32 * 1024 * 1024])
-async def test_unread_compressed_body_drain_is_bounded(
+@pytest.mark.parametrize("coding", ["deflate", "deflate, deflate"])
+async def test_unread_compressed_body_is_not_drained(
     aiohttp_server: AiohttpServer,
     monkeypatch: pytest.MonkeyPatch,
-    decompressed_size: int,
+    coding: str,
 ) -> None:
-    """Draining an unread compressed body stays bounded by the read buffer.
+    """An unread compressed body is not inflated during lingering close.
 
-    A handler that rejects before reading still drains the payload during
-    lingering close; a small compressed body must not force a large transient
-    allocation (a deflate-bomb style DoS).
+    Draining it decompresses the whole body on the event loop, and nested
+    codings turn a few KiB on the wire into gigabytes (a deflate-bomb style
+    DoS), so the connection is closed instead.
     """
     drain_reads: list[int] = []
-    drained = asyncio.Event()
     readany = StreamReader.readany
 
     async def record_readany(self: StreamReader) -> bytes:
         data = await readany(self)
-        assert data
         drain_reads.append(len(data))
-        drained.set()
         return data
 
     monkeypatch.setattr(StreamReader, "readany", record_readany)
@@ -2317,31 +2314,30 @@ async def test_unread_compressed_body_drain_is_bounded(
     app.router.add_post("/", handler)
     server = await aiohttp_server(app)
 
-    body = zlib.compress(b"a" * decompressed_size)
-    assert len(body) < decompressed_size
+    body = b"a" * (32 * 1024 * 1024)
+    for _ in coding.split(","):
+        body = zlib.compress(body)
     head = (
         b"POST / HTTP/1.1\r\n"
         b"Host: localhost\r\n"
-        b"Content-Encoding: deflate\r\n"
+        b"Content-Encoding: %s\r\n"
         b"Content-Length: %d\r\n"
         b"Connection: keep-alive\r\n\r\n"
-    ) % len(body)
+    ) % (coding.encode(), len(body))
 
     reader, writer = await asyncio.open_connection(server.host, server.port)
     try:
         writer.write(head + body)
         await writer.drain()
-        status_line = await asyncio.wait_for(reader.readline(), 5)
-        assert status_line.startswith(b"HTTP/1.1 401 ")
-        await asyncio.wait_for(drained.wait(), 5)
+        # Draining would keep the connection alive; EOF means it was closed.
+        response = await asyncio.wait_for(reader.read(), 5)
     finally:
         writer.close()
         with suppress(ConnectionResetError, BrokenPipeError):
             await writer.wait_closed()
 
-    # Bounded by the buffer, not the decompressed size.
-    assert max(drain_reads) <= 3 * DEFAULT_CHUNK_SIZE
-    assert max(drain_reads) < decompressed_size
+    assert response.startswith(b"HTTP/1.1 401 "), response
+    assert drain_reads == []
 
 
 async def test_absolute_form_target_does_not_spoof_scheme(

@@ -2952,7 +2952,9 @@ application on specific TCP or Unix socket, e.g.::
    :param float lingering_time: Maximum time during which the server
         reads and ignores additional data coming from the client when
         lingering close is on.  Use ``0`` to disable lingering on
-        server channel closing.
+        server channel closing.  An unread request body that is being
+        automatically decompressed is never drained: the connection is
+        closed instead.
    :param int read_bufsize: Size of the read buffer (:attr:`BaseRequest.content`).
                             ``None`` by default,
                             it means that the session global value is used.
