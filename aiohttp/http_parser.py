@@ -1036,18 +1036,22 @@ class HttpPayloadParser:
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
-            while chunk or self._more_data_available:
+            start = 0
+            end = len(chunk)
+            while start < end or self._more_data_available:
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
-                    pos = chunk.find(SEP)
+                    pos = chunk.find(SEP, start)
                     if pos >= 0:
                         # Only chunk-size lines reach here; trailers enforce
                         # _max_field_size separately in PARSE_TRAILERS below.
-                        if pos > self._max_line_size:
-                            raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
-                        i = chunk.find(CHUNK_EXT, 0, pos)
+                        if pos - start > self._max_line_size:
+                            raise LineTooLong(
+                                chunk[start : start + 100] + b"...", self._max_line_size
+                            )
+                        i = chunk.find(CHUNK_EXT, start, pos)
                         if i >= 0:
-                            size_b = chunk[:i]  # strip chunk-extensions
+                            size_b = chunk[start:i]  # strip chunk-extensions
                             # Verify no LF in the chunk-extension
                             if b"\n" in (ext := chunk[i:pos]):
                                 exc = TransferEncodingError(
@@ -1056,51 +1060,52 @@ class HttpPayloadParser:
                                 set_exception(self.payload, exc)
                                 raise exc
                         else:
-                            size_b = chunk[:pos]
+                            size_b = chunk[start:pos]
 
                         if self._lax:  # Allow whitespace in lax mode.
                             size_b = size_b.strip()
 
                         if not re.fullmatch(HEXDIGITS, size_b):
                             exc = TransferEncodingError(
-                                chunk[:pos].decode("ascii", "surrogateescape")
+                                chunk[start:pos].decode("ascii", "surrogateescape")
                             )
                             set_exception(self.payload, exc)
                             raise exc
                         size = int(bytes(size_b), 16)
 
-                        chunk = chunk[pos + len(SEP) :]
+                        start = pos + len(SEP)
                         if size == 0:  # eof marker
                             self._chunk = ChunkState.PARSE_TRAILERS
-                            if self._lax and chunk.startswith(b"\r"):
-                                chunk = chunk[1:]
+                            if self._lax and chunk.startswith(b"\r", start):
+                                start += 1
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
                             self.payload.begin_http_chunk_receiving()
                     else:
-                        if b"\n" in chunk:
+                        if chunk.find(b"\n", start) >= 0:
                             exc = TransferEncodingError(
                                 "Bad chunk-size line ending, expected CRLF"
                             )
                             set_exception(self.payload, exc)
                             raise exc
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 # read chunk and feed buffer
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
                     if self._paused:
                         self._paused = False
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
 
                     required = self._chunk_size
-                    self._chunk_size = max(required - len(chunk), 0)
+                    stop = min(start + required, end)
+                    self._chunk_size = required - (stop - start)
                     self._more_data_available = self.payload.feed_data(
-                        chunk[:required], required
+                        chunk[start:stop], required
                     )
-                    chunk = chunk[required:]
+                    start = stop
 
                     if self._more_data_available:
                         continue
@@ -1113,35 +1118,35 @@ class HttpPayloadParser:
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if self._lax and chunk.startswith(b"\r"):
-                        chunk = chunk[1:]
-                    if chunk[: len(SEP)] == SEP:
-                        chunk = chunk[len(SEP) :]
+                    if self._lax and chunk.startswith(b"\r", start):
+                        start += 1
+                    if chunk.startswith(SEP, start):
+                        start += len(SEP)
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
-                    elif len(chunk) >= len(SEP) or chunk != SEP[: len(chunk)]:
+                    elif end - start >= len(SEP) or chunk[start:] != SEP[: end - start]:
                         exc = TransferEncodingError(
                             "Chunk size mismatch: expected CRLF after chunk data"
                         )
                         set_exception(self.payload, exc)
                         raise exc
                     else:
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 if self._chunk == ChunkState.PARSE_TRAILERS:
-                    pos = chunk.find(SEP)
+                    pos = chunk.find(SEP, start)
                     if pos < 0:  # No line found
-                        if b"\n" in chunk:
+                        if chunk.find(b"\n", start) >= 0:
                             exc = TransferEncodingError(
                                 "Bad trailer line ending, expected CRLF"
                             )
                             set_exception(self.payload, exc)
                             raise exc
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
-                    line = chunk[:pos]
-                    chunk = chunk[pos + len(SEP) :]
+                    line = chunk[start:pos]
+                    start = pos + len(SEP)
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
 
@@ -1164,7 +1169,7 @@ class HttpPayloadParser:
                         finally:
                             self._trailer_lines.clear()
                         self.payload.feed_eof()
-                        return PayloadState.PAYLOAD_COMPLETE, chunk
+                        return PayloadState.PAYLOAD_COMPLETE, chunk[start:]
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
