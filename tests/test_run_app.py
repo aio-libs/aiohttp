@@ -89,25 +89,20 @@ def create_server_mock() -> Iterator[mock.AsyncMock]:
 @pytest.fixture
 def patched_loop(
     event_loop: asyncio.AbstractEventLoop,
+    create_server_mock: mock.AsyncMock,  # aiofastnet bypasses loop.create_server()
 ) -> Iterator[asyncio.AbstractEventLoop]:
-    server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
-    server.wait_closed.return_value = None
-    server.sockets = []
     unix_server = mock.create_autospec(asyncio.Server, spec_set=True, instance=True)
     unix_server.wait_closed.return_value = None
     unix_server.sockets = []
     with mock.patch.object(
-        event_loop, "create_server", autospec=True, spec_set=True, return_value=server
+        event_loop,
+        "create_unix_server",
+        autospec=True,
+        spec_set=True,
+        return_value=unix_server,
     ):
-        with mock.patch.object(
-            event_loop,
-            "create_unix_server",
-            autospec=True,
-            spec_set=True,
-            return_value=unix_server,
-        ):
-            asyncio.set_event_loop(event_loop)
-            yield event_loop
+        asyncio.set_event_loop(event_loop)
+        yield event_loop
 
 
 def stopper(event_loop: asyncio.AbstractEventLoop) -> Callable[[], None]:
