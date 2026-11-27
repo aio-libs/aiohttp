@@ -515,6 +515,10 @@ cdef class HttpParser:
         self._process_header()
 
         http_version = self.http_version()
+        if not self._response_with_body:
+            # llhttp sets F_SKIPBODY only after this callback returns 1, but
+            # llhttp_should_keep_alive() needs it to know there is no body.
+            self._cparser.flags |= cparser.F_SKIPBODY
         should_close = not cparser.llhttp_should_keep_alive(self._cparser)
         upgrade = self._cparser.upgrade
         chunked = self._cparser.flags & cparser.F_CHUNKED

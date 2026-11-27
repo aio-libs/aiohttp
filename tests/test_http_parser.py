@@ -3035,6 +3035,44 @@ def test_parse_payload_response_without_body(
     assert payload.is_eof()
 
 
+@pytest.mark.parametrize(
+    ("head", "should_close"),
+    (
+        pytest.param(b"HTTP/1.1 200 OK\r\n\r\n", False, id="http11"),
+        pytest.param(b"HTTP/1.1 404 Not Found\r\n\r\n", False, id="http11-404"),
+        pytest.param(
+            b"HTTP/1.1 200 OK\r\nConnection: keep-alive\r\n\r\n",
+            False,
+            id="http11-keep-alive",
+        ),
+        pytest.param(
+            b"HTTP/1.1 200 OK\r\nConnection: close\r\n\r\n", True, id="http11-close"
+        ),
+        pytest.param(b"HTTP/1.0 200 OK\r\n\r\n", True, id="http10"),
+        pytest.param(
+            b"HTTP/1.0 200 OK\r\nConnection: keep-alive\r\n\r\n",
+            False,
+            id="http10-keep-alive",
+        ),
+    ),
+)
+def test_response_without_body_and_length_keep_alive(
+    event_loop: asyncio.AbstractEventLoop,
+    response_cls: type[HttpResponseParser],
+    head: bytes,
+    should_close: bool,
+) -> None:
+    protocol = ResponseHandler(event_loop)
+    parser = response_cls(
+        protocol, event_loop, 2**16, response_with_body=False, read_until_eof=True
+    )
+    protocol._parser = parser
+    msg, payload = parser.feed_data(head)[0][0]
+
+    assert msg.should_close is should_close
+    assert payload.is_eof()
+
+
 async def test_parse_payload_response_with_invalid_body(
     protocol: BaseProtocol,
     response_cls: type[HttpResponseParser],
