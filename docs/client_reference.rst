@@ -2733,7 +2733,7 @@ Otherwise, ``application/x-www-form-urlencoded`` is used.
 :class:`FormData` instances are callable and return a :class:`aiohttp.payload.Payload`
 on being called.
 
-.. class:: FormData(fields, quote_fields=True, charset=None)
+.. class:: FormData(fields=(), quote_fields=True, charset=None, boundary=None, *, default_to_multipart=False)
    :canonical: aiohttp.formdata.FormData
 
    Helper class for multipart/form-data and application/x-www-form-urlencoded body generation.
@@ -2753,6 +2753,12 @@ on being called.
                   For :class:`dict`, :class:`multidict.MultiDict`, and :class:`multidict.MultiDictProxy`,
                   the keys and values must be valid `name` and `value` arguments to
                   :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
+
+   :param str boundary: Boundary to use when encoding a multipart body.
+                        By default, a boundary is generated automatically.
+
+   :param bool default_to_multipart: Use multipart encoding even when all
+                                     fields are plain text.
 
    .. method:: add_field(name, value, content_type=None, filename=None,\
                          content_transfer_encoding=None)
