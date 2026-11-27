@@ -273,43 +273,12 @@ After finishing all steps make a GitHub_ Pull Request with *master* base branch.
 Backporting
 -----------
 
-All Pull Requests are created against *master* git branch.
-
-If the Pull Request is not a new functionality but bug fixing
-*backport* to maintenance branch would be desirable.
-
-*aiohttp* project committer may ask for making a *backport* of the PR
-into maintained branch(es), in this case he or she adds a github label
-like *needs backport to 3.1*.
-
-*Backporting* is performed *after* main PR merging into master.
- Please do the following steps:
-
-1. Find *Pull Request's commit* for cherry-picking.
-
-   *aiohttp* does *squashing* PRs on merging, so open your PR page on
-   github and scroll down to message like ``asvetlov merged commit
-   f7b8921 into master 9 days ago``.  ``f7b8921`` is the required commit number.
-
-2. Run `cherry_picker
-   <https://github.com/python/core-workflow/tree/master/cherry_picker>`_
-   tool for making backport PR (the tool is already pre-installed from
-   ``./requirements/dev.txt``), e.g. ``cherry_picker f7b8921 3.1``.
-
-3. In case of conflicts fix them and continue cherry-picking by
-   ``cherry_picker --continue``.
-
-   ``cherry_picker --abort`` stops the process.
-
-   ``cherry_picker --status`` shows current cherry-picking status
-   (like ``git status``)
-
-4. After all conflicts are done the tool opens a New Pull Request page
-   in a browser with pre-filed information.  Create a backport Pull
-   Request and wait for review/merging.
-
-5. *aiohttp* *committer* should remove *backport Git label* after
-   merging the backport.
+Open pull requests against ``master``. If a fix also applies to a supported
+maintenance branch, a maintainer can add the corresponding
+``backport-X.Y`` label. After the original pull request is merged,
+Patchback attempts to open a backport pull request against that branch.
+If the cherry-pick conflicts, check the bot's comment on the original
+pull request before preparing a manual backport.
 
 How to become an aiohttp committer
 ----------------------------------
