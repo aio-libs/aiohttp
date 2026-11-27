@@ -130,6 +130,12 @@ SUPPORTED_CONTENT_CODINGS: Final[frozenset[str]] = frozenset(
 # Each nested coding multiplies the decompression amplification an attacker
 # can request, so chains longer than this are refused outright.
 MAX_CONTENT_CODINGS: Final[int] = 2
+# A coding fed by another coding costs the peer no wire bytes, so its input has
+# to be paid for with output instead: each byte it produces covers two it was
+# fed, which leaves room for framing overhead and for a delivery it stopped
+# short of at max_length. Beyond that, this much may be outstanding, for input
+# a decoder holds until a block completes: zstd's blocks, the largest, reach 128 KiB.
+MAX_UNPAID_CODING_INPUT: Final[int] = 2**18
 
 
 def parse_content_encoding(value: str, auto_decompress: bool) -> str | None:
@@ -1222,10 +1228,12 @@ class HttpPayloadParser:
 class _DecompressStage:
     """One coding of a Content-Encoding chain and its decompressor."""
 
-    __slots__ = ("coding", "decompressor", "_started_decoding")
+    __slots__ = ("coding", "decompressor", "_chained", "_unpaid", "_started_decoding")
 
-    def __init__(self, coding: str) -> None:
+    def __init__(self, coding: str, chained: bool) -> None:
         self.coding = coding
+        self._chained = chained
+        self._unpaid = 0
         self._started_decoding = False
 
         self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
@@ -1261,7 +1269,14 @@ class _DecompressStage:
                     encoding=self.coding, suppress_deflate_header=True
                 )
             self._started_decoding = True
-        return self.decompressor.decompress_sync(chunk, max_length=max_length)
+        out = self.decompressor.decompress_sync(chunk, max_length=max_length)
+
+        # Ensure that chained encodings are still bound.
+        if self._chained:
+            self._unpaid = max(0, self._unpaid + len(chunk) - 2 * len(out))
+            if self._unpaid > MAX_UNPAID_CODING_INPUT:
+                raise ValueError(f"{self.coding} is not producing output for its input")
+        return out
 
 
 class DeflateBuffer:
@@ -1279,7 +1294,10 @@ class DeflateBuffer:
         self.encoding = encoding
         # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
         codings = [c.strip(" \t").lower() for c in encoding.split(",")]
-        self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
+        self._stages = [
+            _DecompressStage(coding, chained=i > 0)
+            for i, coding in enumerate(reversed(codings))
+        ]
         self._max_decompress_size = max_decompress_size
 
     def set_exception(
@@ -1309,9 +1327,12 @@ class DeflateBuffer:
         max_length = (
             0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         )
+        delivery = min(max_length or MAX_UNPAID_CODING_INPUT, MAX_UNPAID_CODING_INPUT)
+        last = len(stages) - 1
         try:
             for i in range(start, len(stages)):
-                chunk = stages[i].decompress(chunk, max_length)
+                limit = max_length if i == last else delivery
+                chunk = stages[i].decompress(chunk, limit)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding
