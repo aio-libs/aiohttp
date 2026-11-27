@@ -736,8 +736,43 @@ def test_route_dynamic_quoting(router: web.UrlDispatcher) -> None:
     assert url.path == "/пре /фикс/1 2/текст%2F"
     assert str(url) == (
         "/%D0%BF%D1%80%D0%B5%20%2F%D1%84%D0%B8%D0%BA%D1%81"
-        "/1%202/%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F"
+        "/1%202%2F%D1%82%D0%B5%D0%BA%D1%81%D1%82%252F"
     )
+
+
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    (
+        ("/evil.example", "/%2Fevil.example"),
+        ("//evil.example", "/%2F%2Fevil.example"),
+        ("a/../../admin", "/a%2F..%2F..%2Fadmin"),
+    ),
+)
+def test_route_dynamic_quotes_slash(
+    router: web.UrlDispatcher, value: str, expected: str
+) -> None:
+    handler = make_handler()
+    route = router.add_route("GET", "/{arg}", handler)
+
+    assert str(route.url_for(arg=value)) == expected
+
+
+def test_route_dynamic_with_regex_keeps_slash(router: web.UrlDispatcher) -> None:
+    handler = make_handler()
+    route = router.add_route("GET", "/{one}/{tail:.+}", handler)
+
+    assert str(route.url_for(one="a/b", tail="c/d")) == "/a%2Fb/c/d"
+
+
+async def test_route_dynamic_url_for_round_trip(router: web.UrlDispatcher) -> None:
+    handler = make_handler()
+    router.add_route("GET", "/get/{name}", handler, name="name")
+
+    url = router["name"].url_for(name="my/path")
+    req = make_mocked_request("GET", str(url))
+    match_info = await router.resolve(req)
+    assert match_info.route.name == "name"
+    assert match_info == {"name": "my/path"}
 
 
 async def test_regular_match_info(router: web.UrlDispatcher) -> None:
