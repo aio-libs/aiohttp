@@ -1105,11 +1105,14 @@ def populate_with_cookies(headers: "CIMultiDict[str]", cookies: SimpleCookie) ->
 
 
 # https://tools.ietf.org/html/rfc7232#section-2.3
+# https://www.rfc-editor.org/rfc/rfc9110#section-5.6.1.2
 _ETAGC = r"[!\x23-\x7E\x80-\xff]+"
 _ETAGC_RE = re.compile(_ETAGC)
 _QUOTED_ETAG = rf'(W/)?"({_ETAGC})"'
 QUOTED_ETAG_RE = re.compile(_QUOTED_ETAG)
-LIST_QUOTED_ETAG_RE = re.compile(rf"({_QUOTED_ETAG})(?:\s*,\s*|$)|(.)")
+LIST_QUOTED_ETAG_RE = re.compile(
+    rf"({_QUOTED_ETAG})(?:[\t ]*,[\t ]*|[\t ]*$)|(?:[\t ]*,[\t ]*)+|(.)"
+)
 
 ETAG_ANY = "*"
 

@@ -570,6 +570,9 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
                 if garbage:
                     break
 
+                if value is None:
+                    continue
+
                 yield ETag(
                     is_weak=bool(is_weak),
                     value=value,
