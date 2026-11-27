@@ -1,0 +1,2 @@
+Fixed a compressed body being corrupted when a write was cancelled during
+compression and the caller continued writing -- by :user:`Dreamsorcerer`.
