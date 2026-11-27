@@ -411,6 +411,14 @@ def test_range_to_slice_uppercase_unit() -> None:
     assert req.http_range.start == 0 and req.http_range.stop == 500
 
 
+def test_http_range_multi_range() -> None:
+    """Multi-range requests should be silently ignored (full entity returned)."""
+    req = make_mocked_request(
+        "GET", "/", headers=CIMultiDict([("RANGE", "bytes=0-100, 200-300")])
+    )
+    assert req.http_range == slice(None, None, 1)
+
+
 def test_non_keepalive_on_http10() -> None:
     req = make_mocked_request("GET", "/", version=HttpVersion(1, 0))
     assert not req.keep_alive

@@ -1032,6 +1032,32 @@ async def test_static_file_invalid_range(
     await client.close()
 
 
+async def test_file_response_multi_range_ignored(
+    aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
+) -> None:
+    filepath = tmp_path / "multirange.txt"
+    content = b"Hello, World! Multi-range test content."
+    filepath.write_bytes(content)
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        return web.FileResponse(filepath)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+
+    resp = await client.get("/", headers={"Range": "bytes=0-1,4-5"})
+    try:
+        assert resp.status == 200
+        assert await resp.read() == content
+        assert resp.headers.get("Content-Length") == str(len(content))
+        assert "Content-Range" not in resp.headers
+    finally:
+        resp.close()
+        resp.release()
+        await client.close()
+
+
 async def test_static_file_if_unmodified_since_past_with_range(
     aiohttp_client: AiohttpClient, app_with_static_route: web.Application
 ) -> None:
