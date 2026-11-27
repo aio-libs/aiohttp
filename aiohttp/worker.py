@@ -219,18 +219,36 @@ class GunicornWebWorker(base.Worker):  # type: ignore[misc,no-any-unimported]
     def _create_ssl_context(cfg: Any) -> "SSLContext":
         """Creates SSLContext instance for usage in asyncio.create_server.
 
+        The context is passed through gunicorn's ``ssl_context`` hook, as
+        gunicorn's own workers do, so settings applied there take effect.
+
         See ssl.SSLSocket.__init__ for more details.
         """
         if ssl is None:  # pragma: no cover
             raise RuntimeError("SSL is not supported.")
 
-        ctx = ssl.SSLContext(cfg.ssl_version)
-        ctx.load_cert_chain(cfg.certfile, cfg.keyfile)
-        ctx.verify_mode = cfg.cert_reqs
-        if cfg.ca_certs:
-            ctx.load_verify_locations(cfg.ca_certs)
-        if cfg.ciphers:
-            ctx.set_ciphers(cfg.ciphers)
+        def default_ssl_context_factory() -> SSLContext:
+            ctx = ssl.SSLContext(cfg.ssl_version)
+            ctx.load_cert_chain(cfg.certfile, cfg.keyfile)
+            ctx.verify_mode = cfg.cert_reqs
+            if cfg.ca_certs:
+                ctx.load_verify_locations(cfg.ca_certs)
+            if cfg.ciphers:
+                ctx.set_ciphers(cfg.ciphers)
+            return ctx
+
+        # The hook was added in gunicorn 21; older versions have no such
+        # setting and Config.__getattr__ raises AttributeError for it.
+        ssl_context_hook = getattr(cfg, "ssl_context", None)
+        if ssl_context_hook is None:
+            return default_ssl_context_factory()
+
+        ctx = ssl_context_hook(cfg, default_ssl_context_factory)
+        if not isinstance(ctx, ssl.SSLContext):
+            raise TypeError(
+                "The ssl_context hook must return an ssl.SSLContext instance, "
+                f"got {type(ctx).__name__}"
+            )
         return ctx
 
     def _get_valid_log_format(self, source_format: str) -> str:
