@@ -643,6 +643,27 @@ class BaseConnector:
                 req.headers[hdrs.PROXY_AUTHORIZATION] = proxy_auth
         return proxy_req
 
+    def _close_protocol_on_trace_failure(self, proto: ResponseHandler) -> None:
+        """Close a protocol whose post-connect or reuse trace callback failed."""
+        transport = proto.transport
+        is_ssl = False
+        if (
+            not self._closed
+            and not self._cleanup_closed_disabled
+            and transport is not None
+        ):
+            with suppress(Exception):
+                is_ssl = transport.get_extra_info("sslcontext") is not None
+        proto.close()
+        if transport is None:
+            return
+        if self._closed:
+            # close() has already run its cleanup; the queued transport would
+            # never be aborted
+            transport.abort()
+        elif is_ssl:
+            self._cleanup_closed_transports.append(transport)
+
     async def connect(
         self, req: ClientRequest, traces: list["Trace"], timeout: "ClientTimeout"
     ) -> Connection:
@@ -685,14 +706,7 @@ class BaseConnector:
                 except BaseException:
                     # The connection exists but cannot be handed out: close it
                     # the same way a pooled connection that cannot be reused is.
-                    transport = proto.transport
-                    proto.close()
-                    if self._closed:
-                        # close() has already run its cleanup; the queued
-                        # transport would never be aborted
-                        transport.abort()
-                    elif transport.get_extra_info("sslcontext") is not None:
-                        self._cleanup_closed_transports.append(transport)
+                    self._close_protocol_on_trace_failure(proto)
                     raise
             except BaseException:
                 self._release_acquired(key, placeholder)
@@ -787,14 +801,7 @@ class BaseConnector:
                             await trace.send_connection_reuseconn()
                         except BaseException:
                             self._release_acquired(key, proto)
-                            transport = proto.transport
-                            proto.close()
-                            if self._closed:
-                                # close() has already run its cleanup; the
-                                # queued transport would never be aborted
-                                transport.abort()
-                            elif transport.get_extra_info("sslcontext") is not None:
-                                self._cleanup_closed_transports.append(transport)
+                            self._close_protocol_on_trace_failure(proto)
                             raise
                 return Connection(self, key, proto, self._loop)
 

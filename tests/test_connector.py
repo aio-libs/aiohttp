@@ -1962,7 +1962,6 @@ async def test_exception_during_connection_create_tracing_after_close(
     proto.transport.get_extra_info.return_value = object()
 
     req = make_client_request("GET", URL("https://host:80"), loop=loop)
-    key = req.connection_key
     with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
         conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     conn._closed = True
@@ -1980,6 +1979,81 @@ async def test_exception_during_connection_create_tracing_after_close(
     proto.close.assert_called_once_with()
     proto.transport.abort.assert_called_once_with()
     assert not conn._cleanup_closed_transports
+
+
+async def test_exception_during_connection_create_tracing_cleanup_disabled(
+    make_client_request: _RequestMaker,
+) -> None:
+    loop = asyncio.get_running_loop()
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_create_end.append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+    proto.transport.get_extra_info.return_value = object()
+
+    req = make_client_request("GET", URL("https://host:80"), loop=loop)
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=False)
+
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
+    ):
+        await conn.connect(req, traces, ClientTimeout())
+
+    proto.close.assert_called_once_with()
+    assert not conn._cleanup_closed_transports
+
+
+async def test_exception_during_connection_create_tracing_extra_info_error(
+    make_client_request: _RequestMaker,
+) -> None:
+    loop = asyncio.get_running_loop()
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+    on_signal = mock.AsyncMock(side_effect=asyncio.CancelledError)
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_create_end.append(on_signal)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    proto.is_connected.return_value = True
+    proto.transport.get_extra_info.side_effect = AttributeError("disconnected")
+
+    req = make_client_request("GET", URL("https://host:80"), loop=loop)
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+
+    try:
+        with (
+            pytest.raises(asyncio.CancelledError),
+            mock.patch.object(
+                conn,
+                "_create_connection",
+                autospec=True,
+                spec_set=True,
+                return_value=proto,
+            ),
+        ):
+            await conn.connect(req, traces, ClientTimeout())
+
+        proto.close.assert_called_once_with()
+        assert not conn._cleanup_closed_transports
+    finally:
+        await conn.close()
 
 
 async def test_exception_during_connection_queued_tracing(
@@ -2076,6 +2150,51 @@ async def test_exception_during_connection_reuse_tracing(
         assert conn._cleanup_closed_transports == [proto.transport]
     else:
         assert not conn._cleanup_closed_transports
+
+
+async def test_exception_during_connection_reuse_tracing_after_close(
+    make_client_request: _RequestMaker,
+) -> None:
+    # BaseConnector.close() clears proto.transport while cancelling the callback;
+    # cleanup must not replace CancelledError with AttributeError.
+    loop = asyncio.get_running_loop()
+    session = mock.Mock()
+    trace_config_ctx = mock.Mock()
+
+    async def cancel_after_close(*_args: object) -> NoReturn:
+        await conn.close()
+        raise asyncio.CancelledError
+
+    trace_config = aiohttp.TraceConfig(
+        trace_config_ctx_factory=mock.Mock(return_value=trace_config_ctx)
+    )
+    trace_config.on_connection_reuseconn.append(cancel_after_close)
+    trace_config.freeze()
+    traces = [Trace(session, trace_config, trace_config.trace_config_ctx())]
+
+    proto = create_mocked_conn(loop)
+    transport = proto.transport
+    proto.is_connected.return_value = True
+    proto.close.side_effect = lambda: setattr(proto, "transport", None)
+
+    req = make_client_request("GET", URL("https://host:80"), loop=loop)
+    with mock.patch.object(aiohttp.connector, "NEEDS_CLEANUP_CLOSED", True):
+        conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
+
+    with (
+        pytest.raises(asyncio.CancelledError),
+        mock.patch.object(
+            conn, "_create_connection", autospec=True, spec_set=True, return_value=proto
+        ),
+    ):
+        resp = await conn.connect(req, traces, ClientTimeout())
+        with mock.patch.object(resp.protocol, "should_close", False):
+            resp.release()
+        await conn.connect(req, traces, ClientTimeout())
+
+    assert proto.close.call_count >= 1
+    transport.abort.assert_not_called()
+    assert not conn._cleanup_closed_transports
 
 
 async def test_cancellation_during_waiting_for_free_connection(
