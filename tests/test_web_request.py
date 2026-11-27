@@ -1631,7 +1631,7 @@ def test_weakref_creation() -> None:
             ),
         ),
         pytest.param(
-            ',,,',
+            ",,,",
             (),
         ),
     ),
