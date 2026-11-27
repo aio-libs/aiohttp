@@ -203,9 +203,14 @@ class ResponseHandler(BaseProtocol, DataQueue[tuple[RawResponseMessage, StreamRe
     def resume_reading(self, resume_parser: bool = True) -> None:
         was_paused = self._reading_paused
         super().resume_reading(resume_parser)
-        # sock_read measures the peer, so it stays stopped while the tail
-        # bound is still holding the transport.
-        if was_paused and not self._buffer_paused:
+        # Resuming buffered parsing can reach EOF or pause reading again.
+        # sock_read measures the peer, so it stays stopped in either case.
+        if (
+            was_paused
+            and not self._reading_paused
+            and not self._buffer_paused
+            and (self._payload is None or not self._payload.is_eof())
+        ):
             self._reschedule_timeout()
 
     def _drain_tail(self) -> None:
