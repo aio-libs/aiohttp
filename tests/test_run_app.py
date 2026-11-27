@@ -1432,6 +1432,8 @@ class TestShutdown:
         port = sock.getsockname()[1]
         WS = web.AppKey("ws", set[web.WebSocketResponse])
         client_finished = server_finished = False
+        client_close_received = asyncio.Event()
+        allow_client_finish = asyncio.Event()
         t = None
         server_ready = asyncio.Event()
 
@@ -1458,6 +1460,8 @@ class TestShutdown:
 
                     async for msg in ws:
                         assert False  # No messages actually sent
+                    client_close_received.set()
+                    await allow_client_finish.wait()
                     nonlocal client_finished
                     client_finished = True
 
@@ -1465,10 +1469,16 @@ class TestShutdown:
             nonlocal t
             t = asyncio.create_task(test())
             yield
-            await asyncio.sleep(0)  # In case test() hasn't resumed yet.
-            t.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await t
+            try:
+                await asyncio.wait_for(client_close_received.wait(), timeout=2)
+                allow_client_finish.set()
+                await asyncio.wait_for(t, timeout=1)
+            finally:
+                allow_client_finish.set()
+                # Do not leave the client running if a wait above failed
+                t.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await t
 
         def on_ready(*args: Any, **kwargs: Any) -> None:
             server_ready.set()
