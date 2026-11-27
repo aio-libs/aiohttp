@@ -113,6 +113,8 @@ jobs:
       with:
         name: llhttp
         path: vendor/llhttp/build/
+    - name: Verify llhttp generated files against the upstream release
+      run: sha256sum --check --strict tools/llhttp-release.sha256
     - name: Cythonize
       run: |
         make cythonize
