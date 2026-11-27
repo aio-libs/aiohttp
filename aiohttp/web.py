@@ -541,6 +541,9 @@ def main(argv: list[str]) -> None:
     )
     args, extra_argv = arg_parser.parse_known_args(argv)
 
+    if not 0 <= args.port <= 65535:
+        arg_parser.error(f"port must be between 0 and 65535, got {args.port}")
+
     # Import logic
     mod_str, _, func_str = args.entry_func.partition(":")
     if not func_str or not mod_str:

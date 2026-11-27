@@ -84,6 +84,20 @@ def test_entry_func_non_existent_attribute(mocker: MockerFixture) -> None:
     )
 
 
+@pytest.mark.parametrize("port", ["70000", "-5", "65536"])
+def test_port_out_of_range(mocker: MockerFixture, port: str) -> None:
+    run_app = mocker.patch("aiohttp.web.run_app")
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
+    mocker.patch("aiohttp.web.import_module")
+    argv = f"--port={port} alpha.beta:func".split()
+
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    error.assert_called_with(f"port must be between 0 and 65535, got {port}")
+    run_app.assert_not_called()
+
+
 @pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
 def test_path_no_host(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()

@@ -1,0 +1,3 @@
+Rejected out-of-range ``--port`` values in the ``aiohttp.web`` CLI as a usage
+error, instead of silently serving on a truncated port or crashing in
+``getaddrinfo()`` -- by :user:`qianeric-backup`.
