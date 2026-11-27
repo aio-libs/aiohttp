@@ -656,6 +656,10 @@ class BaseRequest(MutableMapping[str | RequestKey[Any], Any], HeadersMixin):
 
             if start is None and end is not None:
                 # end with no start is to return tail of content
+                if end == 0:
+                    # A zero-length suffix is unsatisfiable
+                    # (RFC 9110, Section 14.1.2)
+                    raise ValueError("suffix length must be non-zero")
                 start = -end
                 end = None
 

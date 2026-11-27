@@ -1,0 +1,3 @@
+Return ``416 Range Not Satisfiable`` for zero-length suffix byte ranges
+(e.g. ``Range: bytes=-0``) instead of returning the entire representation,
+per :rfc:`9110` section 14.1.2 -- by :user:`pei711`.
