@@ -1,6 +1,5 @@
 import asyncio
 import functools
-import random
 import socket
 import sys
 import traceback
@@ -355,12 +354,11 @@ class BaseConnector:
         self._keepalive_timeout = keepalive_timeout
         self._force_close = force_close
 
-        # {host_key: FIFO list of waiters}
-        # The FIFO is implemented with an OrderedDict with None keys because
-        # python does not have an ordered set.
-        self._waiters: defaultdict[
+        # {host_key: FIFO list of waiters}, ordered by host scheduling priority.
+        # Each per-host FIFO uses an OrderedDict as an ordered set.
+        self._waiters: OrderedDict[
             ConnectionKey, OrderedDict[asyncio.Future[None], None]
-        ] = defaultdict(OrderedDict)
+        ] = OrderedDict()
 
         self._loop = loop
         self._factory = functools.partial(ResponseHandler, loop=loop)
@@ -715,7 +713,10 @@ class BaseConnector:
         attempts = 0
         while True:
             fut: asyncio.Future[None] = self._loop.create_future()
-            keyed_waiters = self._waiters[key]
+            keyed_waiters = self._waiters.get(key)
+            if keyed_waiters is None:
+                keyed_waiters = OrderedDict()
+                self._waiters[key] = keyed_waiters
             keyed_waiters[fut] = None
             if attempts:
                 # If we have waited before, we need to move the waiter
@@ -737,7 +738,7 @@ class BaseConnector:
                 # pop the waiter from the queue if its still
                 # there and not already removed by _release_waiter
                 keyed_waiters.pop(fut, None)
-                if not self._waiters.get(key, True):
+                if not keyed_waiters and self._waiters.get(key) is keyed_waiters:
                     del self._waiters[key]
 
             if self._available_connections(key) > 0:
@@ -795,22 +796,17 @@ class BaseConnector:
         The one to be released is not finished and
         belongs to a host that has available connections.
         """
-        if not self._waiters:
-            return
-
-        # Having the dict keys ordered this avoids to iterate
-        # at the same order at each call.
-        queues = list(self._waiters)
-        random.shuffle(queues)
-
-        for key in queues:
+        for _ in range(len(self._waiters)):
+            key, waiters = self._waiters.popitem(last=False)
             if self._available_connections(key) < 1:
+                self._waiters[key] = waiters
                 continue
 
-            waiters = self._waiters[key]
             while waiters:
                 waiter, _ = waiters.popitem(last=False)
                 if not waiter.done():
+                    if waiters:
+                        self._waiters[key] = waiters
                     waiter.set_result(None)
                     return
 
