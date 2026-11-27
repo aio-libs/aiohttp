@@ -97,7 +97,7 @@ python-discovery==1.9.6
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
-pyyaml==6.0.3
+pyyaml==6.0.4
     # via pre-commit
 rich==15.0.0
     # via pytest-codspeed
