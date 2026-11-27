@@ -26,7 +26,7 @@ multidict==7.2.1
     # via
     #   aiohttp
     #   yarl
-packaging==26.3
+packaging==26.4
     # via pytest
 pkgconfig==1.6.0
     # via -r requirements/test-common-base.in
