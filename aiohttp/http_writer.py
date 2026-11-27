@@ -4,7 +4,7 @@ import asyncio
 import re
 import sys
 from collections.abc import Awaitable, Callable, Iterable
-from typing import TYPE_CHECKING, Any, List, NamedTuple, Optional  # noqa
+from typing import TYPE_CHECKING, Any, List, NamedTuple, NoReturn, Optional
 
 from multidict import CIMultiDict
 
@@ -54,6 +54,7 @@ class StreamWriter(AbstractStreamWriter):
     chunked: bool = False
     _eof: bool = False
     _compress: ZLibCompressor | None = None
+    _compress_cancelled: bool = False
 
     def __init__(
         self,
@@ -85,6 +86,19 @@ class StreamWriter(AbstractStreamWriter):
         self, encoding: str = "deflate", strategy: int | None = None
     ) -> None:
         self._compress = ZLibCompressor(encoding=encoding, strategy=strategy)
+
+    def _raise_compress_cancelled(self) -> NoReturn:
+        # The executor can't be interrupted, so the compressor may have
+        # consumed a chunk whose output was dropped. Nothing written after
+        # that would decompress, so the message can't be completed. Callers
+        # that let the cancellation propagate close the connection themselves;
+        # this is only reached by one that carried on.
+        transport = self._protocol.transport
+        if transport is not None:
+            transport.close()
+        raise ClientConnectionResetError(
+            "Cannot write after a compressed write was cancelled"
+        )
 
     def _write(self, chunk: Buffer) -> None:
         size = len(chunk)
@@ -169,7 +183,13 @@ class StreamWriter(AbstractStreamWriter):
             body_size = len(chunk) if notify is not None else 0
 
         if self._compress is not None:
-            chunk = await self._compress.compress(chunk)
+            if self._compress_cancelled:
+                self._raise_compress_cancelled()
+            try:
+                chunk = await self._compress.compress(chunk)
+            except asyncio.CancelledError:
+                self._compress_cancelled = True
+                raise
             if not chunk:
                 if notify is not None and body_size:
                     notify(body_size, self.output_size)
@@ -266,11 +286,19 @@ class StreamWriter(AbstractStreamWriter):
 
         # Handle body/compression
         if self._compress:
+            if self._compress_cancelled:
+                self._raise_compress_cancelled()
             chunks: list[bytes] = []
             chunks_len = 0
-            if chunk and (compressed_chunk := await self._compress.compress(chunk)):
-                chunks_len = len(compressed_chunk)
-                chunks.append(compressed_chunk)
+            if chunk:
+                try:
+                    compressed_chunk = await self._compress.compress(chunk)
+                except asyncio.CancelledError:
+                    self._compress_cancelled = True
+                    raise
+                if compressed_chunk:
+                    chunks_len = len(compressed_chunk)
+                    chunks.append(compressed_chunk)
 
             flush_chunk = self._compress.flush()
             chunks_len += len(flush_chunk)
