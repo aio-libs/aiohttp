@@ -25,6 +25,12 @@ if hasattr(socket, "AI_MASK"):
     _AI_ADDRCONFIG &= socket.AI_MASK
 _IS_WINDOWS = sys.platform == "win32"
 
+# c-ares has its own flag values (see ares.h) that don't line up with the
+# socket module ones, e.g. socket.AI_ADDRCONFIG is ARES_AI_ALL on Linux and
+# ARES_AI_IDN on macOS. pycares doesn't export the ARES_AI_* constants.
+_ARES_AI_ADDRCONFIG = 1 << 6
+_ARES_NAME_FLAGS = (1 << 1) | (1 << 3)  # ARES_NI_NUMERICHOST | ARES_NI_NUMERICSERV
+
 
 def _is_windows_localhost(host: str) -> bool:
     return _IS_WINDOWS and host.rstrip(".").casefold() == "localhost"
@@ -129,7 +135,7 @@ class AsyncResolver(AbstractResolver):
                     port=port,
                     type=socket.SOCK_STREAM,
                     family=family,
-                    flags=_AI_ADDRCONFIG,
+                    flags=_ARES_AI_ADDRCONFIG,
                 )
             except aiodns.error.DNSError:
                 if not _is_windows_localhost(host):
@@ -154,7 +160,7 @@ class AsyncResolver(AbstractResolver):
                     # getnameinfo() unconditionally, but performance makes sense.
                     result = await self._resolver.getnameinfo(
                         (address[0].decode("ascii"), *address[1:]),
-                        _NAME_SOCKET_FLAGS,
+                        _ARES_NAME_FLAGS,
                     )
                     resolved_host = result.node
                 else:

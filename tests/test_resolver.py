@@ -10,6 +10,8 @@ from unittest.mock import AsyncMock, Mock, call, create_autospec, patch
 import pytest
 
 from aiohttp.resolver import (
+    _ARES_AI_ADDRCONFIG,
+    _ARES_NAME_FLAGS,
     _NAME_SOCKET_FLAGS,
     AsyncResolver,
     DefaultResolver,
@@ -177,7 +179,7 @@ async def test_async_resolver_positive_ipv4_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
@@ -200,11 +202,11 @@ async def test_async_resolver_positive_link_local_ipv6_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
-        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _NAME_SOCKET_FLAGS)
+        mock().getnameinfo.assert_called_with(("fe80::1", 0, 0, 3), _ARES_NAME_FLAGS)
         await resolver.close()
 
 
@@ -255,7 +257,7 @@ async def test_async_resolver_retries_localhost_without_addrconfig_on_windows(
                 call(
                     "localhost",
                     family=socket.AF_UNSPEC,
-                    flags=socket.AI_ADDRCONFIG,
+                    flags=_ARES_AI_ADDRCONFIG,
                     port=0,
                     type=socket.SOCK_STREAM,
                 ),
@@ -467,7 +469,7 @@ async def test_async_resolver_ipv6_positive_lookup() -> None:
         mock().getaddrinfo.assert_called_with(
             "www.python.org",
             family=socket.AF_INET,
-            flags=socket.AI_ADDRCONFIG,
+            flags=_ARES_AI_ADDRCONFIG,
             port=0,
             type=socket.SOCK_STREAM,
         )
@@ -759,3 +761,10 @@ async def test_async_resolver_close_with_none_resolver() -> None:
 
         # This should not raise AttributeError
         await resolver.close()
+
+
+def test_ares_name_flags_match_pycares() -> None:
+    aiodns = pytest.importorskip("aiodns")
+    assert _ARES_NAME_FLAGS == (
+        aiodns.pycares.ARES_NI_NUMERICHOST | aiodns.pycares.ARES_NI_NUMERICSERV
+    )
