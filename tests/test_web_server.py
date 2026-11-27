@@ -1,6 +1,8 @@
 import asyncio
 import gc
+import os
 import socket
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
 from typing import Any, NoReturn
 from unittest import mock
@@ -8,6 +10,7 @@ from unittest import mock
 import pytest
 
 from aiohttp import client, web
+from aiohttp.http import StreamWriter
 from aiohttp.http_exceptions import BadHttpMethod, BadStatusLine
 from aiohttp.pytest_plugin import AiohttpClient, AiohttpRawServer, AiohttpServer
 
@@ -268,7 +271,54 @@ async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_cli
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
-async def test_raw_server_not_http_exception_debug(aiohttp_raw_server, aiohttp_client):
+@pytest.mark.parametrize("keeps_writing", (True, False))
+async def test_compressed_write_cancelled_in_handler(
+    keeps_writing: bool,
+    aiohttp_client: AiohttpClient,
+    slow_executor: ThreadPoolExecutor,
+) -> None:
+    transports: list[asyncio.Transport | None] = []
+
+    async def handler(request: web.Request) -> web.StreamResponse:
+        transports.append(request.transport)
+        resp = web.StreamResponse()
+        resp.enable_compression(web.ContentCoding.gzip)
+        writer = await resp.prepare(request)
+        assert isinstance(writer, StreamWriter)
+        assert writer._compress is not None
+        writer._compress._executor = slow_executor
+        with suppress(TimeoutError):
+            async with asyncio.timeout(0):
+                await resp.write(os.urandom(65536))
+        if keeps_writing:
+            with suppress(ConnectionResetError):
+                await resp.write(b"more")
+        return resp
+
+    async def ping(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/ping", ping)
+    # Without decompression a corrupt body would be read without complaint.
+    cli = await aiohttp_client(app, auto_decompress=False)
+
+    async with cli.get("/") as resp:
+        assert resp.status == 200
+        with pytest.raises(client.ClientPayloadError):
+            await resp.read()
+    async with cli.get("/ping") as resp:
+        assert resp.status == 200
+
+    cancelled, reconnected = transports
+    assert cancelled is not reconnected
+
+
+async def test_raw_server_not_http_exception_debug(
+    aiohttp_raw_server: AiohttpRawServer, aiohttp_client: AiohttpClient
+) -> None:
     exc = RuntimeError("custom runtime error")
 
     async def handler(request):
