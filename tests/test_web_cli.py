@@ -84,6 +84,23 @@ def test_entry_func_non_existent_attribute(mocker: MockerFixture) -> None:
     )
 
 
+def test_entry_func_non_callable_attribute(mocker: MockerFixture) -> None:
+    argv = ["alpha.beta:func"]
+    import_module = mocker.patch("aiohttp.web.import_module")
+    run_app = mocker.patch("aiohttp.web.run_app")
+    error = mocker.patch("aiohttp.web.ArgumentParser.error", side_effect=SystemExit)
+    module = import_module("alpha.beta")
+    module.func = {"not": "callable"}
+
+    with pytest.raises(SystemExit):
+        web.main(argv)
+
+    error.assert_called_with(
+        "module {!r} attribute {!r} is not callable".format("alpha.beta", "func")
+    )
+    run_app.assert_not_called()
+
+
 @pytest.mark.skipif(sys.platform.startswith("win32"), reason="Windows not Unix")
 def test_path_no_host(mocker: MockerFixture, monkeypatch: pytest.MonkeyPatch) -> None:
     argv = "--path=test_path.sock alpha.beta:func".split()
