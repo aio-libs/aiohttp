@@ -1,5 +1,7 @@
 import asyncio
+import gc
 import random
+import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import suppress
@@ -7,10 +9,10 @@ from unittest import mock
 
 import pytest
 
-from aiohttp import WSMsgType
+from aiohttp import ClientConnectionResetError, WSMsgType
 from aiohttp._websocket.reader import WebSocketDataQueue
 from aiohttp.base_protocol import BaseProtocol
-from aiohttp.compression_utils import ZLibBackend
+from aiohttp.compression_utils import ZLibBackend, ZLibCompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
 from aiohttp.http import WebSocketReader, WebSocketWriter
 
@@ -197,6 +199,69 @@ async def test_send_compress_cancelled(
     assert msg.type is WSMsgType.BINARY
     # The data should be all B's, not mixed with A's from the cancelled send
     assert msg.data == large_data_2
+
+
+@pytest.mark.parametrize("cancel_background", [False, True])
+async def test_send_compress_cancelled_connection_lost(
+    protocol: BaseProtocol,
+    transport: mock.Mock,
+    monkeypatch: pytest.MonkeyPatch,
+    cancel_background: bool,
+) -> None:
+    started = asyncio.Event()
+    resume = asyncio.Event()
+    compress = ZLibCompressor.compress
+
+    async def delayed_compress(self: ZLibCompressor, data: bytes) -> bytes:
+        started.set()
+        await resume.wait()
+        return await compress(self, data)
+
+    monkeypatch.setattr(ZLibCompressor, "compress", delayed_compress)
+    writer = WebSocketWriter(protocol, transport, compress=15)
+    loop = asyncio.get_running_loop()
+    errors: list[dict[str, object]] = []
+    original_handler = loop.get_exception_handler()
+    loop.set_exception_handler(lambda _loop, context: errors.append(context))
+    try:
+        sender = asyncio.create_task(writer.send_frame(b"a" * 65536, WSMsgType.BINARY))
+        await started.wait()
+        sender.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await sender
+        if cancel_background:
+            next(iter(writer._background_tasks)).cancel()
+        else:
+            transport.is_closing.return_value = True
+        resume.set()
+        while writer._background_tasks:
+            await asyncio.sleep(0)
+        gc.collect()
+        await asyncio.sleep(0)
+        if sys.version_info >= (3, 14) and not cancel_background:
+            # CPython 3.14+ logs shielded errors even after exception retrieval.
+            # https://github.com/python/cpython/pull/158599
+            for context in errors:
+                assert (
+                    context["message"]
+                    == "ClientConnectionResetError exception in shielded future"
+                )
+                assert isinstance(context["exception"], ClientConnectionResetError)
+        else:
+            assert not errors
+    finally:
+        loop.set_exception_handler(original_handler)
+
+
+async def test_send_compress_connection_lost(
+    protocol: BaseProtocol, transport: mock.Mock
+) -> None:
+    writer = WebSocketWriter(protocol, transport, compress=15)
+    transport.is_closing.return_value = True
+    with pytest.raises(
+        ClientConnectionResetError, match="Cannot write to closing transport"
+    ):
+        await writer.send_frame(b"a" * 65536, WSMsgType.BINARY)
 
 
 @pytest.mark.usefixtures("parametrize_zlib_backend")
