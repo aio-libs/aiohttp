@@ -1,0 +1,6 @@
+# llhttp 9.4.4, source tag v9.4.4 (82755cf32a23b88c87ac8ef9b8bec649fb06ddf5).
+# Upstream release tree: https://github.com/nodejs/llhttp/tree/816485216511b86459b2e6478190e14c38c14891
+# On a submodule bump, hash src/llhttp.c and include/llhttp.h from the
+# corresponding official release tree and update these entries and the pins above.
+f3ef756529b7444630717fa5540d4a1c9a1256874bda823c49c5a99c37f89429  vendor/llhttp/build/c/llhttp.c
+52a7011f979b31f761403c1a333bf7fc26dc70f5745d8488eed1609c92097100  vendor/llhttp/build/llhttp.h
