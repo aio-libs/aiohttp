@@ -1168,7 +1168,7 @@ class TCPConnector(BaseConnector):
         # We use a throttle to ensure that we only resolve the host once
         # and then use the result for all the waiters.
         #
-        if key in self._throttle_dns_futures:
+        while key in self._throttle_dns_futures:
             # get futures early, before any await (#4014)
             futures = self._throttle_dns_futures[key]
             future: asyncio.Future[None] = self._loop.create_future()
@@ -1180,7 +1180,14 @@ class TCPConnector(BaseConnector):
                 await future
             finally:
                 futures.discard(future)
-            return self._cached_hosts.next_addrs(key)
+            if key in self._cached_hosts:
+                return self._cached_hosts.next_addrs(key)
+            # clear_dns_cache() ran after the lookup finished and before
+            # this waiter resumed, so there is nothing cached to read.
+            # Wait on the lookup another waiter has started since, or
+            # leave the loop and start one.
+            if self._closed:
+                raise ClientConnectionError("Connector is closed")
 
         # update dict early, before any await (#4014)
         self._throttle_dns_futures[key] = futures = set()
