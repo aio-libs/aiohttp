@@ -1616,6 +1616,24 @@ def test_weakref_creation() -> None:
             "*",
             (ETag(is_weak=False, value="*"),),
         ),
+        pytest.param(
+            '"x",, "etag"',
+            (
+                ETag(is_weak=False, value="x"),
+                ETag(is_weak=False, value="etag"),
+            ),
+        ),
+        pytest.param(
+            ', "etag",, W/"weak",',
+            (
+                ETag(is_weak=False, value="etag"),
+                ETag(is_weak=True, value="weak"),
+            ),
+        ),
+        pytest.param(
+            ',,,',
+            (),
+        ),
     ),
 )
 def test_etag_headers(

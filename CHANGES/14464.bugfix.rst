@@ -1,0 +1,1 @@
+Fixed ``If-None-Match`` and ``If-Match`` header parsing to ignore empty list elements (consecutive, leading, or trailing commas) in accordance with RFC 9110 § 5.6.1.2 -- by :user:`udbhav968-creator`.
