@@ -2,6 +2,7 @@ import array
 import asyncio
 import io
 import json
+import os
 import unittest.mock
 from collections.abc import AsyncIterator, Iterator
 from io import StringIO
@@ -14,6 +15,7 @@ from multidict import CIMultiDict
 from aiohttp import payload
 from aiohttp.abc import AbstractStreamWriter
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE
+from aiohttp.multipart import MultipartWriter
 
 
 class BufferWriter(AbstractStreamWriter):
@@ -1074,18 +1076,67 @@ async def test_custom_payload_with_encoding_backwards_compat() -> None:
     assert result_latin1 != "café".encode()  # Should be different bytes
 
 
-async def test_iobase_payload_close_idempotent() -> None:
-    """Test that IOBasePayload.close() is idempotent and covers the _consumed check."""
+async def test_iobase_payload_close_idempotent(monkeypatch: pytest.MonkeyPatch) -> None:
     file_like = io.BytesIO(b"test data")
+    close = unittest.mock.Mock(wraps=file_like.close)
+    monkeypatch.setattr(file_like, "close", close)
     p = payload.IOBasePayload(file_like)
 
-    # First close should set _consumed to True
+    close_futures = payload._CLOSE_FUTURES.copy()
     await p.close()
     assert p._consumed is True
 
-    # Second close should be a no-op due to _consumed check (line 621)
     await p.close()
-    assert p._consumed is True
+    await asyncio.gather(*(payload._CLOSE_FUTURES - close_futures))
+    close.assert_called_once()
+    assert file_like.closed
+
+
+@pytest.mark.parametrize("multipart_body", [False, True])
+@pytest.mark.parametrize("write_fails", [False, True])
+@pytest.mark.parametrize("mode", ["rb", "r"])
+async def test_unseekable_payload_is_closed_after_write(
+    multipart_body: bool, write_fails: bool, mode: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    read_fd, write_fd = os.pipe()
+    with os.fdopen(write_fd, "wb") as output:
+        output.write(b"upload")
+    stream = os.fdopen(read_fd, mode)
+
+    def tell() -> int:
+        raise io.UnsupportedOperation("stream is not seekable")
+
+    # Force the tell() failure: Windows pipes can otherwise return 0.
+    monkeypatch.setattr(stream, "tell", tell)
+    part = payload.get_payload(stream)
+    body: payload.Payload = part
+    if multipart_body:
+        multipart_writer = MultipartWriter()
+        multipart_writer.append_payload(part)
+        body = multipart_writer
+
+    writer = BufferWriter()
+    if write_fails:
+
+        async def write(chunk: bytes) -> None:
+            if chunk == b"upload":
+                raise OSError("write failed")
+
+        monkeypatch.setattr(writer, "write", write)
+    try:
+        if write_fails:
+            with pytest.raises(OSError, match="write failed"):
+                await body.write(writer)
+        else:
+            await body.write(writer)
+            assert b"upload" in writer.buffer
+        assert part.consumed
+        close_futures = payload._CLOSE_FUTURES.copy()
+        await body.close()
+        await asyncio.gather(*(payload._CLOSE_FUTURES - close_futures))
+        assert stream.closed
+    finally:
+        stream.close()
 
 
 def test_iobase_payload_decode() -> None:
