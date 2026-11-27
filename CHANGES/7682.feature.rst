@@ -1,0 +1,5 @@
+Added the ``close_reason`` property to
+:class:`~aiohttp.ClientWebSocketResponse` and
+:class:`~aiohttp.web.WebSocketResponse`, holding the reason from the peer's
+close message, which ``async for msg in ws:`` does not yield
+-- by :user:`krylosov-aa`.
