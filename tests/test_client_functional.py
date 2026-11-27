@@ -3296,6 +3296,31 @@ async def test_set_cookies_with_curly_braces(aiohttp_client: AiohttpClient) -> N
         assert cookie_names == {"c1", "ISAWPLB{A7F52349-3531-4DA9-8776-F74BC6F4F1BB}"}
 
 
+async def test_set_cookies_sent_back_as_received(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    async def set_cookies(request: web.Request) -> web.Response:
+        ret = web.Response()
+        ret.headers.add("Set-Cookie", "token=YWJjZA==; Path=/")
+        ret.headers.add("Set-Cookie", "next=/a/b; Path=/")
+        ret.headers.add("Set-Cookie", "name=a b; Path=/")
+        return ret
+
+    async def echo(request: web.Request) -> web.Response:
+        return web.Response(text=request.headers["Cookie"])
+
+    app = web.Application()
+    app.router.add_get("/set", set_cookies)
+    app.router.add_get("/echo", echo)
+    client = await aiohttp_client(app)
+
+    async with client.get("/set") as resp:
+        assert resp.status == 200
+    async with client.get("/echo") as resp:
+        sent = await resp.text()
+    assert sorted(sent.split("; ")) == ["name=a b", "next=/a/b", "token=YWJjZA=="]
+
+
 async def test_set_cookies_expired(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         ret = web.Response()

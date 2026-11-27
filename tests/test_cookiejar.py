@@ -447,7 +447,8 @@ async def test_domain_filter_ip_cookie_receive(
             True,
         ),
         ('ip-cookie="second"; Domain=127.0.0.1;', 'Cookie: ip-cookie="second"', True),
-        ("custom-cookie=value/one;", 'Cookie: custom-cookie="value/one"', True),
+        ("custom-cookie=value/one;", "Cookie: custom-cookie=value/one", True),
+        ("custom-cookie=YWJjZA==;", "Cookie: custom-cookie=YWJjZA==", True),
         ("custom-cookie=value1;", "Cookie: custom-cookie=value1", True),
         ("custom-cookie=value/one;", "Cookie: custom-cookie=value/one", False),
         ('foo="quoted_value"', 'Cookie: foo="quoted_value"', True),
@@ -456,7 +457,8 @@ async def test_domain_filter_ip_cookie_receive(
     ids=(
         "IP domain preserved",
         "no shared cookie",
-        "quoted cookie with special char",
+        "received cookie with special char",
+        "received cookie with base64 padding",
         "quoted cookie w/o special char",
         "unquoted cookie with special char",
         "pre-quoted cookie",
@@ -470,6 +472,13 @@ async def test_quotes_correctly_based_on_input(
     jar.update_cookies(SimpleCookie(cookies))
     cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(header="Cookie:")
     assert cookies_sent == expected
+
+
+async def test_quotes_cookie_values_set_from_strings() -> None:
+    jar = CookieJar(unsafe=True)
+    jar.update_cookies({"cookie1": "val/one", "cookie2": "plain"})
+    cookies_sent = jar.filter_cookies(URL("http://127.0.0.1/")).output(header="Cookie:")
+    assert cookies_sent == 'Cookie: cookie1="val/one"\r\nCookie: cookie2=plain'
 
 
 async def test_ignore_domain_ending_with_dot() -> None:

@@ -47,7 +47,6 @@ _FORMAT_DOMAIN_REVERSED = "{1}.{0}".format
 # the expiration heap. This is a performance optimization to avoid cleaning up the
 # heap too often when there are only a few scheduled expirations.
 _MIN_SCHEDULED_COOKIE_EXPIRATION = 100
-_SIMPLE_COOKIE = SimpleCookie()
 
 # Private, non-configurable limits for the built-in jar.
 # Eviction follows Firefox's CookieStorage.
@@ -766,13 +765,12 @@ class CookieJar(AbstractCookieJar):
 
     def _build_morsel(self, cookie: Morsel[str]) -> Morsel[str]:
         """Build a morsel for sending, respecting quote_cookie setting."""
-        if self._quote_cookie and cookie.coded_value and cookie.coded_value[0] == '"':
+        if self._quote_cookie:
+            # Send the value as the server sent it, like browsers do. Values set
+            # from plain strings were already quoted as needed when stored.
             return preserve_morsel_with_coded_value(cookie)
         morsel: Morsel[str] = Morsel()
-        if self._quote_cookie:
-            value, coded_value = _SIMPLE_COOKIE.value_encode(cookie.value)
-        else:
-            coded_value = value = cookie.value
+        coded_value = value = cookie.value
         # We use __setstate__ instead of the public set() API because it allows us to
         # bypass validation and set already validated state. This is more stable than
         # setting protected attributes directly.

@@ -328,6 +328,10 @@ Any ``\`` or ``"`` is quoted with a preceding ``\`` slash.
 Because of the way browsers really handle cookies (as opposed to what the RFC
 says) we also encode ``,`` and ``;``.
 
+This only applies to cookie values set from strings, e.g. with
+:meth:`~aiohttp.CookieJar.update_cookies`. Like browsers, the client sends cookies
+received from a server back exactly as the server sent them.
+
 Some backend systems does not support quoted cookies. You can skip this
 quotation routine by passing ``quote_cookie=False`` to the
 :class:`~aiohttp.CookieJar` constructor::
