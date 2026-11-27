@@ -22,7 +22,7 @@ cffi==2.1.1 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
-coverage==7.17.4
+coverage==7.17.5
     # via pytest-cov
 execnet==2.1.2
     # via pytest-xdist
