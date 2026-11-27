@@ -338,8 +338,8 @@ class Payload(ABC):
 
 
 class BytesPayload(Payload):
-    _value: bytes
-    # _consumed = False (inherited) - Bytes are immutable and can be reused
+    _value: bytes | bytearray | memoryview
+    # _consumed = False (inherited) - In-memory buffers can be reused
     _autoclose = True  # No file handle, just bytes in memory
 
     def __init__(
@@ -347,6 +347,13 @@ class BytesPayload(Payload):
     ) -> None:
         if "content_type" not in kwargs:
             kwargs["content_type"] = "application/octet-stream"
+
+        if isinstance(value, memoryview):
+            value = (
+                value.cast("B")
+                if value.c_contiguous and value.nbytes
+                else value.tobytes()
+            )
 
         super().__init__(value, *args, **kwargs)
 
@@ -367,16 +374,18 @@ class BytesPayload(Payload):
             )
 
     def decode(self, encoding: str = "utf-8", errors: str = "strict") -> str:
-        return self._value.decode(encoding, errors)
+        value = self._value
+        if isinstance(value, memoryview):
+            value = value.tobytes()
+        return value.decode(encoding, errors)
 
     async def as_bytes(self, encoding: str = "utf-8", errors: str = "strict") -> bytes:
         """
         Return bytes representation of the value.
 
         This method returns the raw bytes content of the payload.
-        It is equivalent to accessing the _value attribute directly.
         """
-        return self._value
+        return bytes(self._value)
 
     async def write(self, writer: AbstractStreamWriter) -> None:
         """
