@@ -3,7 +3,9 @@ import contextlib
 import gc
 import io
 import json
+import netrc
 import ssl
+import threading
 from collections import deque
 from collections.abc import AsyncIterator, Awaitable, Callable, Iterator
 from http.cookies import BaseCookie, SimpleCookie
@@ -19,7 +21,7 @@ from pytest_mock import MockerFixture
 from yarl import URL
 
 import aiohttp
-from aiohttp import abc, client, hdrs, tracing, web
+from aiohttp import abc, client, hdrs, helpers, tracing, web
 from aiohttp.client import ClientSession
 from aiohttp.client_proto import ResponseHandler
 from aiohttp.client_reqrep import ClientRequest, ClientTimeout, ConnectionKey
@@ -1680,6 +1682,54 @@ async def test_netrc_auth_host_not_in_netrc(auth_server: TestServer) -> None:
         text = await resp.text()
         # Should not have auth since the host is not in netrc
         assert text == "no_auth"
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_loaded_once_per_session(
+    auth_server: TestServer, mocker: MockerFixture
+) -> None:
+    """Test that the netrc file is parsed once and reused by every request."""
+    parse = mocker.spy(netrc, "netrc")
+
+    async with ClientSession(trust_env=True) as session:
+
+        async def fetch() -> str:
+            async with session.get(auth_server.make_url("/")) as resp:
+                return await resp.text()
+
+        texts = await asyncio.gather(*(fetch() for _ in range(5)))
+        texts.append(await fetch())
+
+    assert texts == ["auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"] * 6
+    assert parse.call_count == 1
+
+
+@pytest.mark.usefixtures("netrc_default_contents")
+async def test_netrc_load_survives_cancelled_request(
+    auth_server: TestServer, mocker: MockerFixture
+) -> None:
+    """Test that cancelling the request that started the netrc load does not break later requests."""
+    started = threading.Event()
+    release = threading.Event()
+    real_load = helpers.netrc_from_env
+
+    def slow_load() -> Any:
+        started.set()
+        release.wait()
+        return real_load()
+
+    mocker.patch.object(client, "netrc_from_env", slow_load)
+
+    async with ClientSession(trust_env=True) as session:
+        first = asyncio.create_task(session.get(auth_server.make_url("/")))
+        await asyncio.to_thread(started.wait)
+        first.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await first
+        release.set()
+
+        async with session.get(auth_server.make_url("/")) as resp:
+            assert await resp.text() == "auth:Basic bmV0cmNfdXNlcjpuZXRyY19wYXNz"
 
 
 @pytest.mark.parametrize(
