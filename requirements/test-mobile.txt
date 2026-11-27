@@ -26,7 +26,7 @@ cffi==2.1.1 ; sys_platform != "android" and sys_platform != "ios"
     # via
     #   -r requirements/test-mobile.in
     #   pycares
-coverage==7.17.2
+coverage==7.17.5
     # via pytest-cov
 execnet==2.1.2
     # via pytest-xdist
@@ -37,7 +37,7 @@ frozenlist==1.8.0
     #   -r requirements/runtime-deps.in
     #   aiohttp
     #   aiosignal
-gunicorn==26.2.0
+gunicorn==27.0.1
     # via -r requirements/base-ft.in
 idna==3.20
     # via yarl
@@ -82,7 +82,7 @@ pytest==9.2.0
     #   pytest-xdist
 pytest-aiohttp==1.1.1
     # via -r requirements/test-common-base.in
-pytest-asyncio==1.4.1.post1
+pytest-asyncio==1.5.0
     # via pytest-aiohttp
 pytest-cov==7.1.0
     # via -r requirements/test-common-base.in

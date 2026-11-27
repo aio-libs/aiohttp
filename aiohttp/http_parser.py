@@ -130,6 +130,12 @@ SUPPORTED_CONTENT_CODINGS: Final[frozenset[str]] = frozenset(
 # Each nested coding multiplies the decompression amplification an attacker
 # can request, so chains longer than this are refused outright.
 MAX_CONTENT_CODINGS: Final[int] = 2
+# A coding fed by another coding costs the peer no wire bytes, so its input has
+# to be paid for with output instead: each byte it produces covers two it was
+# fed, which leaves room for framing overhead and for a delivery it stopped
+# short of at max_length. Beyond that, this much may be outstanding, for input
+# a decoder holds until a block completes: zstd's blocks, the largest, reach 128 KiB.
+MAX_UNPAID_CODING_INPUT: Final[int] = 2**18
 
 
 def parse_content_encoding(value: str, auto_decompress: bool) -> str | None:
@@ -1066,18 +1072,22 @@ class HttpPayloadParser:
                 chunk = self._chunk_tail + chunk
                 self._chunk_tail = b""
 
-            while chunk or self._more_data_available:
+            start = 0
+            end = len(chunk)
+            while start < end or self._more_data_available:
                 # read next chunk size
                 if self._chunk == ChunkState.PARSE_CHUNKED_SIZE:
-                    pos = chunk.find(SEP)
+                    pos = chunk.find(SEP, start)
                     if pos >= 0:
                         # Only chunk-size lines reach here; trailers enforce
                         # _max_field_size separately in PARSE_TRAILERS below.
-                        if pos > self._max_line_size:
-                            raise LineTooLong(chunk[:100] + b"...", self._max_line_size)
-                        i = chunk.find(CHUNK_EXT, 0, pos)
+                        if pos - start > self._max_line_size:
+                            raise LineTooLong(
+                                chunk[start : start + 100] + b"...", self._max_line_size
+                            )
+                        i = chunk.find(CHUNK_EXT, start, pos)
                         if i >= 0:
-                            size_b = chunk[:i]  # strip chunk-extensions
+                            size_b = chunk[start:i]  # strip chunk-extensions
                             # Verify no LF in the chunk-extension
                             if b"\n" in (ext := chunk[i:pos]):
                                 exc = TransferEncodingError(
@@ -1086,49 +1096,52 @@ class HttpPayloadParser:
                                 set_exception(self.payload, exc)
                                 raise exc
                         else:
-                            size_b = chunk[:pos]
+                            size_b = chunk[start:pos]
 
                         if self._lax:  # Allow whitespace in lax mode.
                             size_b = size_b.strip()
 
                         if not re.fullmatch(HEXDIGITS, size_b):
                             exc = TransferEncodingError(
-                                chunk[:pos].decode("ascii", "surrogateescape")
+                                chunk[start:pos].decode("ascii", "surrogateescape")
                             )
                             set_exception(self.payload, exc)
                             raise exc
                         size = int(bytes(size_b), 16)
 
-                        chunk = chunk[pos + len(SEP) :]
+                        start = pos + len(SEP)
                         if size == 0:  # eof marker
                             self._chunk = ChunkState.PARSE_TRAILERS
-                            if self._lax and chunk.startswith(b"\r"):
-                                chunk = chunk[1:]
+                            if self._lax and chunk.startswith(b"\r", start):
+                                start += 1
                         else:
                             self._chunk = ChunkState.PARSE_CHUNKED_CHUNK
                             self._chunk_size = size
                             self.payload.begin_http_chunk_receiving()
                     else:
-                        if b"\n" in chunk:
+                        if chunk.find(b"\n", start) >= 0:
                             exc = TransferEncodingError(
                                 "Bad chunk-size line ending, expected CRLF"
                             )
                             set_exception(self.payload, exc)
                             raise exc
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 # read chunk and feed buffer
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK:
                     if self._paused:
                         self._paused = False
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_HAS_PENDING_INPUT, b""
 
                     required = self._chunk_size
-                    self._chunk_size = max(required - len(chunk), 0)
-                    self._more_data_available = self.payload.feed_data(chunk[:required])
-                    chunk = chunk[required:]
+                    stop = min(start + required, end)
+                    self._chunk_size = required - (stop - start)
+                    self._more_data_available = self.payload.feed_data(
+                        chunk[start:stop]
+                    )
+                    start = stop
 
                     if self._more_data_available:
                         continue
@@ -1141,35 +1154,35 @@ class HttpPayloadParser:
 
                 # toss the CRLF at the end of the chunk
                 if self._chunk == ChunkState.PARSE_CHUNKED_CHUNK_EOF:
-                    if self._lax and chunk.startswith(b"\r"):
-                        chunk = chunk[1:]
-                    if chunk[: len(SEP)] == SEP:
-                        chunk = chunk[len(SEP) :]
+                    if self._lax and chunk.startswith(b"\r", start):
+                        start += 1
+                    if chunk.startswith(SEP, start):
+                        start += len(SEP)
                         self._chunk = ChunkState.PARSE_CHUNKED_SIZE
-                    elif len(chunk) >= len(SEP) or chunk != SEP[: len(chunk)]:
+                    elif end - start >= len(SEP) or chunk[start:] != SEP[: end - start]:
                         exc = TransferEncodingError(
                             "Chunk size mismatch: expected CRLF after chunk data"
                         )
                         set_exception(self.payload, exc)
                         raise exc
                     else:
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
                 if self._chunk == ChunkState.PARSE_TRAILERS:
-                    pos = chunk.find(SEP)
+                    pos = chunk.find(SEP, start)
                     if pos < 0:  # No line found
-                        if b"\n" in chunk:
+                        if chunk.find(b"\n", start) >= 0:
                             exc = TransferEncodingError(
                                 "Bad trailer line ending, expected CRLF"
                             )
                             set_exception(self.payload, exc)
                             raise exc
-                        self._chunk_tail = chunk
+                        self._chunk_tail = chunk[start:]
                         return PayloadState.PAYLOAD_NEEDS_INPUT, b""
 
-                    line = chunk[:pos]
-                    chunk = chunk[pos + len(SEP) :]
+                    line = chunk[start:pos]
+                    start = pos + len(SEP)
                     if SEP == b"\n":  # For lax response parsing
                         line = line.rstrip(b"\r")
 
@@ -1192,7 +1205,7 @@ class HttpPayloadParser:
                         finally:
                             self._trailer_lines.clear()
                         self.payload.feed_eof()
-                        return PayloadState.PAYLOAD_COMPLETE, chunk
+                        return PayloadState.PAYLOAD_COMPLETE, chunk[start:]
 
         # Read all bytes until eof
         elif self._type == ParseState.PARSE_UNTIL_EOF:
@@ -1215,10 +1228,12 @@ class HttpPayloadParser:
 class _DecompressStage:
     """One coding of a Content-Encoding chain and its decompressor."""
 
-    __slots__ = ("coding", "decompressor", "_started_decoding")
+    __slots__ = ("coding", "decompressor", "_chained", "_unpaid", "_started_decoding")
 
-    def __init__(self, coding: str) -> None:
+    def __init__(self, coding: str, chained: bool) -> None:
         self.coding = coding
+        self._chained = chained
+        self._unpaid = 0
         self._started_decoding = False
 
         self.decompressor: BrotliDecompressor | ZLibDecompressor | ZSTDDecompressor
@@ -1254,7 +1269,14 @@ class _DecompressStage:
                     encoding=self.coding, suppress_deflate_header=True
                 )
             self._started_decoding = True
-        return self.decompressor.decompress_sync(chunk, max_length=max_length)
+        out = self.decompressor.decompress_sync(chunk, max_length=max_length)
+
+        # Ensure that chained encodings are still bound.
+        if self._chained:
+            self._unpaid = max(0, self._unpaid + len(chunk) - 2 * len(out))
+            if self._unpaid > MAX_UNPAID_CODING_INPUT:
+                raise ValueError(f"{self.coding} is not producing output for its input")
+        return out
 
 
 class DeflateBuffer:
@@ -1272,7 +1294,10 @@ class DeflateBuffer:
         self.encoding = encoding
         # https://www.rfc-editor.org/info/rfc9110/#section-8.4-5
         codings = [c.strip(" \t").lower() for c in encoding.split(",")]
-        self._stages = [_DecompressStage(coding) for coding in reversed(codings)]
+        self._stages = [
+            _DecompressStage(coding, chained=i > 0)
+            for i, coding in enumerate(reversed(codings))
+        ]
         self._max_decompress_size = max_decompress_size
 
     def set_exception(
@@ -1302,9 +1327,12 @@ class DeflateBuffer:
         max_length = (
             0 if low_water >= sys.maxsize else max(self._max_decompress_size, low_water)
         )
+        delivery = min(max_length or MAX_UNPAID_CODING_INPUT, MAX_UNPAID_CODING_INPUT)
+        last = len(stages) - 1
         try:
             for i in range(start, len(stages)):
-                chunk = stages[i].decompress(chunk, max_length)
+                limit = max_length if i == last else delivery
+                chunk = stages[i].decompress(chunk, limit)
         except Exception:
             raise ContentEncodingError(
                 "Can not decode content-encoding: %s" % self.encoding

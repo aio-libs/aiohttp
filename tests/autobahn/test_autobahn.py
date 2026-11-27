@@ -21,6 +21,9 @@ else:
 # (Test number, test status, test report)
 Result = tuple[str, str, dict[str, object] | None]
 
+# https://github.com/crossbario/autobahn-testsuite/blob/master/docs/index.rst#memory-usage
+WSTEST_ENV = {"PYPY_GC_NURSERY": "4MB"}
+
 
 def wait_for_port(port: int, timeout: float = 15.0) -> None:
     deadline = time.monotonic() + timeout
@@ -90,6 +93,7 @@ def test_client(report_dir: Path, request: pytest.FixtureRequest) -> None:
         image="autobahn-testsuite",
         name="autobahn",
         remove=True,
+        envs=WSTEST_ENV,
         volumes=[
             (request.path.parent / "client", "/config"),
             (report_dir, "/reports"),
@@ -174,6 +178,7 @@ def test_server(report_dir: Path, request: pytest.FixtureRequest) -> None:
             image="autobahn-testsuite",
             name="autobahn",
             remove=True,
+            envs=WSTEST_ENV,
             volumes=[
                 (request.path.parent / "server", "/config"),
                 (report_dir, "/reports"),
