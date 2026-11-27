@@ -253,6 +253,26 @@ async def test_empty_data() -> None:
     # do nothing
 
 
+async def test_buffered_response_read_does_not_resume_parser() -> None:
+    received_inputs: list[bytes] = []
+
+    class RecordingResponseHandler(ResponseHandler):
+        def data_received(self, data: bytes) -> None:
+            received_inputs.append(data)
+            super().data_received(data)
+
+    proto = RecordingResponseHandler(loop=asyncio.get_running_loop())
+    transport = mock.Mock()
+    proto.connection_made(transport)
+    proto.set_response_params()
+    proto.data_received(b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabcdef")
+    _, payload = await proto.read()
+    assert await payload.read(3) == b"abc"
+
+    assert received_inputs == [b"HTTP/1.1 200 OK\r\nContent-Length: 6\r\n\r\nabcdef"]
+    transport.resume_reading.assert_not_called()
+
+
 async def test_schedule_timeout() -> None:
     proto = ResponseHandler(loop=asyncio.get_running_loop())
     proto.set_response_params(read_timeout=1)
