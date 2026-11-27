@@ -1,3 +1,2 @@
 Fixed a compressed body being corrupted when a write was cancelled during
-compression (e.g. by a timeout in a web handler) and the caller carried on
-writing; the connection is now closed instead -- by :user:`Dreamsorcerer`.
+compression and the caller continued writing -- by :user:`Dreamsorcerer`.

@@ -217,12 +217,6 @@ async def test_compressed_write_cancelled_in_handler(
     aiohttp_client: AiohttpClient,
     slow_executor: ThreadPoolExecutor,
 ) -> None:
-    """Test a handler that survives the cancellation of a compressed write.
-
-    The executor can't un-run compress(), so the output of the cancelled chunk
-    is missing from the stream. The response must not be completed regardless,
-    or the peer gets a corrupt body on a connection that is then reused.
-    """
     transports: list[asyncio.Transport | None] = []
 
     async def handler(request: web.Request) -> web.StreamResponse:

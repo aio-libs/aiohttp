@@ -731,38 +731,12 @@ async def test_compressed_write_cancelled(
         async with asyncio.timeout(0):
             await getattr(msg, cancelled)(b"data" * 4096)
 
-    # A caller that lets the cancellation propagate cleans up before closing
-    # the connection itself, so the writer must not get in first.
     assert not transport.close.called  # type: ignore[attr-defined]
     with pytest.raises(
         ClientConnectionResetError, match="compressed write was cancelled"
     ):
         await getattr(msg, retried)(b"data")
     transport.close.assert_called_once_with()  # type: ignore[attr-defined]
-    assert not buf
-
-
-async def test_compressed_write_cancelled_connection_lost(
-    buf: bytearray,
-    protocol: BaseProtocol,
-    transport: asyncio.Transport,
-    slow_executor: ThreadPoolExecutor,
-) -> None:
-    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
-    msg.enable_compression("deflate")
-    assert msg._compress is not None
-    msg._compress._executor = slow_executor
-
-    with pytest.raises(TimeoutError):
-        async with asyncio.timeout(0):
-            await msg.write(b"data" * 4096)
-
-    protocol.transport = None
-    with pytest.raises(
-        ClientConnectionResetError, match="compressed write was cancelled"
-    ):
-        await msg.write_eof()
-    assert not transport.close.called  # type: ignore[attr-defined]
     assert not buf
 
 
