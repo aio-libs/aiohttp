@@ -3,6 +3,7 @@ import array
 import asyncio
 import zlib
 from collections.abc import Callable, Generator, Iterable
+from concurrent.futures import ThreadPoolExecutor
 from unittest import mock
 
 import pytest
@@ -760,6 +761,60 @@ async def test_write_payload_deflate_compression_chunked_connection_lost_all_zli
         mock.patch.object(transport, "is_closing", return_value=True),
     ):
         await msg.write_eof(b"end")
+
+
+@pytest.mark.parametrize("cancelled", ("write", "write_eof"))
+@pytest.mark.parametrize("retried", ("write", "write_eof"))
+async def test_compressed_write_cancelled(
+    cancelled: str,
+    retried: str,
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    slow_executor: ThreadPoolExecutor,
+) -> None:
+    """Cancelling compress() loses its output, so the message must not continue."""
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    assert msg._compress is not None
+    msg._compress._executor = slow_executor
+
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0):
+            await getattr(msg, cancelled)(b"data" * 4096)
+
+    assert not transport.close.called  # type: ignore[attr-defined]
+    with pytest.raises(
+        ClientConnectionResetError, match="compressed write was cancelled"
+    ):
+        await getattr(msg, retried)(b"data")
+    transport.close.assert_called_once_with()  # type: ignore[attr-defined]
+    assert not buf
+
+
+async def test_compressed_write_cancelled_connection_lost(
+    buf: bytearray,
+    protocol: BaseProtocol,
+    transport: asyncio.Transport,
+    slow_executor: ThreadPoolExecutor,
+) -> None:
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.enable_compression("deflate")
+    assert msg._compress is not None
+    msg._compress._executor = slow_executor
+
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0):
+            await msg.write(b"data" * 4096)
+
+    protocol.transport = None
+    with pytest.raises(
+        ClientConnectionResetError, match="compressed write was cancelled"
+    ):
+        await msg.write_eof()
+    assert not transport.close.called  # type: ignore[attr-defined]
+    assert not buf
 
 
 async def test_write_payload_bytes_memoryview(
