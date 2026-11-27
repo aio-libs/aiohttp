@@ -81,7 +81,6 @@ if TYPE_CHECKING:
     from .tracing import Trace
 
 
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _CONTAINS_CONTROL_CHAR_RE = re.compile(r"[^-!#$%&'*+.^_`|~0-9a-zA-Z]")
 _DIGITS_RE = re.compile(r"\d+", re.ASCII)
 _LINK_PARAM_RE = re.compile(r"^([^\s=]+)\s*=\s*(?:(['\"])(.*?)\2|(\S*))$", re.M)
@@ -215,7 +214,6 @@ else:  # pragma: no cover
     SSL_ALLOWED_TYPES = (bool,)  # type: ignore[unreachable]
 
 
-_CONNECTION_CLOSED_EXCEPTION = ClientConnectionError("Connection closed")
 _SSL_SCHEMES = frozenset(("https", "wss"))
 
 
@@ -849,7 +847,9 @@ class ClientResponse(HeadersMixin):
         # content can be None here, but the types are cheated elsewhere.
         if content:  # type: ignore[truthy-bool]
             if content.exception() is None:
-                set_exception(content, _CONNECTION_CLOSED_EXCEPTION)
+                # A new instance each time: a shared one would accumulate
+                # the traceback of every raise, keeping its frames alive.
+                set_exception(content, ClientConnectionError("Connection closed"))
             # The bound method installed in start() captures self, creating a
             # response→payload→method→self cycle. Clear it eagerly so the
             # response is reclaimable without waiting for cycle GC.

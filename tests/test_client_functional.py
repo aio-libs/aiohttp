@@ -4667,6 +4667,32 @@ async def test_read_after_raise_outside_context(aiohttp_client: AiohttpClient) -
         await resp.read()
 
 
+async def test_read_after_release_raises_new_exception(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    """A shared exception would accumulate tracebacks and keep their frames alive."""
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(body=b"data")
+
+    app = web.Application()
+    app.add_routes([web.get("/", handler)])
+
+    client = await aiohttp_client(app)
+
+    errors = []
+    for _ in range(2):
+        resp = await client.get("/")
+        resp.release()
+        with pytest.raises(
+            aiohttp.ClientConnectionError, match=r"^Connection closed$"
+        ) as exc_info:
+            await resp.read()
+        errors.append(exc_info.value)
+
+    assert errors[0] is not errors[1]
+
+
 async def test_read_from_closed_content(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         return web.Response(body=b"data")

@@ -110,9 +110,6 @@ class PayloadAccessError(Exception):
     """Payload was accessed after response was sent."""
 
 
-_PAYLOAD_ACCESS_ERROR = PayloadAccessError()
-
-
 class AccessLoggerWrapper(AbstractAsyncAccessLogger):
     """Wrap an AbstractAccessLogger so it behaves like an AbstractAsyncAccessLogger."""
 
@@ -843,7 +840,9 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                         self.log_debug("Uncompleted request.")
                         self.close()
 
-                payload.set_exception(_PAYLOAD_ACCESS_ERROR)
+                # A new instance each time: a shared one would accumulate
+                # the traceback of every raise, keeping its frames alive.
+                payload.set_exception(PayloadAccessError())
 
                 # Draining the body above can have been what finally settled a
                 # deferred upgrade, seating a tail that finish_response() was
