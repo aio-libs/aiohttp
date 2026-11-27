@@ -1,0 +1,2 @@
+Fixed asynchronous DNS resolution using platform-specific socket flags instead of c-ares flags
+-- by :user:`JackyHsu-X`.
