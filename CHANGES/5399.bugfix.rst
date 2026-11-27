@@ -1,0 +1,2 @@
+Fixed the password of a URL being rendered in plain text in the messages of
+``ClientResponseError``, ``InvalidURL`` and ``NonHttpUrlClientError``.
