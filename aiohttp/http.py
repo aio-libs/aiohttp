@@ -22,6 +22,7 @@ from .http_websocket import (
     WSMessageDecodeText,
     WSMessageNoDecodeText,
     WSMsgType,
+    validate_close_frame,
     ws_ext_gen,
     ws_ext_parse,
 )
@@ -48,6 +49,7 @@ __all__ = (
     "WS_KEY",
     "WebSocketReader",
     "WebSocketWriter",
+    "validate_close_frame",
     "ws_ext_gen",
     "ws_ext_parse",
     "WSMessage",
