@@ -1,0 +1,1 @@
+Update the contributor guide to describe automatic backports with Patchback. -- by :user:`LearnerX16`.
