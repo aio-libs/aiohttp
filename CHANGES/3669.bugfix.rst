@@ -1,0 +1,4 @@
+Fixed :py:func:`~aiohttp.web.normalize_path_middleware` with ``remove_slash`` and
+``merge_slashes`` enabled redirecting a path without a trailing slash to the
+same path with its last character cut off, e.g. ``/paymethods`` to ``/paymethod``
+-- by :user:`bigbag`.
