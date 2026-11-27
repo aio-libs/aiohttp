@@ -750,6 +750,13 @@ class RequestHandler(BaseProtocol, Generic[_Request]):
                 finally:
                     self._waiter = None
 
+            # connection_lost() can run in the same loop iteration that resolved
+            # the waiter: it sets _force_close and clears _request_factory, but
+            # the loop-top check already passed, so re-check before dispatching
+            # the queued message to the now-None factory (#14000).
+            if self._force_close:
+                break
+
             message, payload = self._messages.popleft()
 
             # Free a parser slot; resume reading once drained to low water so

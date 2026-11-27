@@ -1,0 +1,4 @@
+Fixed ``RequestHandler.start()`` calling the request factory after
+``connection_lost()`` had cleared it, leaving a ``TypeError`` on the
+connection task when a queued request and a peer disconnect landed in
+the same event loop iteration -- by :user:`Lushiyao5`.

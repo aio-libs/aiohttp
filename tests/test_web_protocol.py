@@ -3,6 +3,7 @@ from unittest import mock
 
 import pytest
 
+from aiohttp import web
 from aiohttp.http import WebSocketReader
 from aiohttp.web_protocol import RequestHandler
 from aiohttp.web_request import BaseRequest
@@ -224,3 +225,31 @@ def test_resume_reading_if_drained_ignores_unsupported_transport(
     handler._resume_reading_if_drained()
 
     assert handler._buffer_paused is False
+
+
+async def test_start_exits_quietly_after_connection_lost_clears_factory(
+    event_loop: asyncio.AbstractEventLoop,
+) -> None:
+    """A queued request plus connection_lost() in the same loop iteration must
+    not wake start() into calling the cleared request factory (#14000)."""
+
+    async def handler(request: BaseRequest) -> web.StreamResponse:
+        return web.Response(text="ok")
+
+    proto = Server(handler)()
+    transport = mock.Mock()
+    transport.is_closing.return_value = False
+    transport.get_extra_info.return_value = None
+    proto.connection_made(transport)
+    task = proto._task_handler
+    assert task is not None
+    await asyncio.sleep(0)  # start() parks on the request waiter
+
+    # Same event-loop iteration: a request arrives, then the peer disconnects.
+    proto.data_received(b"GET / HTTP/1.1\r\nHost: x\r\n\r\n")
+    proto.connection_lost(None)
+
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert task.done()
+    assert task.exception() is None
