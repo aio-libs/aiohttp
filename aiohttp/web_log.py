@@ -107,7 +107,9 @@ class AccessLogger(AbstractAccessLogger):
         # can repeat the same key more than once
         methods = list()
 
-        for atom in self.FORMAT_RE.findall(log_format):
+        # "%%" is a literal percent sign, so atoms are only looked up between them.
+        parts = log_format.split("%%")
+        for atom in [a for part in parts for a in self.FORMAT_RE.findall(part)]:
             if atom[1] == "":
                 format_key1 = self.LOG_FORMAT_MAP[atom[0]]
                 m = getattr(AccessLogger, "_format_%s" % atom[0])
@@ -119,9 +121,11 @@ class AccessLogger(AbstractAccessLogger):
 
             methods.append(key_method)
 
-        log_format = self.FORMAT_RE.sub(r"%s", log_format)
-        log_format = self.CLEANUP_RE.sub(r"%\1", log_format)
-        return log_format, methods
+        parts = [
+            self.CLEANUP_RE.sub(r"%\1", self.FORMAT_RE.sub(r"%s", part))
+            for part in parts
+        ]
+        return "%%".join(parts), methods
 
     @staticmethod
     def _format_i(
