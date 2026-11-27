@@ -3,6 +3,7 @@
 import asyncio
 import base64
 import dataclasses
+import functools
 import hashlib
 import json
 import os
@@ -32,7 +33,7 @@ from typing import (
     overload,
 )
 
-from multidict import CIMultiDict, MultiDict, MultiDictProxy, istr
+from multidict import CIMultiDict, CIMultiDictProxy, MultiDict, MultiDictProxy, istr
 from yarl import URL, Query
 
 from . import hdrs, http, payload
@@ -52,6 +53,7 @@ from .client_exceptions import (
     ClientProxyConnectionError,
     ClientResponseError,
     ClientSSLError,
+    ClientTimeoutError,
     ConnectionTimeoutError,
     ContentTypeError,
     InvalidURL,
@@ -80,6 +82,7 @@ from .client_reqrep import (
     RequestInfo,
     ResponseParams,
     UploadTracker,
+    _set_exception_context,
 )
 from .client_ws import (
     DEFAULT_WS_CLIENT_TIMEOUT,
@@ -93,6 +96,7 @@ from .helpers import (
     DEFAULT_CHUNK_SIZE,
     EMPTY_BODY_METHODS,
     HTTP_AND_EMPTY_SCHEMA_SET,
+    BaseTimerContext,
     TimeoutHandle,
     _auth_header_from_netrc,
     get_env_proxy_for_url,
@@ -102,6 +106,7 @@ from .helpers import (
 )
 from .http import WS_KEY, HttpVersion, WebSocketReader, WebSocketWriter
 from .http_websocket import WSHandshakeError, ws_ext_gen, ws_ext_parse
+from .streams import EMPTY_PAYLOAD
 from .tracing import Trace, TraceConfig
 from .typedefs import (
     JSONBytesEncoder,
@@ -120,6 +125,7 @@ __all__ = (
     "ClientConnectorError",
     "ClientConnectorSSLError",
     "ClientError",
+    "ClientTimeoutError",
     "ClientHttpProxyError",
     "ClientOSError",
     "ClientPayloadError",
@@ -277,6 +283,15 @@ class _SessionOptions(TypedDict, total=False):
     ssl_shutdown_timeout: _SENTINEL | None | float
 
 
+def _request_info_from_request(req: ClientRequest) -> RequestInfo:
+    return RequestInfo(
+        req.url,
+        req.method,
+        CIMultiDictProxy(req.headers),
+        req.original_url,
+    )
+
+
 # Module-level (not a closure) so it has a stable identity for the
 # ``_cached_build_client_middlewares`` cache key.
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
@@ -287,7 +302,13 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     try:
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
     except TimeoutError as exc:
-        raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+        error = ConnectionTimeoutError(f"Connection timeout to host {req.url}")
+        error.request_info = _request_info_from_request(req)
+        raise error from exc
+    except ClientError as exc:
+        if exc.request_info is None:
+            exc.request_info = _request_info_from_request(req)
+        raise
 
     assert conn.protocol is not None
     conn.protocol.set_response_params(**req._response_params)
@@ -298,6 +319,11 @@ async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
         except BaseException:
             resp.close()
             raise
+    except ClientError as exc:
+        conn.close()
+        if exc.request_info is None:
+            exc.request_info = _request_info_from_request(req)
+        raise
     except BaseException:
         conn.close()
         raise
@@ -560,7 +586,11 @@ class ClientSession:
         # Only traces that saw send_request_start; they must also see a terminal event.
         traces: list[Trace] = []
         req: ClientRequest | None = None
+        active_req: ClientRequest | None = None
         resp: ClientResponse | None = None
+        request_url_for_info: URL | None = None
+        history: list[ClientResponse] = []
+        timer: BaseTimerContext | None = None
         try:
             if self.closed:
                 raise RuntimeError("Session is closed")
@@ -588,7 +618,6 @@ class ClientSession:
                     data = payload.JsonPayload(json, dumps=self._json_serialize)
 
             redirects = 0
-            history: list[ClientResponse] = []
             version = self._version
             params = params or {}
 
@@ -597,6 +626,7 @@ class ClientSession:
 
             try:
                 url = self._build_url(str_or_url)
+                request_url_for_info = url
             except ValueError as e:
                 raise InvalidUrlClientError(str_or_url) from e
 
@@ -665,14 +695,21 @@ class ClientSession:
                 )
                 traces.append(trace)
 
-            timer = tm.timer()
+            def total_timeout_error() -> ClientTimeoutError:
+                error = ClientTimeoutError()
+                error.history = tuple(history)
+                return error
+
+            timer = tm.timer(total_timeout_error)
             with timer:
                 # https://www.rfc-editor.org/rfc/rfc9112.html#name-retrying-requests
                 retry_persistent_connection = (
                     self._retry_connection and method in IDEMPOTENT_METHODS
                 )
                 while True:
+                    active_req = None
                     url, auth_from_url = strip_auth_from_url(url)
+                    request_url_for_info = url
                     if not url.raw_host:
                         # NOTE: Bail early, otherwise, causes `InvalidURL` through
                         # NOTE: `self._request_class()` below.
@@ -773,6 +810,7 @@ class ClientSession:
                         traces=traces,
                         trust_env=self.trust_env,
                     )
+                    active_req = req
                     req._upload_tracker = upload_tracker
 
                     # Apply middleware (if any) - per-request middleware overrides session middleware
@@ -930,6 +968,16 @@ class ClientSession:
 
             if req._body is not None:
                 await req._body.close()
+            resp._history = tuple(history)
+            content: Any = resp.content
+            if content is not None and content is not EMPTY_PAYLOAD:
+                content._set_exception_handler(
+                    functools.partial(
+                        _set_exception_context,
+                        request_info=resp.request_info,
+                        history=resp.history,
+                    )
+                )
             # check response status
             if raise_for_status is None:
                 raise_for_status = self._raise_for_status
@@ -946,8 +994,6 @@ class ClientSession:
                 else:
                     handle.cancel()
 
-            resp._history = tuple(history)
-
             for trace in traces:
                 await trace.send_request_end(
                     method, url.update_query(params), headers, resp
@@ -957,6 +1003,25 @@ class ClientSession:
             return resp
 
         except BaseException as e:
+            if isinstance(e, ClientError):
+                if e.request_info is None:
+                    if active_req is not None:
+                        e.request_info = _request_info_from_request(active_req)
+                    elif request_url_for_info is not None:
+                        try:
+                            request_url = request_url_for_info.extend_query(params)
+                        except (TypeError, ValueError):
+                            request_url = request_url_for_info
+                        request_headers = CIMultiDictProxy(CIMultiDict(headers or {}))
+                        e.request_info = RequestInfo(
+                            request_url.with_fragment(None),
+                            method,
+                            request_headers,
+                            request_url,
+                        )
+                if not e.history and history:
+                    e.history = tuple(history)
+
             # cleanup timer
             if tm is not None:
                 tm.close()
@@ -973,11 +1038,11 @@ class ClientSession:
             if req is not None and req._body is not None:
                 await req._body.close()
 
-            for trace in traces:
-                # url and headers are bound whenever traces is non-empty.
-                await trace.send_request_exception(
-                    method, url.update_query(params), headers, e  # type: ignore[possibly-undefined, arg-type]
-                )
+            if traces:
+                for trace in traces:
+                    await trace.send_request_exception(
+                        method, url.update_query(params), headers, e  # type: ignore[possibly-undefined, arg-type]
+                    )
             raise
 
     if TYPE_CHECKING:
