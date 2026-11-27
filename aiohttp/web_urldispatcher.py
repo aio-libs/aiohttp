@@ -726,6 +726,13 @@ class PrefixedSubAppResource(PrefixResource):
     def _add_prefix_to_resources(self, prefix: str) -> None:
         router = self._app.router
         for resource in router.resources():
+            if isinstance(resource, MatchedSubAppResource):
+                # A rule-matched resource is not indexed by path: its
+                # canonical path is a match rule, not a URL path, so there
+                # is nothing to unindex or reindex. The prefix still needs
+                # to propagate to the resources of the nested application.
+                resource.add_prefix(prefix)
+                continue
             # Since the canonical path of a resource is about
             # to change, we need to unindex it and then reindex
             router.unindex_resource(resource)

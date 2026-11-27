@@ -374,6 +374,7 @@ Serhiy Storchaka
 Shensheng Shen
 Shubh Agarwal
 Simon Kennedy
+simpleqt
 Sin-Woo Bang
 Soheil Dolatabadi
 Stanislas Plum
