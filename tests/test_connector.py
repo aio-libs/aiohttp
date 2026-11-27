@@ -140,6 +140,7 @@ def create_mocked_conn(
     proto: mock.Mock = mock.create_autospec(
         ResponseHandler, instance=True, should_close=should_close, closed=f
     )
+    proto.transport.get_extra_info.return_value = None
     f.set_result(conn_closing_result)
     return proto
 
@@ -551,13 +552,96 @@ async def test_release_ssl_transport(ssl_key: ConnectionKey) -> None:
     conn = aiohttp.BaseConnector(enable_cleanup_closed=True)
     with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
         proto = create_mocked_conn(asyncio.get_running_loop())
+        proto.should_abort = False
         transport = proto.transport
         conn._acquired.add(proto)
         conn._acquired_per_host[ssl_key].add(proto)
 
         conn._release(ssl_key, proto, should_close=True)
         assert conn._cleanup_closed_transports == [transport]
+        proto.close.assert_called_once()
+        proto.abort.assert_not_called()
         await conn.close()
+
+
+@pytest.mark.usefixtures("enable_cleanup_closed")
+async def test_release_ssl_transport_aborts_incomplete_response(
+    ssl_key: ConnectionKey,
+) -> None:
+    conn = aiohttp.TCPConnector(enable_cleanup_closed=True)
+    with mock.patch.object(conn, "_release_waiter", autospec=True, spec_set=True):
+        proto = create_mocked_conn(asyncio.get_running_loop())
+        proto.should_abort = True
+        transport = proto.transport
+        transport.get_extra_info.return_value = mock.sentinel.sslcontext
+        conn._acquired.add(proto)
+        conn._acquired_per_host[ssl_key].add(proto)
+
+        conn._release(ssl_key, proto, should_close=True)
+        assert conn._cleanup_closed_transports == [transport]
+        proto.abort.assert_called_once()
+        proto.close.assert_not_called()
+        await conn.close()
+
+
+@pytest.mark.parametrize("is_ssl", (False, True))
+@pytest.mark.parametrize("transport_is_ssl", (False, True))
+@pytest.mark.parametrize(
+    "response",
+    (
+        b"",
+        b"HTTP/1.1 200 OK\r\nContent-Length: 2\r\n\r\no",
+        b"HTTP/1.1 100 Continue\r\n\r\n",
+    ),
+)
+async def test_release_incomplete_response(
+    is_ssl: bool, transport_is_ssl: bool, response: bytes
+) -> None:
+    loop = asyncio.get_running_loop()
+    key = ConnectionKey("localhost", 443, is_ssl, True, None, None)
+    protocol = ResponseHandler(loop)
+    transport = mock.Mock()
+    transport.get_extra_info.side_effect = {
+        "sslcontext": mock.sentinel.sslcontext if transport_is_ssl else None
+    }.get
+    protocol.connection_made(transport)
+    protocol.set_response_params()
+    if response:
+        protocol.data_received(response)
+
+    async with aiohttp.TCPConnector(limit_per_host=1) as conn:
+        conn._acquired.add(protocol)
+        conn._acquired_per_host[key].add(protocol)
+        conn._release(key, protocol, should_close=True)
+
+        assert not conn._conns
+        assert not conn._acquired
+        assert not conn._acquired_per_host
+        if transport_is_ssl:
+            transport.abort.assert_called_once_with()
+            transport.close.assert_not_called()
+        else:
+            transport.close.assert_called_once_with()
+            transport.abort.assert_not_called()
+
+
+@pytest.mark.parametrize("shutdown_timeout", (None, 0.1))
+async def test_release_incomplete_response_preserves_graceful_shutdown(
+    ssl_key: ConnectionKey, shutdown_timeout: float | None
+) -> None:
+    with pytest.warns(
+        DeprecationWarning, match="ssl_shutdown_timeout parameter is deprecated"
+    ):
+        conn = aiohttp.TCPConnector(ssl_shutdown_timeout=shutdown_timeout)
+    async with conn:
+        proto = create_mocked_conn()
+        proto.should_abort = True
+        proto.transport.get_extra_info.return_value = mock.sentinel.sslcontext
+        conn._acquired.add(proto)
+        conn._release(ssl_key, proto, should_close=True)
+
+        proto.close.assert_called_once_with()
+        proto.abort.assert_not_called()
 
 
 async def test_release_already_closed(key: ConnectionKey) -> None:

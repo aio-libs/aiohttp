@@ -258,7 +258,9 @@ The client session supports the context manager protocol for self closing.
       By default (``0``), SSL connections are aborted immediately when the
       connector is closed, without performing the shutdown handshake. During
       normal operation, SSL connections use Python's default SSL shutdown
-      behavior. Setting this to a positive value (e.g., ``0.1``) will perform
+      behavior. With the default timeout, TLS connections discarded before the
+      response is complete are also aborted immediately. Setting this to a
+      positive value (e.g., ``0.1``) will perform
       a graceful shutdown when closing the connector, notifying the remote
       peer which can help prevent "connection reset" errors at the cost of
       additional cleanup time. This timeout is passed to the underlying
@@ -1364,7 +1366,9 @@ is controlled by *force_close* constructor's parameter).
       By default (``0``), SSL connections are aborted immediately when the
       connector is closed, without performing the shutdown handshake. During
       normal operation, SSL connections use Python's default SSL shutdown
-      behavior. Setting this to a positive value (e.g., ``0.1``) will perform
+      behavior. With the default timeout, TLS connections discarded before the
+      response is complete are also aborted immediately. Setting this to a
+      positive value (e.g., ``0.1``) will perform
       a graceful shutdown when closing the connector, notifying the remote
       server which can help prevent "connection reset" errors at the cost of
       additional cleanup time.
