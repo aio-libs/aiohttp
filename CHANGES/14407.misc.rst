@@ -1,0 +1,2 @@
+Improved performance of :class:`~aiohttp.web.FileResponse` over TLS when the transport has no native sendfile support, by using the chunked fallback of ``aiohttp`` instead of the much slower one of :meth:`loop.sendfile() <asyncio.loop.sendfile>`
+-- by :user:`agners`.
