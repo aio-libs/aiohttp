@@ -1,0 +1,1 @@
+Fixed zero-length ``readexactly()`` calls raising ``IncompleteReadError`` on empty response bodies -- by :user:`Ricardo-M-L`.
