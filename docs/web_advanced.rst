@@ -1069,14 +1069,16 @@ The simple startup code for serving HTTP site on ``'localhost'``, port
     site = web.TCPSite(runner, 'localhost', 8080)
     await site.start()
 
-    while True:
-        await asyncio.sleep(3600)  # sleep forever
-
-To stop serving call :meth:`AppRunner.cleanup`::
-
-    await runner.cleanup()
+    try:
+        await runner.serve_forever()
+    finally:
+        await runner.cleanup()
 
 .. versionadded:: 3.0
+   The :class:`AppRunner`-based startup.
+
+.. versionchanged:: 4.0
+   The example waits in :meth:`BaseRunner.serve_forever`, which is new in 4.0.
 
 .. _aiohttp-web-graceful-shutdown:
 

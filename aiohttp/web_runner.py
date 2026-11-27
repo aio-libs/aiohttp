@@ -309,7 +309,15 @@ class _ServerRunnerKwargs(_ServerKwargs, total=False):
 
 
 class BaseRunner(ABC, Generic[_Request]):
-    __slots__ = ("_handle_signals", "_kwargs", "_server", "_sites", "_shutdown_timeout")
+    __slots__ = (
+        "_handle_signals",
+        "_kwargs",
+        "_server",
+        "_sites",
+        "_shutdown_timeout",
+        "_serve_forever_fut",
+        "_cleanup_done",
+    )
 
     def __init__(
         self,
@@ -323,6 +331,8 @@ class BaseRunner(ABC, Generic[_Request]):
         self._server: Server[_Request] | None = None
         self._sites: list[BaseSite] = []
         self._shutdown_timeout = shutdown_timeout
+        self._serve_forever_fut: asyncio.Future[None] | None = None
+        self._cleanup_done = False
 
     @property
     def server(self) -> Server[_Request] | None:
@@ -355,38 +365,66 @@ class BaseRunner(ABC, Generic[_Request]):
                 # add_signal_handler is not implemented on Windows
                 pass
 
+        self._cleanup_done = False
         self._server = await self._make_server()
+
+    async def serve_forever(self) -> None:
+        if self._serve_forever_fut is not None:
+            raise RuntimeError("Concurrent calls to serve_forever() are not allowed")
+        if self._server is None:
+            raise RuntimeError("Call setup() first")
+
+        loop = asyncio.get_running_loop()
+        self._serve_forever_fut = loop.create_future()
+        try:
+            await self._serve_forever_fut
+        finally:
+            self._serve_forever_fut = None
 
     @abstractmethod
     async def shutdown(self) -> None:
         """Call any shutdown hooks to help server close gracefully."""
 
     async def cleanup(self) -> None:
-        # The loop over sites is intentional, an exception on gather()
-        # leaves self._sites in unpredictable state.
-        # The loop guarantees that a site is either deleted on success or
-        # still present on failure
-        for site in list(self._sites):
-            await site.stop()
+        try:
+            # The loop over sites is intentional, an exception on gather()
+            # leaves self._sites in unpredictable state.
+            # The loop guarantees that a site is either deleted on success or
+            # still present on failure
+            for site in list(self._sites):
+                await site.stop()
 
-        if self._server:  # If setup succeeded
-            # Yield to event loop to ensure incoming requests prior to stopping the sites
-            # have all started to be handled before we proceed to close idle connections.
-            await asyncio.sleep(0)
-            self._server.pre_shutdown()
-            await self.shutdown()
-            await self._server.shutdown(self._shutdown_timeout)
-        await self._cleanup_server()
+            if self._server:  # If setup succeeded
+                # Yield to event loop to ensure incoming requests prior to stopping the sites
+                # have all started to be handled before we proceed to close idle connections.
+                await asyncio.sleep(0)
+                self._server.pre_shutdown()
+                await self.shutdown()
+                await self._server.shutdown(self._shutdown_timeout)
+            if not self._cleanup_done:
+                await self._cleanup_server()
+                self._cleanup_done = True
 
-        self._server = None
-        if self._handle_signals:
-            loop = asyncio.get_running_loop()
-            try:
-                loop.remove_signal_handler(signal.SIGINT)
-                loop.remove_signal_handler(signal.SIGTERM)
-            except NotImplementedError:
-                # remove_signal_handler is not implemented on Windows
-                pass
+            self._server = None
+            if self._handle_signals:
+                loop = asyncio.get_running_loop()
+                try:
+                    loop.remove_signal_handler(signal.SIGINT)
+                    loop.remove_signal_handler(signal.SIGTERM)
+                except NotImplementedError:
+                    # remove_signal_handler is not implemented on Windows
+                    pass
+        except Exception:
+            # Ensure cleanup failure marks server as cleared so repeated cleanup calls
+            # do not re-run shutdown hooks twice.
+            self._server = None
+            self._cleanup_done = True
+            raise
+        finally:
+            # Wake the pending serve_forever() waiter when cleanup finishes (successfully or with an error).
+            serve_forever_fut = self._serve_forever_fut
+            if serve_forever_fut is not None and not serve_forever_fut.done():
+                serve_forever_fut.set_result(None)
 
     @abstractmethod
     async def _make_server(self) -> Server[_Request]:

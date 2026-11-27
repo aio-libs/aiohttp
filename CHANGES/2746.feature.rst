@@ -1,0 +1,4 @@
+Added :meth:`BaseRunner.serve_forever() <aiohttp.web_runner.BaseRunner.serve_forever>`
+that waits until cancelled or until :meth:`BaseRunner.cleanup() <aiohttp.web_runner.BaseRunner.cleanup>`
+completes, mirroring :meth:`asyncio.Server.serve_forever`.
+-- by :user:`Mubashir78`.
