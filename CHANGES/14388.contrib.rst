@@ -1,0 +1,1 @@
+Expanded mypy CI coverage to all supported Python versions and the Gunicorn integration -- by :user:`PLPeeters`.

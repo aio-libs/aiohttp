@@ -363,9 +363,9 @@ class ZLibCompressor:
         compress() + flush() + send operations in a shield and lock to ensure atomicity.
         """
         # For large payloads, offload compression to executor to avoid blocking event loop
-        should_use_executor = (
-            self._max_sync_chunk_size is not None
-            and len(data) > self._max_sync_chunk_size
+        should_use_executor = self._max_sync_chunk_size is not None and (
+            len(data)  # type: ignore[arg-type,unused-ignore]
+            > self._max_sync_chunk_size
         )
         if should_use_executor:
             return await asyncio.get_running_loop().run_in_executor(
