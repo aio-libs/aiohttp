@@ -205,7 +205,9 @@ async def test_encode_digest_with_md5(
     ("url", "expected_uri"),
     [
         (
-            URL("http://example.com/axis-cgi/io/port.cgi?action=9:\\"),
+            # Written encoded: yarl keeps a literal backslash in a query as
+            # written since 1.26, as the WHATWG URL Standard does.
+            URL("http://example.com/axis-cgi/io/port.cgi?action=9:%5C"),
             "/axis-cgi/io/port.cgi?action=9:%5C",
         ),
         (
