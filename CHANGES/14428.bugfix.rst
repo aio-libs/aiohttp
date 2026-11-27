@@ -1,0 +1,1 @@
+Multipart BodyPartReader content decoding no longer silently accepts truncated gzip or deflate streams and no longer drops decompressed output past the size cap in decode(); truncated streams now raise ContentEncodingError -- by :user:`waw666waw666`.

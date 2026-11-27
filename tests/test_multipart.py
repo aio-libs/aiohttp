@@ -25,6 +25,7 @@ from aiohttp.hdrs import (
     CONTENT_TYPE,
 )
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, HeadersDictProxy, parse_mimetype
+from aiohttp.http_exceptions import ContentEncodingError
 from aiohttp.multipart import (
     _QP_BLOCK_SIZE,
     BodyPartReader,
@@ -380,6 +381,65 @@ class TestPartReader:
         with Stream(compressed + b"\r\n--:--") as stream:
             obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
             result = await obj.read(decode=True)
+        assert len(result) == len(content)  # Simplifies diff on failure
+        assert result == content
+
+    async def test_read_with_content_encoding_gzip_truncated_trailer(
+        self,
+    ) -> None:
+        # A gzip stream missing its trailer (CRC32 + size) still decodes
+        # the full payload with zlib; the loss must not pass silently.
+        compressed = gzip.compress(b"Time to Relax!")
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        with Stream(compressed[:-8] + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            with pytest.raises(ContentEncodingError):
+                await obj.read(decode=True)
+
+    async def test_read_with_content_encoding_gzip_truncated_mid_stream(
+        self,
+    ) -> None:
+        compressed = gzip.compress(b"Time to Relax! " * 100)
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        with Stream(compressed[: len(compressed) // 2] + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            with pytest.raises(ContentEncodingError):
+                await obj.read(decode=True)
+
+    async def test_read_with_content_encoding_deflate_truncated(self) -> None:
+        content = b"Time to Relax! " * 100
+        compressed = ZLibBackend.compress(content, wbits=-ZLibBackend.MAX_WBITS)
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "deflate"}))
+        with Stream(compressed[: len(compressed) // 2] + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            with pytest.raises(ContentEncodingError):
+                await obj.read(decode=True)
+
+    async def test_read_with_content_encoding_gzip_concatenated(self) -> None:
+        # Concatenated members are legal and must keep decoding in full.
+        content = b"Time to Relax!"
+        compressed = gzip.compress(content) + gzip.compress(content)
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        with Stream(compressed + b"\r\n--:--") as stream:
+            obj = aiohttp.BodyPartReader(BOUNDARY, h, stream)
+            result = await obj.read(decode=True)
+        assert result == content * 2
+
+    def test_decode_with_content_encoding_gzip_truncated(self) -> None:
+        compressed = gzip.compress(b"Time to Relax!")
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        obj = aiohttp.BodyPartReader(BOUNDARY, h, Stream(b""))
+        with pytest.raises(ContentEncodingError):
+            obj.decode(compressed[:-8])
+
+    def test_decode_with_content_encoding_gzip_exceeds_max_length(self) -> None:
+        # decode() must drain the decompressor past the max_length cap
+        # instead of silently dropping the remaining output.
+        content = b"A" * 1_000_000  # Large enough to exceed max_length.
+        compressed = gzip.compress(content)
+        h = HeadersDictProxy(CIMultiDict({CONTENT_ENCODING: "gzip"}))
+        obj = aiohttp.BodyPartReader(BOUNDARY, h, Stream(b""))
+        result = obj.decode(compressed)
         assert len(result) == len(content)  # Simplifies diff on failure
         assert result == content
 
