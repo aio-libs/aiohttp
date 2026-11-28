@@ -1,1 +1,4 @@
-5319.bugfix.rst
+Preserved the original `Location` header string for server-side redirects
+(`HTTPFound` and other `HTTPMove` subclasses) instead of re-encoding it
+through `yarl.URL`, preventing percent-encoded query values (e.g. `%3F`)
+from being decoded and breaking redirect targets -- by :user:`Sudhakar7J`.
