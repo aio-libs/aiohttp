@@ -413,9 +413,6 @@ async def test_formdata_unseekable_iobase_with_content_length(
         def __init__(self, data: bytes) -> None:
             self._buf = io.BytesIO(data)
 
-        def readable(self) -> bool:
-            return True
-
         def read(self, size: int = -1) -> bytes:
             return self._buf.read(size)
 

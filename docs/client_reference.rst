@@ -2782,7 +2782,7 @@ on being called.
 
       :param int content_length: Explicit byte length of the field payload (optional).
                                  Useful when streaming an :class:`~collections.abc.AsyncIterable`
-                                 or unseekable stream whose size is known in advance so that the
+                                 or a stream whose size is known in advance so that the
                                  multipart request can include a ``Content-Length`` header.
 
    .. method:: add_fields(fields)
