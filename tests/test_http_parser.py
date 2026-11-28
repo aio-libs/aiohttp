@@ -3,6 +3,7 @@
 import asyncio
 import gzip
 import platform
+import random
 import re
 import sys
 import zlib
@@ -23,6 +24,7 @@ from aiohttp.client_proto import ResponseHandler
 from aiohttp.compression_utils import ZLibDecompressor
 from aiohttp.helpers import DEFAULT_CHUNK_SIZE, NO_EXTENSIONS, HeadersDictProxy
 from aiohttp.http_parser import (
+    MAX_UNPAID_CODING_INPUT,
     DeflateBuffer,
     HeadersParser,
     HttpParser,
@@ -53,6 +55,21 @@ try:
         import backports.zstd as zstandard
 except ImportError:
     zstandard = None  # type: ignore[assignment]
+
+CONTENT_CODINGS = (
+    "gzip",
+    "deflate",
+    pytest.param(
+        "br",
+        marks=pytest.mark.skipif(brotli is None, reason="brotli is not installed"),
+    ),
+    pytest.param(
+        "zstd",
+        marks=pytest.mark.skipif(
+            zstandard is None, reason="zstandard is not installed"
+        ),
+    ),
+)
 
 REQUEST_PARSERS = [HttpRequestParserPy]
 RESPONSE_PARSERS = [HttpResponseParserPy]
@@ -1702,6 +1719,28 @@ async def test_decompress_error_while_draining_pending_data(
     assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
 
 
+async def test_chunked_gzip_member_flood(parser: HttpRequestParser) -> None:
+    """A flood is rejected though no HTTP chunk holds many members.
+
+    Every chunk is a decompression call of its own, so a limit that restarted
+    on each one would never be reached.
+    """
+    members = gzip.compress(b"") * 1000
+    text = (
+        b"POST / HTTP/1.1\r\n"
+        b"Host: a\r\n"
+        b"Transfer-Encoding: chunked\r\n"
+        b"Content-Encoding: gzip\r\n"
+        b"\r\n"
+    )
+    chunk = b"%x\r\n" % len(members) + members + b"\r\n"
+
+    msgs, upgrade, tail = parser.feed_data(text + chunk * 20)
+
+    payload = msgs[0][-1]
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
+
+
 async def test_two_content_length_responses_in_one_call(
     response: HttpResponseParser,
 ) -> None:
@@ -1774,6 +1813,23 @@ async def test_compressed_multiple_codings(response: HttpResponseParser) -> None
     result = await payload.read()
     assert len(result) == len(original)
     assert result == original
+
+
+async def test_compressed_multiple_codings_without_output(
+    response: HttpResponseParser,
+) -> None:
+    """A coding that turns the previous coding's output into nothing is refused."""
+    compressed = gzip.compress(b"\x00\x00\x00\xff\xff" * 2**20 + b"\x03\x00")
+    headers = (
+        b"HTTP/1.1 200 OK\r\n"
+        b"Content-Length: " + str(len(compressed)).encode() + b"\r\n"
+        b"Content-Encoding: deflate, gzip\r\n"
+        b"\r\n"
+    )
+
+    msgs, upgrade, tail = response.feed_data(headers + compressed)
+    payload = msgs[0][-1]
+    assert isinstance(payload.exception(), http_exceptions.ContentEncodingError)
 
 
 async def test_too_many_codings_without_auto_decompress(
@@ -3876,6 +3932,23 @@ class TestParsePayload:
         with pytest.raises(http_exceptions.ContentEncodingError):
             p.feed_data(payload)
 
+    async def test_http_payload_gzip_empty_member_flood_chunked(
+        self, protocol: BaseProtocol
+    ) -> None:
+        """Spreading the members over HTTP chunks does not get them through."""
+        members = gzip.compress(b"") * 1000
+        out = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        p = HttpPayloadParser(
+            out,
+            chunked=True,
+            compression="gzip",
+            headers_parser=HeadersParser(),
+        )
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            p.feed_data((b"%x\r\n" % len(members) + members + b"\r\n") * 20)
+
 
 class TestDeflateBuffer:
     async def test_feed_data(self, protocol: BaseProtocol) -> None:
@@ -4065,6 +4138,59 @@ class TestDeflateBuffer:
         result = b"".join(buf._buffer)
         assert len(result) == len(original)
         assert result == original
+
+    @pytest.mark.parametrize("read_chunk_size", (0, 2**26), ids=("default", "raised"))
+    async def test_chained_coding_without_output(
+        self, protocol: BaseProtocol, read_chunk_size: int
+    ) -> None:
+        """A chained coding is cut off once it owes more input than allowed."""
+        compressed = gzip.compress(b"\x00\x00\x00\xff\xff" * 2**20 + b"\x03\x00")
+        buf = aiohttp.StreamReader(
+            protocol, DEFAULT_CHUNK_SIZE, loop=asyncio.get_running_loop()
+        )
+        buf.set_read_chunk_size(read_chunk_size)
+        dbuf = DeflateBuffer(buf, "deflate,gzip")
+
+        chunk = compressed
+        with pytest.raises(http_exceptions.ContentEncodingError):
+            while dbuf.feed_data(chunk):
+                chunk = b""
+        # Refused at the first delivery that took it past the allowance.
+        assert dbuf._stages[1]._unpaid <= 2 * MAX_UNPAID_CODING_INPUT
+
+    @pytest.mark.parametrize("outer", CONTENT_CODINGS)
+    @pytest.mark.parametrize("inner", CONTENT_CODINGS)
+    async def test_chained_codings_lagging_output(
+        self, protocol: BaseProtocol, inner: str, outer: str
+    ) -> None:
+        """Decoders whose output trails their input are not taken for hostile.
+
+        zstd holds a block's input until the block is complete, and brotli
+        hands over more than max_length at once.
+        """
+        compress: dict[str, Callable[[bytes], bytes]] = {
+            "gzip": gzip.compress,
+            "deflate": zlib.compress,
+            "br": lambda data: brotli.compress(data, quality=4),
+            "zstd": lambda data: zstandard.compress(data),
+        }
+        block = random.Random(0).randbytes(120_000)
+        # Barely compressible, so zstd emits blocks nearly as large as it can.
+        original = (block + block[:8_000]) * 2 + bytes(2**20)
+        compressed = compress[outer](compress[inner](original))
+
+        max_length = 2048
+        buf = aiohttp.StreamReader(
+            protocol, max_length, loop=asyncio.get_running_loop()
+        )
+        dbuf = DeflateBuffer(buf, f"{inner},{outer}", max_decompress_size=max_length)
+        for i in range(0, len(compressed), 1024):  # pragma: no branch
+            chunk = compressed[i : i + 1024]
+            while dbuf.feed_data(chunk):
+                chunk = b""
+        dbuf.feed_eof()
+
+        assert b"".join(buf._buffer) == original
 
 
 def test_response_parser_incomplete_body_error_message(

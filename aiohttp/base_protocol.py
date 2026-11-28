@@ -21,7 +21,7 @@ class BaseProtocol(asyncio.Protocol):
         "_loop",
         "_paused",
         "_parser",
-        "_drain_waiter",
+        "_drain_waiters",
         "_connection_lost",
         "_reading_paused",
         "_buffer_paused",
@@ -34,7 +34,8 @@ class BaseProtocol(asyncio.Protocol):
     ) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
-        self._drain_waiter: asyncio.Future[None] | None = None
+        # Dict used as an ordered set.
+        self._drain_waiters: dict[asyncio.Future[None], None] = {}
         self._reading_paused = False
         self._buffer_paused = False
         self._parser = parser
@@ -59,9 +60,7 @@ class BaseProtocol(asyncio.Protocol):
         assert self._paused
         self._paused = False
 
-        waiter = self._drain_waiter
-        if waiter is not None:
-            self._drain_waiter = None
+        for waiter in self._drain_waiters:
             if not waiter.done():
                 waiter.set_result(None)
 
@@ -125,32 +124,30 @@ class BaseProtocol(asyncio.Protocol):
         self.transport = tr
 
     def connection_lost(self, exc: BaseException | None) -> None:
-        # Wake up the writer if currently paused.
+        # Wake up the writers if currently paused.
         self.transport = None
         if not self._paused:
             return
-        waiter = self._drain_waiter
-        if waiter is None:
-            return
-        self._drain_waiter = None
-        if waiter.done():
-            return
-        if exc is None:
-            waiter.set_result(None)
-        else:
-            set_exception(
-                waiter,
-                ConnectionError("Connection lost"),
-                exc,
-            )
+        for waiter in self._drain_waiters:
+            if waiter.done():
+                continue
+            if exc is None:
+                waiter.set_result(None)
+            else:
+                set_exception(
+                    waiter,
+                    ConnectionError("Connection lost"),
+                    exc,
+                )
 
     async def _drain_helper(self) -> None:
         if self.transport is None:
             raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return
-        waiter = self._drain_waiter
-        if waiter is None:
-            waiter = self._loop.create_future()
-            self._drain_waiter = waiter
-        await waiter
+        waiter = self._loop.create_future()
+        self._drain_waiters[waiter] = None
+        try:
+            await waiter
+        finally:
+            del self._drain_waiters[waiter]
