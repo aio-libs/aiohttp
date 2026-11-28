@@ -811,8 +811,15 @@ async def test_cookie_jar_usage(aiohttp_client: AiohttpClient) -> None:
     assert resp_cookies[0][1].value == "resp_value"
 
 
+@pytest.mark.parametrize(
+    ("quote_cookie", "expected"),
+    [(True, 'name="val=foobar"'), (False, "name=val=foobar")],
+    ids=["quoted", "unquoted"],
+)
 async def test_cookies_with_not_quoted_cookie_jar(
     aiohttp_server: AiohttpServer,
+    quote_cookie: bool,
+    expected: str,
 ) -> None:
     async def handler(_: web.Request) -> web.Response:
         return web.Response()
@@ -820,26 +827,11 @@ async def test_cookies_with_not_quoted_cookie_jar(
     app = web.Application()
     app.router.add_route("GET", "/", handler)
     server = await aiohttp_server(app)
-    jar = CookieJar(quote_cookie=False)
+    jar = CookieJar(quote_cookie=quote_cookie)
     cookies = {"name": "val=foobar"}
     async with aiohttp.ClientSession(cookie_jar=jar) as sess:
         resp = await sess.request("GET", server.make_url("/"), cookies=cookies)
-    assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
-
-
-async def test_request_cookies_quoted_by_default(
-    aiohttp_server: AiohttpServer,
-) -> None:
-    async def handler(_: web.Request) -> web.Response:
-        return web.Response()
-
-    app = web.Application()
-    app.router.add_route("GET", "/", handler)
-    server = await aiohttp_server(app)
-    cookies = {"name": "val=foobar"}
-    async with aiohttp.ClientSession() as sess:
-        resp = await sess.request("GET", server.make_url("/"), cookies=cookies)
-    assert resp.request_info.headers.get("Cookie", "") == 'name="val=foobar"'
+    assert resp.request_info.headers.get("Cookie", "") == expected
 
 
 async def test_request_cookies_quote_cookie_disabled(

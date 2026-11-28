@@ -711,8 +711,6 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
-                        # An explicit quote_cookie overrides the session jar's
-                        # setting for this request; None keeps inheriting it.
                         tmp_cookie_jar = _UnlimitedCookieJar(
                             unsafe=self._cookie_jar.unsafe,
                             quote_cookie=(
