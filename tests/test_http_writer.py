@@ -710,6 +710,24 @@ async def test_write_payload_deflate_compression_chunked_connection_lost_all_zli
         await msg.write_eof(b"end")
 
 
+@pytest.mark.parametrize("chunk", (b"", b"data"), ids=("flush", "last-chunk"))
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_eof_repeated_on_closing_transport_compressed_all_zlib(
+    chunk: bytes, protocol: BaseProtocol, transport: asyncio.Transport
+) -> None:
+    msg = http.StreamWriter(protocol, asyncio.get_running_loop())
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+    await msg.write(b"data")
+    transport.is_closing.return_value = True  # type: ignore[attr-defined]
+
+    for _ in range(2):
+        with pytest.raises(
+            ClientConnectionResetError, match="Cannot write to closing transport"
+        ):
+            await msg.write_eof(chunk)
+
+
 @pytest.mark.parametrize("cancelled", ("write", "write_eof"))
 @pytest.mark.parametrize("retried", ("write", "write_eof"))
 async def test_compressed_write_cancelled(
