@@ -1748,3 +1748,66 @@ async def test_on_body_write_write_eof_final_chunk(
     await msg.write_eof(b"x" * 64)
 
     assert sizes == [64]
+
+
+@pytest.mark.parametrize(
+    ("buffer_headers", "chunked", "chunk", "expected"),
+    (
+        (False, True, b"", b"0\r\n\r\n"),
+        (False, True, b"data", b"4\r\ndata\r\n0\r\n\r\n"),
+        (False, False, b"data", b"data"),
+        (True, False, b"data", b"HTTP/1.1 200 OK\r\nContent-Length: 4\r\n\r\ndata"),
+    ),
+    ids=("terminator", "last-chunk", "body", "headers-and-body"),
+)
+async def test_write_eof_repeated_after_cancelled_drain(
+    buffer_headers: bool,
+    chunked: bool,
+    chunk: bytes,
+    expected: bytes,
+    buf: bytearray,
+    transport: asyncio.Transport,
+) -> None:
+    """Cancelling the drain leaves a complete message that must not end twice."""
+    loop = asyncio.get_running_loop()
+    protocol = BaseProtocol(loop)
+    protocol.connection_made(transport)
+    msg = http.StreamWriter(protocol, loop)
+    if chunked:
+        msg.enable_chunking()
+    if buffer_headers:
+        headers = CIMultiDict({"Content-Length": "4"})
+        await msg.write_headers("HTTP/1.1 200 OK", headers)
+
+    protocol.pause_writing()
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0):
+            await msg.write_eof(chunk)
+    # Writing is still paused when the call is repeated.
+    await msg.write_eof(chunk)
+
+    assert buf == expected
+
+
+@pytest.mark.parametrize("chunk", (b"", b"data"), ids=("flush", "last-chunk"))
+@pytest.mark.usefixtures("parametrize_zlib_backend")
+async def test_write_eof_repeated_after_cancelled_drain_compressed_all_zlib(
+    chunk: bytes, buf: bytearray, transport: asyncio.Transport
+) -> None:
+    loop = asyncio.get_running_loop()
+    protocol = BaseProtocol(loop)
+    protocol.connection_made(transport)
+    msg = http.StreamWriter(protocol, loop)
+    msg.enable_compression("deflate")
+    msg.enable_chunking()
+
+    protocol.pause_writing()
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0):
+            await msg.write_eof(chunk)
+    written = bytes(buf)
+    # Writing is still paused when the call is repeated.
+    await msg.write_eof(chunk)
+
+    assert buf == written
+    assert ZLibBackend.decompress(decode_chunked(buf)) == chunk

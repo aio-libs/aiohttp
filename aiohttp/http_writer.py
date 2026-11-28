@@ -363,8 +363,8 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk and (notify := self.on_body_write) is not None:
             notify(len(chunk), self.output_size)
-        await self.drain()
         self._eof = True
+        await self.drain()
 
     async def drain(self) -> None:
         """Flush the write buffer.
