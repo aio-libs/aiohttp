@@ -1,6 +1,6 @@
 import io
 from collections import deque
-from collections.abc import Iterable
+from collections.abc import AsyncIterable, Iterable
 from typing import Any
 from urllib.parse import urlencode
 
@@ -53,8 +53,9 @@ class FormData:
         *,
         content_type: str | None = None,
         filename: str | None = None,
+        content_length: int | None = None,
     ) -> None:
-        if isinstance(value, (io.IOBase, bytes, bytearray, memoryview)):
+        if isinstance(value, (io.IOBase, bytes, bytearray, memoryview, AsyncIterable)):
             self._is_multipart = True
 
         _safe_header(name)
@@ -78,7 +79,16 @@ class FormData:
             headers[hdrs.CONTENT_TYPE] = content_type
             self._is_multipart = True
 
-        self._fields.append((type_options, headers, value))
+        if content_length is not None:
+            if isinstance(content_length, bool) or not isinstance(content_length, int):
+                raise TypeError(
+                    f"content_length must be an instance of int. Got: {content_length!r}"
+                )
+            if content_length < 0:
+                raise ValueError("content_length must be non-negative")
+            self._is_multipart = True
+
+        self._fields.append((type_options, headers, value, content_length))
 
     def add_fields(self, *fields: Any) -> None:
         to_add: deque[Any] = deque(fields)
@@ -107,7 +117,7 @@ class FormData:
     def _gen_form_urlencoded(self) -> payload.BytesPayload:
         # form data (x-www-form-urlencoded)
         data = []
-        for type_options, _, value in self._fields:
+        for type_options, _, value, _ in self._fields:
             if not isinstance(value, str):
                 raise TypeError(f"expected str, got {value!r}")
             data.append((type_options["name"], value))
@@ -126,7 +136,7 @@ class FormData:
 
     def _gen_form_data(self) -> multipart.MultipartWriter:
         """Encode a list of fields using the multipart/form-data MIME format"""
-        for dispparams, headers, value in self._fields:
+        for dispparams, headers, value, content_length in self._fields:
             try:
                 if hdrs.CONTENT_TYPE in headers:
                     part = payload.get_payload(
@@ -134,16 +144,23 @@ class FormData:
                         content_type=headers[hdrs.CONTENT_TYPE],
                         headers=headers,
                         encoding=self._charset,
+                        size=content_length,
                     )
                 else:
                     part = payload.get_payload(
-                        value, headers=headers, encoding=self._charset
+                        value,
+                        headers=headers,
+                        encoding=self._charset,
+                        size=content_length,
                     )
             except Exception as exc:
                 raise TypeError(
                     "Can not serialize value type: %r\n "
                     "headers: %r\n value: %r" % (type(value), headers, value)
                 ) from exc
+
+            if content_length is not None:
+                part._size = content_length
 
             if dispparams:
                 part.set_content_disposition(

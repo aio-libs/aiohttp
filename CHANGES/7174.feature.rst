@@ -1,0 +1,1 @@
+Added support for ``AsyncIterable`` field values and an optional ``content_length`` parameter in :meth:`aiohttp.FormData.add_field` so multipart streaming uploads with known part sizes can set the request ``Content-Length`` header -- by :user:`harmehak0173`.

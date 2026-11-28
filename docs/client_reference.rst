@@ -2754,8 +2754,8 @@ on being called.
                   the keys and values must be valid `name` and `value` arguments to
                   :meth:`add_field<aiohttp.FormData.add_field>`, respectively.
 
-   .. method:: add_field(name, value, content_type=None, filename=None,\
-                         content_transfer_encoding=None)
+   .. method:: add_field(name, value, *, content_type=None, filename=None,\
+                         content_length=None)
 
       Add a field to the form.
 
@@ -2768,20 +2768,22 @@ on being called.
                     - :class:`str`
                     - :class:`bytes`, :class:`bytearray`, or :class:`memoryview`
                     - :class:`io.IOBase`, e.g. a file-like object
+                    - :class:`collections.abc.AsyncIterable` yielding :class:`bytes`
 
       :param str content_type: The field's content-type header (optional)
 
       :param str filename: The field's filename (optional)
 
                            If this is not set and ``value`` is a :class:`bytes`, :class:`bytearray`,
-                           or :class:`memoryview` object, the `name` argument is used as the filename
-                           unless ``content_transfer_encoding`` is specified.
+                           or :class:`memoryview` object, the `name` argument is used as the filename.
 
                            If ``filename`` is not set and ``value`` is an :class:`io.IOBase`
                            object, the filename is extracted from the object if possible.
 
-      :param str content_transfer_encoding: The field's content-transfer-encoding
-                                            header (optional)
+      :param int content_length: Explicit byte length of the field payload (optional).
+                                 Useful when streaming an :class:`~collections.abc.AsyncIterable`
+                                 or a stream whose size is known in advance so that the
+                                 multipart request can include a ``Content-Length`` header.
 
    .. method:: add_fields(fields)
 

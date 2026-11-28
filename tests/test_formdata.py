@@ -1,10 +1,11 @@
 import io
+from collections.abc import AsyncIterator
 from unittest import mock
 
 import pytest
 from pytest_aiohttp import AiohttpClient
 
-from aiohttp import FormData, web
+from aiohttp import BodyPartReader, FormData, hdrs, payload, web
 from aiohttp.http_writer import StreamWriter
 
 
@@ -316,3 +317,128 @@ async def test_formdata_reusability_with_io_fields(
 
     # Should produce identical results
     assert result1 == result2
+
+
+async def _async_chunks(*chunks: bytes) -> AsyncIterator[bytes]:
+    for chunk in chunks:
+        yield chunk
+
+
+async def test_formdata_async_iterable_sets_multipart_without_content_length(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    form = FormData()
+    form.add_field("stream", _async_chunks(b"hello ", b"world"))
+    assert form.is_multipart
+
+    body = form()
+    assert body.size is None
+    await body.write(writer)
+    assert b"hello world" in buf
+
+
+async def test_formdata_async_iterable_with_content_length(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    data = (b"hello ", b"streaming ", b"world")
+    total_len = sum(len(chunk) for chunk in data)
+
+    form = FormData()
+    form.add_field("meta", "value")
+    form.add_field(
+        "file",
+        _async_chunks(*data),
+        filename="stream.bin",
+        content_type="application/octet-stream",
+        content_length=total_len,
+    )
+    assert form.is_multipart
+
+    body = form()
+    assert body.size is not None
+    await body.write(writer)
+    assert body.size == len(buf)
+    assert b"hello streaming world" in buf
+
+
+async def test_formdata_async_iterable_content_length_http_header(
+    aiohttp_client: AiohttpClient,
+) -> None:
+    received_headers: dict[str, str] = {}
+    received_parts: dict[str, bytes] = {}
+
+    async def handler(request: web.Request) -> web.Response:
+        received_headers["content-length"] = request.headers.get(
+            hdrs.CONTENT_LENGTH, ""
+        )
+        received_headers["transfer-encoding"] = request.headers.get(
+            hdrs.TRANSFER_ENCODING, ""
+        )
+        reader = await request.multipart()
+        while (field := await reader.next()) is not None:
+            assert isinstance(field, BodyPartReader)
+            assert field.name is not None
+            received_parts[field.name] = await field.read(decode=False)
+        return web.Response(text="ok")
+
+    app = web.Application()
+    app.add_routes([web.post("/upload", handler)])
+    client = await aiohttp_client(app)
+
+    chunks = (b"chunk1-", b"chunk2-", b"chunk3")
+    content = b"".join(chunks)
+    form = FormData()
+    form.add_field("description", "large file")
+    form.add_field(
+        "file",
+        _async_chunks(*chunks),
+        filename="data.bin",
+        content_type="application/octet-stream",
+        content_length=len(content),
+    )
+
+    async with client.post("/upload", data=form) as resp:
+        assert resp.status == 200
+
+    assert received_headers["content-length"].isdigit()
+    assert int(received_headers["content-length"]) > len(content)
+    assert received_headers["transfer-encoding"] == ""
+    assert received_parts == {"description": b"large file", "file": content}
+
+
+async def test_formdata_unseekable_iobase_with_content_length(
+    writer: StreamWriter, buf: bytearray
+) -> None:
+    class UnseekableStream(io.RawIOBase):
+        def __init__(self, data: bytes) -> None:
+            self._buf = io.BytesIO(data)
+
+        def read(self, size: int = -1) -> bytes:
+            return self._buf.read(size)
+
+    raw = b"unseekable-data"
+    form = FormData()
+    form.add_field("file", UnseekableStream(raw), content_length=len(raw))
+    body = form()
+    assert body.size is not None
+    await body.write(writer)
+    assert body.size == len(buf)
+    assert raw in buf
+
+
+async def test_async_iterable_payload_explicit_size() -> None:
+    p = payload.AsyncIterablePayload(_async_chunks(b"abc", b"def"), size=6)
+    assert p.size == 6
+
+
+@pytest.mark.parametrize("val", (True, False, 1.5, "10", {}, []))
+def test_invalid_type_formdata_content_length(val: object) -> None:
+    form = FormData()
+    with pytest.raises(TypeError, match="content_length must be an instance of int"):
+        form.add_field("foo", b"bar", content_length=val)  # type: ignore[arg-type]
+
+
+def test_negative_formdata_content_length() -> None:
+    form = FormData()
+    with pytest.raises(ValueError, match="content_length must be non-negative"):
+        form.add_field("foo", b"bar", content_length=-1)
