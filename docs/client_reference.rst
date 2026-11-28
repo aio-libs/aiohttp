@@ -395,7 +395,8 @@ The client session supports the context manager protocol for self closing.
       .. versionadded:: 3.7
 
    .. method:: request(method, url, *, params=None, data=None, json=None,\
-                         cookies=None, headers=None, skip_auto_headers=None, \
+                         cookies=None, quote_cookie=None, \
+                         headers=None, skip_auto_headers=None, \
                          allow_redirects=True,\
                          max_redirects=10,\
                          compress=None, chunked=None, expect100=False, raise_for_status=None,\
@@ -454,6 +455,16 @@ The client session supports the context manager protocol for self closing.
          when sending the request.
 
          .. versionadded:: 3.5
+
+      :param bool quote_cookie: Whether to quote the values of the cookies
+         passed via ``cookies`` when they contain special characters
+         (optional).
+
+         ``None`` (default) reuses the ``quote_cookie`` setting of the
+         session's cookie jar, while ``True`` or ``False`` override it for
+         this request. Some backend systems do not support quoted cookies.
+
+         .. versionadded:: 4.0
 
       :param dict headers: HTTP Headers to send with
                            the request (optional)
@@ -902,7 +913,8 @@ certification chaining.
 
 .. function:: request(method, url, *, params=None, data=None, \
                         json=None,\
-                        cookies=None, headers=None, skip_auto_headers=None, \
+                        cookies=None, quote_cookie=None, \
+                        headers=None, skip_auto_headers=None, \
                         allow_redirects=True, max_redirects=10, \
                         compress=False, chunked=None, expect100=False, raise_for_status=None, \
                         read_until_eof=True, \
@@ -955,6 +967,13 @@ certification chaining.
                 parameters could not be used at the same time.
 
    :param dict cookies: HTTP Cookies to send with the request (optional)
+
+   :param bool quote_cookie: Whether to quote the values of the cookies
+      passed via ``cookies`` when they contain special characters (optional).
+      ``None`` (default) reuses the ``quote_cookie`` setting of the session's
+      cookie jar, while ``True`` or ``False`` override it for this request.
+
+      .. versionadded:: 4.0
 
    :param dict headers: HTTP Headers to send with the request (optional)
 

@@ -335,6 +335,12 @@ quotation routine by passing ``quote_cookie=False`` to the
    jar = aiohttp.CookieJar(quote_cookie=False)
    session = aiohttp.ClientSession(cookie_jar=jar)
 
+The same can be done for a single request by passing
+``quote_cookie=False`` to the request itself, which overrides the
+session jar's setting for that request only::
+
+   resp = await session.get(url, cookies=cookies, quote_cookie=False)
+
 
 .. _aiohttp-client-dummy-cookie-jar:
 

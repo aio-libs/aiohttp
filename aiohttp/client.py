@@ -190,6 +190,7 @@ class _RequestOptions(TypedDict, total=False):
     data: Any
     json: Any
     cookies: LooseCookies | None
+    quote_cookie: bool | None
     headers: LooseHeaders | None
     skip_auto_headers: Iterable[str] | None
     allow_redirects: bool
@@ -521,6 +522,7 @@ class ClientSession:
         data: Any = None,
         json: Any = None,
         cookies: LooseCookies | None = None,
+        quote_cookie: bool | None = None,
         headers: LooseHeaders | None = None,
         skip_auto_headers: Iterable[str] | None = None,
         allow_redirects: bool = True,
@@ -709,9 +711,15 @@ class ClientSession:
                     all_cookies = self._cookie_jar.filter_cookies(url)
 
                     if cookies is not None:
+                        # An explicit quote_cookie overrides the session jar's
+                        # setting for this request; None keeps inheriting it.
                         tmp_cookie_jar = _UnlimitedCookieJar(
                             unsafe=self._cookie_jar.unsafe,
-                            quote_cookie=self._cookie_jar.quote_cookie,
+                            quote_cookie=(
+                                self._cookie_jar.quote_cookie
+                                if quote_cookie is None
+                                else quote_cookie
+                            ),
                             treat_as_secure_origin=self._cookie_jar.treat_as_secure_origin,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
