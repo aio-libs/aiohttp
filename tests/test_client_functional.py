@@ -1063,6 +1063,103 @@ async def test_history(aiohttp_client: AiohttpClient) -> None:
         assert resp_redirect.status == 200
 
 
+async def test_peername_after_response_release(aiohttp_client: AiohttpClient) -> None:
+    transports: list[asyncio.Transport | None] = []
+
+    async def handler(request: web.Request) -> web.Response:
+        transports.append(request.transport)
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    client = await aiohttp_client(app)
+    expected_peername = (client.server.host, client.server.port)
+
+    async with client.get("/") as response:
+        assert response.connection is None
+        assert response.peername == expected_peername
+
+    async with client.get("/") as reused_response:
+        assert reused_response.peername == expected_peername
+
+    assert transports[0] is transports[1]
+    await client.close()
+    assert response.peername == expected_peername
+    assert reused_response.peername == expected_peername
+
+
+async def test_peername_for_hostname(aiohttp_server: AiohttpServer) -> None:
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(status=204)
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    server = await aiohttp_server(app)
+    url = server.make_url("/").with_host("peer.example.test")
+    resolver = mock.create_autospec(AbstractResolver, instance=True)
+    resolver.resolve.return_value = [
+        {
+            "hostname": url.host,
+            "host": server.host,
+            "port": server.port,
+            "family": socket.AF_INET,
+            "proto": 0,
+            "flags": socket.AI_NUMERICHOST,
+        }
+    ]
+    connector = aiohttp.TCPConnector(resolver=resolver, use_dns_cache=False)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        async with session.get(url) as response:
+            assert response.status == 204
+
+    assert response.peername == (server.host, server.port)
+    resolver.resolve.assert_awaited_once_with(url.host, url.port, family=mock.ANY)
+
+
+async def test_peername_in_history_after_multiple_redirects(
+    aiohttp_server: AiohttpServer, aiohttp_client: AiohttpClient
+) -> None:
+    async def handler_ok(request: web.Request) -> web.Response:
+        return web.Response()
+
+    final_app = web.Application()
+    final_app.router.add_get("/", handler_ok)
+    final_server = await aiohttp_server(final_app)
+
+    async def to_second(request: web.Request) -> web.Response:
+        raise web.HTTPFound(second_server.make_url("/"))
+
+    async def back_to_first(request: web.Request) -> web.Response:
+        raise web.HTTPTemporaryRedirect(client.make_url("/again"))
+
+    async def to_final(request: web.Request) -> web.Response:
+        raise web.HTTPMovedPermanently(final_server.make_url("/"))
+
+    second_app = web.Application()
+    second_app.router.add_get("/", back_to_first)
+    second_server = await aiohttp_server(second_app)
+
+    app = web.Application()
+    app.router.add_get("/", to_second)
+    app.router.add_get("/again", to_final)
+    client = await aiohttp_client(app)
+    first_peername = (client.server.host, client.server.port)
+    second_peername = (second_server.host, second_server.port)
+    final_peername = (final_server.host, final_server.port)
+
+    async with client.get("/") as response:
+        assert response.status == 200
+    await client.close()
+
+    assert [(hop.status, hop.peername) for hop in response.history] == [
+        (302, first_peername),
+        (307, second_peername),
+        (301, first_peername),
+    ]
+    assert all(hop.connection is None for hop in response.history)
+    assert response.peername == final_peername
+
+
 async def test_keepalive_closed_by_server(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.Response:
         body = await request.read()

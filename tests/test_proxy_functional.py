@@ -970,3 +970,14 @@ async def test_https_proxy_connect_tunnel_session_close_no_hang(
     finally:
         # Clean close
         await session.close()
+
+
+async def test_proxy_http_peername(
+    proxy_test_server: Callable[[], Awaitable[mock.Mock]],
+) -> None:
+    proxy = await proxy_test_server()
+
+    resp = await get_request(url="http://aiohttp.io/path", proxy=proxy.url)
+
+    assert resp.peername is not None
+    assert resp.peername[:2] == (proxy.url.host, proxy.url.port)
