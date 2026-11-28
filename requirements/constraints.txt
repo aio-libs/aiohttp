@@ -60,7 +60,7 @@ click==8.5.1
     # via
     #   pip-tools
     #   towncrier
-coverage==7.17.4
+coverage==7.17.5
     # via
     #   -r requirements/test-common.in
     #   pytest-cov
@@ -229,7 +229,7 @@ pytest-xdist==3.8.0
     # via -r requirements/test-common.in
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.5
+python-discovery==1.9.7
     # via virtualenv
 python-on-whales==0.81.0 ; implementation_name == "cpython"
     # via
@@ -313,7 +313,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     #   -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.11
+virtualenv==21.15.13
     # via pre-commit
 wheel==0.48.0
     # via pip-tools
