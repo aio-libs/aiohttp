@@ -1,0 +1,7 @@
+Fixed :py:class:`~aiohttp.web.StreamResponse` sending body bytes in responses
+to ``HEAD`` requests and in ``1xx`` (other than ``101``), ``204`` and ``304``
+responses: data passed to :py:meth:`~aiohttp.web.StreamResponse.write` and the
+stream flushed by :py:meth:`~aiohttp.web.StreamResponse.enable_compression`
+(for example on a ``304`` from :py:class:`~aiohttp.web.FileResponse`) followed
+the headers with no framing and was read as the start of the next response on
+a keep-alive connection -- by :user:`insaf021`.

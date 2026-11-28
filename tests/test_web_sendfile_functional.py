@@ -1273,6 +1273,48 @@ async def test_static_file_compression(
     await client.close()
 
 
+@pytest.mark.parametrize("not_modified", (False, True))
+async def test_static_file_compression_no_body_for_head_or_304(
+    aiohttp_server: AiohttpServer, sender: _Sender, not_modified: bool
+) -> None:
+    filepath = pathlib.Path(__file__).parent / "data.unknown_mime_type"
+
+    async def handler(request: web.Request) -> web.FileResponse:
+        ret = sender(filepath)
+        ret.enable_compression()
+        return ret
+
+    async def other(request: web.Request) -> web.Response:
+        return web.Response(text="OTHER")
+
+    app = web.Application()
+    app.router.add_get("/", handler)
+    app.router.add_get("/other", other)
+    server = await aiohttp_server(app)
+
+    first = b"GET / HTTP/1.1\r\nHost: localhost\r\nIf-None-Match: *\r\n"
+    if not not_modified:
+        first = b"HEAD / HTTP/1.1\r\nHost: localhost\r\n"
+    reader, writer = await asyncio.open_connection(server.host, server.port)
+    try:
+        writer.write(
+            first
+            + b"Accept-Encoding: deflate\r\n\r\n"
+            + b"GET /other HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n"
+        )
+        await writer.drain()
+        data = await reader.read()
+    finally:
+        writer.close()
+        with contextlib.suppress(ConnectionResetError, BrokenPipeError):
+            await writer.wait_closed()
+
+    head, _, rest = data.partition(b"\r\n\r\n")
+    assert head.startswith(b"HTTP/1.1 304 " if not_modified else b"HTTP/1.1 200 ")
+    assert rest.startswith(b"HTTP/1.1 200 OK\r\n")
+    assert rest.endswith(b"\r\n\r\nOTHER")
+
+
 @pytest.mark.skip_blockbuster
 async def test_static_file_huge_cancel(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
