@@ -112,7 +112,12 @@ def transport(buf: bytearray) -> mock.Mock:
 
 @pytest.fixture
 def conn(transport: asyncio.Transport, protocol: BaseProtocol) -> Connection:
-    return mock.Mock(transport=transport, protocol=protocol)
+    mk = mock.Mock(transport=transport, protocol=protocol)
+    # the request no longer knows which writer will be used
+    mk.create_writer = lambda *args, **kwargs: aiohttp.client_reqrep.StreamWriter(
+        protocol, protocol._loop
+    )
+    return mk
 
 
 async def test_method1(make_client_request: _RequestMaker) -> None:

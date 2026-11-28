@@ -10,7 +10,7 @@ from collections import OrderedDict, defaultdict, deque
 from collections.abc import Awaitable, Callable, Iterator, Sequence
 from contextlib import suppress
 from http import HTTPStatus
-from itertools import chain, cycle, islice
+from itertools import chain, cycle, islice, product
 from time import monotonic
 from types import TracebackType
 from typing import TYPE_CHECKING, Any, Literal, cast
@@ -40,6 +40,7 @@ from .client_reqrep import (
     SSL_ALLOWED_TYPES,
     ClientRequest,
     ClientRequestBase,
+    ClientResponse,
     Fingerprint,
 )
 from .helpers import (
@@ -52,8 +53,15 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http2.adapter import Http2StreamWriter
+from .http2.connection import HTTP2_ENABLED
+from .http2.synchro import HostProbeSynchronizer
+from .http_parser import RawResponseMessage
+from .http_protocol import HttpDispatcherProtocol
+from .http_writer import StreamWriter
 from .log import client_logger
 from .resolver import DefaultResolver
+from .streams import StreamReader
 
 try:
     import aiofastnet
@@ -109,7 +117,7 @@ async def create_connection(
     ssl_shutdown_timeout: float | None = None,
 ) -> tuple[asyncio.Transport, ResponseHandler]:
     if aiofastnet is not None:
-        return await aiofastnet.create_connection(
+        transport, proto = await aiofastnet.create_connection(
             loop,
             protocol_factory,
             ssl=ssl,
@@ -118,19 +126,20 @@ async def create_connection(
             ssl_shutdown_timeout=ssl_shutdown_timeout,
         )
     else:
-        return await loop.create_connection(  # type: ignore[unreachable]
+        transport, proto = await loop.create_connection(  # type: ignore[unreachable]
             protocol_factory,
             ssl=ssl,
             sock=sock,
             server_hostname=server_hostname,
             ssl_shutdown_timeout=ssl_shutdown_timeout,
         )
+    return transport, proto._handler  # type: ignore[attr-defined]
 
 
 async def start_tls(
     loop: asyncio.AbstractEventLoop,
     transport: asyncio.Transport,
-    protocol: ResponseHandler,
+    protocol: HttpDispatcherProtocol | ResponseHandler,
     sslcontext: SSLContext,
     *,
     server_hostname: str | None,
@@ -162,6 +171,7 @@ class Connection:
     """Represents a single connection."""
 
     __slots__ = (
+        "stream_id",
         "_key",
         "_connector",
         "_loop",
@@ -186,6 +196,8 @@ class Connection:
             traceback.extract_stack(sys._getframe(1)) if loop.get_debug() else None
         )
 
+        self.stream_id: int | None = None
+
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
 
@@ -197,6 +209,8 @@ class Connection:
             if self._loop.is_closed():
                 return
 
+            self._abandon()
+
             self._connector._release(self._key, self._protocol, should_close=True)
 
             context = {"client_connection": self, "message": "Unclosed connection"}
@@ -207,6 +221,11 @@ class Connection:
     def __bool__(self) -> Literal[True]:
         """Force subclasses to not be falsy, to make checks simpler."""
         return True
+
+    def _abandon(self) -> None:
+        """Called by __del__ when a Connection is GC'd without being closed."""
+        assert self._protocol is not None
+        self._connector._release(self._key, self._protocol, should_close=True)
 
     @property
     def transport(self) -> asyncio.Transport | None:
@@ -246,6 +265,69 @@ class Connection:
     @property
     def closed(self) -> bool:
         return self._protocol is None or not self._protocol.is_connected()
+
+    def create_writer(self, **kwargs) -> "AbstractStreamWriter":
+        return StreamWriter(self._protocol, self._loop, **kwargs)
+
+    async def send_request(self, req: "ClientRequest") -> "ClientResponse":
+        protocol = self._protocol
+        assert protocol is not None
+        protocol.set_response_params(**req._response_params)
+        return await req._send(self)
+
+    async def read_response(self) -> tuple["RawResponseMessage", "StreamReader"]:
+        protocol = self._protocol
+        assert protocol is not None
+        return await protocol.read()
+
+
+class H2Connection(Connection):
+    __slots__ = ("_h2_stream",)
+
+    def __init__(
+        self,
+        connector: "BaseConnector",
+        key: "ConnectionKey",
+        protocol: ResponseHandler,
+        loop: asyncio.AbstractEventLoop,
+        h2_stream: "Stream",
+    ) -> None:
+        super().__init__(connector, key, protocol, loop)
+        self._h2_stream = h2_stream
+        assert self.stream_id is None
+        self.stream_id = self._h2_stream.stream_id
+
+    def _abandon(self) -> None:
+        if not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Unclosed connection"))
+
+    def create_writer(self, **kwargs):
+        return Http2StreamWriter(self._protocol, self._loop, self.stream_id, **kwargs)
+
+    async def send_request(self, req):
+        if req._continue is not None:
+            raise NotImplementedError("expect100 is not supported over HTTP/2")
+        protocol = self._protocol
+        assert protocol is not None
+        protocol.set_response_params(**req._response_params)
+        return await req._send(self)
+
+    async def read_response(self):
+        protocol = self._protocol
+        assert protocol is not None
+        return await protocol.read_stream(self.stream_id)  # type: ignore[attr-defined]
+
+    def close(self):
+        self._notify_release()
+        if self._protocol is not None and not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Stream closed"))
+        self._protocol = None
+
+    def release(self):
+        self._notify_release()
+        if self._protocol is not None and not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Stream released"))
+        self._protocol = None
 
 
 class _ConnectTunnelConnection(Connection):
@@ -346,6 +428,13 @@ class BaseConnector:
         self._conns: defaultdict[
             ConnectionKey, deque[tuple[ResponseHandler, float]]
         ] = defaultdict(deque)
+        # We distinguish multiplexed connections
+        # because:
+        # 1. The connection is always reused
+        # 2. Lease is handled at a protocol level
+        self._multiplexed: defaultdict[
+            ConnectionKey, deque[tuple[ResponseHandler, float]]
+        ] = defaultdict(deque)
         self._limit = limit
         self._limit_per_host = limit_per_host
         self._acquired: set[ResponseHandler] = set()
@@ -363,7 +452,7 @@ class BaseConnector:
         ] = defaultdict(OrderedDict)
 
         self._loop = loop
-        self._factory = functools.partial(ResponseHandler, loop=loop)
+        self._factory = functools.partial(HttpDispatcherProtocol, loop=loop)
 
         # start keep-alive connection cleanup task
         self._cleanup_handle: asyncio.TimerHandle | None = None
@@ -389,6 +478,12 @@ class BaseConnector:
         )
         self._placeholder_future.set_result(None)
         self._cleanup_closed()
+
+        # Semaphore for HTTP/2 connections
+        # avoids duplicate connections to the
+        # same host
+        # (HTTP/2 doesn't need connection pooling to send multiple requests)
+        self.semaphore = HostProbeSynchronizer()
 
     def __del__(self, _warnings: Any = warnings) -> None:
         if self._closed:
@@ -457,6 +552,8 @@ class BaseConnector:
         # weakref_handle() never schedules this method for a None timeout
         assert timeout is not None
 
+        # NOTE multiplexed connections
+        # do not use this timeout
         if self._conns:
             connections = defaultdict(deque)
             deadline = now - timeout
@@ -543,7 +640,7 @@ class BaseConnector:
             if self._cleanup_closed_handle:
                 self._cleanup_closed_handle.cancel()
 
-            for data in self._conns.values():
+            for data in (self._conns | self._multiplexed).values():
                 for proto, _ in data:
                     if (
                         abort_ssl
@@ -577,6 +674,7 @@ class BaseConnector:
 
         finally:
             self._conns.clear()
+            self._multiplexed.clear()
             self._acquired.clear()
             for keyed_waiters in self._waiters.values():
                 for keyed_waiter in keyed_waiters:
@@ -689,6 +787,7 @@ class BaseConnector:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
 
+        conn = await self._connection_factory(self, key, proto, self._loop)
         # The connection was successfully created, drop the placeholder
         # and add the real connection to the acquired set. There should
         # be no awaits after the proto is added to the acquired set
@@ -700,7 +799,23 @@ class BaseConnector:
             acquired_per_host = self._acquired_per_host[key]
             acquired_per_host.remove(placeholder)
             acquired_per_host.add(proto)
-        return Connection(self, key, proto, self._loop)
+
+        # HTTP/2+ connections are always reusable
+        # and are never idle in a connection pool
+        # so the timeout does not apply
+        if proto.version.major == 2:
+            self._multiplexed[key] = deque([(proto, float("inf"))])
+
+        return conn
+
+    async def _connection_factory(
+        self, connector: Any, key: Any, proto: Any, loop: Any
+    ) -> Connection:
+        conn: Connection
+        if proto.version.major == 2:
+            h2_stream = await proto.create_stream()  # type: ignore[attr-defined]
+            return H2Connection(connector, key, proto, loop, h2_stream)
+        return Connection(connector, key, proto, loop)
 
     async def _wait_for_available_connection(
         self, key: "ConnectionKey", traces: list["Trace"]
@@ -751,8 +866,17 @@ class BaseConnector:
 
         The connection will be marked as acquired.
         """
-        if (conns := self._conns.get(key)) is None:
+        target = None
+        multiplexed = False
+        if key in self._multiplexed:
+            target = self._multiplexed
+            multiplexed = True
+        elif key in self._conns:
+            target = self._conns
+        else:
             return None
+
+        conns = target[key].copy()
 
         t1 = monotonic()
         while conns:
@@ -762,7 +886,13 @@ class BaseConnector:
             if proto.is_connected() and (
                 self._keepalive_timeout is None or t1 - t0 <= self._keepalive_timeout
             ):
-                if not conns:
+                # If the connection is multiplexed
+                # we won't find it in `self._conns`
+                # nor we want to drop the key when the connection
+                # is "reclaimed"
+                # The key should be only dropped if the connection
+                # can not be reused at all (e.g., because of a timeout or another exception)
+                if not conns and key in self._conns:
                     # The very last connection was reclaimed: drop the key
                     del self._conns[key]
                 self._acquired.add(proto)
@@ -775,7 +905,10 @@ class BaseConnector:
                         except BaseException:
                             self._release_acquired(key, proto)
                             raise
-                return Connection(self, key, proto, self._loop)
+                if not multiplexed and key in self._conns:
+                    # persist changes
+                    self._conns[key] = conns
+                return await self._connection_factory(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
             transport = proto.transport
@@ -785,7 +918,15 @@ class BaseConnector:
                 self._cleanup_closed_transports.append(transport)
 
         # No more connections: drop the key
-        del self._conns[key]
+        # if multiplexed is True, there is a risk that
+        # the protocol is still in self._acquired
+        # However, for HTTP/2 in particular, ClientResponse._release_connection
+        # is only called when EOF is received
+        # this only happens when all streams are closed of if there is an error
+        # this branch is only reachable in the second case
+        # because, otherwise, the connection is still active
+        # in the error path we always call release() so this is fine
+        del target[key]
         return None
 
     def _release_waiter(self) -> None:
@@ -847,7 +988,8 @@ class BaseConnector:
                 self._cleanup_closed_transports.append(transport)
             return
 
-        self._conns[key].append((protocol, monotonic()))
+        if not protocol.version.major == 2:
+            self._conns[key].append((protocol, monotonic()))
 
         if self._cleanup_handle is None:
             self._cleanup_handle = helpers.weakref_handle(
@@ -912,7 +1054,7 @@ class _DNSCacheTable:
         return self._timestamps[key] + self._ttl < monotonic()
 
 
-def _make_ssl_context(verified: bool) -> SSLContext:
+def _make_ssl_context(verified: bool, http2_enabled: bool = False) -> SSLContext:
     """Create SSL context.
 
     This method is not async-friendly and should be called from a thread
@@ -931,16 +1073,28 @@ def _make_ssl_context(verified: bool) -> SSLContext:
         sslcontext.verify_mode = ssl.CERT_NONE
         sslcontext.options |= ssl.OP_NO_COMPRESSION
         sslcontext.set_default_verify_paths()
-    sslcontext.set_alpn_protocols(("http/1.1",))
+
+    protocols = ["http/1.1"]
+    if http2_enabled:
+        protocols += ["h2"]
+    sslcontext.set_alpn_protocols(tuple(protocols))
     return sslcontext
 
+
+# map configurations to ssl context
+# enable_http2, enable_http3, enable_http4, ...
+OPTIONAL_PROTOCOLS = 1
+_SSL_CONTEXT_MAP = {}
+for verified in (True, False):
+    for mask in product((True, False), repeat=OPTIONAL_PROTOCOLS):
+        _SSL_CONTEXT_MAP[(verified,) + mask] = _make_ssl_context(verified, *mask)
 
 # The default SSLContext objects are created at import time
 # since they do blocking I/O to load certificates from disk,
 # and imports should always be done before the event loop starts
 # or in a thread.
-_SSL_CONTEXT_VERIFIED = _make_ssl_context(True)
-_SSL_CONTEXT_UNVERIFIED = _make_ssl_context(False)
+_SSL_CONTEXT_VERIFIED = _SSL_CONTEXT_MAP[(True, False)]
+_SSL_CONTEXT_UNVERIFIED = _SSL_CONTEXT_MAP[(False, False)]
 
 
 class TCPConnector(BaseConnector):
@@ -1007,6 +1161,7 @@ class TCPConnector(BaseConnector):
         interleave: int | None = None,
         socket_factory: SocketFactoryType | None = None,
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        http2_enabled: bool = False,
     ):
         super().__init__(
             keepalive_timeout=keepalive_timeout,
@@ -1057,6 +1212,9 @@ class TCPConnector(BaseConnector):
         self._resolve_host_tasks: set[asyncio.Task[list[ResolveResult]]] = set()
         self._socket_factory = socket_factory
         self._ssl_shutdown_timeout: float | None
+        if http2_enabled and not HTTP2_ENABLED:
+            raise ImportError("You must install 'hpack' before enabling HTTP/2")
+        self._http2_enabled = http2_enabled
 
         if ssl_shutdown_timeout is sentinel:
             self._ssl_shutdown_timeout = 0
@@ -1298,14 +1456,14 @@ class TCPConnector(BaseConnector):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return _SSL_CONTEXT_UNVERIFIED
+            return _SSL_CONTEXT_MAP[(False, self._http2_enabled)]
         sslcontext = self._ssl
         if isinstance(sslcontext, ssl.SSLContext):
             return sslcontext
         if sslcontext is not True:
             # not verified or fingerprinted
-            return _SSL_CONTEXT_UNVERIFIED
-        return _SSL_CONTEXT_VERIFIED
+            return _SSL_CONTEXT_MAP[(False, self._http2_enabled)]
+        return _SSL_CONTEXT_MAP[(True, self._http2_enabled)]
 
     def _get_fingerprint(self, req: ClientRequestBase) -> "Fingerprint | None":
         ret = req.ssl
@@ -1434,7 +1592,9 @@ class TCPConnector(BaseConnector):
                 tls_transport
             )  # Kick the state machine of the new TLS protocol
 
-        return tls_transport, tls_proto
+        # HACK use the correct type
+        proto = tls_proto._handler
+        return tls_transport, proto  # type: ignore[return-value]
 
     def _convert_hosts_to_addr_infos(
         self, hosts: list[ResolveResult]
@@ -1526,7 +1686,6 @@ class TCPConnector(BaseConnector):
                     bad_peer = sock.getpeername()
                     aiohappyeyeballs.remove_addr_infos(addr_infos, bad_peer)
                     continue
-
             return transp, proto
         assert last_exc is not None
         raise last_exc
@@ -1664,7 +1823,7 @@ class UnixConnector(BaseConnector):
                 raise
             raise UnixClientConnectorError(self.path, req.connection_key, exc) from exc
 
-        return proto
+        return proto  # type: ignore[return-value]
 
 
 class NamedPipeConnector(BaseConnector):

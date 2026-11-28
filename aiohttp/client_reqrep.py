@@ -61,6 +61,7 @@ from .http import (
     HttpVersion11,
     StreamWriter,
 )
+from .http2.adapter import Http2StreamWriter
 from .streams import EMPTY_PAYLOAD, StreamReader
 from .typedefs import DEFAULT_JSON_DECODER, JSONDecoder, RawHeaders
 
@@ -711,7 +712,12 @@ class ClientResponse(HeadersMixin):
                 # read response
                 try:
                     protocol = self._protocol
-                    message, payload = await protocol.read()  # type: ignore[union-attr]
+                    assert protocol is not None
+                    if hasattr(protocol, "version") and protocol.version.major == 2:
+                        message, payload = await connection.read_response()
+                    else:
+                        # backwards compatibility
+                        message, payload = await protocol.read()
                 except HttpProcessingError as exc:
                     raise ClientResponseError(
                         self.request_info,
@@ -1113,8 +1119,10 @@ class ClientRequestBase:
             stream_writer=stream_writer,
         )
 
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
-        return StreamWriter(protocol, self.loop)
+    def _create_writer(
+        self, connection: "Connection"
+    ) -> StreamWriter | Http2StreamWriter:
+        return connection.create_writer()
 
     def _should_write(self, protocol: BaseProtocol) -> bool:
         return protocol.writing_paused
@@ -1133,9 +1141,7 @@ class ClientRequestBase:
         else:
             path = self.url.raw_path_qs
 
-        protocol = conn.protocol
-        assert protocol is not None
-        writer = self._create_writer(protocol)
+        writer = self._create_writer(conn)
 
         # set default content-type
         if (
@@ -1163,6 +1169,8 @@ class ClientRequestBase:
         await writer.write_headers(status_line, self.headers)
 
         task: asyncio.Task[None] | None
+        assert conn.protocol is not None
+        protocol = conn.protocol
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 14):
@@ -1613,10 +1621,10 @@ class ClientRequest(ClientRequestBase):
             stream_writer=stream_writer,
         )
 
-    def _create_writer(self, protocol: BaseProtocol) -> StreamWriter:
-        writer = StreamWriter(
-            protocol,
-            self.loop,
+    def _create_writer(
+        self, connection: "Connection"
+    ) -> StreamWriter | Http2StreamWriter:
+        writer = connection.create_writer(
             on_chunk_sent=(
                 functools.partial(self._on_chunk_request_sent, self.method, self.url)
                 if self._traces
@@ -1634,6 +1642,16 @@ class ClientRequest(ClientRequestBase):
 
         if self.chunked is not None:
             writer.enable_chunking()
+
+        # patch for http/2
+        if (
+            hasattr(connection.protocol, "version")
+            and connection.protocol.version.major == 2
+        ):
+            # we can get this from the status line
+            # but it's less convenient
+            writer.url = self.url
+            writer.method = self.method
         return writer
 
     def _should_write(self, protocol: BaseProtocol) -> bool:

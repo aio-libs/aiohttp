@@ -17,7 +17,7 @@ from aiohttp.client_reqrep import (
 )
 from aiohttp.cookiejar import CookieJar
 from aiohttp.helpers import TimerNoop
-from aiohttp.http_writer import HttpVersion11
+from aiohttp.http_writer import HttpVersion11, StreamWriter
 from aiohttp.tracing import Trace
 
 
@@ -203,6 +203,9 @@ def test_send_client_request_one_hundred(
             self.transport = None
             self.protocol = MockProtocol()
             self._connector = MockConnector()
+
+        def create_writer(self, **kwargs):
+            return StreamWriter(self.protocol, None, **kwargs)
 
     conn = MockConnection()
 

@@ -282,25 +282,37 @@ class _SessionOptions(TypedDict, total=False):
 async def _connect_and_send_request(req: ClientRequest) -> ClientResponse:
     connector = req._session._connector
     assert connector is not None
+    key = req.connection_key
+
     if (tracker := req._upload_tracker) is not None:
         req._upload_gen = tracker._attempt_started()
     try:
+        # only the first connection to a host blocks
+        # the rest of the connection requests are done
+        # concurrently
+        await connector.semaphore.acquire(key)
         conn = await connector.connect(req, traces=req._traces, timeout=req._timeout)
     except TimeoutError as exc:
         raise ConnectionTimeoutError(f"Connection timeout to host {req.url}") from exc
+    finally:
+        connector.semaphore.release(key)
 
     assert conn.protocol is not None
-    conn.protocol.set_response_params(**req._response_params)
+    assert conn.protocol.transport is not None
+
+    resp = None
+    started = False
+
     try:
-        resp = await req._send(conn)
-        try:
-            await resp.start(conn)
-        except BaseException:
+        resp = await conn.send_request(req)
+        await resp.start(conn)
+        started = True
+    finally:
+        if resp is not None and not started:
             resp.close()
-            raise
-    except BaseException:
-        conn.close()
-        raise
+            conn.close()
+        if resp is None:
+            conn.close()
     return resp
 
 
@@ -372,6 +384,7 @@ class ClientSession:
         fallback_charset_resolver: _CharsetResolver = lambda r, b: "utf-8",
         middlewares: Sequence[ClientMiddlewareType] = (),
         ssl_shutdown_timeout: _SENTINEL | None | float = sentinel,
+        http2_enabled: bool = False,
     ) -> None:
         # We initialise _connector to None immediately, as it's referenced in __del__()
         # and could cause issues if an exception occurs during initialisation.
@@ -411,7 +424,9 @@ class ClientSession:
             )
 
         if connector is None:
-            connector = TCPConnector(ssl_shutdown_timeout=ssl_shutdown_timeout)
+            connector = TCPConnector(
+                ssl_shutdown_timeout=ssl_shutdown_timeout, http2_enabled=http2_enabled
+            )
         # Initialize these three attrs before raising any exception,
         # they are used in __del__
         self._connector = connector
@@ -1673,7 +1688,8 @@ else:
         connector_owner = False
         if connector is None:
             connector_owner = True
-            connector = TCPConnector(force_close=True)
+            http2_enabled = kwargs.get("http2_enabled", False)
+            connector = TCPConnector(force_close=True, http2_enabled=http2_enabled)
 
         session = ClientSession(
             cookies=kwargs.pop("cookies", None),
