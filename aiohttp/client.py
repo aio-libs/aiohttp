@@ -190,6 +190,7 @@ class _RequestOptions(TypedDict, total=False):
     data: Any
     json: Any
     cookies: LooseCookies | None
+    quote_cookie: bool | None
     headers: LooseHeaders | None
     skip_auto_headers: Iterable[str] | None
     allow_redirects: bool
@@ -521,6 +522,7 @@ class ClientSession:
         data: Any = None,
         json: Any = None,
         cookies: LooseCookies | None = None,
+        quote_cookie: bool | None = None,
         headers: LooseHeaders | None = None,
         skip_auto_headers: Iterable[str] | None = None,
         allow_redirects: bool = True,
@@ -711,7 +713,11 @@ class ClientSession:
                     if cookies is not None:
                         tmp_cookie_jar = _UnlimitedCookieJar(
                             unsafe=self._cookie_jar.unsafe,
-                            quote_cookie=self._cookie_jar.quote_cookie,
+                            quote_cookie=(
+                                self._cookie_jar.quote_cookie
+                                if quote_cookie is None
+                                else quote_cookie
+                            ),
                             treat_as_secure_origin=self._cookie_jar.treat_as_secure_origin,
                         )
                         tmp_cookie_jar.update_cookies(cookies)
@@ -1675,8 +1681,15 @@ else:
             connector_owner = True
             connector = TCPConnector(force_close=True)
 
+        # cookies= is stored in the session's cookie jar here, so a
+        # quote_cookie override has to reach that jar instead of the
+        # per-request ad-hoc jar built by ClientSession._request().
+        quote_cookie = kwargs.pop("quote_cookie", None)
         session = ClientSession(
             cookies=kwargs.pop("cookies", None),
+            cookie_jar=(
+                None if quote_cookie is None else CookieJar(quote_cookie=quote_cookie)
+            ),
             version=version,
             timeout=kwargs.pop("timeout", sentinel),
             connector=connector,
