@@ -1,5 +1,4 @@
 import asyncio
-import gc
 from contextlib import suppress
 from unittest import mock
 
