@@ -232,7 +232,18 @@ class HTTPMove(HTTPRedirection):
             headers=headers, reason=reason, text=text, content_type=content_type
         )
         self._location = URL(location)
-        self.headers["Location"] = str(self.location)
+        # Preserve the original location string for the Location header so that
+        # percent-encoded characters (e.g. "%3F" for "?") are not re-encoded by
+        # yarl.URL, which can break redirects to URLs containing query string
+        # arguments that are themselves URLs (issue #5319). The URL is still
+        # validated above. Strip CR/LF to prevent header injection.
+        # For non-ASCII strings, fall back to the normalized URL form so the
+        # header remains wire-safe.
+        location_str = str(location)
+        if location_str.isascii():
+            self.headers["Location"] = location_str.replace("\r", "").replace("\n", "")
+        else:
+            self.headers["Location"] = str(self._location)
 
     @property
     def location(self) -> URL:

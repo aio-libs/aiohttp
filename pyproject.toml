@@ -174,7 +174,7 @@ build-frontend = "build"
 
 [tool.codespell]
 skip = '.git,*.pdf,*.svg,Makefile,CONTRIBUTORS.txt,venvs,_build'
-ignore-words-list = 'te,assertIn'
+ignore-words-list = 'te,assertIn,caf'
 
 [tool.slotscheck]
 # TODO(3.13): Remove aiohttp.helpers once https://github.com/python/cpython/pull/106771
