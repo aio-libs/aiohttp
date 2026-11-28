@@ -314,6 +314,10 @@ class StreamWriter(AbstractStreamWriter):
                     chunks_len = len(compressed_chunk)
                     chunks.append(compressed_chunk)
 
+            transport = self._protocol.transport
+            if transport is None or transport.is_closing():
+                # flush() can't be repeated, so fail before it rather than in the write.
+                raise ClientConnectionResetError("Cannot write to closing transport")
             flush_chunk = self._compress.flush()
             chunks_len += len(flush_chunk)
             chunks.append(flush_chunk)
