@@ -1,0 +1,3 @@
+Fixed ``zlib.error`` being raised when ``write_eof()`` was called again for a
+compressed response after the connection was lost
+-- by :user:`Dreamsorcerer`.
