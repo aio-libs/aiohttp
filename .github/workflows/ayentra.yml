@@ -1,0 +1,40 @@
+name: Ayentra AST & Concurrency Scan
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "aiohttp/**/*.py"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ayentra-scan:
+    name: Ayentra Static Invariant Scan
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Run Ayentra Scan
+        uses: Somay-Saini/ayentra-ai@799e850 # main
+        with:
+          mode: scan
+          target: aiohttp
+          json-out: ayentra-scan.json
+          sarif-out: ayentra.sarif
+          step-summary: "true"
+
+      - name: Upload Ayentra Reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ayentra-scan-reports
+          path: |
+            ayentra-scan.json
+            ayentra.sarif
+          if-no-files-found: ignore
