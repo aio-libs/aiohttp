@@ -1368,6 +1368,21 @@ async def test_write_eof_closes_payload_on_cancel() -> None:
     assert not writer.write_eof.called
 
 
+async def test_write_eof_repeated_after_payload_written() -> None:
+    writer = mock.create_autospec(AbstractStreamWriter, spec_set=True, instance=True)
+    writer.write_eof.side_effect = (asyncio.CancelledError, None)
+    req = make_request("GET", "/", writer=writer)
+    resp = web.Response(body=BytesPayload(b"data"))
+
+    await resp.prepare(req)
+    with pytest.raises(asyncio.CancelledError):
+        await resp.write_eof()
+    await resp.write_eof()
+
+    writer.write.assert_called_once_with(b"data")
+    assert writer.write_eof.call_count == 2
+
+
 def test_set_text_with_content_type() -> None:
     resp = web.Response()
     resp.content_type = "text/html"

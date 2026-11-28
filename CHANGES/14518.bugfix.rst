@@ -1,0 +1,3 @@
+Fixed the payload body of a ``web.Response`` being written a second time when
+``write_eof()`` was cancelled after writing it and then called again
+-- by :user:`Dreamsorcerer`.
