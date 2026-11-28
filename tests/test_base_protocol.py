@@ -263,14 +263,14 @@ async def test_drain_after_drain_cancelled() -> None:
     pr.connection_made(tr)
     pr.pause_writing()
 
-    t = loop.create_task(pr._drain_helper())
+    t = asyncio.create_task(pr._drain_helper())
     await asyncio.sleep(0)
     t.cancel()
     with pytest.raises(asyncio.CancelledError):
         await t
 
     # Writing is still paused, so the next drain has to wait for it to resume.
-    t = loop.create_task(pr._drain_helper())
+    t = asyncio.create_task(pr._drain_helper())
     await asyncio.sleep(0)
     assert not t.done()
     pr.resume_writing()
@@ -285,7 +285,7 @@ async def test_parallel_drain_cancelled() -> None:
     pr.connection_made(tr)
     pr.pause_writing()
 
-    ts = [loop.create_task(pr._drain_helper()) for _ in range(3)]
+    ts = [asyncio.create_task(pr._drain_helper()) for _ in range(3)]
     await asyncio.sleep(0)
     ts[1].cancel()
     with pytest.raises(asyncio.CancelledError):
@@ -305,7 +305,7 @@ async def test_parallel_drain_lost_exception() -> None:
     pr.connection_made(tr)
     pr.pause_writing()
 
-    ts = [loop.create_task(pr._drain_helper()) for _ in range(3)]
+    ts = [asyncio.create_task(pr._drain_helper()) for _ in range(3)]
     await asyncio.sleep(0)
     exc = RuntimeError()
     pr.connection_lost(exc)
@@ -331,7 +331,7 @@ async def test_lost_drain_cancelled_exception() -> None:
     pr.connection_made(tr)
     pr.pause_writing()
 
-    t = loop.create_task(pr._drain_helper())
+    t = asyncio.create_task(pr._drain_helper())
     await asyncio.sleep(0)
     t.cancel()
     with pytest.raises(asyncio.CancelledError):
