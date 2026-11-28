@@ -152,12 +152,15 @@ class Payload(ABC):
         content_type: None | str | _SENTINEL = sentinel,
         filename: str | None = None,
         encoding: str | None = None,
+        size: int | None = None,
         **kwargs: Any,
     ) -> None:
         self._encoding = encoding
         self._filename = filename
         self._headers = CIMultiDict[str]()
         self._value = value
+        if size is not None:
+            self._size = size
         if content_type is not sentinel and content_type is not None:
             assert isinstance(content_type, str)
             self._headers[hdrs.CONTENT_TYPE] = content_type
@@ -542,6 +545,8 @@ class IOBasePayload(Payload):
 
         Returns None if the size cannot be determined (e.g., for unseekable streams).
         """
+        if self._size is not None:
+            return self._size
         try:
             # Store the start position on first access.
             # This is critical when the same payload instance is reused (e.g., 307/308
