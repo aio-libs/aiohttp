@@ -1,0 +1,3 @@
+Fixed a response being ended twice when ``write_eof()`` was cancelled while
+waiting for the peer to read
+-- by :user:`Dreamsorcerer`.
