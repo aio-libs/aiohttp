@@ -335,8 +335,6 @@ class StreamWriter(AbstractStreamWriter):
 
         if chunk and (notify := self.on_body_write) is not None:
             notify(len(chunk), self.output_size)
-        # Mark EOF before draining: if the drain is cancelled or fails, the message
-        # is already complete and a repeated call must not write its end again.
         self._eof = True
         await self.drain()
 
