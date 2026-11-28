@@ -271,28 +271,43 @@ async def test_raw_server_cancelled_in_write_eof(aiohttp_raw_server, aiohttp_cli
     logger.debug.assert_called_with("Ignored premature client disconnection")
 
 
+@pytest.mark.parametrize(
+    "compressed", (True, False), ids=("compressed", "uncompressed")
+)
 @pytest.mark.parametrize("keeps_writing", (True, False))
-async def test_compressed_write_cancelled_in_handler(
+async def test_write_cancelled_in_handler(
+    compressed: bool,
     keeps_writing: bool,
     aiohttp_client: AiohttpClient,
     slow_executor: ThreadPoolExecutor,
 ) -> None:
+    sent = 0
     transports: list[asyncio.Transport | None] = []
 
     async def handler(request: web.Request) -> web.StreamResponse:
+        nonlocal sent
         transports.append(request.transport)
         resp = web.StreamResponse()
-        resp.enable_compression(web.ContentCoding.gzip)
+        if compressed:
+            resp.enable_compression(web.ContentCoding.gzip)
         writer = await resp.prepare(request)
-        assert isinstance(writer, StreamWriter)
-        assert writer._compress is not None
-        writer._compress._executor = slow_executor
+        if compressed:
+            assert isinstance(writer, StreamWriter)
+            assert writer._compress is not None
+            writer._compress._executor = slow_executor
+        chunk = os.urandom(65536)
         with suppress(TimeoutError):
             async with asyncio.timeout(0):
-                await resp.write(os.urandom(65536))
+                # Compression yields to the executor straight away. Without it,
+                # nothing yields to the event loop until writing is paused.
+                while True:
+                    sent += len(chunk)
+                    await resp.write(chunk)
         if keeps_writing:
             with suppress(ConnectionResetError):
-                await resp.write(b"more")
+                # Large enough to need another drain.
+                sent += len(chunk) * 2
+                await resp.write(chunk * 2)
         return resp
 
     async def ping(request: web.Request) -> web.Response:
@@ -307,13 +322,16 @@ async def test_compressed_write_cancelled_in_handler(
 
     async with cli.get("/") as resp:
         assert resp.status == 200
-        with pytest.raises(client.ClientPayloadError):
-            await resp.read()
+        if compressed:
+            with pytest.raises(client.ClientPayloadError):
+                await resp.read()
+        else:
+            assert len(await resp.read()) == sent
     async with cli.get("/ping") as resp:
         assert resp.status == 200
 
-    cancelled, reconnected = transports
-    assert cancelled is not reconnected
+    cancelled, following = transports
+    assert (cancelled is following) is not compressed
 
 
 async def test_raw_server_not_http_exception_debug(

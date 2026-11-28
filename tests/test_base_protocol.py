@@ -69,7 +69,7 @@ async def test_resume_writing_waiter_done() -> None:
     loop = asyncio.get_event_loop()
     pr = BaseProtocol(loop=loop)
     waiter = mock.Mock(done=mock.Mock(return_value=True))
-    pr._drain_waiter = waiter
+    pr._drain_waiters[waiter] = None
     pr._paused = True
     pr.resume_writing()
     assert not pr._paused
@@ -113,9 +113,8 @@ async def test_connection_lost_waiter_done() -> None:
     pr = BaseProtocol(loop=loop)
     pr._paused = True
     waiter = mock.Mock(done=mock.Mock(return_value=True))
-    pr._drain_waiter = waiter
+    pr._drain_waiters[waiter] = None
     pr.connection_lost(None)
-    assert pr._drain_waiter is None
     assert waiter.mock_calls == [mock.call.done()]
 
 
@@ -134,9 +133,9 @@ async def test_drain_not_paused() -> None:
     pr = BaseProtocol(loop=loop)
     tr = mock.Mock()
     pr.connection_made(tr)
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
     await pr._drain_helper()
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
 
 
 async def test_resume_drain_waited() -> None:
@@ -149,10 +148,10 @@ async def test_resume_drain_waited() -> None:
     t = loop.create_task(pr._drain_helper())
     await asyncio.sleep(0)
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 1
     pr.resume_writing()
-    assert (await t) is None
-    assert pr._drain_waiter is None
+    await t
+    assert not pr._drain_waiters
 
 
 async def test_lost_drain_waited_ok() -> None:
@@ -165,10 +164,10 @@ async def test_lost_drain_waited_ok() -> None:
     t = loop.create_task(pr._drain_helper())
     await asyncio.sleep(0)
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 1
     pr.connection_lost(None)
-    assert (await t) is None
-    assert pr._drain_waiter is None
+    await t
+    assert not pr._drain_waiters
 
 
 async def test_lost_drain_waited_exception() -> None:
@@ -181,13 +180,13 @@ async def test_lost_drain_waited_exception() -> None:
     t = loop.create_task(pr._drain_helper())
     await asyncio.sleep(0)
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 1
     exc = RuntimeError()
     pr.connection_lost(exc)
     with pytest.raises(ConnectionError, match=r"^Connection lost$") as cm:
         await t
     assert cm.value.__cause__ is exc
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
 
 
 async def test_lost_drain_cancelled() -> None:
@@ -207,11 +206,11 @@ async def test_lost_drain_cancelled() -> None:
     await fut
     t.cancel()
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 1
     pr.connection_lost(None)
     with suppress(asyncio.CancelledError):
         await t
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
 
 
 async def test_resume_drain_cancelled() -> None:
@@ -231,11 +230,11 @@ async def test_resume_drain_cancelled() -> None:
     await fut
     t.cancel()
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 1
     pr.resume_writing()
     with suppress(asyncio.CancelledError):
         await t
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
 
 
 async def test_parallel_drain_race_condition() -> None:
@@ -250,7 +249,68 @@ async def test_parallel_drain_race_condition() -> None:
         0
     ], "All draining tasks must be pending"
 
-    assert pr._drain_waiter is not None
+    assert len(pr._drain_waiters) == 5
     pr.resume_writing()
     await asyncio.gather(*ts)
-    assert pr._drain_waiter is None
+    assert not pr._drain_waiters
+
+
+async def test_drain_after_drain_cancelled() -> None:
+    loop = asyncio.get_running_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    t = asyncio.create_task(pr._drain_helper())
+    await asyncio.sleep(0)
+    t.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await t
+
+    # Writing is still paused, so the next drain has to wait for it to resume.
+    t = asyncio.create_task(pr._drain_helper())
+    await asyncio.sleep(0)
+    assert not t.done()
+    pr.resume_writing()
+    await t
+    assert not pr._drain_waiters
+
+
+async def test_parallel_drain_cancelled() -> None:
+    loop = asyncio.get_running_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    ts = [asyncio.create_task(pr._drain_helper()) for _ in range(3)]
+    await asyncio.sleep(0)
+    ts[1].cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await ts[1]
+
+    assert not ts[0].done()
+    assert not ts[2].done()
+    pr.resume_writing()
+    await asyncio.gather(ts[0], ts[2])
+    assert not pr._drain_waiters
+
+
+async def test_parallel_drain_lost_exception() -> None:
+    loop = asyncio.get_running_loop()
+    pr = BaseProtocol(loop=loop)
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
+    pr.connection_made(tr)
+    pr.pause_writing()
+
+    ts = [asyncio.create_task(pr._drain_helper()) for _ in range(3)]
+    await asyncio.sleep(0)
+    exc = RuntimeError()
+    pr.connection_lost(exc)
+
+    for t in ts:
+        with pytest.raises(ConnectionError, match=r"^Connection lost$") as cm:
+            await t
+        assert cm.value.__cause__ is exc
+    assert not pr._drain_waiters

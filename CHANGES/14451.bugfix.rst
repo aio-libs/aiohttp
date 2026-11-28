@@ -1,0 +1,3 @@
+Fixed a write that was cancelled while waiting for the peer to read (e.g. by
+a timeout) causing later and concurrent writes on the same connection to
+raise ``asyncio.CancelledError`` -- by :user:`Dreamsorcerer`.
