@@ -75,16 +75,16 @@ class CookieJar(AbstractCookieJar):
         re.ASCII,
     )
 
-    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})", re.ASCII)
+    DATE_HMS_TIME_RE = re.compile(r"(\d{1,2}):(\d{1,2}):(\d{1,2})(?!\d)", re.ASCII)
 
-    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})", re.ASCII)
+    DATE_DAY_OF_MONTH_RE = re.compile(r"(\d{1,2})(?!\d)", re.ASCII)
 
     DATE_MONTH_RE = re.compile(
         "(jan)|(feb)|(mar)|(apr)|(may)|(jun)|(jul)|(aug)|(sep)|(oct)|(nov)|(dec)",
         re.I | re.ASCII,
     )
 
-    DATE_YEAR_RE = re.compile(r"(\d{2,4})", re.ASCII)
+    DATE_YEAR_RE = re.compile(r"(\d{2,4})(?!\d)", re.ASCII)
 
     # calendar.timegm() fails for timestamps after datetime.datetime.max
     # Minus one as a loss of precision occurs when timestamp() is called.
@@ -550,7 +550,8 @@ class CookieJar(AbstractCookieJar):
                     cookie["max-age"] = ""
 
             elif expires := cookie["expires"]:
-                if expire_time := self._parse_date(expires):
+                # The Unix epoch parses to 0, which is a valid (expired) date.
+                if (expire_time := self._parse_date(expires)) is not None:
                     deadline = expire_time
                 else:
                     cookie["expires"] = ""
@@ -850,7 +851,7 @@ class CookieJar(AbstractCookieJar):
         if False in (found_day, found_month, found_year, found_time):
             return None
 
-        if not 1 <= day <= 31:
+        if not 1 <= day <= calendar.monthrange(year, month)[1]:
             return None
 
         if year < 1601 or hour > 23 or minute > 59 or second > 59:
