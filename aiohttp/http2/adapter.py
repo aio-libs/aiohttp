@@ -83,17 +83,15 @@ class Http2StreamWriter(AbstractStreamWriter):
         self,
         protocol: Any,
         loop: asyncio.AbstractEventLoop,
-        req: "ClientRequest",
+        stream_id: int,
         *,
         on_chunk_sent: Any | None = None,
         on_headers_sent: Any | None = None,
     ) -> None:
         del on_chunk_sent, on_headers_sent  # skipped for now
 
-        self._req = req
         self._protocol = protocol
-        assert req.stream_id
-        self.stream_id: int = req.stream_id
+        self.stream_id: int = stream_id
         self.loop = loop
 
         self._headers: list[tuple[str, str]] | None = None
@@ -102,6 +100,9 @@ class Http2StreamWriter(AbstractStreamWriter):
         self.output_size = 0
         # constant
         self.buffer_size = 0
+
+        self.url: Any = None
+        self.method: Any = None
 
     @property
     def protocol(self) -> Any:
@@ -117,8 +118,8 @@ class Http2StreamWriter(AbstractStreamWriter):
 
         self._protocol._connection.send_headers(
             self.stream_id,
-            self._req.method,  # could be stored when `write_headers` is called
-            self._req.url,
+            self.method,  # could be stored when `write_headers` is called
+            self.url,
             self._headers,
             end_stream=end_stream,
         )
@@ -201,7 +202,7 @@ class Http2StreamWriter(AbstractStreamWriter):
 
     def enable_compression(self, *args: Any, **kwargs: Any) -> None:
         # HTTP/2 compresses headers automatically; no body compression here.
-        pass
+        raise ValueError("Payload compression is not supported over HTTP/2")
 
     def enable_chunking(self) -> None:
         # HTTP/2 does not use chunked transfer encoding (or, rather, chunked transfer encoding is built-in).

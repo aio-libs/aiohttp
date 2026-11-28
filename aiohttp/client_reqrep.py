@@ -450,9 +450,6 @@ class ClientResponse(HeadersMixin):
     _output_size: int = 0
     _upload_complete: asyncio.Future[None] | None = None
 
-    # HTTP/2 stream id
-    stream_id: int | None = None
-
     def __init__(
         self,
         method: str,
@@ -717,9 +714,7 @@ class ClientResponse(HeadersMixin):
                     protocol = self._protocol
                     assert protocol is not None
                     if hasattr(protocol, "version") and protocol.version.major == 2:
-                        message, payload = await connection.read_response(
-                            self.stream_id
-                        )
+                        message, payload = await connection.read_response()
                     else:
                         # backwards compatibility
                         message, payload = await protocol.read()
@@ -1002,9 +997,6 @@ class ClientRequestBase:
 
     _skip_auto_headers: "CIMultiDict[None] | None" = None
 
-    # HTTP/2 stream id
-    stream_id: int | None = None
-
     # N.B.
     # Adding __del__ method with self._writer closing doesn't make sense
     # because _writer is instance method, thus it keeps a reference to self.
@@ -1128,9 +1120,9 @@ class ClientRequestBase:
         )
 
     def _create_writer(
-        self, protocol: BaseProtocol
+        self, connection: "Connection"
     ) -> StreamWriter | Http2StreamWriter:
-        return StreamWriter(protocol, self.loop)
+        return connection.create_writer()
 
     def _should_write(self, protocol: BaseProtocol) -> bool:
         return protocol.writing_paused
@@ -1149,9 +1141,7 @@ class ClientRequestBase:
         else:
             path = self.url.raw_path_qs
 
-        protocol = conn.protocol
-        assert protocol is not None
-        writer = self._create_writer(protocol)
+        writer = self._create_writer(conn)
 
         # set default content-type
         if (
@@ -1179,6 +1169,8 @@ class ClientRequestBase:
         await writer.write_headers(status_line, self.headers)
 
         task: asyncio.Task[None] | None
+        assert conn.protocol is not None
+        protocol = conn.protocol
         if self._should_write(protocol):
             coro = self._write_bytes(writer, conn, self._get_content_length())
             if sys.version_info >= (3, 14):
@@ -1630,15 +1622,9 @@ class ClientRequest(ClientRequestBase):
         )
 
     def _create_writer(
-        self, protocol: BaseProtocol
+        self, connection: "Connection"
     ) -> StreamWriter | Http2StreamWriter:
-        if hasattr(protocol, "version") and protocol.version.major == 2:
-            if self.compress:
-                raise ValueError("Payload compression is not supported over HTTP/2")
-            return Http2StreamWriter(protocol, self.loop, self)
-        writer = StreamWriter(
-            protocol,
-            self.loop,
+        writer = connection.create_writer(
             on_chunk_sent=(
                 functools.partial(self._on_chunk_request_sent, self.method, self.url)
                 if self._traces
@@ -1656,6 +1642,16 @@ class ClientRequest(ClientRequestBase):
 
         if self.chunked is not None:
             writer.enable_chunking()
+
+        # patch for http/2
+        if (
+            hasattr(connection.protocol, "version")
+            and connection.protocol.version.major == 2
+        ):
+            # we can get this from the status line
+            # but it's less convenient
+            writer.url = self.url
+            writer.method = self.method
         return writer
 
     def _should_write(self, protocol: BaseProtocol) -> bool:

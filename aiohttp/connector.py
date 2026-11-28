@@ -53,10 +53,12 @@ from .helpers import (
     set_exception,
     set_result,
 )
+from .http2.adapter import Http2StreamWriter
 from .http2.connection import HTTP2_ENABLED
 from .http2.synchro import HostProbeSynchronizer
 from .http_parser import RawResponseMessage
 from .http_protocol import HttpDispatcherProtocol
+from .http_writer import StreamWriter
 from .log import client_logger
 from .resolver import DefaultResolver
 from .streams import StreamReader
@@ -169,6 +171,7 @@ class Connection:
     """Represents a single connection."""
 
     __slots__ = (
+        "stream_id",
         "_key",
         "_connector",
         "_loop",
@@ -193,6 +196,8 @@ class Connection:
             traceback.extract_stack(sys._getframe(1)) if loop.get_debug() else None
         )
 
+        self.stream_id: int | None = None
+
     def __repr__(self) -> str:
         return f"Connection<{self._key}>"
 
@@ -204,6 +209,8 @@ class Connection:
             if self._loop.is_closed():
                 return
 
+            self._abandon()
+
             self._connector._release(self._key, self._protocol, should_close=True)
 
             context = {"client_connection": self, "message": "Unclosed connection"}
@@ -214,6 +221,11 @@ class Connection:
     def __bool__(self) -> Literal[True]:
         """Force subclasses to not be falsy, to make checks simpler."""
         return True
+
+    def _abandon(self) -> None:
+        """Called by __del__ when a Connection is GC'd without being closed."""
+        assert self._protocol is not None
+        self._connector._release(self._key, self._protocol, should_close=True)
 
     @property
     def transport(self) -> asyncio.Transport | None:
@@ -254,64 +266,68 @@ class Connection:
     def closed(self) -> bool:
         return self._protocol is None or not self._protocol.is_connected()
 
-    @property
-    def is_multiplexed(self) -> bool:
-        """Whether the underlying protocol carries concurrent streams."""
-        return self._protocol is not None and self._protocol.version.major == 2
+    def create_writer(self, **kwargs) -> "AbstractStreamWriter":
+        return StreamWriter(self._protocol, self._loop, **kwargs)
 
-    async def acquire_stream(self, req: ClientRequest) -> int | None:
-        """Reserve a stream for this request.
-
-        Returns the stream id for multiplexed protocols, or ``None`` for
-        single-stream (HTTP/1.x) connections.
-        """
+    async def send_request(self, req: "ClientRequest") -> "ClientResponse":
         protocol = self._protocol
         assert protocol is not None
-        if not self.is_multiplexed:
-            return None
+        protocol.set_response_params(**req._response_params)
+        return await req._send(self)
 
-        # ``expect100`` requires a second response on the same exchange;
-        # HTTP/2 has no straightforward equivalent.
+    async def read_response(self) -> tuple["RawResponseMessage", "StreamReader"]:
+        protocol = self._protocol
+        assert protocol is not None
+        return await protocol.read()
+
+
+class H2Connection(Connection):
+    __slots__ = ("_h2_stream",)
+
+    def __init__(
+        self,
+        connector: "BaseConnector",
+        key: "ConnectionKey",
+        protocol: ResponseHandler,
+        loop: asyncio.AbstractEventLoop,
+        h2_stream: "Stream",
+    ) -> None:
+        super().__init__(connector, key, protocol, loop)
+        self._h2_stream = h2_stream
+        assert self.stream_id is None
+        self.stream_id = self._h2_stream.stream_id
+
+    def _abandon(self) -> None:
+        if not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Unclosed connection"))
+
+    def create_writer(self, **kwargs):
+        return Http2StreamWriter(self._protocol, self._loop, self.stream_id, **kwargs)
+
+    async def send_request(self, req):
         if req._continue is not None:
             raise NotImplementedError("expect100 is not supported over HTTP/2")
-
-        assert hasattr(protocol, "create_stream")
-        stream = await protocol.create_stream()
-        return stream.stream_id  # type: ignore[no-any-return]
-
-    async def send_request(self, req: ClientRequest) -> ClientResponse:
-        """Send a request on this connection.
-
-        Allocates a stream for multiplexed protocols, sets ``req.stream_id``
-        and ``resp.stream_id`` accordingly, and returns the response before
-        it has started reading.
-        """
         protocol = self._protocol
         assert protocol is not None
-
-        stream_id = await self.acquire_stream(req)
-        req.stream_id = stream_id
-
         protocol.set_response_params(**req._response_params)
-        resp = await req._send(self)
-        resp.stream_id = stream_id
-        return resp
+        return await req._send(self)
 
-    async def read_response(
-        self, stream_id: int | None
-    ) -> tuple[RawResponseMessage, StreamReader]:
-        """Read one response message from this connection.
-
-        For multiplexed protocols, reads from the given stream id.
-        For single-stream connections, ``stream_id`` is ignored.
-        """
+    async def read_response(self):
         protocol = self._protocol
         assert protocol is not None
-        if self.is_multiplexed:
-            assert stream_id is not None
-            assert hasattr(protocol, "read_stream")
-            return await protocol.read_stream(stream_id)  # type: ignore[no-any-return]
-        return await protocol.read()
+        return await protocol.read_stream(self.stream_id)  # type: ignore[attr-defined]
+
+    def close(self):
+        self._notify_release()
+        if self._protocol is not None and not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Stream closed"))
+        self._protocol = None
+
+    def release(self):
+        self._notify_release()
+        if self._protocol is not None and not self._h2_stream.closed_event.is_set():
+            self._h2_stream.cancel(ClientConnectionError("Stream released"))
+        self._protocol = None
 
 
 class _ConnectTunnelConnection(Connection):
@@ -771,6 +787,7 @@ class BaseConnector:
                     proto.close()
                     raise ClientConnectionError("Connector is closed.")
 
+        conn = await self._connection_factory(self, key, proto, self._loop)
         # The connection was successfully created, drop the placeholder
         # and add the real connection to the acquired set. There should
         # be no awaits after the proto is added to the acquired set
@@ -782,7 +799,6 @@ class BaseConnector:
             acquired_per_host = self._acquired_per_host[key]
             acquired_per_host.remove(placeholder)
             acquired_per_host.add(proto)
-        conn = Connection(self, key, proto, self._loop)
 
         # HTTP/2+ connections are always reusable
         # and are never idle in a connection pool
@@ -791,6 +807,15 @@ class BaseConnector:
             self._multiplexed[key] = deque([(proto, float("inf"))])
 
         return conn
+
+    async def _connection_factory(
+        self, connector: Any, key: Any, proto: Any, loop: Any
+    ) -> Connection:
+        conn: Connection
+        if proto.version.major == 2:
+            h2_stream = await proto.create_stream()  # type: ignore[attr-defined]
+            return H2Connection(connector, key, proto, loop, h2_stream)
+        return Connection(connector, key, proto, loop)
 
     async def _wait_for_available_connection(
         self, key: "ConnectionKey", traces: list["Trace"]
@@ -883,7 +908,7 @@ class BaseConnector:
                 if not multiplexed and key in self._conns:
                     # persist changes
                     self._conns[key] = conns
-                return Connection(self, key, proto, self._loop)
+                return await self._connection_factory(self, key, proto, self._loop)
 
             # Connection cannot be reused, close it
             transport = proto.transport
