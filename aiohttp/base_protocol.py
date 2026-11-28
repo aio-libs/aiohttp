@@ -34,7 +34,7 @@ class BaseProtocol(asyncio.Protocol):
     ) -> None:
         self._loop: asyncio.AbstractEventLoop = loop
         self._paused = False
-        # Used as an ordered set of the futures _drain_helper() calls wait on.
+        # Dict used as an ordered set.
         self._drain_waiters: dict[asyncio.Future[None], None] = {}
         self._reading_paused = False
         self._buffer_paused = False
@@ -145,10 +145,6 @@ class BaseProtocol(asyncio.Protocol):
             raise ClientConnectionResetError("Connection lost")
         if not self._paused:
             return
-        # Each call waits on its own future: cancelling a writer cancels the
-        # future it awaits, which must not be one that another writer, or a
-        # later call, waits on. Shielding a shared future instead would leave
-        # an exception from connection_lost() unretrieved after a cancellation.
         waiter = self._loop.create_future()
         self._drain_waiters[waiter] = None
         try:
