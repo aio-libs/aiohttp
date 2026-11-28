@@ -248,6 +248,21 @@ class TestHTTPFound:
         exc = web.HTTPFound(location="/redirect\r\n")
         assert "\r\n" not in exc.headers["Location"]
 
+    def test_location_preserves_percent_encoding(self) -> None:
+        # issue 5319: yarl normalizes percent-encoded query characters, which can
+        # turn an encoded '?' (%3F) inside a query value into a real '?' and break
+        # the redirect target. The Location header must preserve the original string.
+        location = "http://example.com/path?next=http%3A%2F%2Ffoo%3Fbar%3Dbaz"
+        exc = web.HTTPFound(location=location)
+        assert exc.headers["Location"] == location
+        # The parsed location property still exposes the normalized URL.
+        assert exc.location == URL(location)
+
+    def test_location_unicode(self) -> None:
+        exc = web.HTTPFound(location="/caf\u00e9")
+        assert exc.headers["Location"] == "/caf%C3%A9"
+        assert exc.location == URL("/caf\u00e9")
+
     def test_pickle(self) -> None:
         resp = web.HTTPFound(
             location="http://example.com",
