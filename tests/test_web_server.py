@@ -221,13 +221,6 @@ async def test_write_cancelled_in_handler(
     aiohttp_client: AiohttpClient,
     slow_executor: ThreadPoolExecutor,
 ) -> None:
-    """Test a handler that carries on after a write timed out.
-
-    A write cancelled inside compress() loses its output, so the response is
-    cut short and the connection closed. One cancelled while waiting on
-    back-pressure loses nothing, so the next drain has to wait for the peer
-    again and the connection stays reusable.
-    """
     sent = 0
     transports: list[asyncio.Transport | None] = []
 
