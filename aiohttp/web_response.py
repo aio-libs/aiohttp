@@ -547,6 +547,7 @@ class Response(StreamResponse):
 
     _compressed_body: bytes | None = None
     _send_headers_immediately = False
+    _body_written = False
 
     def __init__(
         self,
@@ -704,10 +705,12 @@ class Response(StreamResponse):
         if body is None or self._must_be_empty_body:
             await super().write_eof()
         elif isinstance(self._body, Payload):
-            try:
-                await self._body.write(self._payload_writer)
-            finally:
-                await self._body.close()
+            if not self._body_written:
+                try:
+                    await self._body.write(self._payload_writer)
+                finally:
+                    await self._body.close()
+                self._body_written = True
             await super().write_eof()
         else:
             await super().write_eof(cast(bytes, body))
