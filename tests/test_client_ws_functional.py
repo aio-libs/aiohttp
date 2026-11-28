@@ -1230,6 +1230,36 @@ async def test_close_websocket_while_ping_inflight(
     assert cancelled is True
 
 
+async def test_heartbeat_after_close(aiohttp_client: AiohttpClient) -> None:
+    """Test that a heartbeat firing after the websocket is closed is ignored."""
+
+    async def handler(request: web.Request) -> web.WebSocketResponse:
+        ws = web.WebSocketResponse()
+        await ws.prepare(request)
+        await ws.receive()
+        return ws
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+
+    client = await aiohttp_client(app)
+    resp = await client.ws_connect("/", heartbeat=0.05)
+    # The server's close frame arrives after close() has cancelled the
+    # heartbeat and, like any other received data, schedules a new one.
+    await resp.close()
+    assert resp.close_code == WSCloseCode.OK
+
+    with mock.patch.object(
+        resp._writer, "send_frame", wraps=resp._writer.send_frame
+    ) as send_frame:
+        # Long enough for the PING and for the PONG timeout that follows it.
+        await asyncio.sleep(0.1)
+
+    send_frame.assert_called_once_with(b"", WSMsgType.PING)
+    assert resp.close_code == WSCloseCode.OK
+    assert resp.exception() is None
+
+
 @pytest.mark.usefixtures("parametrize_zlib_backend")
 async def test_send_recv_compress(aiohttp_client: AiohttpClient) -> None:
     async def handler(request: web.Request) -> web.WebSocketResponse:
