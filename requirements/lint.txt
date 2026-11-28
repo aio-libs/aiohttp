@@ -121,7 +121,7 @@ pytest-mock==3.17.0
     # via -r requirements/lint.in
 python-dateutil==4.0.0
     # via freezegun
-python-discovery==1.9.5
+python-discovery==1.9.7
     # via virtualenv
 python-on-whales==0.81.0
     # via -r requirements/lint.in
@@ -151,7 +151,7 @@ uvloop==0.23.0 ; platform_system != "Windows"
     # via -r requirements/lint.in
 valkey==6.2.0
     # via -r requirements/lint.in
-virtualenv==21.15.11
+virtualenv==21.15.13
     # via pre-commit
 yarl==1.25.1
     # via aiohttp
