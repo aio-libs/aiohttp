@@ -904,6 +904,22 @@ async def test_request_cookies_pre_quoted_value(
     assert resp.request_info.headers.get("Cookie", "") == expected
 
 
+async def test_request_cookies_quote_cookie_module_level_request(
+    aiohttp_server: AiohttpServer,
+) -> None:
+    async def handler(_: web.Request) -> web.Response:
+        return web.Response()
+
+    app = web.Application()
+    app.router.add_route("GET", "/", handler)
+    server = await aiohttp_server(app)
+    cookies = {"name": "val=foobar"}
+    async with aiohttp.request(
+        "GET", server.make_url("/"), cookies=cookies, quote_cookie=False
+    ) as resp:
+        assert resp.request_info.headers.get("Cookie", "") == "name=val=foobar"
+
+
 async def test_cookies_with_unsafe_cookie_jar(
     aiohttp_server: AiohttpServer,
 ) -> None:

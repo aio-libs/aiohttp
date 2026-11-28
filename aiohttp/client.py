@@ -1683,8 +1683,15 @@ else:
             connector_owner = True
             connector = TCPConnector(force_close=True)
 
+        # cookies= is stored in the session's cookie jar here, so a
+        # quote_cookie override has to reach that jar instead of the
+        # per-request ad-hoc jar built by ClientSession._request().
+        quote_cookie = kwargs.pop("quote_cookie", None)
         session = ClientSession(
             cookies=kwargs.pop("cookies", None),
+            cookie_jar=(
+                None if quote_cookie is None else CookieJar(quote_cookie=quote_cookie)
+            ),
             version=version,
             timeout=kwargs.pop("timeout", sentinel),
             connector=connector,

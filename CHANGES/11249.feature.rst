@@ -1,5 +1,5 @@
-Added a ``quote_cookie`` parameter to :meth:`~aiohttp.ClientSession.request` and
-the ``get``, ``post`` and other request shortcuts, allowing cookies passed via
-the ``cookies`` argument to be sent without quotation wrapping on a per-request
-basis; it defaults to the ``quote_cookie`` setting of the session's cookie jar
--- by :user:`Surri757`.
+Added a ``quote_cookie`` parameter to :meth:`~aiohttp.ClientSession.request`,
+the ``get``, ``post`` and other request shortcuts, and the module-level
+:func:`~aiohttp.request`, allowing cookies passed via the ``cookies`` argument
+to be sent without quotation wrapping on a per-request basis; it defaults to
+the ``quote_cookie`` setting of the session's cookie jar -- by :user:`Surri757`.
