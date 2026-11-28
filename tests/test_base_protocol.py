@@ -259,7 +259,7 @@ async def test_parallel_drain_race_condition() -> None:
 async def test_drain_after_drain_cancelled() -> None:
     loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
-    tr = mock.Mock()
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     pr.connection_made(tr)
     pr.pause_writing()
 
@@ -281,7 +281,7 @@ async def test_drain_after_drain_cancelled() -> None:
 async def test_parallel_drain_cancelled() -> None:
     loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
-    tr = mock.Mock()
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     pr.connection_made(tr)
     pr.pause_writing()
 
@@ -301,7 +301,7 @@ async def test_parallel_drain_cancelled() -> None:
 async def test_parallel_drain_lost_exception() -> None:
     loop = asyncio.get_running_loop()
     pr = BaseProtocol(loop=loop)
-    tr = mock.Mock()
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     pr.connection_made(tr)
     pr.pause_writing()
 
@@ -318,11 +318,16 @@ async def test_parallel_drain_lost_exception() -> None:
 
 
 async def test_lost_drain_cancelled_exception() -> None:
+    def exception_handler(
+        loop: asyncio.AbstractEventLoop, context: dict[str, object]
+    ) -> None:
+        """Mock signature"""
+
     loop = asyncio.get_running_loop()
-    exc_handler = mock.Mock()
+    exc_handler = mock.create_autospec(exception_handler, spec_set=True)
     loop.set_exception_handler(exc_handler)
     pr = BaseProtocol(loop=loop)
-    tr = mock.Mock()
+    tr = mock.create_autospec(asyncio.Transport, spec_set=True, instance=True)
     pr.connection_made(tr)
     pr.pause_writing()
 
