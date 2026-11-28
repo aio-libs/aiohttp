@@ -2550,12 +2550,17 @@ Utilities
 
    :param bool unsafe: (optional) Whether to accept cookies from IPs.
 
-   :param bool quote_cookie: (optional) Whether to quote cookies according to
-                             :rfc:`2109`.  Some backend systems
-                             (not compatible with RFC mentioned above)
-                             does not support quoted cookies.
+   :param bool quote_cookie: (optional) Whether to quote cookie values set from
+                             strings according to :rfc:`2109`.  Some backend
+                             systems (not compatible with RFC mentioned above)
+                             does not support quoted cookies.  Cookies received
+                             from a server are sent back exactly as received.
 
       .. versionadded:: 3.7
+
+      .. versionchanged:: 4.0
+
+         Cookies received from a server are no longer quoted when sent back.
 
    :param treat_as_secure_origin: (optional) Mark origins as secure
                                   for cookies marked as Secured.

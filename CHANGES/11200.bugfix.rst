@@ -1,0 +1,1 @@
+Changed the client cookie jar to send cookies back exactly as the server sent them, instead of quoting values containing characters such as ``=``, ``/`` or spaces, which some servers rejected -- by :user:`tugayabdulla`.
