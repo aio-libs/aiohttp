@@ -820,6 +820,44 @@ async def test_web_view(aiohttp_client: AiohttpClient) -> None:
         assert r.status == 405
 
 
+async def test_add_query(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+
+    async def handler(request: web.Request) -> web.Response:
+        return web.Response(text="query response")
+
+    app.router.add_query("/a", handler)
+
+    client = await aiohttp_client(app)
+
+    async with client.request("QUERY", "/a") as r:
+        assert r.status == 200
+        assert await r.text() == "query response"
+
+    async with client.get("/a") as r:
+        assert r.status == 405
+
+
+async def test_view_query_method(aiohttp_client: AiohttpClient) -> None:
+    app = web.Application()
+
+    class MyView(web.View):
+        async def query(self) -> web.Response:
+            return web.Response(text="view query")
+
+    app.router.add_view("/a", MyView)
+
+    client = await aiohttp_client(app)
+
+    async with client.request("QUERY", "/a") as r:
+        assert r.status == 200
+        assert await r.text() == "view query"
+
+    async with client.get("/a") as r:
+        assert r.status == 405
+        assert "QUERY" in r.headers["Allow"]
+
+
 async def test_static_absolute_url(
     aiohttp_client: AiohttpClient, tmp_path: pathlib.Path
 ) -> None:
